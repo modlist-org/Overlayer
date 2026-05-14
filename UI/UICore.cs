@@ -1,5 +1,7 @@
 ﻿using DG.Tweening;
+using MelonLoader;
 using Overlayer.UI.UISprites;
+using System.Collections;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -13,13 +15,8 @@ internal static class UICore {
     public static Canvas Canvas { get; private set; }
 
     public static void Initialize() {
-        if(canvasObj is not null) {
-            return;
-        }
-
-        canvasObj = new("OverlayerUiCanvas");
-        Object.DontDestroyOnLoad(canvasObj);
-
+        canvasObj = new GameObject("OverlayerUICanvas");
+        canvasObj.transform.SetParent(Core.OverlayerObject.transform, false);
         canvasObj.SetActive(false);
 
         Canvas = canvasObj.AddComponent<Canvas>();
@@ -32,7 +29,6 @@ internal static class UICore {
 
         canvasObj.AddComponent<GraphicRaycaster>();
 
-        SpriteDatabase.Initialize();
         CreatePanel();
         ResizeHandle.CreateResizeHandles(Panel);
     }
@@ -324,7 +320,7 @@ internal static class UICore {
     }
 
     public static void Open(bool noAnimate = false) {
-        if(canvasObj is null || isOpen) {
+        if(isOpen) {
             return;
         }
 
@@ -333,8 +329,8 @@ internal static class UICore {
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
 
-        panelTweener?.Kill();
-        resetSequence?.Kill();
+        panelTweener?.Kill(true);
+        resetSequence?.Kill(true);
 
         if(noAnimate) {
             Panel.anchoredPosition = lastPanelPosition;
@@ -357,7 +353,7 @@ internal static class UICore {
     }
 
     public static void Close(bool noAnimate = false) {
-        if(canvasObj is null || !isOpen) {
+        if(!isOpen) {
             return;
         }
 
@@ -373,8 +369,8 @@ internal static class UICore {
             0f
         );
 
-        panelTweener?.Kill();
-        resetSequence?.Kill();
+        panelTweener?.Kill(true);
+        resetSequence?.Kill(true);
 
         if(noAnimate) {
             canvasObj.SetActive(false);
@@ -429,7 +425,7 @@ internal static class UICore {
     private static Sequence menuSequence;
 
     public static void OpenMenu() {
-        menuSequence?.Kill();
+        menuSequence?.Kill(true);
 
         isMenuOpen = true;
 
@@ -451,7 +447,7 @@ internal static class UICore {
     }
 
     public static void CloseMenu() {
-        menuSequence?.Kill();
+        menuSequence?.Kill(true);
 
         menuCanvasGroup.interactable = false;
         menuCanvasGroup.blocksRaycasts = false;

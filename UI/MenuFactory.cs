@@ -290,7 +290,11 @@ public static class MenuFactory {
     }
 
     private static void SwitchPage(MenuState from, MenuState to) {
-        pageSeq?.Kill();
+        if(from == to) {
+            return;
+        }
+
+        pageSeq?.Kill(true);
 
         RectTransform fromPage = Pages[from];
         RectTransform toPage = Pages[to];

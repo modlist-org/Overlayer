@@ -433,6 +433,7 @@
 
 	<ItemGroup>
 		<Compile Include="Core.cs" />
+		<Compile Include="MainThread.cs" />
 		<Compile Include="Resource/ResourceLoader.cs" />
 		<Compile Include="Resource/ResourceManager.cs" />
 		<Compile Include="UI/DragHandler.cs" />
