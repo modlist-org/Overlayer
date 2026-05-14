@@ -1,7 +1,7 @@
 # <div align="center">Overlayer</div>
 
 <div align="center">
-    <img src="Resource/Image/OV5LogoOutline256.png" height="256" alt="Overlayer V5 Logo">
+    <img src="ov5_logo.svg" height="256" alt="Overlayer V5 Logo">
 </div>
 
 <div align="center">
