@@ -25,13 +25,13 @@ public class Core : MelonMod {
     private IEnumerator CreateOverlayerObject() {
         for(;;) {
             if(OverlayerObject == null) {
-                    OverlayerObject = new GameObject("Overlayer");
-                    UnityEngine.Object.DontDestroyOnLoad(OverlayerObject);
+                OverlayerObject = new GameObject("Overlayer");
+                UnityEngine.Object.DontDestroyOnLoad(OverlayerObject);
 
-                    if(OverlayerObject != null) {
-                        Internal_Initialize();
-                        yield break;
-                    }
+                if(OverlayerObject != null) {
+                    Internal_Initialize();
+                    yield break;
+                }
             }
 
             yield return null;

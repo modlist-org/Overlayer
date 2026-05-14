@@ -1,11 +1,8 @@
 ﻿using DG.Tweening;
-using MelonLoader;
 using Overlayer.UI.UISprites;
-using System.Collections;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
-using Object = UnityEngine.Object;
 using Random = UnityEngine.Random;
 
 namespace Overlayer.UI;
