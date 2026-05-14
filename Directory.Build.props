@@ -1,0 +1,6 @@
+<Project>
+	<PropertyGroup>
+		<GamePath>C:/Program Files (x86)/Steam/steamapps/common/A Dance of Fire and Ice</GamePath>
+		<GameData>A Dance of Fire and Ice_Data</GameData>
+	</PropertyGroup>
+</Project>
