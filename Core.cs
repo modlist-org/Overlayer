@@ -25,7 +25,6 @@ public class Core : MelonMod {
     private IEnumerator CreateOverlayerObject() {
         for(;;) {
             if(OverlayerObject == null) {
-                try {
                     OverlayerObject = new GameObject("Overlayer");
                     UnityEngine.Object.DontDestroyOnLoad(OverlayerObject);
 
@@ -33,9 +32,6 @@ public class Core : MelonMod {
                         Internal_Initialize();
                         yield break;
                     }
-                } catch(Exception ex) {
-                    MelonLogger.Error(ex.ToString());
-                }
             }
 
             yield return null;
