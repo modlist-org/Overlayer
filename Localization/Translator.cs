@@ -57,18 +57,12 @@ public class Translator {
     /// </summary>
     public TranslationFailState FailState { get; private set; } = TranslationFailState.Success;
 
-    private bool useLogging;
     private Action<string> logAction;
 
-    private void SetLog(Action<string> action) {
-        if(!useLogging) {
-            return;
-        }
-        logAction = action;
-    }
+    public void SetLog(Action<string> action) => logAction = action;
 
     private void Log(string message) {
-        if(!useLogging || logAction == null) {
+        if(logAction == null) {
             return;
         }
         logAction(message);
@@ -116,11 +110,9 @@ public class Translator {
     /// </summary>
     /// <param name="ktlKey">The key for the KTL value.</param>
     /// <param name="expectedKtlValue">The expected value for the 0KTL key.</param>
-    /// <param name="useLogging">Indicates whether to enable logging.</param>
-    public Translator(string ktlKey = DEFAULT_KTL_KEY, string expectedKtlValue = DEFAULT_EXPECTED_KTL_VALUE, bool useLogging = true) {
+    public Translator(string ktlKey = DEFAULT_KTL_KEY, string expectedKtlValue = DEFAULT_EXPECTED_KTL_VALUE) {
         KTLKey = ktlKey;
         ExpectedKTLValue = expectedKtlValue;
-        this.useLogging = useLogging;
     }
 
     /* 
