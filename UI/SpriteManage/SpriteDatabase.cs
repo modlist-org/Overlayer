@@ -14,11 +14,13 @@ public enum UISprite {
     Image128,
     Book128,
     Star128,
+    ToggleCircle128,
 }
 
 public enum UISliceSprite {
     Circle256,
-    CircleHalf256
+    CircleHalf256,
+    CircleOutline256,
 }
 
 public static class SpriteDatabase {
@@ -38,6 +40,8 @@ public static class SpriteDatabase {
         var image = ResourceManager.Get<Texture2D>(Asset.Image128);
         var book = ResourceManager.Get<Texture2D>(Asset.Book128);
         var star = ResourceManager.Get<Texture2D>(Asset.Star128);
+        var toggleCircle = ResourceManager.Get<Texture2D>(Asset.ToggleCircle128);
+        var circleOutline = ResourceManager.Get<Texture2D>(Asset.CircleOutline256);
 
         sprites[UISprite.OV5LogoOutline256] =
             SpriteFactory.Create(logo);
@@ -66,11 +70,17 @@ public static class SpriteDatabase {
         sprites[UISprite.Star128] =
             SpriteFactory.Create(star);
 
+        sprites[UISprite.ToggleCircle128] =
+            SpriteFactory.Create(toggleCircle);
+
         sliceSprites[UISliceSprite.Circle256] =
             SpriteFactory.CreateSliced(circle, 1024f, border);
 
         sliceSprites[UISliceSprite.CircleHalf256] =
             SpriteFactory.CreateSliced(half, 1024f, border);
+
+        sliceSprites[UISliceSprite.CircleOutline256] =
+            SpriteFactory.CreateSliced(circleOutline, 1024f, border);
     }
 
     public static Sprite Get(UISprite key) => sprites[key];

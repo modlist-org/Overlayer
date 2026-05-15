@@ -17,6 +17,8 @@ public enum Asset {
     Text128,
     Book128,
     Star128,
+    ToggleCircle128,
+    CircleOutline256,
 }
 
 internal static class ResourceManager {
@@ -59,6 +61,8 @@ internal static class ResourceManager {
             (Asset.Text128, $"{ResoucePath}Image.Text128.png", FilterMode.Bilinear),
             (Asset.Book128, $"{ResoucePath}Image.Book128.png", FilterMode.Bilinear),
             (Asset.Star128, $"{ResoucePath}Image.Star128.png", FilterMode.Bilinear),
+            (Asset.ToggleCircle128, $"{ResoucePath}Image.ToggleCircle128.png", FilterMode.Bilinear),
+            (Asset.CircleOutline256, $"{ResoucePath}Image.CircleOutline256.png", FilterMode.Bilinear),
         };
 
         foreach(var (key, path, filter) in imageMap) {

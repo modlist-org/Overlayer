@@ -27,6 +27,8 @@
 	  <None Remove="Resource/Image/Text128.png" />
 	  <None Remove="Resource/Image/X128.png" />
 	  <None Remove="Resource/SUIT-Regular.otf" />
+	  <None Remove="Resource\Embedded\Image\CircleOutline256.png" />
+	  <None Remove="Resource\Embedded\Image\ToggleCircle128.png" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -444,6 +446,7 @@
 		<Compile Include="UI\Factory\PageFactory.cs" />
 		<Compile Include="UI\Factory\Page\PageCredits.cs" />
 		<Compile Include="UI\Factory\Page\PageSettings.cs" />
+		<Compile Include="UI\Generator\GenerateUI.cs" />
 		<Compile Include="UI\Transition\PageSwicher.cs" />
 		<Compile Include="UI\Utility\DragHandler.cs" />
 		<Compile Include="UI\Factory\MenuFactory.cs" />
@@ -461,12 +464,14 @@
 	  <EmbeddedResource Include="Resource\Embedded\Image\Book128.png" />
 	  <EmbeddedResource Include="Resource\Embedded\Image\Circle256.png" />
 	  <EmbeddedResource Include="Resource\Embedded\Image\CircleHarf256.png" />
+	  <EmbeddedResource Include="Resource\Embedded\Image\CircleOutline256.png" />
 	  <EmbeddedResource Include="Resource\Embedded\Image\Gear128.png" />
 	  <EmbeddedResource Include="Resource\Embedded\Image\Image128.png" />
 	  <EmbeddedResource Include="Resource\Embedded\Image\Monitor128.png" />
 	  <EmbeddedResource Include="Resource\Embedded\Image\OV5LogoOutline256.png" />
 	  <EmbeddedResource Include="Resource\Embedded\Image\Star128.png" />
 	  <EmbeddedResource Include="Resource\Embedded\Image\Text128.png" />
+	  <EmbeddedResource Include="Resource\Embedded\Image\ToggleCircle128.png" />
 	  <EmbeddedResource Include="Resource\Embedded\Image\X128.png" />
 	</ItemGroup>
 
@@ -477,7 +482,6 @@
 	<ItemGroup>
 	  <Folder Include="Tag\" />
 	  <Folder Include="UI\Components\" />
-	  <Folder Include="UI\Generator\" />
 	</ItemGroup>
 
 	<Target Name="PostBuild" AfterTargets="Build">
