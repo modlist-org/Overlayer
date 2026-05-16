@@ -29,8 +29,8 @@ public class ResizeHandle
     private Vector2 startSize;
     private Vector2 startPos;
 
-    private const float MinWidth = 400f;
-    private const float MinHeight = 240f;
+    private const float MinWidth = 900f;
+    private const float MinHeight = 500f;
 
     public void OnPointerDown(PointerEventData eventData) {
         RectTransformUtility.ScreenPointToLocalPointInRectangle(

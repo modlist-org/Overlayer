@@ -1,5 +1,7 @@
 ﻿using DG.Tweening;
+using Overlayer.Localization;
 using Overlayer.UI.Factory;
+using Overlayer.UI.Factory.Page;
 using Overlayer.UI.SpriteManage;
 using Overlayer.UI.Utility;
 using UnityEngine;
@@ -42,6 +44,8 @@ internal static class UICore {
         CreatePanel();
         ResizeHandle.CreateResizeHandles(Panel);
         Tooltip.Initialize(canvasObj.transform);
+
+        Core.Tr.OnInitialize += PageSettings.OnTranslatorInitialize;
     }
 
     public static RectTransform Panel;
@@ -58,7 +62,7 @@ internal static class UICore {
 
         {
             var image = panel.AddComponent<Image>();
-            image.color = new Color(0.165f, 0.161f, 0.196f, 1f);
+            image.color = UIColors.PanelBG;
             image.type = Image.Type.Sliced;
             image.sprite = SpriteDatabase.Get(UISliceSprite.Circle256P1024);
         }
@@ -122,7 +126,7 @@ internal static class UICore {
             Menu.anchoredPosition = new(-MENU_WIDTH, 0);
 
             var image = menu.AddComponent<Image>();
-            image.color = new Color(0.42f, 0.431f, 0.545f, 1f);
+            image.color = UIColors.MenuBG;
 
             menuCanvasGroup = Menu.gameObject.AddComponent<CanvasGroup>();
 
@@ -160,7 +164,7 @@ internal static class UICore {
         topBar.AddComponent<DragHandler>();
 
         var topImage = topBar.AddComponent<Image>();
-        topImage.color = new Color(0.255f, 0.259f, 0.333f, 1f);
+        topImage.color = UIColors.TopBar;
         topImage.type = Image.Type.Sliced;
         topImage.sprite = SpriteDatabase.Get(UISliceSprite.CircleHalf256P1024);
 
@@ -215,7 +219,7 @@ internal static class UICore {
 
             CloseImage = bg.AddComponent<Image>();
             CloseImage.sprite = SpriteDatabase.Get(UISprite.Circle256);
-            CloseImage.color = new Color(0.886f, 0.404f, 0.427f, 0f);
+            CloseImage.color = UIColors.TopBarCloseCircle;
 
             RectTransform bgRect = bg.GetComponent<RectTransform>();
             bgRect.anchorMin = Vector2.zero;
@@ -491,6 +495,7 @@ internal static class UICore {
     }
 
     public static void Dispose() {
+        Core.Tr.OnInitialize -= PageSettings.OnTranslatorInitialize;
         Tooltip.Dispose();
         UnityEngine.Object.Destroy(canvasObj);
         canvasObj = null;

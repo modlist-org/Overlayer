@@ -24,7 +24,7 @@ public class Tooltip {
         rect = obj.AddComponent<RectTransform>();
         rect.anchorMin = new(0.5f, 0.5f);
         rect.anchorMax = new(0.5f, 0.5f);
-        rect.pivot = new(0f, 0f);
+        rect.pivot = new(0f, 1f);
 
         canvas = obj.AddComponent<CanvasGroup>();
         canvas.alpha = 0f;
@@ -40,7 +40,7 @@ public class Tooltip {
         bgRect.offsetMax = Vector2.zero;
 
         Image img = bg.AddComponent<Image>();
-        img.color = new(0f, 0f, 0f, 0.8f);
+        img.color = new(0f, 0f, 0f, 0.6f);
         img.sprite = SpriteDatabase.Get(UISliceSprite.Circle256P2048);
         img.type = Image.Type.Sliced;
 
@@ -66,7 +66,7 @@ public class Tooltip {
         }
 
         Vector2 mouse = Input.mousePosition;
-        Vector2 target = mouse + new Vector2(2f, 2f);
+        Vector2 target = mouse + new Vector2(24f, -28f);
 
         Vector2 size = rect.sizeDelta;
 
@@ -80,7 +80,7 @@ public class Tooltip {
             rect.position,
             target,
             ref velocity,
-            0.03f
+            0.02f
         );
     }
 
@@ -120,8 +120,6 @@ public class Tooltip {
 
         seq?.Kill();
 
-        visible = false;
-
         seq = DOTween.Sequence()
             .Append(DOTween.To(
                 () => canvas.alpha,
@@ -130,6 +128,7 @@ public class Tooltip {
                 0.16f
             ).SetEase(Ease.OutSine))
             .OnComplete(() => {
+                visible = false;
                 obj.SetActive(false);
             });
     }

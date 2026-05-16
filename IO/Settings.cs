@@ -6,14 +6,14 @@ public class Settings {
     public bool Active = true;
     public string Language = "en-US";
     public bool ShowOnStartup = false;
-    public bool RightClickToDefault = true;
+    public bool MiddleClickToDefault = true;
 
     public JToken Serialize() {
         JObject obj = new() {
             [nameof(Active)] = Active,
             [nameof(Language)] = Language,
             [nameof(ShowOnStartup)] = ShowOnStartup,
-            [nameof(RightClickToDefault)] = RightClickToDefault
+            [nameof(MiddleClickToDefault)] = MiddleClickToDefault
         };
 
         return obj;
@@ -25,7 +25,7 @@ public class Settings {
         Active = token.Value<bool?>(nameof(Active)) ?? defaults.Active;
         Language = token.Value<string>(nameof(Language)) ?? defaults.Language;
         ShowOnStartup = token.Value<bool?>(nameof(ShowOnStartup)) ?? defaults.ShowOnStartup;
-        RightClickToDefault = token.Value<bool?>(nameof(RightClickToDefault)) ?? defaults.RightClickToDefault;
+        MiddleClickToDefault = token.Value<bool?>(nameof(MiddleClickToDefault)) ?? defaults.MiddleClickToDefault;
     }
 
     public static readonly string Path = System.IO.Path.Combine(Core.OverlayerPath, $"{nameof(Settings)}.json");

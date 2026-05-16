@@ -1,10 +1,13 @@
 ﻿using DG.Tweening;
 using Overlayer.Resource;
+using Overlayer.UI.Objects.Impl;
 using Overlayer.UI.SpriteManage;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
+using static UnityEngine.EventSystems.PointerEventData;
+using Object = UnityEngine.Object;
 
 namespace Overlayer.UI.Generator;
 
@@ -23,7 +26,14 @@ public static class GenerateUI {
         return rect;
     }
 
-    public static RectTransform Toggle(Transform parent, bool defaultValue, bool value, Action<bool> onChanged, string text) {
+    public static UIToggle Toggle(
+        Transform parent,
+        bool defaultValue,
+        bool value,
+        Action<bool> onChanged,
+        string text,
+        string id
+    ) {
         RectTransform rect = BackGround();
         rect.SetParent(parent, false);
 
@@ -31,7 +41,7 @@ public static class GenerateUI {
         tmp.text = text;
 
         GameObject change = AddSmallChangedCircle(rect);
-        var changeImg = change.GetComponent<Image>();
+        Image changeImg = change.GetComponent<Image>();
 
         GameObject toggleCircle = new("ToggleCircle");
         toggleCircle.transform.SetParent(rect, false);
@@ -45,67 +55,250 @@ public static class GenerateUI {
 
         Image circleImage = toggleCircle.AddComponent<Image>();
 
-        Sequence circleSeq = null;
-        Sequence changeSeq = null;
+        UIToggle toggle = new(
+            id,
+            rect,
+            tmp,
+            circleImage,
+            circleRect,
+            changeImg,
+            defaultValue,
+            value,
+            onChanged
+        );
 
-        void UpdateVisual() {
-            circleImage.sprite = SpriteDatabase.Get(
-                value ? UISprite.Circle256 : UISprite.ToggleCircle128
-            );
+        AddButton(rect.gameObject, btn => {
+            switch(btn) {
+                case InputButton.Left:
+                    toggle.Toggle();
+                    break;
 
-            circleSeq?.Kill();
-            circleRect.sizeDelta = new(30f, 30f);
-            circleSeq = DOTween.Sequence()
-                .Join(
-                    DOTween.To(
-                        () => circleRect.sizeDelta.x,
-                        x => circleRect.sizeDelta = new(x, x),
-                        26f,
-                        0.3f
-                    ).SetEase(Ease.OutQuad)
-                )
-                .Join(
-                    circleImage.DOColor(
-                        value
-                            ? new(0.569f, 0.604f, 1f, 1f)
-                            : new(0.384f, 0.4f, 0.588f, 1f),
-                        0.15f
-                    ).SetEase(Ease.OutQuad)
-                );
-            changeSeq?.Kill();
+                case InputButton.Middle:
+                    if(
+                        Core.Config.MiddleClickToDefault &&
+                        toggle.Value != toggle.DefaultValue
+                    ) {
+                        toggle.Reset();
+                    }
 
-            float target = defaultValue != value ? 1f : 0f;
-            changeSeq = DOTween.Sequence().Append(
-                DOTween.To(
-                    () => changeImg.color.a,
-                    x => {
-                        Color c = changeImg.color;
-                        c.a = x;
-                        changeImg.color = c;
-                    },
-                    target,
-                    0.2f
-                ).SetEase(Ease.OutSine)
-            );
-        }
-
-        UpdateVisual();
-
-        AddButton(rect.gameObject, (isRight) => {
-            if(isRight) {
-                if(Core.Config.RightClickToDefault && value != defaultValue) {
-                    value = defaultValue;
-                    UpdateVisual();
-                    onChanged?.Invoke(value);
-                }
-            } else {
-                value = !value;
-                UpdateVisual();
-                onChanged?.Invoke(value);
+                    break;
             }
         });
 
-        return rect;
+        return toggle;
+    }
+
+    public static UIButton Button(
+        Transform parent,
+        Action onClick,
+        string text,
+        string id
+    ) {
+        RectTransform rect = BackGround();
+        rect.SetParent(parent, false);
+
+        TextMeshProUGUI tmp = AddText(rect);
+        tmp.text = text;
+
+        Image bg = rect.GetComponent<Image>();
+        bg.color = UIColors.ObjectButton;
+
+        UIButton button = new(
+            id,
+            rect,
+            tmp,
+            bg,
+            onClick
+        );
+
+        AddButton(rect.gameObject, btn => {
+            if(btn != InputButton.Middle) {
+                button.Click();
+            }
+        }, false);
+
+        return button;
+    }
+
+    public static UIDropDown<T> DropDown<T>(
+        Transform parent,
+        T defaultValue,
+        T value,
+        IReadOnlyList<T> values,
+        Func<T, string> display,
+        Action<T> onChanged,
+        string id
+    ) {
+        GameObject root = new("Dropdown");
+        root.transform.SetParent(parent, false);
+
+        RectTransform rootRect = root.AddComponent<RectTransform>();
+        rootRect.anchorMin = new(0f, 0f);
+        rootRect.anchorMax = new(1f, 1f);
+        rootRect.pivot = new(0.5f, 0.5f);
+        rootRect.offsetMin = Vector2.zero;
+        rootRect.offsetMax = Vector2.zero;
+
+        RectTransform rect = BackGround();
+        rect.SetParent(root.transform, false);
+
+        TextMeshProUGUI tmp = AddText(rect);
+        tmp.text = display(value);
+
+        GameObject change = AddSmallChangedCircle(rect);
+        Image changeImg = change.GetComponent<Image>();
+
+        GameObject triangle = new("Triangle");
+        triangle.transform.SetParent(rect, false);
+
+        RectTransform triangleRect = triangle.AddComponent<RectTransform>();
+        triangleRect.anchorMin = new(1f, 0.5f);
+        triangleRect.anchorMax = new(1f, 0.5f);
+        triangleRect.pivot = new(0.5f, 0.5f);
+        triangleRect.anchoredPosition = new(-23f, 0f);
+        triangleRect.sizeDelta = new(26f, 26f);
+
+        Image triangleImage = triangle.AddComponent<Image>();
+        triangleImage.sprite = SpriteDatabase.Get(UISprite.Triangle128);
+        triangleImage.color = UIColors.ObjectInactive;
+
+        GameObject list = new("List");
+        list.transform.SetParent(root.transform, false);
+
+        RectTransform listRect = list.AddComponent<RectTransform>();
+        listRect.anchorMin = new(0f, 1f);
+        listRect.anchorMax = new(1f, 1f);
+        listRect.pivot = new(0.5f, 1f);
+        listRect.offsetMin = new(0f, -58f);
+        listRect.offsetMax = new(-300f, -58f);
+
+        Image listBg = list.AddComponent<Image>();
+        listBg.sprite = SpriteDatabase.Get(UISliceSprite.Circle256P2048);
+        listBg.type = Image.Type.Sliced;
+        listBg.color = UIColors.ObjectBG;
+
+        VerticalLayoutGroup layout = list.AddComponent<VerticalLayoutGroup>();
+        layout.spacing = 0f;
+        layout.childControlWidth = true;
+        layout.childControlHeight = false;
+        layout.childForceExpandWidth = true;
+        layout.childForceExpandHeight = false;
+
+        ContentSizeFitter fitter = list.AddComponent<ContentSizeFitter>();
+        fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+        LayoutElement layoutElement = root.AddComponent<LayoutElement>();
+        layoutElement.preferredHeight = 50f;
+
+        list.SetActive(false);
+
+        UIDropDown<T> dropdown = new(
+            id,
+            rootRect,
+            tmp,
+            triangleImage,
+            triangleRect,
+            changeImg,
+            list,
+            listRect,
+            values,
+            display,
+            defaultValue,
+            value,
+            onChanged
+        );
+
+        void UpdateHeight() {
+            float rowHeight = 50f;
+            float spacing = layout.spacing;
+
+            float listHeight =
+                (values.Count * rowHeight) +
+                (Mathf.Max(0, values.Count - 1) * spacing);
+
+            layoutElement.preferredHeight = dropdown.Expanded
+                ? 58f + listHeight
+                : 50f;
+        }
+
+        foreach(T item in values) {
+            GameObject row = new("Row");
+            row.transform.SetParent(list.transform, false);
+
+            RectTransform rowRect = row.AddComponent<RectTransform>();
+            rowRect.sizeDelta = new(0f, 50f);
+
+            Image rowImage = row.AddComponent<Image>();
+            rowImage.color = Color.clear;
+            rowImage.type = Image.Type.Sliced;
+            rowImage.sprite = SpriteDatabase.Get(UISliceSprite.Circle256P2048);
+
+            TextMeshProUGUI rowText = AddText(rowRect);
+            rowText.text = display(item);
+
+            EventTrigger trigger = row.AddComponent<EventTrigger>();
+
+            Sequence hoverSeq = null;
+
+            AddEvent(EventTriggerType.PointerEnter, e => {
+                hoverSeq?.Kill();
+
+                hoverSeq = DOTween.Sequence().Append(
+                    rowImage.DOColor(
+                        UIColors.ObjectActive,
+                        0.12f
+                    ).SetEase(Ease.OutSine)
+                );
+            }, trigger);
+
+            AddEvent(EventTriggerType.PointerExit, e => {
+                hoverSeq?.Kill();
+
+                hoverSeq = DOTween.Sequence().Append(
+                    rowImage.DOColor(
+                        Color.clear,
+                        0.12f
+                    ).SetEase(Ease.OutSine)
+                );
+            }, trigger);
+
+            AddEvent(EventTriggerType.PointerClick, e => {
+                if(e.button != InputButton.Left) {
+                    return;
+                }
+
+                dropdown.Set(item);
+
+                dropdown.SetExpanded(false);
+
+                rowImage.color = Color.clear;
+            }, trigger);
+        }
+
+        AddButton(rect.gameObject, btn => {
+            switch(btn) {
+                case InputButton.Left:
+                    dropdown.ToggleExpanded();
+                    UpdateHeight();
+                    LayoutRebuilder.ForceRebuildLayoutImmediate(rootRect);
+                    break;
+
+                case InputButton.Middle:
+                    if(
+                        Core.Config.MiddleClickToDefault && dropdown.DefaultValue != null &&
+                        !EqualityComparer<T>.Default.Equals(
+                            dropdown.Value,
+                            dropdown.DefaultValue
+                        )
+                    ) {
+                        dropdown.Reset();
+                    }
+                    break;
+            }
+        });
+
+        UpdateHeight();
+        return dropdown;
     }
 
     public static void AddEvent(EventTriggerType type, Action<PointerEventData> cb, EventTrigger trigger) {
@@ -149,14 +342,14 @@ public static class GenerateUI {
         }
 
         Image img = obj.AddComponent<Image>();
-        img.color = new(0.235f, 0.227f, 0.294f, 1f);
+        img.color = UIColors.ObjectBG;
         img.sprite = SpriteDatabase.Get(UISliceSprite.Circle256P2048);
         img.type = Image.Type.Sliced;
 
         return rect;
     }
 
-    public static void AddButton(GameObject obj, Action<bool> onClick) {
+    public static void AddButton(GameObject obj, Action<InputButton> onClick, bool outline = true) {
         EventTrigger trigger = obj.AddComponent<EventTrigger>();
 
         Sequence hoverSeq = null;
@@ -172,69 +365,73 @@ public static class GenerateUI {
         hoverRect.offsetMin = Vector2.zero;
         hoverRect.offsetMax = Vector2.zero;
 
-        Image hoverImage = hover.AddComponent<Image>();
-        hoverImage.sprite = SpriteDatabase.Get(UISliceSprite.CircleOutline256P2048);
-        hoverImage.type = Image.Type.Sliced;
-        hoverImage.color = new(0.569f, 0.604f, 1f, 0f);
+        Image hoverImage = null;
+        if(outline) {
+            hoverImage = hover.AddComponent<Image>();
+            hoverImage.sprite = SpriteDatabase.Get(UISliceSprite.CircleOutline256P2048);
+            hoverImage.type = Image.Type.Sliced;
+            hoverImage.color = UIColors.ObjectActive;
+            hoverImage.color = new Color(hoverImage.color.r, hoverImage.color.g, hoverImage.color.b, 0f);
+        }
 
         AddEvent(EventTriggerType.PointerClick, (e) => {
-            bool isRight = e.button == PointerEventData.InputButton.Right;
-            onClick?.Invoke(isRight);
+            onClick?.Invoke(e.button);
         }, trigger);
 
-        AddEvent(EventTriggerType.PointerEnter, (e) => {
-            hoverSeq?.Kill();
+        if(outline) {
+            AddEvent(EventTriggerType.PointerEnter, (e) => {
+                hoverSeq?.Kill();
 
-            hoverSeq = DOTween.Sequence().Append(
-                DOTween.To(
-                    () => hoverImage.color.a,
-                    x => {
-                        Color c = hoverImage.color;
-                        c.a = x;
-                        hoverImage.color = c;
-                    },
-                    1f,
-                    0.1f
-                ).SetEase(Ease.OutSine)
-            );
-        }, trigger);
+                hoverSeq = DOTween.Sequence().Append(
+                    DOTween.To(
+                        () => hoverImage.color.a,
+                        x => {
+                            Color c = hoverImage.color;
+                            c.a = x;
+                            hoverImage.color = c;
+                        },
+                        1f,
+                        0.1f
+                    ).SetEase(Ease.OutSine)
+                );
+            }, trigger);
 
-        AddEvent(EventTriggerType.PointerExit, (e) => {
-            hoverSeq?.Kill();
+            AddEvent(EventTriggerType.PointerExit, (e) => {
+                hoverSeq?.Kill();
 
-            hoverSeq = DOTween.Sequence().Append(
-                DOTween.To(
-                    () => hoverImage.color.a,
-                    x => {
-                        Color c = hoverImage.color;
-                        c.a = x;
-                        hoverImage.color = c;
-                    },
-                    0f,
-                    0.1f
-                ).SetEase(Ease.OutSine)
-            );
-        }, trigger);
+                hoverSeq = DOTween.Sequence().Append(
+                    DOTween.To(
+                        () => hoverImage.color.a,
+                        x => {
+                            Color c = hoverImage.color;
+                            c.a = x;
+                            hoverImage.color = c;
+                        },
+                        0f,
+                        0.1f
+                    ).SetEase(Ease.OutSine)
+                );
+            }, trigger);
+        }
     }
 
-    public static TextMeshProUGUI AddText(RectTransform parent) => CreateText(parent, 24f, FontStyles.Normal);
+    public static TextMeshProUGUI AddText(RectTransform parent) => CreateText(parent, 24f);
 
-    public static TextMeshProUGUI AddTextH1(RectTransform parent) => CreateText(parent, 32f, FontStyles.Bold);
+    public static TextMeshProUGUI AddTextH1(RectTransform parent) => CreateText(parent, 32f, true, true);
 
-    private static TextMeshProUGUI CreateText(RectTransform parent, float size, FontStyles style) {
+    private static TextMeshProUGUI CreateText(RectTransform parent, float size, bool bold = false, bool noPad = false) {
         GameObject obj = new("Text");
         obj.transform.SetParent(parent, false);
 
         RectTransform rect = obj.AddComponent<RectTransform>();
         rect.anchorMin = new(0f, 0f);
         rect.anchorMax = new(1f, 1f);
-        rect.offsetMin = new(16f, 0f);
+        rect.offsetMin = new(noPad ? 0f : 16f, 0f);
         rect.offsetMax = Vector2.zero;
 
         TextMeshProUGUI tmp = obj.AddComponent<TextMeshProUGUI>();
-        tmp.font = ResourceManager.Get<TMP_FontAsset>(Asset.SUITRegular);
+        tmp.font = ResourceManager.Get<TMP_FontAsset>(bold ? Asset.SUITMedium : Asset.SUITRegular);
         tmp.fontSize = size;
-        tmp.fontStyle = style;
         tmp.color = Color.white;
         tmp.alignment = TextAlignmentOptions.Left;
         tmp.verticalAlignment = VerticalAlignmentOptions.Middle;
@@ -255,7 +452,7 @@ public static class GenerateUI {
 
         Image img = obj.AddComponent<Image>();
         img.sprite = SpriteDatabase.Get(UISprite.Circle256);
-        img.color = new Color(0.396f, 0.416f, 0.651f, 1f);
+        img.color = UIColors.ObjectInactive;
 
         return obj;
     }

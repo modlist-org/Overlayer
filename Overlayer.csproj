@@ -27,8 +27,10 @@
 	  <None Remove="Resource/Image/Text128.png" />
 	  <None Remove="Resource/Image/X128.png" />
 	  <None Remove="Resource/SUIT-Regular.otf" />
+	  <None Remove="Resource\Embedded\Font\SUIT-Medium.otf" />
 	  <None Remove="Resource\Embedded\Image\CircleOutline256.png" />
 	  <None Remove="Resource\Embedded\Image\ToggleCircle128.png" />
+	  <None Remove="Resource\Embedded\Image\Triangle128.png" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -113,9 +115,6 @@
 		<Reference Include="Unity.Addressables">
 		  <HintPath>..\..\Program Files (x86)\Steam\steamapps\common\A Dance of Fire and Ice\A Dance of Fire and Ice_Data\Managed\Unity.Addressables.dll</HintPath>
 		</Reference>
-		<Reference Include="Unity.AI.Navigation">
-		  <HintPath>..\..\Program Files (x86)\Steam\steamapps\common\A Dance of Fire and Ice\A Dance of Fire and Ice_Data\Managed\Unity.AI.Navigation.dll</HintPath>
-		</Reference>
 		<Reference Include="Unity.Burst">
 		  <HintPath>..\..\Program Files (x86)\Steam\steamapps\common\A Dance of Fire and Ice\A Dance of Fire and Ice_Data\Managed\Unity.Burst.dll</HintPath>
 		</Reference>
@@ -184,9 +183,6 @@
 		</Reference>
 		<Reference Include="Unity.TextMeshPro">
 		  <HintPath>..\..\Program Files (x86)\Steam\steamapps\common\A Dance of Fire and Ice\A Dance of Fire and Ice_Data\Managed\Unity.TextMeshPro.dll</HintPath>
-		</Reference>
-		<Reference Include="Unity.Timeline">
-		  <HintPath>..\..\Program Files (x86)\Steam\steamapps\common\A Dance of Fire and Ice\A Dance of Fire and Ice_Data\Managed\Unity.Timeline.dll</HintPath>
 		</Reference>
 		<Reference Include="UnityEngine">
 		  <HintPath>..\..\Program Files (x86)\Steam\steamapps\common\A Dance of Fire and Ice\A Dance of Fire and Ice_Data\Managed\UnityEngine.dll</HintPath>
@@ -443,12 +439,17 @@
 		<Compile Include="Overlay\Overlay.cs" />
 		<Compile Include="Resource/ResourceLoader.cs" />
 		<Compile Include="Resource/ResourceManager.cs" />
+		<Compile Include="UI\Objects\Impl\UIButton.cs" />
+		<Compile Include="UI\Objects\Impl\UIDropdown.cs" />
+		<Compile Include="UI\Objects\Impl\UIToggle.cs" />
+		<Compile Include="UI\Objects\UIObject.cs" />
 		<Compile Include="UI\Tooltip.cs" />
 		<Compile Include="UI\Factory\PageFactory.cs" />
 		<Compile Include="UI\Factory\Page\PageCredits.cs" />
 		<Compile Include="UI\Factory\Page\PageSettings.cs" />
 		<Compile Include="UI\Generator\GenerateUI.cs" />
 		<Compile Include="UI\Transition\PageSwicher.cs" />
+		<Compile Include="UI\UIColors.cs" />
 		<Compile Include="UI\Utility\DragHandler.cs" />
 		<Compile Include="UI\Factory\MenuFactory.cs" />
 		<Compile Include="UI\Utility\ResizeHandle.cs" />
@@ -461,6 +462,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
+	  <EmbeddedResource Include="Resource\Embedded\Font\SUIT-Medium.otf" />
 	  <EmbeddedResource Include="Resource\Embedded\Font\SUIT-Regular.otf" />
 	  <EmbeddedResource Include="Resource\Embedded\Image\Book128.png" />
 	  <EmbeddedResource Include="Resource\Embedded\Image\Circle256.png" />
@@ -473,6 +475,7 @@
 	  <EmbeddedResource Include="Resource\Embedded\Image\Star128.png" />
 	  <EmbeddedResource Include="Resource\Embedded\Image\Text128.png" />
 	  <EmbeddedResource Include="Resource\Embedded\Image\ToggleCircle128.png" />
+	  <EmbeddedResource Include="Resource\Embedded\Image\Triangle128.png" />
 	  <EmbeddedResource Include="Resource\Embedded\Image\X128.png" />
 	</ItemGroup>
 

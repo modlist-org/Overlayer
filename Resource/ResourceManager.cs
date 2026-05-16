@@ -6,6 +6,7 @@ namespace Overlayer.Resource;
 
 public enum Asset {
     SUITRegular,
+    SUITMedium,
 
     OV5LogoOutline256,
     Circle256,
@@ -19,6 +20,7 @@ public enum Asset {
     Star128,
     ToggleCircle128,
     CircleOutline256,
+    Triangle128,
 }
 
 internal static class ResourceManager {
@@ -38,17 +40,28 @@ internal static class ResourceManager {
         string tempDir = Path.Combine(Core.OverlayerPath, "Temp");
         Directory.CreateDirectory(tempDir);
 
-        string fontPath = Path.Combine(tempDir, "SUIT-Regular.otf");
+        string fontRegularPath = Path.Combine(tempDir, "SUIT-Regular.otf");
 
-        if(!File.Exists(fontPath)) {
+        if(!File.Exists(fontRegularPath)) {
             File.WriteAllBytes(
-                fontPath,
+                fontRegularPath,
                 ResourceLoader.Load($"{ResoucePath}Font.SUIT-Regular.otf")
             );
         }
 
-        Font font = new(fontPath);
+        string fontMediumPath = Path.Combine(tempDir, "SUIT-Medium.otf");
+
+        if(!File.Exists(fontMediumPath)) {
+            File.WriteAllBytes(
+                fontMediumPath,
+                ResourceLoader.Load($"{ResoucePath}Font.SUIT-Medium.otf")
+            );
+        }
+
+        Font font = new(fontRegularPath);
         cache[Asset.SUITRegular] = TMP_FontAsset.CreateFontAsset(font);
+        Font fontMedium = new(fontMediumPath);
+        cache[Asset.SUITMedium] = TMP_FontAsset.CreateFontAsset(fontMedium);
 
         var imageMap = new (Asset key, string path, FilterMode filter)[] {
             (Asset.OV5LogoOutline256, $"{ResoucePath}Image.OV5LogoOutline256.png", FilterMode.Bilinear),
@@ -63,6 +76,7 @@ internal static class ResourceManager {
             (Asset.Star128, $"{ResoucePath}Image.Star128.png", FilterMode.Bilinear),
             (Asset.ToggleCircle128, $"{ResoucePath}Image.ToggleCircle128.png", FilterMode.Bilinear),
             (Asset.CircleOutline256, $"{ResoucePath}Image.CircleOutline256.png", FilterMode.Bilinear),
+            (Asset.Triangle128, $"{ResoucePath}Image.Triangle128.png", FilterMode.Bilinear),
         };
 
         foreach(var (key, path, filter) in imageMap) {

@@ -23,11 +23,6 @@ public static class MenuFactory {
 
     private static readonly List<MenuItem> items = [];
 
-    private static readonly Color normalColor = new(0.635f, 0.655f, 0.878f, 0f);
-    private static readonly Color hoverColor = new(0.635f, 0.655f, 0.878f, 0.4f);
-    private static readonly Color selectedColor = new(0.635f, 0.655f, 0.878f, 1f);
-    private static readonly Color highlightColor = new(0.824f, 0.835f, 0.965f, 1f);
-
     public static void CreateMenu(Transform parent) {
         items.Clear();
 
@@ -50,7 +45,7 @@ public static class MenuFactory {
         rect.sizeDelta = new(0, 54);
 
         Image bg = item.AddComponent<Image>();
-        bg.color = normalColor;
+        bg.color = UIColors.MenuNormal;
 
         // ICON
         GameObject iconObj = new("Icon");
@@ -107,7 +102,7 @@ public static class MenuFactory {
             if(UICore.CurrentMenuState != state) {
                 menuItem.hoverSeq?.Kill();
                 menuItem.hoverSeq = DOTween.Sequence()
-                    .Append(bg.DOColor(hoverColor, 0.2f).SetEase(Ease.OutSine));
+                    .Append(bg.DOColor(UIColors.MenuHover, 0.2f).SetEase(Ease.OutSine));
             }
         });
 
@@ -115,7 +110,7 @@ public static class MenuFactory {
             if(UICore.CurrentMenuState != state) {
                 menuItem.hoverSeq?.Kill();
                 menuItem.hoverSeq = DOTween.Sequence()
-                    .Append(bg.DOColor(normalColor, 0.3f).SetEase(Ease.OutSine));
+                    .Append(bg.DOColor(UIColors.MenuNormal, 0.3f).SetEase(Ease.OutSine));
             }
         });
 
@@ -123,10 +118,10 @@ public static class MenuFactory {
             SetState(state);
 
             bg.DOKill();
-            bg.color = highlightColor;
+            bg.color = UIColors.MenuHighlight;
 
             menuItem.hoverSeq = DOTween.Sequence()
-                .Append(bg.DOColor(selectedColor, 0.3f).SetEase(Ease.OutSine));
+                .Append(bg.DOColor(UIColors.MenuNormal, 0.3f).SetEase(Ease.OutSine));
         });
     }
 
@@ -148,8 +143,8 @@ public static class MenuFactory {
             bool selected = it.state == state;
 
             Color target = selected
-                ? selectedColor
-                : normalColor;
+                ? UIColors.MenuSelected
+                : UIColors.MenuNormal;
 
             it.bg.DOKill();
             it.bg.color = target;

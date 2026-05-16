@@ -1,11 +1,16 @@
 ﻿using Overlayer.IO;
+using Overlayer.Localization;
 using Overlayer.UI.Generator;
+using Overlayer.UI.Objects;
+using Overlayer.UI.Objects.Impl;
 using UnityEngine;
 using UnityEngine.UI;
 
 namespace Overlayer.UI.Factory.Page;
 
 internal static class PageSettings {
+    private static readonly Dictionary<string, UIObject> objects = new();
+
     public static void Create(RectTransform parent) {
         GameObject pad = new("Pad");
         pad.transform.SetParent(parent, false);
@@ -50,17 +55,111 @@ internal static class PageSettings {
 
         ContentSizeFitter fitter = content.AddComponent<ContentSizeFitter>();
         fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
         scroll.viewport = viewportRect;
         scroll.content = contentRect;
 
-        var defSet = new Settings();
-        GenerateUI.Toggle(GenerateUI.Row(content.transform), defSet.ShowOnStartup, Core.Config.ShowOnStartup, (toggle) => {
-            Core.Config.ShowOnStartup = toggle;
-            Core.Config.RequestSave();
-        }, "Show Overlayer Panel at Startup").AddToolTip("KEY", "Show Overlayer Panel at Startup");
-        GenerateUI.Toggle(GenerateUI.Row(content.transform), defSet.RightClickToDefault, Core.Config.RightClickToDefault, (toggle) => {
-            Core.Config.RightClickToDefault = toggle;
-            Core.Config.RequestSave();
-        }, "Right-click to set as default").AddToolTip("KEY", "Right-click to set as default");
+        Settings defSet = new();
+
+        _ = GenerateUI.AddTextH1(GenerateUI.Row(content.transform, 46))
+            .gameObject.AddComponent<TextLocalization>()
+            .Init("LANGUAGE", "Language");
+
+        string[] langs = Core.Tr.GetLanguages()
+            .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        UIDropDown<string> languageDropdown = GenerateUI.DropDown(
+            GenerateUI.Row(content.transform),
+            null,
+            Core.Tr.Language,
+            langs,
+            lang => {
+                if(lang == Translator.FALLBACK_LANGUAGE) {
+                    return "DEFAULT";
+                }
+
+                string native = Core.Tr.GetForLanguage(
+                    "0NATIVELANG",
+                    lang,
+                    lang
+                );
+
+                return $"{native} ({lang})";
+            },
+            value => {
+                Core.Tr.Language = value;
+                Core.Config.Language = value;
+                Core.Config.RequestSave();
+            },
+            "language_dropdown"
+        );
+
+        objects[languageDropdown.Id] = languageDropdown;
+
+        _ = GenerateUI.AddTextH1(GenerateUI.Row(content.transform, 46)).text = "Overlayer";
+
+        UIButton button = GenerateUI.Button(
+            GenerateUI.Row(content.transform),
+            () => {
+                Core.Logger.Msg("Clicked");
+            },
+            "Button Text",
+            "button_test"
+        );
+        objects[button.Id] = button;
+
+        UIToggle startupToggle = GenerateUI.Toggle(
+            GenerateUI.Row(content.transform),
+            defSet.ShowOnStartup,
+            Core.Config.ShowOnStartup,
+            toggle => {
+                Core.Config.ShowOnStartup = toggle;
+                Core.Config.RequestSave();
+            },
+            "Show Overlayer Panel at Startup",
+            "show_on_startup"
+        );
+
+        objects[startupToggle.Id] = startupToggle;
+        UIToggle middleClickToggle = GenerateUI.Toggle(
+            GenerateUI.Row(content.transform),
+            defSet.MiddleClickToDefault,
+            Core.Config.MiddleClickToDefault,
+            toggle => {
+                Core.Config.MiddleClickToDefault = toggle;
+                Core.Config.RequestSave();
+            },
+            "Middle-click to set as default",
+            "middle_click_default"
+        );
+        middleClickToggle.Rect.AddToolTip(
+            "DESC_MIDDLECLICKTODEFAULT",
+            "Setting that restores an item to its default value when you middle-click on it.\nYou can identify it by a small dot at the top-left of the item."
+        );
+        objects[middleClickToggle.Id] = middleClickToggle;
+
+    }
+
+    internal static void OnTranslatorInitialize() {
+        if(
+            !objects.TryGetValue("language_dropdown", out UIObject obj) ||
+            obj is not UIDropDown<string> dropdown
+        ) {
+            return;
+        }
+
+        string[] langs = Core.Tr.GetLanguages()
+            .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        dropdown.SetValues(langs);
+
+        dropdown.Set(
+            string.IsNullOrWhiteSpace(Core.Config.Language)
+                ? Translator.FALLBACK_LANGUAGE
+                : Core.Config.Language,
+            false
+        );
     }
 }

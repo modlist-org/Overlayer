@@ -63,6 +63,7 @@ public class Core : MelonMod {
         Logger = LoggerInstance;
         Tr = new Translator();
         Config = new Settings();
+        Tr.Language = Config.Language;
         Tr.SetLog(TranslatorLogLinker);
         _ = Tr.Load(Path.Combine(OverlayerPath, "Lang"));
         Initialize();
