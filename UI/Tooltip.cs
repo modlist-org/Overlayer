@@ -58,6 +58,7 @@ public class Tooltip {
         text.fontSize = 20f;
         text.color = Color.white;
         text.alignment = TextAlignmentOptions.Left;
+        text.characterSpacing = -3f;
     }
 
     public static void Tick() {

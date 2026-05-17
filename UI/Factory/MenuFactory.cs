@@ -1,4 +1,5 @@
 ﻿using DG.Tweening;
+using Overlayer.Localization;
 using Overlayer.Resource;
 using Overlayer.UI.SpriteManage;
 using Overlayer.UI.Transition;
@@ -79,6 +80,8 @@ public static class MenuFactory {
         label.color = Color.white;
         label.alignment = TextAlignmentOptions.Left;
         label.verticalAlignment = VerticalAlignmentOptions.Middle;
+        label.characterSpacing = -3f;
+        label.gameObject.AddComponent<TextLocalization>().Init(name.ToUpper(), name);
 
         MenuItem menuItem = new() {
             obj = item,

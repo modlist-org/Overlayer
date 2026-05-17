@@ -63,7 +63,6 @@ public class Core : MelonMod {
         Logger = LoggerInstance;
         Tr = new Translator();
         Config = new Settings();
-        Tr.Language = Config.Language;
         Tr.SetLog(TranslatorLogLinker);
         _ = Tr.Load(Path.Combine(OverlayerPath, "Lang"));
         Initialize();
@@ -82,6 +81,7 @@ public class Core : MelonMod {
 
     private async Task InitializeAsync() {
         await Task.Run(Config.Load);
+        Tr.Language = Config.Language;
 
         OverlayerObject.AddComponent<MainThread>();
 

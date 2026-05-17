@@ -7,7 +7,6 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using static UnityEngine.EventSystems.PointerEventData;
-using Object = UnityEngine.Object;
 
 namespace Overlayer.UI.Generator;
 
@@ -17,11 +16,10 @@ public static class GenerateUI {
         obj.transform.SetParent(parent, false);
 
         RectTransform rect = obj.AddComponent<RectTransform>();
-        rect.anchorMin = new(0f, 1f);
-        rect.anchorMax = new(1f, 1f);
-        rect.pivot = new(0.5f, 1f);
-        rect.offsetMin = new(0f, -height);
-        rect.offsetMax = Vector2.zero;
+
+        LayoutElement le = obj.AddComponent<LayoutElement>();
+        le.preferredHeight = height;
+        le.minHeight = height;
 
         return rect;
     }
@@ -141,6 +139,10 @@ public static class GenerateUI {
 
         RectTransform rect = BackGround();
         rect.SetParent(root.transform, false);
+        rect.pivot = new(rect.pivot.x, 1f);
+        rect.anchorMin = new(rect.anchorMin.x, 1f);
+        rect.anchorMax = new(rect.anchorMax.x, 1f);
+        rect.sizeDelta = new(rect.sizeDelta.x, 50f);
 
         TextMeshProUGUI tmp = AddText(rect);
         tmp.text = display(value);
@@ -169,8 +171,8 @@ public static class GenerateUI {
         listRect.anchorMin = new(0f, 1f);
         listRect.anchorMax = new(1f, 1f);
         listRect.pivot = new(0.5f, 1f);
-        listRect.offsetMin = new(0f, -58f);
-        listRect.offsetMax = new(-300f, -58f);
+        listRect.offsetMin = new(0f, -62f);
+        listRect.offsetMax = new(-300f, -62f);
 
         Image listBg = list.AddComponent<Image>();
         listBg.sprite = SpriteDatabase.Get(UISliceSprite.Circle256P2048);
@@ -186,9 +188,6 @@ public static class GenerateUI {
 
         ContentSizeFitter fitter = list.AddComponent<ContentSizeFitter>();
         fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-
-        LayoutElement layoutElement = root.AddComponent<LayoutElement>();
-        layoutElement.preferredHeight = 50f;
 
         list.SetActive(false);
 
@@ -208,6 +207,7 @@ public static class GenerateUI {
             onChanged
         );
 
+        LayoutElement parentLayout = parent.GetComponent<LayoutElement>();
         void UpdateHeight() {
             float rowHeight = 50f;
             float spacing = layout.spacing;
@@ -216,10 +216,15 @@ public static class GenerateUI {
                 (values.Count * rowHeight) +
                 (Mathf.Max(0, values.Count - 1) * spacing);
 
-            layoutElement.preferredHeight = dropdown.Expanded
-                ? 58f + listHeight
+            parentLayout.preferredHeight = dropdown.Expanded
+                ? 112f + listHeight
                 : 50f;
         }
+
+        dropdown.OnLayoutChanged = () => {
+            UpdateHeight();
+            LayoutRebuilder.ForceRebuildLayoutImmediate(rootRect);
+        };
 
         foreach(T item in values) {
             GameObject row = new("Row");
@@ -260,18 +265,6 @@ public static class GenerateUI {
                         0.12f
                     ).SetEase(Ease.OutSine)
                 );
-            }, trigger);
-
-            AddEvent(EventTriggerType.PointerClick, e => {
-                if(e.button != InputButton.Left) {
-                    return;
-                }
-
-                dropdown.Set(item);
-
-                dropdown.SetExpanded(false);
-
-                rowImage.color = Color.clear;
             }, trigger);
         }
 
@@ -435,6 +428,7 @@ public static class GenerateUI {
         tmp.color = Color.white;
         tmp.alignment = TextAlignmentOptions.Left;
         tmp.verticalAlignment = VerticalAlignmentOptions.Middle;
+        tmp.characterSpacing = -3f;
 
         return tmp;
     }

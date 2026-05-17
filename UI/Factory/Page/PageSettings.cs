@@ -9,7 +9,7 @@ using UnityEngine.UI;
 namespace Overlayer.UI.Factory.Page;
 
 internal static class PageSettings {
-    private static readonly Dictionary<string, UIObject> objects = new();
+    private static readonly Dictionary<string, UIObject> objects = [];
 
     public static void Create(RectTransform parent) {
         GameObject pad = new("Pad");
@@ -49,7 +49,7 @@ internal static class PageSettings {
         VerticalLayoutGroup layout = content.AddComponent<VerticalLayoutGroup>();
         layout.spacing = 12f;
         layout.childControlWidth = true;
-        layout.childControlHeight = false;
+        layout.childControlHeight = true;
         layout.childForceExpandWidth = true;
         layout.childForceExpandHeight = false;
 
@@ -61,7 +61,7 @@ internal static class PageSettings {
 
         Settings defSet = new();
 
-        _ = GenerateUI.AddTextH1(GenerateUI.Row(content.transform, 46))
+        _ = GenerateUI.AddTextH1(GenerateUI.Row(content.transform))
             .gameObject.AddComponent<TextLocalization>()
             .Init("LANGUAGE", "Language");
 
@@ -91,13 +91,14 @@ internal static class PageSettings {
                 Core.Tr.Language = value;
                 Core.Config.Language = value;
                 Core.Config.RequestSave();
+                TextLocalization.RefreshAll();
             },
             "language_dropdown"
         );
 
         objects[languageDropdown.Id] = languageDropdown;
 
-        _ = GenerateUI.AddTextH1(GenerateUI.Row(content.transform, 46)).text = "Overlayer";
+        _ = GenerateUI.AddTextH1(GenerateUI.Row(content.transform)).text = "Overlayer";
 
         UIButton button = GenerateUI.Button(
             GenerateUI.Row(content.transform),
@@ -107,6 +108,7 @@ internal static class PageSettings {
             "Button Text",
             "button_test"
         );
+        button.Text.gameObject.AddComponent<TextLocalization>().Init("BUTTON_TEXT", "Button Text");
         objects[button.Id] = button;
 
         UIToggle startupToggle = GenerateUI.Toggle(
@@ -120,8 +122,9 @@ internal static class PageSettings {
             "Show Overlayer Panel at Startup",
             "show_on_startup"
         );
-
+        startupToggle.Text.gameObject.AddComponent<TextLocalization>().Init("SHOW_OVERLAYER_PANEL_AT_STARTUP", "Show Overlayer Panel at Startup");
         objects[startupToggle.Id] = startupToggle;
+
         UIToggle middleClickToggle = GenerateUI.Toggle(
             GenerateUI.Row(content.transform),
             defSet.MiddleClickToDefault,
@@ -133,6 +136,7 @@ internal static class PageSettings {
             "Middle-click to set as default",
             "middle_click_default"
         );
+        middleClickToggle.Text.gameObject.AddComponent<TextLocalization>().Init("MIDDLE_CLICK_TO_SET_AS_DEFAULT", "Middle-click to set as default");
         middleClickToggle.Rect.AddToolTip(
             "DESC_MIDDLECLICKTODEFAULT",
             "Setting that restores an item to its default value when you middle-click on it.\nYou can identify it by a small dot at the top-left of the item."

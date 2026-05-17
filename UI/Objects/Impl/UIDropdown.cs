@@ -30,6 +30,8 @@ public class UIDropDown<T> : UIObject {
 
     public bool Expanded { get; private set; }
 
+    public Action OnLayoutChanged;
+
     private Sequence triangleSeq;
     private Sequence changeSeq;
 
@@ -83,6 +85,8 @@ public class UIDropDown<T> : UIObject {
         }
 
         UpdateVisual();
+
+        OnLayoutChanged?.Invoke();
     }
 
     public void SetValues(IReadOnlyList<T> values) {
@@ -109,6 +113,8 @@ public class UIDropDown<T> : UIObject {
         }
 
         UpdateVisual();
+
+        OnLayoutChanged?.Invoke();
     }
 
     public void ToggleExpanded() {

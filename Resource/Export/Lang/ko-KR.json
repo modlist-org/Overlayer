@@ -4,6 +4,14 @@
     "0NATIVELANG": "한국어",
     "0TRANSLATORS": [
       "OVERLAYER"
-    ]
+    ],
+    "SETTINGS": "설정",
+    "DOCS": "문서",
+    "CREDITS": "크레딧",
+    "LANGUAGE": "언어",
+    "BUTTON_TEXT": "버튼 텍스트",
+    "SHOW_OVERLAYER_PANEL_AT_STARTUP": "시작 시 Overlayer 패널 표시",
+    "MIDDLE_CLICK_TO_SET_AS_DEFAULT": "가운데 버튼으로 기본값",
+    "DESC_MIDDLECLICKTODEFAULT": "가운데 버튼을 눌러 기본값으로 되돌리는 설정입니다.\n항목의 왼쪽 위에 작은 점이 있는 것으로 식별할 수 있습니다."
   }
 }
