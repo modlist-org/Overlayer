@@ -6,7 +6,6 @@ public static class UIColors {
     public static readonly Color PanelBG = new(0.165f, 0.161f, 0.196f, 1f);
 
     public static readonly Color TopBar = new(0.255f, 0.259f, 0.333f, 1f);
-    public static readonly Color TopBarCloseCircle = new(0.886f, 0.404f, 0.427f, 0f);
 
     public static readonly Color MenuBG = new(0.42f, 0.431f, 0.545f, 1f);
     public static readonly Color MenuNormal = new(0.635f, 0.655f, 0.878f, 0f);
@@ -20,4 +19,6 @@ public static class UIColors {
     public static readonly Color ObjectActiveBright = new(0.812f, 0.827f, 1f, 1f);
     public static readonly Color ObjectActiveLightBright = new(0.557f, 0.596f, 1f, 1f);
     public static readonly Color ObjectButton = new(0.478f, 0.514f, 0.875f, 1f);
+
+    public static readonly Color SoftRed = new(0.886f, 0.404f, 0.427f, 1f);
 }

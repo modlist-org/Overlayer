@@ -16,6 +16,7 @@ public enum UISprite {
     Star128,
     ToggleCircle128,
     Triangle128,
+    Power128,
 }
 
 public enum UISliceSprite {
@@ -46,6 +47,7 @@ public static class SpriteDatabase {
         var toggleCircle = ResourceManager.Get<Texture2D>(Asset.ToggleCircle128);
         var circleOutline = ResourceManager.Get<Texture2D>(Asset.CircleOutline256);
         var triangle = ResourceManager.Get<Texture2D>(Asset.Triangle128);
+        var power = ResourceManager.Get<Texture2D>(Asset.Power128);
 
         sprites[UISprite.OV5LogoOutline256] =
             SpriteFactory.Create(logo);
@@ -79,6 +81,9 @@ public static class SpriteDatabase {
 
         sprites[UISprite.Triangle128] =
             SpriteFactory.Create(triangle);
+
+        sprites[UISprite.Power128] =
+           SpriteFactory.Create(power);
 
         sliceSprites[UISliceSprite.Circle256P1024] =
             SpriteFactory.CreateSliced(circle, 1024f, border);

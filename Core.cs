@@ -24,6 +24,10 @@ public class Core : MelonMod {
     internal static GameObject OverlayerObject;
     internal static Translator Tr;
     public static Settings Config;
+
+    public static bool IsModEnabled { get; private set; } = false;
+    public static event Action<bool> OnModEnabledChanged;
+
     public static readonly string OverlayerPath = Path.Combine(
         MelonEnvironment.UserDataDirectory,
         "Overlayer"
@@ -88,7 +92,7 @@ public class Core : MelonMod {
         ResourceManager.Initialize();
         SpriteDatabase.Initialize();
 
-        SafePatchController.ApplyAll();
+        SetModEnabled(Config.Active);
 
         UICore.Initialize();
 
@@ -98,11 +102,33 @@ public class Core : MelonMod {
     public void Dispose() {
         UICore.Dispose();
 
-        SafePatchController.UnloadAll();
+        SetModEnabled(false);
 
         SpriteDatabase.Dispose();
         ResourceManager.Dispose();
 
         DistroyOverlayerObject();
+    }
+
+    public static void SetModEnabled(bool enabled) {
+        if(enabled) {
+            if(IsModEnabled) {
+                return;
+            }
+
+            SafePatchController.ApplyAll();
+            IsModEnabled = true;
+            OnModEnabledChanged?.Invoke(IsModEnabled);
+            Logger.Msg("Mod Enabled");
+        } else {
+            if(!IsModEnabled) {
+                return;
+            }
+
+            SafePatchController.UnloadAll();
+            IsModEnabled = false;
+            OnModEnabledChanged?.Invoke(IsModEnabled);
+            Logger.Msg("Mod Disabled");
+        }
     }
 }

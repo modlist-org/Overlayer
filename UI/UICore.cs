@@ -1,5 +1,4 @@
 ﻿using DG.Tweening;
-using Mono.Unix.Native;
 using Overlayer.Localization;
 using Overlayer.Resource;
 using Overlayer.UI.Factory;
@@ -167,6 +166,44 @@ internal static class UICore {
 
             MenuFactory.CreateMenu(content.transform);
 
+            GameObject power = new("Power");
+            power.transform.SetParent(Menu, false);
+            var powerRect = power.AddComponent<RectTransform>();
+            powerRect.anchorMin = new Vector2(0f, 0f);
+            powerRect.anchorMax = new Vector2(1f, 0f);
+            powerRect.offsetMin = Vector2.zero;
+            powerRect.offsetMax = Vector2.zero;
+            powerRect.sizeDelta = new Vector2(0f, 60f);
+            powerRect.pivot = new Vector2(0.5f, 0f);
+            var powerBg = power.AddComponent<Image>();
+            powerBg.color = Core.Config.Active
+                    ? new(0, 0, 0, 0.1f)
+                    : UIColors.SoftRed;
+            var btn = power.AddComponent<Button>();
+            btn.transition = Selectable.Transition.None;
+            Sequence powerSeq = null;
+            btn.onClick.AddListener(() => {
+                bool enable = Core.Config.Active = !Core.Config.Active;
+                Core.SetModEnabled(enable);
+
+                Color target = enable
+                    ? new(0f, 0f, 0f, 0.1f)
+                    : UIColors.SoftRed;
+
+                powerSeq?.Kill();
+                powerSeq = DOTween.Sequence().Append(powerBg.DOColor(target, 0.32f).SetEase(Ease.OutExpo));
+            });
+            GameObject powerIcon = new("PowerIcon");
+            powerIcon.transform.SetParent(powerRect, false);
+            RectTransform powerIconRect = powerIcon.AddComponent<RectTransform>();
+            powerIconRect.anchorMin = new Vector2(0.5f, 0.5f);
+            powerIconRect.anchorMax = new Vector2(0.5f, 0.5f);
+            powerIconRect.pivot = new Vector2(0.5f, 0.5f);
+            powerIconRect.sizeDelta = new Vector2(26f, 26f);
+            Image powerIconImage = powerIcon.AddComponent<Image>();
+            powerIconImage.sprite = SpriteDatabase.Get(UISprite.Power128);
+            powerIconImage.color = new(1f, 1f, 1f, 0.6f);
+
             GameObject version = new("Version");
             version.transform.SetParent(Menu, false);
             var versionRect = version.AddComponent<RectTransform>();
@@ -245,7 +282,7 @@ internal static class UICore {
 
             CloseImage = bg.AddComponent<Image>();
             CloseImage.sprite = SpriteDatabase.Get(UISprite.Circle256);
-            CloseImage.color = UIColors.TopBarCloseCircle;
+            CloseImage.color = new Color(UIColors.SoftRed.r, UIColors.SoftRed.g, UIColors.SoftRed.b, 0f);
 
             RectTransform bgRect = bg.GetComponent<RectTransform>();
             bgRect.anchorMin = Vector2.zero;

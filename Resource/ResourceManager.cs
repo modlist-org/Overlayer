@@ -21,6 +21,7 @@ public enum Asset {
     ToggleCircle128,
     CircleOutline256,
     Triangle128,
+    Power128,
 }
 
 internal static class ResourceManager {
@@ -77,6 +78,7 @@ internal static class ResourceManager {
             (Asset.ToggleCircle128, $"{ResoucePath}Image.ToggleCircle128.png", FilterMode.Bilinear),
             (Asset.CircleOutline256, $"{ResoucePath}Image.CircleOutline256.png", FilterMode.Bilinear),
             (Asset.Triangle128, $"{ResoucePath}Image.Triangle128.png", FilterMode.Bilinear),
+            (Asset.Power128, $"{ResoucePath}Image.Power128.png", FilterMode.Bilinear)
         };
 
         foreach(var (key, path, filter) in imageMap) {

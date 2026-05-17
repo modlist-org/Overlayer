@@ -67,9 +67,7 @@ internal static class PageSettings {
             .gameObject.AddComponent<TextLocalization>()
             .Init("LANGUAGE", "Language");
 
-        string[] langs = Core.Tr.GetLanguages()
-            .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
-            .ToArray();
+        string[] langs = [.. Core.Tr.GetLanguages().OrderBy(x => x, StringComparer.OrdinalIgnoreCase)];
 
         var langRow = GenerateUI.Row(content.transform);
         UIDropDown<string> languageDropdown = GenerateUI.DropDown(
@@ -103,7 +101,7 @@ internal static class PageSettings {
 
         UIButton langBtn = GenerateUI.Button(
             langRow,
-            () => {},
+            () => { },
             "Reload",
             "language_reload"
         );
@@ -192,7 +190,6 @@ internal static class PageSettings {
            .gameObject.AddComponent<TextLocalization>()
            .Init("ADOFAI", "ADOFAI");
 
-
         var sp_saj = SafePatchController.Get<SP_ShowAutoJudgment>();
         UIToggle showAutoJudgmentToggle = GenerateUI.Toggle(
             GenerateUI.Row(content.transform),
@@ -201,6 +198,10 @@ internal static class PageSettings {
             toggle => {
                 Core.Config.ShowAutoplayJudgment = toggle;
                 Core.Config.RequestSave();
+                if(!Core.IsModEnabled) {
+                    return;
+                }
+
                 if(toggle) {
                     sp_saj.Apply();
                 } else {
@@ -210,6 +211,7 @@ internal static class PageSettings {
             "Show Autoplay Judgment",
             "show_autoplay_judgment"
         );
+        showAutoJudgmentToggle.onlyModOn = true;
         showAutoJudgmentToggle.Text.gameObject.AddComponent<TextLocalization>().Init("SHOW_AUTOPLAY_JUDGMENT", "Show Autoplay Judgment");
         objects[showAutoJudgmentToggle.Id] = showAutoJudgmentToggle;
 

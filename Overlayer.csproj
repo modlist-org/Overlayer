@@ -29,6 +29,7 @@
 	  <None Remove="Resource/SUIT-Regular.otf" />
 	  <None Remove="Resource\Embedded\Font\SUIT-Medium.otf" />
 	  <None Remove="Resource\Embedded\Image\CircleOutline256.png" />
+	  <None Remove="Resource\Embedded\Image\power128.png" />
 	  <None Remove="Resource\Embedded\Image\ToggleCircle128.png" />
 	  <None Remove="Resource\Embedded\Image\Triangle128.png" />
 	</ItemGroup>
@@ -478,6 +479,7 @@
 	  <EmbeddedResource Include="Resource\Embedded\Image\Image128.png" />
 	  <EmbeddedResource Include="Resource\Embedded\Image\Monitor128.png" />
 	  <EmbeddedResource Include="Resource\Embedded\Image\OV5LogoOutline256.png" />
+	  <EmbeddedResource Include="Resource\Embedded\Image\Power128.png" />
 	  <EmbeddedResource Include="Resource\Embedded\Image\Star128.png" />
 	  <EmbeddedResource Include="Resource\Embedded\Image\Text128.png" />
 	  <EmbeddedResource Include="Resource\Embedded\Image\ToggleCircle128.png" />
