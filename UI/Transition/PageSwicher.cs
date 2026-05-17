@@ -38,5 +38,7 @@ internal class PageSwicher {
             toCg.interactable = true;
             toCg.blocksRaycasts = true;
         });
+
+        pageSeq.SetUpdate(true);
     }
 }

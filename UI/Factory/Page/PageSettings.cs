@@ -1,4 +1,5 @@
-﻿using Overlayer.IO;
+﻿using Overlayer.Async;
+using Overlayer.IO;
 using Overlayer.Localization;
 using Overlayer.UI.Generator;
 using Overlayer.UI.Objects;
@@ -69,8 +70,9 @@ internal static class PageSettings {
             .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
+        var langRow = GenerateUI.Row(content.transform);
         UIDropDown<string> languageDropdown = GenerateUI.DropDown(
-            GenerateUI.Row(content.transform),
+            langRow,
             null,
             Core.Tr.Language,
             langs,
@@ -98,18 +100,39 @@ internal static class PageSettings {
 
         objects[languageDropdown.Id] = languageDropdown;
 
-        _ = GenerateUI.AddTextH1(GenerateUI.Row(content.transform)).text = "Overlayer";
-
-        UIButton button = GenerateUI.Button(
-            GenerateUI.Row(content.transform),
-            () => {
-                Core.Logger.Msg("Clicked");
-            },
-            "Button Text",
-            "button_test"
+        UIButton langBtn = GenerateUI.Button(
+            langRow,
+            () => {},
+            "Reload",
+            "language_reload"
         );
-        button.Text.gameObject.AddComponent<TextLocalization>().Init("BUTTON_TEXT", "Button Text");
-        objects[button.Id] = button;
+        langBtn.OnClick = async () => {
+            languageDropdown.SetExpanded(false);
+            languageDropdown.SetBlocked(true);
+            langBtn.SetBlocked(true);
+            langBtn.Text.text = "...";
+            _ = Task.Run(async () => {
+                await Core.Tr.Load(Path.Combine(Core.OverlayerPath, "Lang"));
+                MainThread.Enqueue(() => {
+                    languageDropdown.SetBlocked(false);
+                    langBtn.SetBlocked(false);
+                    TextLocalization.RefreshAll();
+                });
+            });
+        };
+
+        {
+            var br = langBtn.Rect;
+            br.pivot = new(1f, 1f);
+            br.anchorMin = new(1f, 1f);
+            br.anchorMax = new(1f, 1f);
+            br.sizeDelta = new(140f, 50f);
+            br.offsetMax = Vector2.zero;
+        }
+        langBtn.Text.gameObject.AddComponent<TextLocalization>().Init("RELOAD", "Reload");
+        objects[langBtn.Id] = langBtn;
+
+        _ = GenerateUI.AddTextH1(GenerateUI.Row(content.transform)).text = "Overlayer";
 
         UIToggle startupToggle = GenerateUI.Toggle(
             GenerateUI.Row(content.transform),
@@ -153,9 +176,7 @@ internal static class PageSettings {
             return;
         }
 
-        string[] langs = Core.Tr.GetLanguages()
-            .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
-            .ToArray();
+        string[] langs = [.. Core.Tr.GetLanguages().OrderBy(x => x, StringComparer.OrdinalIgnoreCase)];
 
         dropdown.SetValues(langs);
 

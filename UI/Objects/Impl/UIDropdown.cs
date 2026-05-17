@@ -28,6 +28,8 @@ public class UIDropDown<T> : UIObject {
     public GameObject ListObject { get; }
     public RectTransform ListRect { get; }
 
+    public CanvasGroup ListCanvasGroup { get; }
+
     public bool Expanded { get; private set; }
 
     public Action OnLayoutChanged;
@@ -44,6 +46,7 @@ public class UIDropDown<T> : UIObject {
         Image changedImage,
         GameObject listObject,
         RectTransform listRect,
+        CanvasGroup listCanvasGroup,
         IReadOnlyList<T> values,
         Func<T, string> display,
         T defaultValue,
@@ -59,6 +62,7 @@ public class UIDropDown<T> : UIObject {
 
         ListObject = listObject;
         ListRect = listRect;
+        ListCanvasGroup = listCanvasGroup;
 
         Values = values;
 
@@ -101,25 +105,19 @@ public class UIDropDown<T> : UIObject {
         }
     }
 
-    public void Reset() {
-        Set(DefaultValue);
-    }
+    public void Reset() => Set(DefaultValue);
 
     public void SetExpanded(bool expanded) {
         Expanded = expanded;
 
-        if(ListObject != null) {
-            ListObject.SetActive(expanded);
-        }
+        ListObject?.SetActive(expanded);
 
         UpdateVisual();
 
         OnLayoutChanged?.Invoke();
     }
 
-    public void ToggleExpanded() {
-        SetExpanded(!Expanded);
-    }
+    public void ToggleExpanded() => SetExpanded(!Expanded);
 
     public void UpdateVisual() {
         triangleSeq?.Kill();
@@ -140,7 +138,7 @@ public class UIDropDown<T> : UIObject {
                         : UIColors.ObjectInactive,
                     0.2f
                 ).SetEase(Ease.OutSine)
-            );
+            ).SetUpdate(true);
 
         changeSeq?.Kill();
 
@@ -158,7 +156,7 @@ public class UIDropDown<T> : UIObject {
                 },
                 isDefault ? 0f : 1f,
                 0.2f
-            ).SetEase(Ease.OutSine)
+            ).SetEase(Ease.OutSine).SetUpdate(true)
         );
     }
 
@@ -198,7 +196,7 @@ public class UIDropDown<T> : UIObject {
                         UIColors.ObjectActive,
                         0.12f
                     ).SetEase(Ease.OutSine)
-                );
+                ).SetUpdate(true);
             }, trigger);
 
             GenerateUI.AddEvent(EventTriggerType.PointerExit, e => {
@@ -209,7 +207,7 @@ public class UIDropDown<T> : UIObject {
                         Color.clear,
                         0.12f
                     ).SetEase(Ease.OutSine)
-                );
+                ).SetUpdate(true);
             }, trigger);
 
             GenerateUI.AddEvent(EventTriggerType.PointerClick, e => {
@@ -224,5 +222,10 @@ public class UIDropDown<T> : UIObject {
                 SetExpanded(false);
             }, trigger);
         }
+    }
+
+    public override void SetBlocked(bool blocked, bool noAnimate = false) {
+        base.SetBlocked(blocked, noAnimate);
+        SetExpanded(false);
     }
 }

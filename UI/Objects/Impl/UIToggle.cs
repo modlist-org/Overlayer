@@ -51,13 +51,9 @@ public class UIToggle : UIObject {
         UpdateVisual();
     }
 
-    public void Toggle() {
-        Set(!Value);
-    }
+    public void Toggle() => Set(!Value);
 
-    public void Reset() {
-        Set(DefaultValue);
-    }
+    public void Reset() => Set(DefaultValue);
 
     public void UpdateVisual() {
         CircleImage.sprite = SpriteDatabase.Get(
@@ -84,7 +80,7 @@ public class UIToggle : UIObject {
                         : UIColors.ObjectInactive,
                     0.15f
                 ).SetEase(Ease.OutQuad)
-            );
+            ).SetUpdate(true);
 
         changeSeq?.Kill();
 
@@ -103,6 +99,6 @@ public class UIToggle : UIObject {
                 target,
                 0.2f
             ).SetEase(Ease.OutSine)
-        );
+        ).SetUpdate(true);
     }
 }

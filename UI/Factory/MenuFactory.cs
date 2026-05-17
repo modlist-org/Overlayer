@@ -105,7 +105,8 @@ public static class MenuFactory {
             if(UICore.CurrentMenuState != state) {
                 menuItem.hoverSeq?.Kill();
                 menuItem.hoverSeq = DOTween.Sequence()
-                    .Append(bg.DOColor(UIColors.MenuHover, 0.2f).SetEase(Ease.OutSine));
+                    .Append(bg.DOColor(UIColors.MenuHover, 0.2f).SetEase(Ease.OutSine))
+                    .SetUpdate(true);
             }
         });
 
@@ -113,7 +114,8 @@ public static class MenuFactory {
             if(UICore.CurrentMenuState != state) {
                 menuItem.hoverSeq?.Kill();
                 menuItem.hoverSeq = DOTween.Sequence()
-                    .Append(bg.DOColor(UIColors.MenuNormal, 0.3f).SetEase(Ease.OutSine));
+                    .Append(bg.DOColor(UIColors.MenuNormal, 0.3f).SetEase(Ease.OutSine))
+                    .SetUpdate(true);
             }
         });
 
@@ -124,7 +126,8 @@ public static class MenuFactory {
             bg.color = UIColors.MenuHighlight;
 
             menuItem.hoverSeq = DOTween.Sequence()
-                .Append(bg.DOColor(UIColors.MenuNormal, 0.3f).SetEase(Ease.OutSine));
+                .Append(bg.DOColor(UIColors.MenuSelected, 0.3f).SetEase(Ease.OutSine))
+                .SetUpdate(true);
         });
     }
 

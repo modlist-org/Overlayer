@@ -1,4 +1,5 @@
 ﻿using DG.Tweening;
+using MelonLoader.TinyJSON;
 using Overlayer.Resource;
 using Overlayer.UI.Objects.Impl;
 using Overlayer.UI.SpriteManage;
@@ -95,8 +96,9 @@ public static class GenerateUI {
         RectTransform rect = BackGround();
         rect.SetParent(parent, false);
 
-        TextMeshProUGUI tmp = AddText(rect);
+        TextMeshProUGUI tmp = AddText(rect, true);
         tmp.text = text;
+        tmp.alignment = TextAlignmentOptions.Center;
 
         Image bg = rect.GetComponent<Image>();
         bg.color = UIColors.ObjectButton;
@@ -114,6 +116,12 @@ public static class GenerateUI {
                 button.Click();
             }
         }, false);
+
+        EventTrigger trigger = rect.gameObject.GetComponent<EventTrigger>()
+            ?? rect.gameObject.AddComponent<EventTrigger>();
+
+        AddEvent(EventTriggerType.PointerEnter, e => button.OnHoverEnter(), trigger);
+        AddEvent(EventTriggerType.PointerExit, e => button.OnHoverExit(), trigger);
 
         return button;
     }
@@ -189,6 +197,9 @@ public static class GenerateUI {
         ContentSizeFitter fitter = list.AddComponent<ContentSizeFitter>();
         fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
+        CanvasGroup listCg = list.AddComponent<CanvasGroup>();
+        listCg.alpha = 0f;
+
         list.SetActive(false);
 
         UIDropDown<T> dropdown = new(
@@ -200,6 +211,7 @@ public static class GenerateUI {
             changeImg,
             list,
             listRect,
+            listCg,
             values,
             display,
             defaultValue,
@@ -207,6 +219,7 @@ public static class GenerateUI {
             onChanged
         );
 
+        Sequence layoutSeq = null;
         LayoutElement parentLayout = parent.GetComponent<LayoutElement>();
         void UpdateHeight() {
             float rowHeight = 50f;
@@ -216,9 +229,28 @@ public static class GenerateUI {
                 (values.Count * rowHeight) +
                 (Mathf.Max(0, values.Count - 1) * spacing);
 
-            parentLayout.preferredHeight = dropdown.Expanded
-                ? 112f + listHeight
-                : 50f;
+            float targetHeight = dropdown.Expanded ? 162f + listHeight : 50f;
+            float targetAlpha = dropdown.Expanded ? 1f : 0f;
+
+            layoutSeq?.Kill();
+
+            layoutSeq = DOTween.Sequence()
+                .Join(DOTween.To(
+                    () => parentLayout.preferredHeight,
+                    x => {
+                        parentLayout.preferredHeight = x;
+                        LayoutRebuilder.ForceRebuildLayoutImmediate(rootRect);
+                    },
+                    targetHeight,
+                    0.14f
+                ).SetEase(Ease.OutBack))
+                .Join(DOTween.To(
+                    () => listCg.alpha,
+                    x => listCg.alpha = x,
+                    targetAlpha,
+                    0.16f
+                ).SetEase(Ease.OutSine))
+                .SetUpdate(true);
         }
 
         dropdown.OnLayoutChanged = () => {
@@ -253,7 +285,7 @@ public static class GenerateUI {
                         UIColors.ObjectActive,
                         0.12f
                     ).SetEase(Ease.OutSine)
-                );
+                ).SetUpdate(true);
             }, trigger);
 
             AddEvent(EventTriggerType.PointerExit, e => {
@@ -264,7 +296,7 @@ public static class GenerateUI {
                         Color.clear,
                         0.12f
                     ).SetEase(Ease.OutSine)
-                );
+                ).SetUpdate(true);
             }, trigger);
         }
 
@@ -306,33 +338,14 @@ public static class GenerateUI {
         Full
     }
 
-    public static RectTransform BackGround(BackGroundType type = BackGroundType.Main) {
+    public static RectTransform BackGround() {
         GameObject obj = new("Bg");
         RectTransform rect = obj.AddComponent<RectTransform>();
         rect.anchorMin = new(0f, 0f);
         rect.anchorMax = new(1f, 1f);
         rect.pivot = new(0.5f, 0.5f);
         rect.offsetMin = Vector2.zero;
-        rect.offsetMax = Vector2.zero;
-
-        switch(type) {
-            case BackGroundType.Main: {
-                rect.offsetMax = new(-300f, 0f);
-                break;
-            }
-
-            case BackGroundType.Sub: {
-                rect.anchorMin = new(1f, 0f);
-                rect.sizeDelta = new(290f, 0f);
-                rect.offsetMax = new(-10f, 0f);
-                break;
-            }
-
-            case BackGroundType.Full: {
-                rect.pivot = new(0.5f, 0.5f);
-                break;
-            }
-        }
+        rect.offsetMax = new(-300f, 0f);
 
         Image img = obj.AddComponent<Image>();
         img.color = UIColors.ObjectBG;
@@ -367,9 +380,7 @@ public static class GenerateUI {
             hoverImage.color = new Color(hoverImage.color.r, hoverImage.color.g, hoverImage.color.b, 0f);
         }
 
-        AddEvent(EventTriggerType.PointerClick, (e) => {
-            onClick?.Invoke(e.button);
-        }, trigger);
+        AddEvent(EventTriggerType.PointerClick, (e) => onClick?.Invoke(e.button), trigger);
 
         if(outline) {
             AddEvent(EventTriggerType.PointerEnter, (e) => {
@@ -386,7 +397,7 @@ public static class GenerateUI {
                         1f,
                         0.1f
                     ).SetEase(Ease.OutSine)
-                );
+                ).SetUpdate(true);
             }, trigger);
 
             AddEvent(EventTriggerType.PointerExit, (e) => {
@@ -403,16 +414,16 @@ public static class GenerateUI {
                         0f,
                         0.1f
                     ).SetEase(Ease.OutSine)
-                );
+                ).SetUpdate(true);
             }, trigger);
         }
     }
 
-    public static TextMeshProUGUI AddText(RectTransform parent) => CreateText(parent, 24f);
+    public static TextMeshProUGUI AddText(RectTransform parent, bool noPad = false) => CreateText(parent, 24f, false, noPad);
 
     public static TextMeshProUGUI AddTextH1(RectTransform parent) => CreateText(parent, 32f, true, true);
 
-    private static TextMeshProUGUI CreateText(RectTransform parent, float size, bool bold = false, bool noPad = false) {
+    private static TextMeshProUGUI CreateText(RectTransform parent, float size, bool bold, bool noPad) {
         GameObject obj = new("Text");
         obj.transform.SetParent(parent, false);
 
@@ -452,18 +463,12 @@ public static class GenerateUI {
     }
 
     public static Transform AddToolTip(this Transform parent, string key, string def) {
-        EventTrigger trigger = parent.gameObject.GetComponent<EventTrigger>();
-        if(trigger == null) {
-            trigger = parent.gameObject.AddComponent<EventTrigger>();
-        }
+        EventTrigger trigger = parent.gameObject.GetComponent<EventTrigger>()
+            ?? parent.gameObject.AddComponent<EventTrigger>();
 
-        AddEvent(EventTriggerType.PointerEnter, (e) => {
-            Tooltip.Show(Core.Tr.Get(key, def));
-        }, trigger);
+        AddEvent(EventTriggerType.PointerEnter, (e) => Tooltip.Show(Core.Tr.Get(key, def)), trigger);
 
-        AddEvent(EventTriggerType.PointerExit, (e) => {
-            Tooltip.Hide();
-        }, trigger);
+        AddEvent(EventTriggerType.PointerExit, (e) => Tooltip.Hide(), trigger);
 
         return parent;
     }

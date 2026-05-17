@@ -1,9 +1,12 @@
 ﻿using DG.Tweening;
+using Mono.Unix.Native;
 using Overlayer.Localization;
+using Overlayer.Resource;
 using Overlayer.UI.Factory;
 using Overlayer.UI.Factory.Page;
 using Overlayer.UI.SpriteManage;
 using Overlayer.UI.Utility;
+using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -46,6 +49,13 @@ internal static class UICore {
         Tooltip.Initialize(canvasObj.transform);
 
         Core.Tr.OnInitialize += PageSettings.OnTranslatorInitialize;
+        Core.Tr.OnInitialize += TextLocalization.RefreshAll;
+
+        TextLocalization.RefreshAll();
+
+        if(Core.Config.ShowOnStartup) {
+            Open(true);
+        }
     }
 
     public static RectTransform Panel;
@@ -156,6 +166,22 @@ internal static class UICore {
             fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
             MenuFactory.CreateMenu(content.transform);
+
+            GameObject version = new("Version");
+            version.transform.SetParent(Menu, false);
+            var versionRect = version.AddComponent<RectTransform>();
+            versionRect.anchorMin = Vector2.zero;
+            versionRect.anchorMax = new(1f, 0f);
+            versionRect.offsetMin = new(2f, 0f);
+            versionRect.offsetMax = Vector2.zero;
+            versionRect.pivot = Vector2.zero;
+            var versionText = version.AddComponent<TextMeshProUGUI>();
+            versionText.text = $"v{Core.OverlayerVersion}";
+            versionText.font = ResourceManager.Get<TMP_FontAsset>(Asset.SUITRegular);
+            versionText.fontSize = 12f;
+            versionText.color = new Color(1f, 1f, 1f, 0.4f);
+            versionText.characterSpacing = -3f;
+            versionText.alignment = TextAlignmentOptions.BottomLeft;
         }
 
         // Top Bar
@@ -370,7 +396,8 @@ internal static class UICore {
 
         panelTweener = Panel
             .DOAnchorPos(lastPanelPosition, 0.1f)
-            .SetEase(Ease.OutExpo);
+            .SetEase(Ease.OutExpo)
+            .SetUpdate(true);
     }
 
     public static void Close(bool noAnimate = false) {
@@ -403,7 +430,8 @@ internal static class UICore {
         panelTweener = Panel
             .DOAnchorPos(targetPos, 0.1f)
             .SetEase(Ease.OutExpo)
-            .OnComplete(() => canvasObj.SetActive(false));
+            .OnComplete(() => canvasObj.SetActive(false))
+            .SetUpdate(true);
     }
 
     public static void Toggle(bool noAnimate = false) {
@@ -439,7 +467,8 @@ internal static class UICore {
                 Panel
                     .DOSizeDelta(lastPanelSize, 0.26f)
                     .SetEase(Ease.OutExpo)
-            );
+            )
+            .SetUpdate(true);
     }
 
     private static bool isMenuOpen = false;
@@ -462,7 +491,7 @@ internal static class UICore {
                 x => Page.offsetMin = x,
                 new(MENU_WIDTH, 0),
                 0.6f
-            ).SetEase(Ease.OutExpo));
+            ).SetEase(Ease.OutExpo)).SetUpdate(true);
 
         isMenuOpen = true;
     }
@@ -481,7 +510,7 @@ internal static class UICore {
                     x => Page.offsetMin = x,
                     new(0, 0),
                     0.4f
-                ).SetEase(Ease.OutExpo));
+                ).SetEase(Ease.OutExpo)).SetUpdate(true);
 
         isMenuOpen = false;
     }
@@ -495,6 +524,7 @@ internal static class UICore {
     }
 
     public static void Dispose() {
+        Core.Tr.OnInitialize -= TextLocalization.RefreshAll;
         Core.Tr.OnInitialize -= PageSettings.OnTranslatorInitialize;
         Tooltip.Dispose();
         UnityEngine.Object.Destroy(canvasObj);

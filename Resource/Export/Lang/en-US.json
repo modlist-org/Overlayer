@@ -9,7 +9,8 @@
     "DOCS": "Docs",
     "CREDITS": "Credits",
     "LANGUAGE": "Language",
-    "BUTTON_TEXT": "Button Text",
+    "RELOAD": "Reload",
+    "RELOADING": "Reloading...",
     "SHOW_OVERLAYER_PANEL_AT_STARTUP": "Show Overlayer Panel at Startup",
     "MIDDLE_CLICK_TO_SET_AS_DEFAULT": "Middle-click to set as default",
     "DESC_MIDDLECLICKTODEFAULT": "Setting that restores an item to its default value when you middle-click on it.\nYou can identify it by a small dot at the top-left of the item."

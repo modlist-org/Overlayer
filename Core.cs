@@ -28,14 +28,13 @@ public class Core : MelonMod {
         "Overlayer"
     );
 
-
     private IEnumerator InitializeRoutine() {
         yield return CreateOverlayerObject();
         yield return InitializeAsync();
     }
 
     private IEnumerator CreateOverlayerObject() {
-        for(;;) {
+        for(; ; ) {
             if(OverlayerObject == null) {
                 OverlayerObject = new GameObject("Overlayer");
 
@@ -63,8 +62,6 @@ public class Core : MelonMod {
         Logger = LoggerInstance;
         Tr = new Translator();
         Config = new Settings();
-        Tr.SetLog(TranslatorLogLinker);
-        _ = Tr.Load(Path.Combine(OverlayerPath, "Lang"));
         Initialize();
     }
 
@@ -82,6 +79,8 @@ public class Core : MelonMod {
     private async Task InitializeAsync() {
         await Task.Run(Config.Load);
         Tr.Language = Config.Language;
+        Tr.SetLog(TranslatorLogLinker);
+        _ = Tr.Load(Path.Combine(OverlayerPath, "Lang"));
 
         OverlayerObject.AddComponent<MainThread>();
 

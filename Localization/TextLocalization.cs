@@ -1,6 +1,5 @@
 ﻿using TMPro;
 using UnityEngine;
-using static MelonLoader.MelonLogger;
 
 namespace Overlayer.Localization;
 
@@ -10,7 +9,7 @@ public class TextLocalization : MonoBehaviour {
 
     private TMP_Text tmp;
 
-    private static readonly HashSet<TextLocalization> instances = new();
+    private static readonly HashSet<TextLocalization> instances = [];
 
     public TextLocalization Init(string key, string defaultValue) {
         Key = key;
@@ -19,18 +18,14 @@ public class TextLocalization : MonoBehaviour {
         return this;
     }
 
-    void Awake() {
-        tmp = GetComponent<TMP_Text>();
-    }
+    void Awake() => tmp = GetComponent<TMP_Text>();
 
     void OnEnable() {
         instances.Add(this);
         UpdateText();
     }
 
-    void OnDisable() {
-        instances.Remove(this);
-    }
+    void OnDisable() => instances.Remove(this);
 
     public void UpdateText() {
         if(tmp != null && !string.IsNullOrEmpty(Key)) {
@@ -40,9 +35,7 @@ public class TextLocalization : MonoBehaviour {
 
     public static void RefreshAll() {
         foreach(var t in instances) {
-            if(t != null) {
-                t.UpdateText();
-            }
+            t?.UpdateText();
         }
     }
 }

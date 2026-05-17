@@ -1,16 +1,16 @@
 ﻿using DG.Tweening;
+using Overlayer.UI;
+using Overlayer.UI.Objects;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-
-namespace Overlayer.UI.Objects.Impl;
 
 public class UIButton : UIObject {
     public Action OnClick { get; set; }
     public TextMeshProUGUI Text { get; }
     public Image Background { get; }
 
-    private Sequence bgSeq;
+    private Sequence hoverSeq;
 
     public UIButton(
         string id,
@@ -26,6 +26,21 @@ public class UIButton : UIObject {
         UpdateVisual();
     }
 
+    public void OnHoverEnter() {
+        hoverSeq?.Kill();
+        hoverSeq = DOTween.Sequence()
+            .Join(Background.DOColor(UIColors.ObjectActiveLightBright, 0.12f)
+                .SetEase(Ease.OutSine)).SetUpdate(true);
+    }
+
+    public void OnHoverExit() {
+        hoverSeq?.Kill();
+
+        hoverSeq = DOTween.Sequence()
+            .Join(Background.DOColor(UIColors.ObjectButton, 0.12f)
+                .SetEase(Ease.OutSine)).SetUpdate(true);
+    }
+
     public void Click(bool invoke = true) {
         if(invoke) {
             OnClick?.Invoke();
@@ -35,15 +50,12 @@ public class UIButton : UIObject {
     }
 
     public void UpdateVisual() {
-        bgSeq?.Kill();
-
         Background.color = UIColors.ObjectActiveBright;
 
-        bgSeq = DOTween.Sequence().Append(
-            Background.DOColor(
-                UIColors.ObjectButton,
-                0.2f
-            ).SetEase(Ease.OutSine)
+        hoverSeq?.Kill();
+        hoverSeq = DOTween.Sequence().Append(
+            Background.DOColor(UIColors.ObjectButton, 0.2f)
+                .SetEase(Ease.OutSine).SetUpdate(true)
         );
     }
 }

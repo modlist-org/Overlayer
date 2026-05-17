@@ -1,9 +1,5 @@
-﻿using Overlayer.Resource;
-using Overlayer.UI.Factory.Page;
-using Overlayer.UI.SpriteManage;
-using TMPro;
+﻿using Overlayer.UI.Factory.Page;
 using UnityEngine;
-using UnityEngine.UI;
 
 namespace Overlayer.UI.Factory;
 

@@ -1,5 +1,4 @@
-﻿using Steamworks;
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace Overlayer.UI;
 
@@ -19,5 +18,6 @@ public static class UIColors {
     public static readonly Color ObjectActive = new(0.569f, 0.604f, 1f, 1f);
     public static readonly Color ObjectInactive = new(0.569f, 0.604f, 1f, 0.4f);
     public static readonly Color ObjectActiveBright = new(0.812f, 0.827f, 1f, 1f);
+    public static readonly Color ObjectActiveLightBright = new(0.557f, 0.596f, 1f, 1f);
     public static readonly Color ObjectButton = new(0.478f, 0.514f, 0.875f, 1f);
 }
