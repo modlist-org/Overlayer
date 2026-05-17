@@ -62,7 +62,7 @@ public class Tooltip {
     }
 
     public static void Tick() {
-        if(!visible || obj == null) {
+        if(!Core.Config.Tooltip || !visible || obj == null) {
             return;
         }
 
@@ -88,7 +88,7 @@ public class Tooltip {
     private static Sequence seq;
 
     public static void Show(string tip) {
-        if(obj == null) {
+        if(!Core.Config.Tooltip || obj == null) {
             return;
         }
 
@@ -106,6 +106,7 @@ public class Tooltip {
         visible = true;
 
         seq = DOTween.Sequence()
+            .AppendInterval(0.14f)
             .Append(DOTween.To(
                 () => canvas.alpha,
                 x => canvas.alpha = x,
@@ -115,7 +116,7 @@ public class Tooltip {
     }
 
     public static void Hide() {
-        if(obj == null) {
+        if(!Core.Config.Tooltip || obj == null) {
             return;
         }
 

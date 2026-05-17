@@ -151,6 +151,25 @@ internal static class PageSettings {
         startupToggle.Text.gameObject.AddComponent<TextLocalization>().Init("SHOW_OVERLAYER_PANEL_AT_STARTUP", "Show Overlayer Panel at Startup");
         objects[startupToggle.Id] = startupToggle;
 
+        UIToggle tooltipToggle = GenerateUI.Toggle(
+            GenerateUI.Row(content.transform),
+            defSet.Tooltip,
+            Core.Config.Tooltip,
+            toggle => {
+                Tooltip.Hide();
+                Core.Config.Tooltip = toggle;
+                Core.Config.RequestSave();
+            },
+            "Show Tooltip",
+            "show_tooltip"
+        );
+        tooltipToggle.Text.gameObject.AddComponent<TextLocalization>().Init("SHOW_TOOLTIP", "Show Tooltip");
+        tooltipToggle.Rect.AddToolTip(
+            "DESC_SHOW_TOOLTIP",
+            "This is Tooltip!"
+        );
+        objects[tooltipToggle.Id] = tooltipToggle;
+
         UIToggle middleClickToggle = GenerateUI.Toggle(
             GenerateUI.Row(content.transform),
             defSet.MiddleClickToDefault,

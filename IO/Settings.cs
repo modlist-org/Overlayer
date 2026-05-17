@@ -6,6 +6,7 @@ public class Settings {
     public bool Active = true;
     public string Language = "en-US";
     public bool ShowOnStartup = false;
+    public bool Tooltip = true;
     public bool MiddleClickToDefault = true;
 
     public bool ShowAutoplayJudgment = false;
@@ -15,6 +16,7 @@ public class Settings {
             [nameof(Active)] = Active,
             [nameof(Language)] = Language,
             [nameof(ShowOnStartup)] = ShowOnStartup,
+            [nameof(Tooltip)] = Tooltip,
             [nameof(MiddleClickToDefault)] = MiddleClickToDefault,
 
             [nameof(ShowAutoplayJudgment)] = ShowAutoplayJudgment
@@ -29,6 +31,7 @@ public class Settings {
         Active = token.Value<bool?>(nameof(Active)) ?? defaults.Active;
         Language = token.Value<string>(nameof(Language)) ?? defaults.Language;
         ShowOnStartup = token.Value<bool?>(nameof(ShowOnStartup)) ?? defaults.ShowOnStartup;
+        Tooltip = token.Value<bool?>(nameof(Tooltip)) ?? defaults.Tooltip;
         MiddleClickToDefault = token.Value<bool?>(nameof(MiddleClickToDefault)) ?? defaults.MiddleClickToDefault;
 
         ShowAutoplayJudgment = token.Value<bool?>(nameof(ShowAutoplayJudgment)) ?? defaults.ShowAutoplayJudgment;
