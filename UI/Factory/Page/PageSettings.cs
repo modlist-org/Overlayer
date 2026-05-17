@@ -133,7 +133,9 @@ internal static class PageSettings {
         langBtn.Text.gameObject.AddComponent<TextLocalization>().Init("RELOAD", "Reload");
         objects[langBtn.Id] = langBtn;
 
-        _ = GenerateUI.AddTextH1(GenerateUI.Row(content.transform)).text = "Overlayer";
+        _ = GenerateUI.AddTextH1(GenerateUI.Row(content.transform))
+           .gameObject.AddComponent<TextLocalization>()
+           .Init("OVERLAYER", "Overlayer");
 
         UIToggle startupToggle = GenerateUI.Toggle(
             GenerateUI.Row(content.transform),
