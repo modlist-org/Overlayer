@@ -20,16 +20,24 @@ public abstract class UIObject {
         }
     }
 
-    private readonly CanvasGroup canvasGroup;
+    private CanvasGroup _canvasGroup;
+    protected CanvasGroup canvasGroup {
+        get {
+            if (_canvasGroup == null) {
+                _canvasGroup = Rect.GetComponent<CanvasGroup>();
+                if (_canvasGroup == null) {
+                    _canvasGroup = Rect.gameObject.AddComponent<CanvasGroup>();
+                }
+            }
+            return _canvasGroup;
+        }
+    }
     private Sequence blockSeq;
 
     protected UIObject(string id, RectTransform rect, bool onlyModOn = false) {
         Id = id;
         Rect = rect;
         _onlyModOn = onlyModOn;
-
-        canvasGroup =
-            rect.GetComponent<CanvasGroup>() ?? rect.gameObject.AddComponent<CanvasGroup>();
 
         Core.OnModEnabledChanged += ApplyState;
 
