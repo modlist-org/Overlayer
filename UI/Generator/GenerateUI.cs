@@ -111,7 +111,7 @@ public static class GenerateUI {
         );
 
         AddButton(rect.gameObject, btn => {
-            if(btn != InputButton.Middle) {
+            if(btn == InputButton.Left) {
                 button.Click();
             }
         }, false);
@@ -123,6 +123,121 @@ public static class GenerateUI {
         AddEvent(EventTriggerType.PointerExit, e => button.OnHoverExit(), trigger);
 
         return button;
+    }
+
+    public static UISlider Slider(
+        Transform parent,
+        float defaultValue,
+        float min,
+        float max,
+        float value,
+        Action<float> onChanged,
+        Action<float> onComplete,
+        string text,
+        string id
+    ) {
+        RectTransform rect = BackGround();
+        rect.SetParent(parent, false);
+
+        rect.gameObject.AddComponent<EventTrigger>();
+
+        TextMeshProUGUI label = AddText(rect);
+        label.text = text;
+        label.alignment = TextAlignmentOptions.Left;
+
+        TextMeshProUGUI valueText = AddText(rect);
+        valueText.alignment = TextAlignmentOptions.Right;
+
+        var valueTextRect = valueText.gameObject.GetComponent<RectTransform>();
+        valueTextRect.offsetMin = Vector2.zero;
+        valueTextRect.offsetMax = new(-16f, 0f);
+
+        GameObject fill = new("Fill");
+        fill.transform.SetParent(rect, false);
+        fill.transform.SetAsFirstSibling();
+
+        RectTransform fillRect = fill.AddComponent<RectTransform>();
+        fillRect.anchorMin = new Vector2(0f, 0f);
+        fillRect.anchorMax = new Vector2(0f, 1f);
+        fillRect.pivot = new Vector2(0f, 0.5f);
+        fillRect.anchoredPosition = Vector2.zero;
+        fillRect.sizeDelta = Vector2.zero;
+
+        Image fillImg = fill.AddComponent<Image>();
+        fillImg.sprite = SpriteDatabase.Get(UISliceSprite.Circle256P2048);
+        fillImg.type = Image.Type.Sliced;
+        fillImg.color = UIColors.ObjectActive;
+
+        UISlider slider = new(
+            id,
+            rect,
+            fillRect,
+            fillImg,
+            label,
+            valueText,
+            defaultValue,
+            min,
+            max,
+            value,
+            onChanged,
+            onComplete
+        );
+
+        void SetFromMouse() {
+            Vector2 local = rect.InverseTransformPoint(Input.mousePosition);
+            float width = rect.rect.width;
+
+            float t = Mathf.Clamp01((local.x + width * 0.5f) / width);
+            slider.SetNormalized(t);
+        }
+
+        AddButton(rect.gameObject, e => {
+            switch (e) {
+                case InputButton.Left:
+                    SetFromMouse();
+
+                    slider.OnComplete?.Invoke(slider.Value);
+                    break;
+
+                case InputButton.Middle:
+                    slider.Set(defaultValue);
+
+                    slider.OnComplete?.Invoke(slider.Value);
+                    break;
+            }
+        }, true);
+
+        EventTrigger trigger = rect.gameObject.GetComponent<EventTrigger>();
+        if (trigger == null) {
+            trigger = rect.gameObject.AddComponent<EventTrigger>();
+        }
+
+        bool isDragging = false;
+
+        AddEvent(EventTriggerType.BeginDrag, data => {
+            isDragging = true;
+        }, trigger);
+
+        AddEvent(EventTriggerType.Drag, data => {
+            if (!isDragging || !Input.GetMouseButton(0)) {
+                return;
+            }
+
+            SetFromMouse();
+        }, trigger);
+
+        AddEvent(EventTriggerType.EndDrag, data => {
+            if (!isDragging) {
+                return;
+            }
+
+            isDragging = false;
+            slider.OnComplete?.Invoke(slider.Value);
+        }, trigger);
+
+        slider.Set(value, false);
+
+        return slider;
     }
 
     public static UIDropDown<T> DropDown<T>(
@@ -357,6 +472,17 @@ public static class GenerateUI {
     public static void AddButton(GameObject obj, Action<InputButton> onClick, bool outline = true) {
         EventTrigger trigger = obj.AddComponent<EventTrigger>();
 
+        AddClick(trigger, onClick);
+
+        if (outline) {
+            AddOutlineHover(obj, trigger);
+        }
+    }
+
+    private static void AddClick(EventTrigger trigger, Action<InputButton> onClick)
+        => AddEvent(EventTriggerType.PointerClick, (e) => onClick?.Invoke(e.button), trigger);
+
+    private static void AddOutlineHover(GameObject obj, EventTrigger trigger) {
         Sequence hoverSeq = null;
 
         GameObject hover = new("Hover");
@@ -366,56 +492,50 @@ public static class GenerateUI {
         RectTransform hoverRect = hover.AddComponent<RectTransform>();
         hoverRect.anchorMin = Vector2.zero;
         hoverRect.anchorMax = Vector2.one;
-        hoverRect.pivot = new(0.5f, 0.5f);
+        hoverRect.pivot = new Vector2(0.5f, 0.5f);
         hoverRect.offsetMin = Vector2.zero;
         hoverRect.offsetMax = Vector2.zero;
 
-        Image hoverImage = null;
-        if(outline) {
-            hoverImage = hover.AddComponent<Image>();
-            hoverImage.sprite = SpriteDatabase.Get(UISliceSprite.CircleOutline256P2048);
-            hoverImage.type = Image.Type.Sliced;
-            hoverImage.color = UIColors.ObjectActive;
-            hoverImage.color = new Color(hoverImage.color.r, hoverImage.color.g, hoverImage.color.b, 0f);
-        }
+        Image hoverImage = hover.AddComponent<Image>();
+        hoverImage.sprite = SpriteDatabase.Get(UISliceSprite.CircleOutline256P2048);
+        hoverImage.type = Image.Type.Sliced;
 
-        AddEvent(EventTriggerType.PointerClick, (e) => onClick?.Invoke(e.button), trigger);
+        Color baseColor = UIColors.ObjectActive;
+        hoverImage.color = new Color(baseColor.r, baseColor.g, baseColor.b, 0f);
 
-        if(outline) {
-            AddEvent(EventTriggerType.PointerEnter, (e) => {
-                hoverSeq?.Kill();
+        AddEvent(EventTriggerType.PointerEnter, (e) =>  {
+            hoverSeq?.Kill();
 
-                hoverSeq = DOTween.Sequence().Append(
-                    DOTween.To(
-                        () => hoverImage.color.a,
-                        x => {
-                            Color c = hoverImage.color;
-                            c.a = x;
-                            hoverImage.color = c;
-                        },
-                        1f,
-                        0.1f
-                    ).SetEase(Ease.OutSine)
-                ).SetUpdate(true);
-            }, trigger);
+            hoverSeq = DOTween.Sequence().Append(
+                DOTween.To(
+                    () => hoverImage.color.a,
+                    x => {
+                        Color c = hoverImage.color;
+                        c.a = x;
+                        hoverImage.color = c;
+                    },
+                    1f,
+                    0.1f
+                ).SetEase(Ease.OutSine)
+            ).SetUpdate(true);
+        }, trigger);
 
-            AddEvent(EventTriggerType.PointerExit, (e) => {
-                hoverSeq?.Kill();
+        AddEvent(EventTriggerType.PointerExit, (e) => {
+            hoverSeq?.Kill();
 
-                hoverSeq = DOTween.Sequence().Append(
-                    DOTween.To(
-                        () => hoverImage.color.a,
-                        x => {
-                            Color c = hoverImage.color;
-                            c.a = x;
-                            hoverImage.color = c;
-                        },
-                        0f,
-                        0.1f
-                    ).SetEase(Ease.OutSine)
-                ).SetUpdate(true);
-            }, trigger);
-        }
+            hoverSeq = DOTween.Sequence().Append(
+                DOTween.To(
+                    () => hoverImage.color.a,
+                    x => {
+                        Color c = hoverImage.color;
+                        c.a = x;
+                        hoverImage.color = c;
+                    },
+                    0f,
+                    0.1f
+                ).SetEase(Ease.OutSine)
+            ).SetUpdate(true);
+        }, trigger);
     }
 
     public static TextMeshProUGUI AddText(RectTransform parent, bool noPad = false) => CreateText(parent, 24f, false, noPad);

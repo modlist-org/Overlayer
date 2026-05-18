@@ -1,4 +1,5 @@
-﻿using Overlayer.Async;
+﻿using DG.Tweening;
+using Overlayer.Async;
 using Overlayer.IO;
 using Overlayer.Localization;
 using Overlayer.Patch.Safe;
@@ -109,7 +110,7 @@ internal static class PageSettings {
             languageDropdown.SetExpanded(false);
             languageDropdown.SetBlocked(true);
             langBtn.SetBlocked(true);
-            langBtn.Text.text = "...";
+            langBtn.Label.text = "...";
             _ = Task.Run(async () => {
                 await Core.Tr.Load(Path.Combine(Core.OverlayerPath, "Lang"));
                 MainThread.Enqueue(() => {
@@ -128,7 +129,7 @@ internal static class PageSettings {
             br.sizeDelta = new(140f, 50f);
             br.offsetMax = Vector2.zero;
         }
-        langBtn.Text.gameObject.AddComponent<TextLocalization>().Init("RELOAD", "Reload");
+        langBtn.Label.gameObject.AddComponent<TextLocalization>().Init("RELOAD", "Reload");
         objects[langBtn.Id] = langBtn;
 
         _ = GenerateUI.AddTextH1(GenerateUI.Row(content.transform))
@@ -146,7 +147,7 @@ internal static class PageSettings {
             "Show Overlayer Panel at Startup",
             "show_on_startup"
         );
-        startupToggle.Text.gameObject.AddComponent<TextLocalization>().Init("SHOW_OVERLAYER_PANEL_AT_STARTUP", "Show Overlayer Panel at Startup");
+        startupToggle.Label.gameObject.AddComponent<TextLocalization>().Init("SHOW_OVERLAYER_PANEL_AT_STARTUP", "Show Overlayer Panel at Startup");
         objects[startupToggle.Id] = startupToggle;
 
         UIToggle tooltipToggle = GenerateUI.Toggle(
@@ -161,7 +162,7 @@ internal static class PageSettings {
             "Show Tooltip",
             "show_tooltip"
         );
-        tooltipToggle.Text.gameObject.AddComponent<TextLocalization>().Init("SHOW_TOOLTIP", "Show Tooltip");
+        tooltipToggle.Label.gameObject.AddComponent<TextLocalization>().Init("SHOW_TOOLTIP", "Show Tooltip");
         tooltipToggle.Rect.AddToolTip(
             "DESC_SHOW_TOOLTIP",
             "This is a Tooltip!"
@@ -179,18 +180,66 @@ internal static class PageSettings {
             "Middle-click to set as default",
             "middle_click_default"
         );
-        middleClickToggle.Text.gameObject.AddComponent<TextLocalization>().Init("MIDDLE_CLICK_TO_SET_AS_DEFAULT", "Middle-click to set as default");
+        middleClickToggle.Label.gameObject.AddComponent<TextLocalization>().Init("MIDDLE_CLICK_TO_SET_AS_DEFAULT", "Middle-click to set as default");
         middleClickToggle.Rect.AddToolTip(
             "DESC_MIDDLE_CLICK_TO_SET_AS_DEFAULT",
             "Setting that restores an item to its default value when you middle-click on it.\nYou can identify it by a small dot at the top-left of the item"
         );
         objects[middleClickToggle.Id] = middleClickToggle;
+        
+        UISlider uiScale = GenerateUI.Slider(
+            GenerateUI.Row(content.transform),
+            1f,
+            0.8f,
+            2f,
+            Core.Config.UIScale,
+            null,
+            null,
+            "UI Scale",
+            "ui_scale"
+        );
+        uiScale.Format = "0.00x";
+        uiScale.OnChanged = value => {
+            value = Mathf.Round(value * 100f) / 100f;
+
+            Core.Config.UIScale = value;
+            Core.Config.RequestSave();
+
+            uiScale.SetOnlyValue(value);
+        };
+        Sequence seq = null;
+        uiScale.OnComplete = value => {
+            value = Mathf.Round(value * 100f) / 100f;
+
+            Core.Config.UIScale = value;
+            Core.Config.RequestSave();
+
+            uiScale.SetOnlyValue(value);
+
+            seq?.Kill();
+
+            float startScale = UICore.PanelScale;
+            Vector3 startLocalScale = UICore.Panel.localScale;
+
+            seq = DOTween.Sequence()
+                .SetUpdate(true)
+                .Append(
+                    DOTween.To(
+                        () => startScale,
+                        x => { UICore.PanelScale = x; },
+                        value,
+                        0.6f
+                    ).SetEase(Ease.OutExpo)
+                ).SetUpdate(true);
+        };
+        uiScale.Label.gameObject.AddComponent<TextLocalization>().Init("UI_SCALE", "UI Scale");
+        objects[uiScale.Id] = uiScale;
 
         _ = GenerateUI.AddTextH1(GenerateUI.Row(content.transform))
            .gameObject.AddComponent<TextLocalization>()
            .Init("ADOFAI", "ADOFAI");
 
-        var sp_saj = SafePatchController.Get<SP_ShowAutoJudgment>();
+        var spSaj = SafePatchController.Get<SP_ShowAutoJudgment>();
         UIToggle showAutoJudgmentToggle = GenerateUI.Toggle(
             GenerateUI.Row(content.transform),
             defSet.ShowAutoplayJudgment,
@@ -203,23 +252,21 @@ internal static class PageSettings {
                 }
 
                 if(toggle) {
-                    sp_saj.Apply();
+                    spSaj.Apply();
                 } else {
-                    sp_saj.Remove();
+                    spSaj.Remove();
                 }
             },
             "Show Autoplay Judgment",
             "show_autoplay_judgment"
         );
         showAutoJudgmentToggle.OnlyModOn = true;
-        showAutoJudgmentToggle.Text.gameObject.AddComponent<TextLocalization>().Init("SHOW_AUTOPLAY_JUDGMENT", "Show Autoplay Judgment");
+        showAutoJudgmentToggle.Label.gameObject.AddComponent<TextLocalization>().Init("SHOW_AUTOPLAY_JUDGMENT", "Show Autoplay Judgment");
         objects[showAutoJudgmentToggle.Id] = showAutoJudgmentToggle;
-
         showAutoJudgmentToggle.Rect.AddToolTip(
             "DESC_SHOW_AUTOPLAY_JUDGMENT",
             "Applies a patch to show the true judgment in AutoPlay on the Hit Error Meter"
         );
-
     }
 
     internal static void OnTranslatorInitialize() {

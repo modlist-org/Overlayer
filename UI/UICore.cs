@@ -22,24 +22,27 @@ public enum MenuState {
 
 internal static class UICore {
     private static GameObject canvasObj;
-    public static Canvas Canvas { get; private set; }
-    internal static CanvasScaler CanvasScaler;
+    private static Canvas canvas;
+    private static CanvasScaler canvasScaler;
 
     internal static readonly Dictionary<MenuState, RectTransform> Pages = [];
     public static MenuState CurrentMenuState = MenuState.Overlayer;
+    public static readonly Vector2 ReferenceResolution = new(1920, 1080);
 
     public static void Initialize() {
         canvasObj = new GameObject("OverlayerUICanvas");
         canvasObj.transform.SetParent(Core.OverlayerObject.transform, false);
         canvasObj.SetActive(false);
 
-        Canvas = canvasObj.AddComponent<Canvas>();
-        Canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        Canvas.sortingOrder = 32767;
+        canvas = canvasObj.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 32767;
 
-        CanvasScaler = canvasObj.AddComponent<CanvasScaler>();
-        CanvasScaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        CanvasScaler.referenceResolution = new(1920, 1080);
+        canvasScaler = canvasObj.AddComponent<CanvasScaler>();
+        canvasScaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        canvasScaler.referenceResolution = new Vector2(ReferenceResolution.x, ReferenceResolution.y) / Core.Config.UIScale;
+        canvasScaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+        canvasScaler.matchWidthOrHeight = 0.5f;
 
         canvasObj.AddComponent<GraphicRaycaster>();
 
@@ -64,6 +67,24 @@ internal static class UICore {
     public static RectTransform Menu;
     private static RectTransform Page;
     private static CanvasGroup menuCanvasGroup;
+    
+    private static float panelScale = 1f;
+
+    public static float PanelScale {
+        get => panelScale;
+        set {
+            panelScale = value;
+            canvasScaler.referenceResolution =
+                new Vector2(ReferenceResolution.x, ReferenceResolution.y) / panelScale;
+            Panel.sizeDelta = Panel.sizeDelta * panelScale;
+            LastPanelSize = Panel.sizeDelta;
+        }
+    }
+
+    public static float PanelRatio {
+        get => canvasScaler.matchWidthOrHeight;
+        set => canvasScaler.matchWidthOrHeight = value;
+    }
 
     private static void CreatePanel() {
         GameObject panel = new("Panel");
@@ -85,8 +106,8 @@ internal static class UICore {
             Mathf.Min(720, Screen.height)
         );
 
-        lastPanelPosition = Panel.position;
-        lastPanelSize = Panel.sizeDelta;
+        LastPanelPosition = Panel.position;
+        LastPanelSize = Panel.sizeDelta;
 
         panel.AddComponent<RectMask2D>();
 
@@ -328,12 +349,12 @@ internal static class UICore {
 
     private static bool isOpen = false;
 
-    private static Vector2 lastPanelPosition;
-    private static Vector2 lastPanelSize;
+    public static Vector2 LastPanelPosition { get; private set; }
+    public static Vector2 LastPanelSize { get; private set; }
 
     private static Vector2 DefaultPanelSize => new(
-        Mathf.Min(1280, Screen.width),
-        Mathf.Min(720, Screen.height)
+        Mathf.Min(1280f / Core.Config.UIScale, Screen.width / Core.Config.UIScale),
+        Mathf.Min(720f / Core.Config.UIScale, Screen.height / Core.Config.UIScale)
     );
 
     public static void HandleUpdate() {
@@ -417,8 +438,8 @@ internal static class UICore {
         resetSequence?.Kill(true);
 
         if(noAnimate) {
-            Panel.anchoredPosition = lastPanelPosition;
-            Panel.sizeDelta = lastPanelSize;
+            Panel.anchoredPosition = LastPanelPosition;
+            Panel.sizeDelta = LastPanelSize;
 
             canvasObj.SetActive(true);
             return;
@@ -427,12 +448,12 @@ internal static class UICore {
         Vector2 startPos = GetRandomOffscreenPosition();
 
         Panel.anchoredPosition = startPos;
-        Panel.sizeDelta = lastPanelSize;
+        Panel.sizeDelta = LastPanelSize;
 
         canvasObj.SetActive(true);
 
         panelTweener = Panel
-            .DOAnchorPos(lastPanelPosition, 0.1f)
+            .DOAnchorPos(LastPanelPosition, 0.1f)
             .SetEase(Ease.OutExpo)
             .SetUpdate(true);
     }
@@ -444,8 +465,8 @@ internal static class UICore {
 
         isOpen = false;
 
-        lastPanelPosition = Panel.anchoredPosition;
-        lastPanelSize = Panel.sizeDelta;
+        LastPanelPosition = Panel.anchoredPosition;
+        LastPanelSize = Panel.sizeDelta;
 
         CloseImage.color = new Color(
             CloseImage.color.r,
@@ -482,27 +503,27 @@ internal static class UICore {
     public static void ResetScalePosition(bool noAnimate = false) {
         Vector2 targetSize = DefaultPanelSize;
 
-        lastPanelPosition = Vector2.zero;
-        lastPanelSize = targetSize;
+        LastPanelPosition = Vector2.zero;
+        LastPanelSize = targetSize;
 
         panelTweener?.Kill();
         resetSequence?.Kill();
 
         if(noAnimate) {
-            Panel.anchoredPosition = lastPanelPosition;
-            Panel.sizeDelta = lastPanelSize;
+            Panel.anchoredPosition = LastPanelPosition;
+            Panel.sizeDelta = LastPanelSize;
             return;
         }
 
         resetSequence = DOTween.Sequence()
             .Join(
                 Panel
-                    .DOAnchorPos(lastPanelPosition, 0.26f)
+                    .DOAnchorPos(LastPanelPosition, 0.26f)
                     .SetEase(Ease.OutExpo)
             )
             .Join(
                 Panel
-                    .DOSizeDelta(lastPanelSize, 0.26f)
+                    .DOSizeDelta(LastPanelSize, 0.26f)
                     .SetEase(Ease.OutExpo)
             )
             .SetUpdate(true);

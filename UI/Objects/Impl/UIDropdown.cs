@@ -18,7 +18,7 @@ public class UIDropDown<T> : UIObject {
     public Func<T, string> Display { get; }
     public Action<T> OnChanged { get; }
 
-    public TextMeshProUGUI Text { get; }
+    public TextMeshProUGUI Label { get; }
 
     public Image TriangleImage { get; }
     public RectTransform TriangleRect { get; }
@@ -40,7 +40,7 @@ public class UIDropDown<T> : UIObject {
     public UIDropDown(
         string id,
         RectTransform rect,
-        TextMeshProUGUI text,
+        TextMeshProUGUI label,
         Image triangleImage,
         RectTransform triangleRect,
         Image changedImage,
@@ -53,7 +53,7 @@ public class UIDropDown<T> : UIObject {
         T value,
         Action<T> onChanged
     ) : base(id, rect) {
-        Text = text;
+        Label = label;
 
         TriangleImage = triangleImage;
         TriangleRect = triangleRect;
@@ -73,7 +73,7 @@ public class UIDropDown<T> : UIObject {
 
         OnChanged = onChanged;
 
-        Text.text = Display(Value);
+        Label.text = Display(Value);
 
         RebuildList();
         UpdateVisual();
@@ -82,7 +82,7 @@ public class UIDropDown<T> : UIObject {
     public void Set(T value, bool invoke = true) {
         Value = value;
 
-        Text.text = Display(Value);
+        Label.text = Display(Value);
 
         if(invoke) {
             OnChanged?.Invoke(value);

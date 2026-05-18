@@ -92,7 +92,7 @@ internal static class ResourceManager {
     public static T Get<T>(Asset key) => (T)cache[key];
 
     private static Texture2D ByteToTexture2D(byte[] data) {
-        Texture2D texture = new(2, 2);
+        Texture2D texture = new(2, 2, TextureFormat.RGBA32, false, true);
         texture.LoadImage(data);
         return texture;
     }

@@ -448,6 +448,7 @@
 		<Compile Include="Resource/ResourceManager.cs" />
 		<Compile Include="UI\Objects\Impl\UIButton.cs" />
 		<Compile Include="UI\Objects\Impl\UIDropdown.cs" />
+		<Compile Include="UI\Objects\Impl\UISlider.cs" />
 		<Compile Include="UI\Objects\Impl\UIToggle.cs" />
 		<Compile Include="UI\Objects\UIObject.cs" />
 		<Compile Include="UI\Tooltip.cs" />

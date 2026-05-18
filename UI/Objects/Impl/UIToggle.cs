@@ -10,7 +10,7 @@ public class UIToggle : UIObject {
     public bool DefaultValue { get; }
     public bool Value { get; private set; }
     public Action<bool> OnChanged { get; }
-    public TextMeshProUGUI Text { get; }
+    public TextMeshProUGUI Label { get; }
     public Image CircleImage { get; }
     public Image ChangedImage { get; }
     public RectTransform CircleRect { get; }
@@ -21,7 +21,7 @@ public class UIToggle : UIObject {
     public UIToggle(
         string id,
         RectTransform rect,
-        TextMeshProUGUI text,
+        TextMeshProUGUI label,
         Image circleImage,
         RectTransform circleRect,
         Image changedImage,
@@ -29,7 +29,7 @@ public class UIToggle : UIObject {
         bool value,
         Action<bool> onChanged
     ) : base(id, rect) {
-        Text = text;
+        Label = label;
 
         CircleImage = circleImage;
         CircleRect = circleRect;

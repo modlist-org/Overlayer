@@ -19,6 +19,7 @@
     "RELOADING": "다시 불러오는 중...",
     "SETTINGS": "설정",
     "SHOW_AUTOPLAY_JUDGMENT": "자동 플레이 판정 표시",
-    "SHOW_OVERLAYER_PANEL_AT_STARTUP": "시작 시 오버레이어 패널 표시"
+    "SHOW_OVERLAYER_PANEL_AT_STARTUP": "시작 시 오버레이어 패널 표시",
+    "UI_SCALE": "화면 배율"
   }
 }

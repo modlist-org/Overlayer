@@ -8,6 +8,7 @@ public class Settings {
     public bool ShowOnStartup = false;
     public bool Tooltip = true;
     public bool MiddleClickToDefault = true;
+    public float UIScale = 1.0f;
 
     public bool ShowAutoplayJudgment = false;
 
@@ -18,6 +19,7 @@ public class Settings {
             [nameof(ShowOnStartup)] = ShowOnStartup,
             [nameof(Tooltip)] = Tooltip,
             [nameof(MiddleClickToDefault)] = MiddleClickToDefault,
+            [nameof(UIScale)] = UIScale,
 
             [nameof(ShowAutoplayJudgment)] = ShowAutoplayJudgment
         };
@@ -25,16 +27,31 @@ public class Settings {
         return obj;
     }
 
+    private static T Read<T>(JToken token, string key, T fallback) {
+        var value = token[key];
+        if (value == null) {
+            return fallback;
+        }
+
+        try {
+            return value.Value<T>();
+        }
+        catch {
+            return fallback;
+        }
+    }
+
     public void Deserialize(JToken token) {
         var defaults = new Settings();
 
-        Active = token.Value<bool?>(nameof(Active)) ?? defaults.Active;
-        Language = token.Value<string>(nameof(Language)) ?? defaults.Language;
-        ShowOnStartup = token.Value<bool?>(nameof(ShowOnStartup)) ?? defaults.ShowOnStartup;
-        Tooltip = token.Value<bool?>(nameof(Tooltip)) ?? defaults.Tooltip;
-        MiddleClickToDefault = token.Value<bool?>(nameof(MiddleClickToDefault)) ?? defaults.MiddleClickToDefault;
+        Active = Read(token, nameof(Active), defaults.Active);
+        Language = Read(token, nameof(Language), defaults.Language);
+        ShowOnStartup = Read(token, nameof(ShowOnStartup), defaults.ShowOnStartup);
+        Tooltip = Read(token, nameof(Tooltip), defaults.Tooltip);
+        MiddleClickToDefault = Read(token, nameof(MiddleClickToDefault), defaults.MiddleClickToDefault);
+        UIScale = Read(token, nameof(UIScale), defaults.UIScale);
 
-        ShowAutoplayJudgment = token.Value<bool?>(nameof(ShowAutoplayJudgment)) ?? defaults.ShowAutoplayJudgment;
+        ShowAutoplayJudgment = Read(token, nameof(ShowAutoplayJudgment), defaults.ShowAutoplayJudgment);
     }
 
     public static readonly string Path = System.IO.Path.Combine(Core.OverlayerPath, $"{nameof(Settings)}.json");

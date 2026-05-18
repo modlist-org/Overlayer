@@ -8,7 +8,7 @@ using UnityEngine.UI;
 
 public class UIButton : UIObject {
     public Action OnClick { get; set; }
-    public TextMeshProUGUI Text { get; }
+    public TextMeshProUGUI Label { get; }
     public Image Background { get; }
 
     private Sequence hoverSeq;
@@ -16,11 +16,11 @@ public class UIButton : UIObject {
     public UIButton(
         string id,
         RectTransform rect,
-        TextMeshProUGUI text,
+        TextMeshProUGUI label,
         Image background,
         Action onClick
     ) : base(id, rect) {
-        Text = text;
+        Label = label;
         Background = background;
         OnClick = onClick;
 

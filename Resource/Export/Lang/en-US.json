@@ -19,6 +19,7 @@
     "RELOADING": "Reloading...",
     "SETTINGS": "Settings",
     "SHOW_AUTOPLAY_JUDGMENT": "Show Autoplay Judgment",
-    "SHOW_OVERLAYER_PANEL_AT_STARTUP": "Show Overlayer Panel at Startup"
+    "SHOW_OVERLAYER_PANEL_AT_STARTUP": "Show Overlayer Panel at Startup",
+    "UI_SCALE": "UI Scale"
   }
 }
