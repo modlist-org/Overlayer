@@ -191,7 +191,7 @@ internal static class PageSettings {
             GenerateUI.Row(content.transform),
             1f,
             0.8f,
-            2f,
+            1.6f,
             Core.Config.UIScale,
             null,
             null,

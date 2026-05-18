@@ -76,8 +76,6 @@ internal static class UICore {
             panelScale = value;
             canvasScaler.referenceResolution =
                 new Vector2(ReferenceResolution.x, ReferenceResolution.y) / panelScale;
-            Panel.sizeDelta = Panel.sizeDelta * panelScale;
-            LastPanelSize = Panel.sizeDelta;
         }
     }
 
