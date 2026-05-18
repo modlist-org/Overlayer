@@ -164,7 +164,7 @@ internal static class PageSettings {
         tooltipToggle.Text.gameObject.AddComponent<TextLocalization>().Init("SHOW_TOOLTIP", "Show Tooltip");
         tooltipToggle.Rect.AddToolTip(
             "DESC_SHOW_TOOLTIP",
-            "This is Tooltip!"
+            "This is a Tooltip!"
         );
         objects[tooltipToggle.Id] = tooltipToggle;
 
