@@ -21,14 +21,9 @@ public abstract class UIObject {
     }
 
     private CanvasGroup _canvasGroup;
-    protected CanvasGroup canvasGroup {
+    protected CanvasGroup CanvasGroup {
         get {
-            if (_canvasGroup == null) {
-                _canvasGroup = Rect.GetComponent<CanvasGroup>();
-                if (_canvasGroup == null) {
-                    _canvasGroup = Rect.gameObject.AddComponent<CanvasGroup>();
-                }
-            }
+            _canvasGroup ??= Rect.GetComponent<CanvasGroup>() ?? Rect.gameObject.AddComponent<CanvasGroup>();
             return _canvasGroup;
         }
     }
@@ -54,18 +49,18 @@ public abstract class UIObject {
     }
 
     public virtual void SetBlocked(bool blocked, bool noAnimate = false) {
-        if(canvasGroup == null) {
+        if(CanvasGroup == null) {
             return;
         }
 
         float targetAlpha = blocked ? 0.4f : 1f;
 
-        canvasGroup.interactable = !blocked;
-        canvasGroup.blocksRaycasts = !blocked;
+        CanvasGroup.interactable = !blocked;
+        CanvasGroup.blocksRaycasts = !blocked;
 
         if(noAnimate) {
             blockSeq?.Kill();
-            canvasGroup.alpha = targetAlpha;
+            CanvasGroup.alpha = targetAlpha;
             return;
         }
 
@@ -73,8 +68,8 @@ public abstract class UIObject {
 
         blockSeq = DOTween.Sequence()
             .Join(DOTween.To(
-                () => canvasGroup.alpha,
-                x => canvasGroup.alpha = x,
+                () => CanvasGroup.alpha,
+                x => CanvasGroup.alpha = x,
                 targetAlpha,
                 0.15f
             ).SetEase(Ease.OutSine))
