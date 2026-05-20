@@ -20,7 +20,7 @@ public sealed class OverlayerRuntime {
 
     public ModState State { get; }
     
-    public event Action<bool> OnModEnabledChanged;
+    public event Action<bool, bool> OnModEnabledChanged;
 
     public PathService Paths { get; }
     
@@ -80,7 +80,7 @@ public sealed class OverlayerRuntime {
 
         services.Initialize();
 
-        SetModEnabled(Config.Data.Active);
+        SetModEnabled(Config.Data.Active, false);
 
         Logger.Msg("Hello");
     }
@@ -90,7 +90,7 @@ public sealed class OverlayerRuntime {
     }
 
     public void Dispose() {
-        SetModEnabled(false);
+        SetModEnabled(false, true);
 
         Config.Save();
 
@@ -106,7 +106,7 @@ public sealed class OverlayerRuntime {
     }
 
     public void SetModEnabled(
-        bool enabled
+        bool enabled, bool isDispose
     ) {
         if(State.IsEnabled == enabled) {
             return;
@@ -114,7 +114,7 @@ public sealed class OverlayerRuntime {
 
         State.IsEnabled = enabled;
 
-        OnModEnabledChanged?.Invoke(enabled);
+        OnModEnabledChanged?.Invoke(enabled, isDispose);
         
         if(enabled) {
             SafePatchController.ApplyAll();

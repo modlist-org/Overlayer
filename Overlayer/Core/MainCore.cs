@@ -10,7 +10,7 @@ namespace Overlayer.Core;
 public static class MainCore {
     public static OverlayerRuntime Runtime { get; private set; }
     
-    public static event Action<bool> OnModEnabledChanged {
+    public static event Action<bool, bool> OnModEnabledChanged {
         add => Runtime.OnModEnabledChanged += value;
         remove => Runtime.OnModEnabledChanged -= value;
     }
@@ -50,6 +50,6 @@ public static class MainCore {
     }
 
     public static void SetModEnabled(bool enabled) {
-        Runtime.SetModEnabled(enabled);
+        Runtime.SetModEnabled(enabled, false);
     }
 }

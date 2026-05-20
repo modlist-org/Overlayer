@@ -40,8 +40,8 @@ public abstract class UIObject {
         Rect = rect;
     }
 
-    private void ApplyStateForAction(bool enabled) {
-        if(!_onlyModOn) {
+    private void ApplyStateForAction(bool enabled, bool isDispose) {
+        if(!_onlyModOn || isDispose) {
             return;
         }
 
