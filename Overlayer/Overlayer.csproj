@@ -2,7 +2,7 @@
 	<PropertyGroup>
 		<TargetFramework>netstandard2.1</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
-		<Nullable>disable</Nullable>
+		<Nullable>enable</Nullable>
 		<RootNamespace>Overlayer</RootNamespace>
 		<LangVersion>default</LangVersion>
 		<IsPackable>false</IsPackable>
@@ -454,6 +454,14 @@
 		<Compile Include="Patch\Safe\SafePatchManager.cs" />
 		<Compile Include="Resource/ResourceLoader.cs" />
 		<Compile Include="Resource/ResourceManager.cs" />
+		<Compile Include="Tag\Format\FormatMode.cs" />
+		<Compile Include="Tag\Parse\Parser.cs" />
+		<Compile Include="Tag\Tag.cs" />
+		<Compile Include="Tag\TagAttribute.cs" />
+		<Compile Include="Tag\TagCache.cs" />
+		<Compile Include="Tag\TagConverter.cs" />
+		<Compile Include="Tag\TagLoader.cs" />
+		<Compile Include="Tag\TagManager.cs" />
 		<Compile Include="UI\ColorPicker\ColorPicker.cs" />
 		<Compile Include="UI\Objects\Impl\UIButton.cs" />
 		<Compile Include="UI\Objects\Impl\UIDropdown.cs" />
@@ -503,7 +511,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <Folder Include="Tag\" />
+	  <Folder Include="Tag\Replace\" />
 	</ItemGroup>
 
 	<Target Name="PostBuild" AfterTargets="Build">
