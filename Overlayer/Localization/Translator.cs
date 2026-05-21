@@ -132,7 +132,7 @@ public class Translator {
     /// </summary>
     /// <param name="baseLangFolderPath">The path to the folder containing the language JSON files.</param>
     /// <returns>A Task representing the asynchronous operation.</returns>
-    internal async Task Load(string baseLangFolderPath) {
+    public async Task Load(string baseLangFolderPath) {
         if(IsLoading) {
             return;
         }
