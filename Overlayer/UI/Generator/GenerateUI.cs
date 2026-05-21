@@ -218,6 +218,9 @@ public static class GenerateUI {
                     break;
 
                 case InputButton.Middle:
+                    if(!MainCore.Config.MiddleClickToDefault) {
+                        break;
+                    }
                     slider.Set(Apply(defaultValue));
                     slider.OnComplete?.Invoke(slider.Value);
                     break;
