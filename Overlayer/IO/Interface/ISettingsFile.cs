@@ -1,5 +1,9 @@
+using Newtonsoft.Json.Linq;
+
 namespace Overlayer.IO.Interface;
 
-public class ISettingsFile {
-    
+public interface ISettingsFile {
+    JToken Serialize();
+
+    void Deserialize(JToken token);
 }

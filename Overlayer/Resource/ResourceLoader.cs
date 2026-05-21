@@ -2,7 +2,7 @@
 
 namespace Overlayer.Resource;
 
-internal static class ResourceLoader {
+public static class ResourceLoader {
     public static byte[] Load(string resourceName) {
         if(string.IsNullOrWhiteSpace(resourceName)) {
             return null;

@@ -1,219 +1,79 @@
-﻿using Overlayer.Core;
+﻿using System.Reflection;
 using TMPro;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
 namespace Overlayer.Resource;
 
-public enum Asset {
-    SUITRegular,
-    SUITMedium,
-
-    OV5LogoOutline256,
-    Circle256,
-    CircleHalf256,
-    X128,
-    Monitor128,
-    Gear128,
-    Image128,
-    Text128,
-    Book128,
-    Star128,
-    ToggleCircle128,
-    CircleOutline256,
-    Triangle128,
-    Power128,
-}
-
-internal static class ResourceManager {
-    private static bool initialized;
-
-    private static readonly object initLock = new();
-
-    private static readonly Dictionary<Asset, object>
+public sealed class ResourceManager(Assembly assembly, string resourcePath) : IDisposable {
+    private readonly Dictionary<string, object>
         cache = [];
 
-    public const string ResourcePath =
-        "Overlayer.Resource.Embedded.";
+    public byte[] Load(
+        string path
+    ) {
+        if (string.IsNullOrWhiteSpace(path)) {
+            return null;
+        }
 
-    private static readonly (
-        Asset key,
-        string path,
-        FilterMode filter
-    )[] imageMap = [
-        (Asset.OV5LogoOutline256, $"{ResourcePath}Image.OV5LogoOutline256.png", FilterMode.Bilinear),
-        (Asset.Circle256, $"{ResourcePath}Image.Circle256.png", FilterMode.Bilinear),
-        (Asset.CircleHalf256, $"{ResourcePath}Image.CircleHarf256.png", FilterMode.Bilinear),
-        (Asset.X128, $"{ResourcePath}Image.X128.png", FilterMode.Bilinear),
-        (Asset.Monitor128, $"{ResourcePath}Image.Monitor128.png", FilterMode.Bilinear),
-        (Asset.Gear128, $"{ResourcePath}Image.Gear128.png", FilterMode.Bilinear),
-        (Asset.Image128, $"{ResourcePath}Image.Image128.png", FilterMode.Bilinear),
-        (Asset.Text128, $"{ResourcePath}Image.Text128.png", FilterMode.Bilinear),
-        (Asset.Book128, $"{ResourcePath}Image.Book128.png", FilterMode.Bilinear),
-        (Asset.Star128, $"{ResourcePath}Image.Star128.png", FilterMode.Bilinear),
-        (Asset.ToggleCircle128, $"{ResourcePath}Image.ToggleCircle128.png", FilterMode.Bilinear),
-        (Asset.CircleOutline256, $"{ResourcePath}Image.CircleOutline256.png", FilterMode.Bilinear),
-        (Asset.Triangle128, $"{ResourcePath}Image.Triangle128.png", FilterMode.Bilinear),
-        (Asset.Power128, $"{ResourcePath}Image.Power128.png", FilterMode.Bilinear)
-    ];
+        try {
+            using Stream stream =
+                assembly.GetManifestResourceStream(
+                    resourcePath + path
+                );
 
-    public static void Initialize() {
-        lock(initLock) {
-            if(initialized) {
-                return;
+            if (stream == null) {
+                return null;
             }
 
-            initialized = true;
+            if (stream.Length <= 0) {
+                return [];
+            }
 
-            string tempDir =
-                MainCore.Paths.TempPath;
+            byte[] data = new byte[stream.Length];
 
-            Directory.CreateDirectory(
-                tempDir
-            );
+            int offset = 0;
 
-            LoadFonts(tempDir);
+            while (offset < data.Length) {
+                int read = stream.Read(
+                    data,
+                    offset,
+                    data.Length - offset
+                );
 
-            LoadTextures();
+                if (read <= 0) {
+                    break;
+                }
+
+                offset += read;
+            }
+
+            return offset == data.Length
+                ? data
+                : null;
+
+        }
+        catch {
+            return null;
         }
     }
 
-    public static T Get<T>(Asset key)
-        where T : class {
-
-        if(
+    public Texture2D LoadTexture(
+        string path,
+        FilterMode filter = FilterMode.Bilinear
+    ) {
+        if (
             cache.TryGetValue(
-                key,
-                out object value
+                path,
+                out object cached
             )
         ) {
-            return value as T;
+            return cached as Texture2D;
         }
 
-        return null;
-    }
+        byte[] data = Load(path);
 
-    public static void Dispose() {
-        foreach(object item in cache.Values) {
-            switch(item) {
-                case Texture2D tex:
-                    Object.Destroy(tex);
-                    break;
-
-                case TMP_FontAsset font:
-                    Object.Destroy(font);
-                    break;
-            }
-        }
-
-        cache.Clear();
-
-        initialized = false;
-    }
-
-    private static void LoadFonts(
-        string tempDir
-    ) {
-        string regularPath = Path.Combine(
-            tempDir,
-            "SUIT-Regular.otf"
-        );
-
-        string mediumPath = Path.Combine(
-            tempDir,
-            "SUIT-Medium.otf"
-        );
-
-        WriteFontIfNeeded(
-            regularPath,
-            $"{ResourcePath}Font.SUIT-Regular.otf"
-        );
-
-        WriteFontIfNeeded(
-            mediumPath,
-            $"{ResourcePath}Font.SUIT-Medium.otf"
-        );
-
-        Font regularFont = new(regularPath);
-
-        Font mediumFont = new(mediumPath);
-
-        cache[Asset.SUITRegular] =
-            TMP_FontAsset.CreateFontAsset(
-                regularFont
-            );
-
-        cache[Asset.SUITMedium] =
-            TMP_FontAsset.CreateFontAsset(
-                mediumFont
-            );
-    }
-
-    private static void LoadTextures() {
-        foreach(
-            (
-                Asset key,
-                string path,
-                FilterMode filter
-            ) in imageMap
-        ) {
-            byte[] data =
-                ResourceLoader.Load(path);
-
-            if(data == null) {
-                MainCore.Logger.Err(
-                    $"Failed to load resource: {path}"
-                );
-
-                continue;
-            }
-
-            Texture2D tex =
-                ByteToTexture2D(data);
-
-            if(tex == null) {
-                MainCore.Logger.Err(
-                    $"Failed to create texture: {path}"
-                );
-
-                continue;
-            }
-
-            tex.filterMode = filter;
-
-            cache[key] = tex;
-        }
-    }
-
-    private static void WriteFontIfNeeded(
-        string outputPath,
-        string resourcePath
-    ) {
-        if(File.Exists(outputPath)) {
-            return;
-        }
-
-        byte[] data =
-            ResourceLoader.Load(resourcePath);
-
-        if(data == null) {
-            MainCore.Logger.Err(
-                $"Failed to load font resource: {resourcePath}"
-            );
-
-            return;
-        }
-
-        File.WriteAllBytes(
-            outputPath,
-            data
-        );
-    }
-
-    private static Texture2D ByteToTexture2D(
-        byte[] data
-    ) {
-        if(
+        if (
             data == null ||
             data.Length == 0
         ) {
@@ -228,12 +88,89 @@ internal static class ResourceManager {
             true
         );
 
-        if(!texture.LoadImage(data)) {
+        if (!texture.LoadImage(data)) {
             Object.Destroy(texture);
 
             return null;
         }
 
+        texture.filterMode = filter;
+
+        cache[path] = texture;
+
         return texture;
+    }
+
+    public TMP_FontAsset LoadFont(
+        string path,
+        string tempPath
+    ) {
+        if (
+            cache.TryGetValue(
+                path,
+                out object cached
+            )
+        ) {
+            return cached as TMP_FontAsset;
+        }
+
+        byte[] data = Load(path);
+
+        if (data == null) {
+            return null;
+        }
+
+        Directory.CreateDirectory(
+            Path.GetDirectoryName(tempPath)
+        );
+
+        File.WriteAllBytes(
+            tempPath,
+            data
+        );
+
+        Font font = new(tempPath);
+
+        TMP_FontAsset asset =
+            TMP_FontAsset.CreateFontAsset(
+                font
+            );
+
+        cache[path] = asset;
+
+        return asset;
+    }
+
+    public T Get<T>(
+        string path
+    )
+        where T : class {
+
+        if (
+            cache.TryGetValue(
+                path,
+                out object value
+            )
+        ) {
+            return value as T;
+        }
+
+        return null;
+    }
+
+    public void Dispose() {
+        foreach (object item in cache.Values) {
+            switch (item) {
+                case Texture2D texture:
+                    Object.Destroy(texture);
+                    break;
+
+                case TMP_FontAsset font:
+                    Object.Destroy(font);
+                    break;
+            }
+        }
+
+        cache.Clear();
     }
 }

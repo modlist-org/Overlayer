@@ -35,7 +35,7 @@ public static class MenuFactory {
         ApplyState(UICore.CurrentMenuState, true);
     }
 
-    private static void CreateItem(Transform parent, string name, Sprite icon, int id) {
+    public static void CreateItem(Transform parent, string name, Sprite icon, int id) {
         GameObject item = new(name);
         item.transform.SetParent(parent, false);
 

@@ -62,7 +62,7 @@ internal static class PageSettings {
 
         pad.AddComponent<UIScrollController>().SetContent(contentRect, viewportRect);
 
-        Settings defSet = new();
+        CoreSettings defSet = new();
 
         _ = GenerateUI.AddTextH1(GenerateUI.Row(content.transform))
             .gameObject.AddComponent<TextLocalization>()
@@ -92,7 +92,7 @@ internal static class PageSettings {
             value => {
                 MainCore.Tr.Language = value;
                 MainCore.Config.Language = value;
-                MainCore.ConfigManage.RequestSave();
+                MainCore.ConfigFile.RequestSave();
                 TextLocalization.RefreshAll();
             },
             "language_dropdown"
@@ -142,7 +142,7 @@ internal static class PageSettings {
             MainCore.Config.ShowOnStartup,
             toggle => {
                 MainCore.Config.ShowOnStartup = toggle;
-                MainCore.ConfigManage.RequestSave();
+                MainCore.ConfigFile.RequestSave();
             },
             "Show Overlayer Panel at Startup",
             "show_on_startup"
@@ -157,7 +157,7 @@ internal static class PageSettings {
             toggle => {
                 Tooltip.Hide();
                 MainCore.Config.Tooltip = toggle;
-                MainCore.ConfigManage.RequestSave();
+                MainCore.ConfigFile.RequestSave();
             },
             "Show Tooltip",
             "show_tooltip"
@@ -175,7 +175,7 @@ internal static class PageSettings {
             MainCore.Config.MiddleClickToDefault,
             toggle => {
                 MainCore.Config.MiddleClickToDefault = toggle;
-                MainCore.ConfigManage.RequestSave();
+                MainCore.ConfigFile.RequestSave();
             },
             "Middle-click to set as default",
             "middle_click_default"
@@ -212,7 +212,7 @@ internal static class PageSettings {
 
         uiScale.OnComplete = value => {
             MainCore.Config.UIScale = value;
-            MainCore.ConfigManage.RequestSave();
+            MainCore.ConfigFile.RequestSave();
 
             seq?.Kill();
 
@@ -239,35 +239,6 @@ internal static class PageSettings {
         _ = GenerateUI.AddTextH1(GenerateUI.Row(content.transform))
            .gameObject.AddComponent<TextLocalization>()
            .Init("ADOFAI", "ADOFAI");
-
-        var spSaj = SafePatchController.Get<SP_ShowAutoJudgment>();
-        UIToggle showAutoJudgmentToggle = GenerateUI.Toggle(
-            GenerateUI.Row(content.transform),
-            defSet.ShowAutoplayJudgment,
-            MainCore.Config.ShowAutoplayJudgment,
-            toggle => {
-                MainCore.Config.ShowAutoplayJudgment = toggle;
-                MainCore.ConfigManage.RequestSave();
-                if(!MainCore.IsModEnabled) {
-                    return;
-                }
-
-                if(toggle) {
-                    spSaj.Apply();
-                } else {
-                    spSaj.Remove();
-                }
-            },
-            "Show Autoplay Judgment",
-            "show_autoplay_judgment"
-        );
-        showAutoJudgmentToggle.OnlyModOn = true;
-        showAutoJudgmentToggle.Label.gameObject.AddComponent<TextLocalization>().Init("SHOW_AUTOPLAY_JUDGMENT", "Show Autoplay Judgment");
-        objects[showAutoJudgmentToggle.Id] = showAutoJudgmentToggle;
-        showAutoJudgmentToggle.Rect.AddToolTip(
-            "DESC_SHOW_AUTOPLAY_JUDGMENT",
-            "Applies a patch to show the true judgment in AutoPlay on the Hit Error Meter"
-        );
     }
 
     internal static void OnTranslatorInitialize() {

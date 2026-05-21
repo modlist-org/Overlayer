@@ -44,9 +44,6 @@
 		<Reference Include="Assembly-CSharp-firstpass">
 			<HintPath>$(GamePath)/$(GameData)/Managed/Assembly-CSharp-firstpass.dll</HintPath>
 		</Reference>
-		<Reference Include="Assembly-CSharp">
-			<HintPath>$(GamePath)/$(GameData)/Managed/Assembly-CSharp.dll</HintPath>
-		</Reference>
 		<Reference Include="com.rlabrecque.steamworks.net">
 			<HintPath>$(GamePath)/$(GameData)/Managed/com.rlabrecque.steamworks.net.dll</HintPath>
 		</Reference>
@@ -419,7 +416,6 @@
 		<Reference Include="UnityEngine.XRModule">
 		  <HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.XRModule.dll</HintPath>
 		</Reference>
-
 	</ItemGroup>
 
 	<PropertyGroup>
@@ -428,7 +424,6 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<Compile Include="ADOFAI\Patch\SP_ShowAutoJudgment.cs" />
 		<Compile Include="Compat\Interface\IOverlayerLogger.cs" />
 		<Compile Include="Compat\Interface\IOverlayerHost.cs" />
 		<Compile Include="Compat\Interface\IRuntimeService.cs" />
@@ -440,17 +435,19 @@
 		<Compile Include="Core\RuntimeServices.cs" />
 		<Compile Include="Core\RuntimeTicks.cs" />
 		<Compile Include="Core\Service\LocalizationService.cs" />
+		<Compile Include="Core\Service\ModuleService.cs" />
 		<Compile Include="Core\Service\PathService.cs" />
 		<Compile Include="Core\Service\ResourceService.cs" />
 		<Compile Include="Core\Service\SpriteService.cs" />
 		<Compile Include="Core\Service\UIService.cs" />
-		<Compile Include="IO\Settings.cs" />
-		<Compile Include="IO\SettingSerializer.cs" />
-		<Compile Include="IO\SettingsManager.cs" />
+		<Compile Include="IO\CoreSettings.cs" />
+		<Compile Include="IO\Interface\ISettingsFile.cs" />
+		<Compile Include="IO\SettingsFile.cs" />
 		<Compile Include="Localization\TextLocalization.cs" />
 		<Compile Include="Localization\Translator.cs" />
 		<Compile Include="Async\MainThread.cs" />
 		<Compile Include="Compat\OverlayerLogger.cs" />
+		<Compile Include="ModuleAPI\OverlayerModule.cs" />
 		<Compile Include="Overlay\Overlay.cs" />
 		<Compile Include="Patch\Safe\SafeConditionalPatch.cs" />
 		<Compile Include="Patch\Safe\SafePatch.cs" />
@@ -514,7 +511,7 @@
 
 	<Target Name="PostBuild" AfterTargets="Build">
 		<MakeDir Directories="$(GamePath)/UserLibs" Condition="'$(TargetPath)' != ''" />
-		<Copy Condition="'$(TargetPath)' != ''" SourceFiles="$(TargetPath)" DestinationFolder="$(GamePath)/UserLibs" SkipUnchangedFiles="true" />
+		<Copy Condition="'$(TargetPath)' != ''" SourceFiles="$(TargetPath)" DestinationFolder="$(GamePath)/UserLibs/Overlayer" SkipUnchangedFiles="true" />
 
 		<ItemGroup>
 			<ExportFiles Include="Resource/Export/**/*.*" />

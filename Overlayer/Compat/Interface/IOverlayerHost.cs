@@ -4,5 +4,4 @@ public interface IOverlayerHost {
     IOverlayerLogger OverlayerLogger { get; }
 
     string OverlayerFilePath { get; }
-    string OverlayerDLLPath { get; }
 }

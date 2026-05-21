@@ -1,13 +1,10 @@
 using System;
 
-namespace Overlayer.MoiduleAPI;
-
-public interface IUiInitializable {
-    void OnInitUI(object uiManager);
-}
+namespace Overlayer.ModuleAPI;
 
 public abstract class OverlayerModule {
     public abstract string Name { get; }
+    public abstract string Author { get; }
     public abstract string Version { get; }
 
     public abstract void OnInitialize();

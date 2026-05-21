@@ -5,6 +5,7 @@ using Overlayer.Compat.Interface;
 using Overlayer.Core.Service;
 using Overlayer.IO;
 using Overlayer.Patch.Safe;
+using Overlayer.Resource;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
@@ -15,16 +16,18 @@ public sealed class OverlayerRuntime {
     public Assembly Assembly { get; }
     
     public OverlayerLogger Logger { get; }
-
-    public SettingsManager Config { get; }
-
+    
     public ModState State { get; }
     
     public event Action<bool, bool> OnModEnabledChanged;
 
     public PathService Paths { get; }
     
+    public SettingsFile<CoreSettings> Config;
+    
     public LocalizationService Localization { get; private set; }
+    
+    public ResourceManager Resource { get; }
 
     public GameObject RootObject { get; private set; }
 
@@ -34,6 +37,8 @@ public sealed class OverlayerRuntime {
     private readonly RuntimeTicks ticks;
     
     private UIService uiService;
+    private ModuleService moduleService;
+
 
     public OverlayerRuntime(
         IOverlayerHost host
@@ -45,15 +50,18 @@ public sealed class OverlayerRuntime {
         Logger = new OverlayerLogger(
             host.OverlayerLogger
         );
+        State = new ModState();
         Paths = new PathService(
             System.IO.Path.Combine(
                 host.OverlayerFilePath,
                 "Overlayer"
-            ),
-            host.OverlayerDLLPath
+            )
         );
-        Config = new SettingsManager(Paths.ConfigPath);
-        State = new ModState();
+        Config = new SettingsFile<CoreSettings>(Paths.ConfigPath);
+        Resource = new ResourceManager(
+            Assembly,
+            "Overlayer.Resource.Embedded."
+        );
         services = new RuntimeServices();
         ticks = new RuntimeTicks();
     }
@@ -67,9 +75,10 @@ public sealed class OverlayerRuntime {
 
         Config.Load();
         
-        Localization = new LocalizationService(Paths.LangPath, Config.Data, Logger);
+        Localization = new LocalizationService(Paths.LangPath, Config, Logger);
 
         uiService = new UIService();
+        moduleService = new ModuleService(Logger, uiService);
         
         services.Add(Localization);
         services.Add(new ResourceService());
@@ -83,6 +92,13 @@ public sealed class OverlayerRuntime {
         SetModEnabled(Config.Data.Active, false);
 
         Logger.Msg("Hello");
+        
+        moduleService.DiscoverAndRegisterModules();
+        moduleService.InitializeAllModules();
+        
+        SetModEnabled(Config.Data.Active, false);
+
+        Logger.Msg("Hello");
     }
     
     public void Tick() {
@@ -93,8 +109,12 @@ public sealed class OverlayerRuntime {
         SetModEnabled(false, true);
 
         Config.Save();
+        
+        moduleService?.Dispose();
 
         services.Dispose();
+        
+        Resource.Dispose();
 
         if(RootObject != null) {
             Object.Destroy(RootObject);
@@ -115,6 +135,8 @@ public sealed class OverlayerRuntime {
         State.IsEnabled = enabled;
 
         OnModEnabledChanged?.Invoke(enabled, isDispose);
+        
+        moduleService?.NotifyEnabledChanged(enabled, isDispose);
         
         if(enabled) {
             SafePatchController.ApplyAll();

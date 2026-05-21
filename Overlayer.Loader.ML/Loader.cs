@@ -3,7 +3,7 @@ using Overlayer.Core;
 using Overlayer.Compat.Interface;
 using MelonLoader.Utils;
 
-[assembly: MelonInfo(typeof(Overlayer.Loader.ML.Loader), Overlayer.Core.Info.Name,  Overlayer.Core.Info.Version,  Overlayer.Core.Info.Author,  Overlayer.Core.Info.DownloadLink)]
+[assembly: MelonInfo(typeof(Overlayer.Loader.ML.Loader), Overlayer.Core.Info.Name,  Overlayer.Core.Info.Version,  Overlayer.Core.Info.Author,  Overlayer.Core.Info.GithubLink)]
 
 namespace Overlayer.Loader.ML;
 

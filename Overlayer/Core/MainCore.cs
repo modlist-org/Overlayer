@@ -19,8 +19,8 @@ public static class MainCore {
     public static Assembly Assembly => Runtime.Assembly;
     public static OverlayerLogger Logger => Runtime.Logger;
     public static PathService Paths => Runtime.Paths;
-    public static SettingsManager ConfigManage => Runtime.Config;
-    public static Settings Config => Runtime.Config.Data;
+    public static SettingsFile<CoreSettings> ConfigFile => Runtime.Config;
+    public static CoreSettings Config => Runtime.Config.Data;
     public static Translator Tr => Runtime.Localization.Translator;
     public static UnityEngine.GameObject Root => Runtime.RootObject;
 

@@ -7,7 +7,7 @@ namespace Overlayer.Core.Service;
 
 public sealed class LocalizationService(
     string langPath,
-    Settings config,
+    SettingsFile<CoreSettings> configFile,
     OverlayerLogger logger
 ) : IRuntimeService {
 
@@ -15,7 +15,7 @@ public sealed class LocalizationService(
 
     public void Initialize() {
         Translator.Language =
-            config.Language;
+            configFile.Data.Language;
 
         Translator.SetLog(
             logger.Msg
