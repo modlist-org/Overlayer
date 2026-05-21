@@ -66,16 +66,20 @@ public class Tooltip {
             return;
         }
 
-        Vector2 mouse = Input.mousePosition;
-        Vector2 target = mouse + new Vector2(24f, -28f);
+        float scale = MainCore.Config.UIScale;
 
-        Vector2 size = rect.sizeDelta;
+        Vector2 mouse = Input.mousePosition;
+
+        Vector2 offset = new Vector2(24f, -28f) * scale;
+        Vector2 target = mouse + offset;
+
+        Vector2 size = rect.sizeDelta * scale;
 
         float maxX = Screen.width - size.x;
         float maxY = Screen.height - size.y;
 
         target.x = Mathf.Clamp(target.x, 0f, maxX);
-        target.y = Mathf.Clamp(target.y, size.y, Screen.height);
+        target.y = Mathf.Clamp(target.y, 0f, maxY);
 
         rect.position = Vector2.SmoothDamp(
             rect.position,

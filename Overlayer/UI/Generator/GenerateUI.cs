@@ -595,13 +595,19 @@ public static class GenerateUI {
 
     public static Transform AddToolTip(this Transform parent, string key, string def, Translator tr = null) {
         tr ??= MainCore.Tr;
+        return parent.AddToolTipInternal(() => tr.Get(key, def));
+    }
 
+    public static Transform AddToolTip(this Transform parent, string tip)
+        => parent.AddToolTipInternal(() => tip);
+
+    private static Transform AddToolTipInternal(this Transform parent, System.Func<string> getText) {
         EventTrigger trigger = parent.gameObject.GetComponent<EventTrigger>()
             ?? parent.gameObject.AddComponent<EventTrigger>();
 
         UnityUtils.AddEvent(
             EventTriggerType.PointerEnter,
-            _ => Tooltip.Show(tr.Get(key, def)),
+            _ => Tooltip.Show(getText()),
             trigger
         );
 
