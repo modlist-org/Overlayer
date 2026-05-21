@@ -6,7 +6,7 @@ public sealed class PathService(string rootPath) {
     public string ConfigPath => Path.Combine(RootPath, "Settings.json");
     public string LangPath => Path.Combine(RootPath, "Lang");
     public string TempPath => Path.Combine(RootPath, "Temp");
-    public string ModulePath => Path.Combine(RootPath, "Modules");
+    public string ModulePath => Path.Combine(RootPath, "Module");
 
     public void Initialize() {
         Directory.CreateDirectory(RootPath);
