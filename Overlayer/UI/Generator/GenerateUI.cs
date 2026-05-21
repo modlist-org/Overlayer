@@ -1,5 +1,6 @@
 ﻿using DG.Tweening;
 using Overlayer.Core;
+using Overlayer.Localization;
 using Overlayer.Resource;
 using Overlayer.UI.Objects.Impl;
 using Overlayer.UI.Utility;
@@ -589,13 +590,23 @@ public static class GenerateUI {
         return obj;
     }
 
-    public static Transform AddToolTip(this Transform parent, string key, string def) {
+    public static Transform AddToolTip(this Transform parent, string key, string def, Translator tr = null) {
+        tr ??= MainCore.Tr;
+
         EventTrigger trigger = parent.gameObject.GetComponent<EventTrigger>()
             ?? parent.gameObject.AddComponent<EventTrigger>();
 
-        UnityUtils.AddEvent(EventTriggerType.PointerEnter, (e) => Tooltip.Show(MainCore.Tr.Get(key, def)), trigger);
+        UnityUtils.AddEvent(
+            EventTriggerType.PointerEnter,
+            _ => Tooltip.Show(tr.Get(key, def)),
+            trigger
+        );
 
-        UnityUtils.AddEvent(EventTriggerType.PointerExit, (e) => Tooltip.Hide(), trigger);
+        UnityUtils.AddEvent(
+            EventTriggerType.PointerExit,
+            _ => Tooltip.Hide(),
+            trigger
+        );
 
         return parent;
     }

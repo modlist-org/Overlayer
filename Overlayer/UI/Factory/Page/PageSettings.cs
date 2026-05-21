@@ -234,13 +234,9 @@ internal static class PageSettings {
         };
         uiScale.Label.gameObject.AddComponent<TextLocalization>().Init("UI_SCALE", "UI Scale");
         objects[uiScale.Id] = uiScale;
-
-        _ = GenerateUI.AddTextH1(GenerateUI.Row(content.transform))
-           .gameObject.AddComponent<TextLocalization>()
-           .Init("ADOFAI", "ADOFAI");
     }
 
-    internal static void OnTranslatorInitialize() {
+    internal static void OnTranslatorLoadEnd() {
         if(
             !objects.TryGetValue("language_dropdown", out UIObject obj) ||
             obj is not UIDropDown<string> dropdown

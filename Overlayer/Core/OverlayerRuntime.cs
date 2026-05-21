@@ -32,7 +32,7 @@ public sealed class OverlayerRuntime {
 
     public GameObject RootObject { get; private set; }
 
-    private readonly IOverlayerHost host;
+    public readonly IOverlayerHost Host;
 
     private readonly RuntimeServices services;
     private readonly RuntimeTicks ticks;
@@ -40,10 +40,8 @@ public sealed class OverlayerRuntime {
     private UIService uiService;
     private ModuleService moduleService;
 
-    public OverlayerRuntime(
-        IOverlayerHost host
-    ) {
-        this.host = host;
+    public OverlayerRuntime(IOverlayerHost host) {
+        Host = host;
 
         Version = new Version(Info.Version);
         Assembly = Assembly.GetExecutingAssembly();
@@ -52,7 +50,7 @@ public sealed class OverlayerRuntime {
         );
         State = new ModState();
         Paths = new PathService(
-            System.IO.Path.Combine(
+            Path.Combine(
                 host.OverlayerFilePath,
                 "Overlayer"
             )
@@ -62,6 +60,7 @@ public sealed class OverlayerRuntime {
             Assembly,
             "Overlayer.Resource.Embedded."
         );
+        Sprite = new SpriteManager(Resource);
         services = new RuntimeServices();
         ticks = new RuntimeTicks();
     }
@@ -93,10 +92,6 @@ public sealed class OverlayerRuntime {
 
         moduleService.DiscoverAndRegisterModules();
         moduleService.InitializeAllModules();
-
-        SetModEnabled(Config.Data.Active, false);
-
-        Logger.Msg("Hello");
     }
 
     public void Tick() => ticks.Tick();
@@ -110,6 +105,7 @@ public sealed class OverlayerRuntime {
 
         services.Dispose();
 
+        Sprite.Dispose();
         Resource.Dispose();
 
         if(RootObject != null) {
@@ -121,17 +117,19 @@ public sealed class OverlayerRuntime {
         Logger.Msg("Bye");
     }
 
-    public void SetModEnabled(
-        bool enabled, bool isDispose
-    ) {
+    public void SetModEnabled(bool enabled, bool isDispose) {
         if(State.IsEnabled == enabled) {
             return;
         }
 
         State.IsEnabled = enabled;
 
-        OnModEnabledChanged?.Invoke(enabled, isDispose);
+        if(!isDispose) {
+            Config.Data.Active = enabled;
+            Config.RequestSave();
+        }
 
+        OnModEnabledChanged?.Invoke(enabled, isDispose);
         moduleService?.NotifyEnabledChanged(enabled, isDispose);
 
         if(enabled) {

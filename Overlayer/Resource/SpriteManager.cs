@@ -36,7 +36,7 @@ public sealed class SpriteManager(ResourceManager resource) : IDisposable {
             return sprite;
         }
 
-        Texture2D tex = resource.GetTexture(asset);
+        Texture2D tex = resource.Get<Texture2D>(asset);
 
         if(tex == null) {
             return null;
@@ -65,7 +65,7 @@ public sealed class SpriteManager(ResourceManager resource) : IDisposable {
             return sprite;
         }
 
-        Texture2D tex = resource.GetTexture(asset);
+        Texture2D tex = resource.Get<Texture2D>(asset);
 
         if(tex == null) {
             return null;

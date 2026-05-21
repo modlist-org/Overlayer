@@ -13,13 +13,11 @@ namespace Overlayer.UI.Factory;
 public static class MenuFactory {
     public static Action<int> OnStateChanged;
 
-    private class MenuItem {
+    private sealed class MenuItem {
         public int state;
         public GameObject obj;
         public Image bg;
-
         public Sequence hoverSeq;
-        public Sequence selectSeq;
     }
 
     private static readonly List<MenuItem> items = [];
@@ -27,15 +25,15 @@ public static class MenuFactory {
     public static void CreateMenu(Transform parent) {
         items.Clear();
 
-        CreateItem(parent, "Overlayer", MainCore.Spr.Get(UISprite.Monitor128), (int)OriginalMenuState.Overlayer);
-        CreateItem(parent, "Settings", MainCore.Spr.Get(UISprite.Gear128), (int)OriginalMenuState.Settings);
-        CreateItem(parent, "Docs", MainCore.Spr.Get(UISprite.Book128), (int)OriginalMenuState.Docs);
-        CreateItem(parent, "Credits", MainCore.Spr.Get(UISprite.Star128), (int)OriginalMenuState.Credits);
+        CreateItem(parent, "Overlayer", MainCore.Spr.Get(UISprite.Monitor128), 0);
+        CreateItem(parent, "Settings", MainCore.Spr.Get(UISprite.Gear128), 1);
+        CreateItem(parent, "Docs", MainCore.Spr.Get(UISprite.Book128), 2);
+        CreateItem(parent, "Credits", MainCore.Spr.Get(UISprite.Star128), 3);
 
-        ApplyState(UICore.CurrentMenuState, true);
+        ApplyState(UICore.CurrentMenuState);
     }
 
-    public static void CreateItem(Transform parent, string name, Sprite icon, int id) {
+    public static void CreateItem(Transform parent, string name, Sprite icon, int state) {
         GameObject item = new(name);
         item.transform.SetParent(parent, false);
 
@@ -48,7 +46,6 @@ public static class MenuFactory {
         Image bg = item.AddComponent<Image>();
         bg.color = UIColors.MenuNormal;
 
-        // ICON
         GameObject iconObj = new("Icon");
         iconObj.transform.SetParent(item.transform, false);
 
@@ -63,7 +60,6 @@ public static class MenuFactory {
         iconImg.sprite = icon;
         iconImg.raycastTarget = false;
 
-        // TEXT
         GameObject textObj = new("Text");
         textObj.transform.SetParent(item.transform, false);
 
@@ -86,7 +82,7 @@ public static class MenuFactory {
         MenuItem menuItem = new() {
             obj = item,
             bg = bg,
-            state = id
+            state = state
         };
 
         items.Add(menuItem);
@@ -97,79 +93,67 @@ public static class MenuFactory {
             var e = new EventTrigger.Entry {
                 eventID = type
             };
+
             e.callback.AddListener(_ => cb());
             trigger.triggers.Add(e);
         }
 
         Add(EventTriggerType.PointerEnter, () => {
-            if(UICore.CurrentMenuState != id) {
-                menuItem.hoverSeq?.Kill();
-                menuItem.hoverSeq = DOTween.Sequence().SetUpdate(true)
-                    .Append(bg.DOColor(UIColors.MenuHover, 0.2f).SetEase(Ease.OutSine));
+            if(UICore.CurrentMenuState == state) {
+                return;
             }
+
+            menuItem.hoverSeq?.Kill();
+            menuItem.hoverSeq = DOTween.Sequence()
+                .Append(bg.DOColor(UIColors.MenuHover, 0.2f))
+                .SetUpdate(true);
         });
 
         Add(EventTriggerType.PointerExit, () => {
-            if(UICore.CurrentMenuState != id) {
-                menuItem.hoverSeq?.Kill();
-                menuItem.hoverSeq = DOTween.Sequence().SetUpdate(true)
-                    .Append(bg.DOColor(UIColors.MenuNormal, 0.3f).SetEase(Ease.OutSine));
+            if(UICore.CurrentMenuState == state) {
+                return;
             }
+
+            menuItem.hoverSeq?.Kill();
+            menuItem.hoverSeq = DOTween.Sequence()
+                .Append(bg.DOColor(UIColors.MenuNormal, 0.25f))
+                .SetUpdate(true);
         });
 
         Add(EventTriggerType.PointerClick, () => {
-            SetState(id);
-
-            bg.DOKill();
-            bg.color = UIColors.MenuHighlight;
-
-            menuItem.hoverSeq = DOTween.Sequence().SetUpdate(true)
-                .Append(bg.DOColor(UIColors.MenuSelected, 0.3f).SetEase(Ease.OutSine));
+            SetState(state);
         });
     }
 
-    private static void SetState(int state) {
-        bool applied = ApplyState(state);
-        bool switched = PageSwicher.SwitchPage(UICore.CurrentMenuState, state);
+    private static void SetState(int to) {
+        int from = UICore.CurrentMenuState;
 
-        if(!applied || !switched) {
+        if(from == to) {
             return;
         }
 
-        UICore.CurrentMenuState = state;
+        UICore.CurrentMenuState = to;
 
-        OnStateChanged?.Invoke(state);
+        PageSwicher.SwitchPage(from, to);
+        ApplyState(to);
+
+        OnStateChanged?.Invoke(to);
     }
 
-    private static bool ApplyState(int state, bool noAnimate = false) {
-        bool found = false;
-
+    private static void ApplyState(int id) {
         for(int i = 0; i < items.Count; i++) {
             var it = items[i];
 
-            bool selected = it.state == state;
-
-            if(selected) {
-                found = true;
-            }
-
             it.hoverSeq?.Kill();
-            it.selectSeq?.Kill();
-            it.bg.DOKill();
+
+            bool selected = it.state == id;
 
             Color target = selected
                 ? UIColors.MenuSelected
                 : UIColors.MenuNormal;
 
-            if(noAnimate) {
-                it.bg.color = target;
-                continue;
-            }
-
-            it.selectSeq = DOTween.Sequence().SetUpdate(true)
-                .Join(it.bg.DOColor(target, 0.25f).SetEase(Ease.OutSine));
+            it.bg.DOKill();
+            it.bg.color = target;
         }
-
-        return found;
     }
 }

@@ -13,7 +13,7 @@ public sealed class CoreSettings : ISettingsFile {
 
     public JToken Serialize() {
         return new JObject {
-            [nameof(Active)] = ShowOnStartup,
+            [nameof(Active)] = Active,
             [nameof(Language)] = Language,
             [nameof(ShowOnStartup)] = ShowOnStartup,
             [nameof(Tooltip)] = Tooltip,

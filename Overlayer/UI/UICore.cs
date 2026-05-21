@@ -20,14 +20,17 @@ public enum OriginalMenuState {
     Credits,
 }
 
-internal static class UICore {
+public static class UICore {
     private static GameObject canvasObj;
     private static Canvas canvas;
     private static CanvasScaler canvasScaler;
 
-    internal static readonly Dictionary<int, RectTransform> Pages = [];
+    public static readonly Dictionary<int, RectTransform> Pages = [];
     public static int CurrentMenuState = (int)OriginalMenuState.Overlayer;
     public static readonly Vector2 ReferenceResolution = new(1920, 1080);
+
+    private static Action<TranslationFailState> _onPageSettings;
+    private static Action<TranslationFailState> _onRefresh;
 
     public static void Initialize() {
         canvasObj = new GameObject("OverlayerUICanvas");
@@ -51,8 +54,20 @@ internal static class UICore {
         ResizeHandle.CreateResizeHandles(Panel);
         Tooltip.Initialize(canvasObj.transform);
 
-        MainCore.Tr.OnInitialize += PageSettings.OnTranslatorInitialize;
-        MainCore.Tr.OnInitialize += TextLocalization.RefreshAll;
+        _onPageSettings = state => {
+            if(state == TranslationFailState.Success) {
+                PageSettings.OnTranslatorLoadEnd();
+            }
+        };
+
+        _onRefresh = state => {
+            if(state == TranslationFailState.Success) {
+                TextLocalization.RefreshAll();
+            }
+        };
+
+        MainCore.Tr.OnLoadEnd += _onPageSettings;
+        MainCore.Tr.OnLoadEnd += _onRefresh;
 
         TextLocalization.RefreshAll();
 
@@ -66,6 +81,7 @@ internal static class UICore {
     public const float MENU_WIDTH = 210f;
     public static RectTransform MenuPanel;
     public static RectTransform Menu;
+    public static RectTransform MenuContent;
     private static RectTransform Page;
     private static CanvasGroup menuCanvasGroup;
 
@@ -156,13 +172,13 @@ internal static class UICore {
             GameObject content = new("Content");
             content.transform.SetParent(Menu, false);
 
-            var contentRect = content.AddComponent<RectTransform>();
-            contentRect.anchorMin = new(0, 1);
-            contentRect.anchorMax = new(1, 1);
-            contentRect.pivot = new(0.5f, 1);
+            MenuContent = content.AddComponent<RectTransform>();
+            MenuContent.anchorMin = new(0, 1);
+            MenuContent.anchorMax = new(1, 1);
+            MenuContent.pivot = new(0.5f, 1);
 
-            contentRect.offsetMin = Vector2.zero;
-            contentRect.offsetMax = new(0, -60);
+            MenuContent.offsetMin = Vector2.zero;
+            MenuContent.offsetMax = new(0, -60);
 
             // Layout
             var layout = content.AddComponent<VerticalLayoutGroup>();
@@ -177,7 +193,7 @@ internal static class UICore {
             var fitter = content.AddComponent<ContentSizeFitter>();
             fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
-            MenuFactory.CreateMenu(content.transform);
+            MenuFactory.CreateMenu(MenuContent);
 
             GameObject power = new("Power");
             power.transform.SetParent(Menu, false);
@@ -573,8 +589,8 @@ internal static class UICore {
     }
 
     public static void Dispose() {
-        MainCore.Tr.OnInitialize -= TextLocalization.RefreshAll;
-        MainCore.Tr.OnInitialize -= PageSettings.OnTranslatorInitialize;
+        MainCore.Tr.OnLoadEnd -= _onPageSettings;
+        MainCore.Tr.OnLoadEnd -= _onRefresh;
         Tooltip.Dispose();
         UnityEngine.Object.Destroy(canvasObj);
         canvasObj = null;

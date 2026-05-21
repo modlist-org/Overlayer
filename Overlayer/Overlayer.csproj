@@ -484,7 +484,7 @@
 	  <EmbeddedResource Include="Resource\Embedded\Font\SUIT-Regular.otf" />
 	  <EmbeddedResource Include="Resource\Embedded\Image\Book128.png" />
 	  <EmbeddedResource Include="Resource\Embedded\Image\Circle256.png" />
-	  <EmbeddedResource Include="Resource\Embedded\Image\CircleHarf256.png" />
+	  <EmbeddedResource Include="Resource\Embedded\Image\CircleHalf256.png" />
 	  <EmbeddedResource Include="Resource\Embedded\Image\CircleOutline256.png" />
 	  <EmbeddedResource Include="Resource\Embedded\Image\Gear128.png" />
 	  <EmbeddedResource Include="Resource\Embedded\Image\Image128.png" />
@@ -508,7 +508,7 @@
 
 	<Target Name="PostBuild" AfterTargets="Build">
 		<MakeDir Directories="$(GamePath)/UserLibs" Condition="'$(TargetPath)' != ''" />
-		<Copy Condition="'$(TargetPath)' != ''" SourceFiles="$(TargetPath)" DestinationFolder="$(GamePath)/UserLibs/Overlayer" SkipUnchangedFiles="true" />
+		<Copy Condition="'$(TargetPath)' != ''" SourceFiles="$(TargetPath)" DestinationFolder="$(GamePath)/UserLibs" SkipUnchangedFiles="true" />
 
 		<ItemGroup>
 			<ExportFiles Include="Resource/Export/**/*.*" />

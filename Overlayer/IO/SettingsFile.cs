@@ -4,12 +4,10 @@ using Overlayer.IO.Interface;
 
 namespace Overlayer.IO;
 
-public sealed class SettingsFile<T>
-    where T : class, ISettingsFile, new() {
-
+public sealed class SettingsFile<T>(string path) where T : class, ISettingsFile, new() {
     public T Data { get; } = new();
 
-    public readonly string Path;
+    public readonly string Path = path;
 
     private readonly object saveLock = new();
 
@@ -17,16 +15,7 @@ public sealed class SettingsFile<T>
 
     private bool saveScheduled;
 
-    public SettingsFile(
-        string path
-    ) => Path = path;
-
     public void Load() {
-        if(!File.Exists(Path)) {
-            Save();
-            return;
-        }
-
         try {
             string json = File.ReadAllText(Path);
 
@@ -35,7 +24,7 @@ public sealed class SettingsFile<T>
             Data.Deserialize(token);
         } catch(Exception e) {
             MainCore.Logger.Err(
-                $"[{nameof(SettingsFile<T>)}] Failed to load settings '{Path}': {e}"
+                $"[{nameof(SettingsFile<>)}] Failed to load settings '{Path}': {e}"
             );
         }
     }

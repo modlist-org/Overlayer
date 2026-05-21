@@ -1,14 +1,13 @@
 ﻿using Overlayer.Core;
-using System.Collections;
 
 namespace Overlayer.Patch.Safe;
 
 public static class SafePatchController {
-    private static readonly SafeConditionalPatch[] patches = [];
+    private static readonly List<SafeConditionalPatch> patches = [];
 
     public static void Add(SafeConditionalPatch patch) {
         if(!patches.Contains(patch)) {
-            ((IList)patches).Add(patch);
+            patches.Add(patch);
             MainCore.Logger.Msg($"[{nameof(SafePatchController)}] {patch.GetType().Name}");
         } else {
             MainCore.Logger.Wrn($"[{nameof(SafePatchController)}] Patch skipped. Already registered: {patch.GetType().Name}");
@@ -25,7 +24,7 @@ public static class SafePatchController {
             patch.Remove();
         }
 
-        ((IList)patches).Remove(patch);
+        patches.Remove(patch);
 
         MainCore.Logger.Msg($"[{nameof(SafePatchController)}] unloaded patch: {patch.GetType().Name}");
     }

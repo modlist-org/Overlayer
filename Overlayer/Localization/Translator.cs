@@ -47,10 +47,22 @@ public class Translator {
     /// </summary>
     public const string FALLBACK_LANGUAGE = "DEFAULT";
 
+    private string language = FALLBACK_LANGUAGE;
+
     /// <summary>
     /// Gets or sets the current language for translations.
     /// </summary>
-    public string Language = FALLBACK_LANGUAGE;
+    public string Language {
+        get => language;
+        set {
+            if(language == value) {
+                return;
+            }
+
+            language = value;
+            OnLanguageChanged.Invoke(language);
+        }
+    }
 
     /// <summary>
     /// Gets the failure state of the translator.
@@ -100,7 +112,10 @@ public class Translator {
     /// <summary>
     /// Event triggered when the translator has finished initialization.
     /// </summary>
-    public event Action OnInitialize = delegate { };
+   
+    public event Action OnLoadStart = delegate { };
+    public event Action<TranslationFailState> OnLoadEnd = delegate { };
+    public event Action<string> OnLanguageChanged = delegate { };
 
     public const string DEFAULT_KTL_KEY = "0KTL";
     public const string DEFAULT_EXPECTED_KTL_VALUE = "DO_NOT_TRANSLATE_THIS_KEY!";
@@ -137,6 +152,7 @@ public class Translator {
             return;
         }
 
+        OnLoadStart.Invoke();
         IsLoading = true;
 
         Log($"{LOG_PREFIX}Starting to load translations from: {baseLangFolderPath}");
@@ -144,9 +160,7 @@ public class Translator {
         translations = [];
         translationsArr = [];
 
-        string[] files = Array.Empty<string>();
-
-        Log($"{LOG_PREFIX}Reading translation files...");
+        string[] files;
 
         try {
             files = Directory.GetFiles(baseLangFolderPath, "*.json");
@@ -154,8 +168,7 @@ public class Translator {
             FailState = TranslationFailState.ErrorReadingDirectory;
             Log($"{LOG_PREFIX_ERROR}Error reading directory: {baseLangFolderPath}");
             Log($"[Translator Exception] {e.GetType().Name}: {e.Message}");
-            IsLoading = false;
-            OnInitialize.Invoke();
+            Finish();
             return;
         }
 
@@ -164,77 +177,57 @@ public class Translator {
         if(files.Length == 0) {
             FailState = TranslationFailState.FileDoesNotExist;
             Log($"{LOG_PREFIX_WARNING}No translation files found");
-            IsLoading = false;
-            OnInitialize.Invoke();
+            Finish();
             return;
         }
+
         foreach(var file in files) {
-            StreamReader reader;
             try {
-                reader = new StreamReader(file);
-            } catch(Exception e) {
-                FailState = TranslationFailState.SomeFailure;
-                Log($"{LOG_PREFIX_ERROR}Error loading file: {file}");
-                Log($"{LOG_PREFIX_EXCEPTION}{e.GetType().Name}: {e.Message}");
-                continue;
-            }
+                using StreamReader reader = new(file);
+                string jsonString = await reader.ReadToEndAsync();
 
-            string jsonString = string.Empty;
-            try {
-                jsonString = await reader.ReadToEndAsync();
-            } catch(Exception e) {
-                FailState = TranslationFailState.SomeFailure;
-                Log($"{LOG_PREFIX_ERROR}Error reading file: {file}");
-                Log($"{LOG_PREFIX_EXCEPTION}{e.GetType().Name}: {e.Message}");
-                continue;
-            } finally {
-                reader.Close();
-            }
+                JObject jsonObject = JObject.Parse(jsonString);
 
-            JObject jsonObject;
-            try {
-                jsonObject = JObject.Parse(jsonString);
-            } catch(Exception e) {
-                FailState = TranslationFailState.SomeFailure;
-                Log($"{LOG_PREFIX_ERROR}Invalid JSON format in file: {file}");
-                Log($"{LOG_PREFIX_EXCEPTION}{e.GetType().Name}: {e.Message}");
-                continue;
-            }
+                foreach(var property in jsonObject.Properties()) {
+                    // Ensure the property value is a JObject.
+                    if(property.Value is not JObject block) {
+                        FailState = TranslationFailState.SomeFailure;
+                        Log($"{LOG_PREFIX_ERROR}Block is not an object in file: {file}, block: {property.Name}");
+                        continue;
+                    }
 
-            foreach(var property in jsonObject.Properties()) {
-                // Ensure the property value is a JObject.
-                if(property.Value is not JObject block) {
-                    FailState = TranslationFailState.SomeFailure;
-                    Log($"{LOG_PREFIX_ERROR}Block is not an object in file: {file}, block: {property.Name}");
-                    continue;
-                }
+                    // Validate the presence and correctness of the KTL key.
+                    if(!block.TryGetValue(KTLKey, out var ktToken) || ktToken.ToString() != ExpectedKTLValue) {
+                        Log($"{LOG_PREFIX}Invalid or missing {KTLKey} in file: {file}, block: {property.Name}, passing");
+                        continue;
+                    }
 
-                // Validate the presence and correctness of the KTL key.
-                if(block.TryGetValue(KTLKey, out var ktToken) == false || ktToken.ToString() != ExpectedKTLValue) {
-                    Log($"{LOG_PREFIX}Invalid or missing {KTLKey} in file: {file}, block: {property.Name}, passing");
-                    continue;
-                }
+                    block.Remove(KTLKey);
 
-                block.Remove(KTLKey);
+                    var stringDict = new Dictionary<string, string>();
+                    var arrayDict = new Dictionary<string, string[]>();
 
-                var stringDict = new Dictionary<string, string>();
-                var arrayDict = new Dictionary<string, string[]>();
+                    // Process each key-value pair in the block.
+                    foreach(var kv in block) {
+                        if(kv.Value is JArray arr) {
+                            arrayDict[kv.Key] = arr.Select(v => v.ToString()).ToArray();
+                        } else {
+                            stringDict[kv.Key] = kv.Value?.ToString() ?? "";
+                        }
+                    }
 
-                // Process each key-value pair in the block.
-                foreach(var kv in block) {
-                    if(kv.Value is JArray arr) {
-                        arrayDict[kv.Key] = arr.Select(v => v.ToString()).ToArray();
-                    } else {
-                        stringDict[kv.Key] = kv.Value?.ToString() ?? "";
+                    if(stringDict.Count > 0) {
+                        translations[property.Name] = stringDict;
+                    }
+
+                    if(arrayDict.Count > 0) {
+                        translationsArr[property.Name] = arrayDict;
                     }
                 }
-
-                if(stringDict.Count > 0) {
-                    translations[property.Name] = stringDict;
-                }
-                if(arrayDict.Count > 0) {
-                    translationsArr[property.Name] = arrayDict;
-                }
+            } catch(Exception e) {
+                FailState = TranslationFailState.SomeFailure;
+                Log($"{LOG_PREFIX_ERROR}Error processing file: {file}");
+                Log($"{LOG_PREFIX_EXCEPTION}{e.GetType().Name}: {e.Message}");
             }
         }
 
@@ -249,18 +242,23 @@ public class Translator {
         translations = translations
             .OrderBy(kv => kv.Key, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(kv => kv.Key, kv => kv.Value);
+
         translationsArr = translationsArr
             .OrderBy(kv => kv.Key, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(kv => kv.Key, kv => kv.Value);
 
+        Finish();
+    }
+
+    private void Finish() {
         Log($"{LOG_PREFIX}Finished loading translations.");
 
+        IsLoading = false;
+
         try {
-            OnInitialize.Invoke();
+            OnLoadEnd.Invoke(FailState);
         } catch(Exception e) {
-            Log($"{LOG_PREFIX_EXCEPTION}Exception during OnInitialize event: {e.GetType().Name}: {e.Message}");
-        } finally {
-            IsLoading = false;
+            Log($"{LOG_PREFIX_EXCEPTION}Exception during OnLoadEnd event: {e.GetType().Name}: {e.Message}");
         }
     }
 
@@ -442,7 +440,7 @@ public class Translator {
         translations.Clear();
         translationsArr.Clear();
         logAction = null;
-        OnInitialize = delegate { };
+        OnLoadEnd = delegate { };
     }
 }
 

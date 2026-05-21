@@ -25,6 +25,9 @@ public static class MainCore {
     public static Translator Tr => Runtime.Localization.Translator;
     public static ResourceManager Res => Runtime.Resource;
     public static SpriteManager Spr => Runtime.Sprite;
+
+    public static IOverlayerHost Host => Runtime.Host;
+
     public static UnityEngine.GameObject Root => Runtime.RootObject;
 
     public static bool IsModEnabled => Runtime.State.IsEnabled;
