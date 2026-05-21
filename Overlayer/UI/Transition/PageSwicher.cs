@@ -36,8 +36,7 @@ internal class PageSwicher {
         pageSeq.Join(toPage.DOAnchorPosX(0f, 0.45f).SetEase(Ease.OutExpo).SetDelay(0.05f));
         pageSeq.Join(toCg.DOFade(1f, 0.3f));
 
-        pageSeq.OnComplete(() =>
-        {
+        pageSeq.OnComplete(() => {
             fromCg.interactable = false;
             fromCg.blocksRaycasts = false;
 

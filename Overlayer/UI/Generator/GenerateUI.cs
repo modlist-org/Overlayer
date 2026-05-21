@@ -2,7 +2,6 @@
 using Overlayer.Core;
 using Overlayer.Resource;
 using Overlayer.UI.Objects.Impl;
-using Overlayer.UI.SpriteManage;
 using Overlayer.UI.Utility;
 using TMPro;
 using UnityEngine;
@@ -169,7 +168,7 @@ public static class GenerateUI {
         valueTextRect.offsetMax = new(-16f, 0f);
 
         Image fillImg = fill.AddComponent<Image>();
-        fillImg.sprite = SpriteDatabase.Get(UISliceSprite.Circle256P2048);
+        fillImg.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P2048);
         fillImg.type = Image.Type.Sliced;
 
         fill.AddComponent<Mask>().showMaskGraphic = true;
@@ -204,7 +203,7 @@ public static class GenerateUI {
             Vector2 local = rect.InverseTransformPoint(Input.mousePosition);
             float width = rect.rect.width;
 
-            float t = Mathf.Clamp01((local.x + width * 0.5f) / width);
+            float t = Mathf.Clamp01((local.x + (width * 0.5f)) / width);
             float v = Mathf.Lerp(min, max, t);
 
             slider.Set(Apply(v));
@@ -229,9 +228,7 @@ public static class GenerateUI {
 
         bool isDragging = false;
 
-        UnityUtils.AddEvent(EventTriggerType.BeginDrag, _ => {
-            isDragging = true;
-        }, trigger);
+        UnityUtils.AddEvent(EventTriggerType.BeginDrag, _ => isDragging = true, trigger);
 
         UnityUtils.AddEvent(EventTriggerType.Drag, _ => {
             if(!isDragging || !Input.GetMouseButton(0)) {
@@ -298,7 +295,7 @@ public static class GenerateUI {
         triangleRect.sizeDelta = new(26f, 26f);
 
         Image triangleImage = triangle.AddComponent<Image>();
-        triangleImage.sprite = SpriteDatabase.Get(UISprite.Triangle128);
+        triangleImage.sprite = MainCore.Spr.Get(UISprite.Triangle128);
 
         GameObject list = new("List");
         list.transform.SetParent(root.transform, false);
@@ -311,7 +308,7 @@ public static class GenerateUI {
         listRect.offsetMax = new(-250f, -62f);
 
         Image listBg = list.AddComponent<Image>();
-        listBg.sprite = SpriteDatabase.Get(UISliceSprite.Circle256P2048);
+        listBg.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P2048);
         listBg.type = Image.Type.Sliced;
         listBg.color = UIColors.ObjectBG;
 
@@ -395,7 +392,7 @@ public static class GenerateUI {
             Image rowImage = row.AddComponent<Image>();
             rowImage.color = Color.clear;
             rowImage.type = Image.Type.Sliced;
-            rowImage.sprite = SpriteDatabase.Get(UISliceSprite.Circle256P2048);
+            rowImage.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P2048);
 
             TextMeshProUGUI rowText = AddText(rowRect);
             rowText.text = display(item);
@@ -472,7 +469,7 @@ public static class GenerateUI {
 
         Image img = obj.AddComponent<Image>();
         img.color = UIColors.ObjectBG;
-        img.sprite = SpriteDatabase.Get(UISliceSprite.Circle256P2048);
+        img.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P2048);
         img.type = Image.Type.Sliced;
 
         return rect;
@@ -483,7 +480,7 @@ public static class GenerateUI {
 
         AddClick(trigger, onClick);
 
-        if (outline) {
+        if(outline) {
             AddOutlineHover(obj, trigger);
         }
     }
@@ -506,13 +503,13 @@ public static class GenerateUI {
         hoverRect.offsetMax = Vector2.zero;
 
         Image hoverImage = hover.AddComponent<Image>();
-        hoverImage.sprite = SpriteDatabase.Get(UISliceSprite.CircleOutline256P2048);
+        hoverImage.sprite = MainCore.Spr.Get(UISliceSprite.CircleOutline256P2048);
         hoverImage.type = Image.Type.Sliced;
 
         Color baseColor = UIColors.ObjectActive;
         hoverImage.color = new Color(baseColor.r, baseColor.g, baseColor.b, 0f);
 
-        UnityUtils.AddEvent(EventTriggerType.PointerEnter, (e) =>  {
+        UnityUtils.AddEvent(EventTriggerType.PointerEnter, (e) => {
             hoverSeq?.Kill();
 
             hoverSeq = DOTween.Sequence().SetUpdate(true)
@@ -562,7 +559,7 @@ public static class GenerateUI {
         rect.offsetMax = Vector2.zero;
 
         TextMeshProUGUI tmp = obj.AddComponent<TextMeshProUGUI>();
-        tmp.font = ResourceManager.Get<TMP_FontAsset>(bold ? Asset.SUITMedium : Asset.SUITRegular);
+        tmp.font = MainCore.Res.Get<TMP_FontAsset>(bold ? Asset.SUIT_Medium : Asset.SUIT_Regular);
         tmp.fontSize = size;
         tmp.color = Color.white;
         tmp.alignment = TextAlignmentOptions.Left;
@@ -584,7 +581,7 @@ public static class GenerateUI {
         rect.sizeDelta = new Vector2(8f, 8f);
 
         Image img = obj.AddComponent<Image>();
-        img.sprite = SpriteDatabase.Get(UISprite.Circle256);
+        img.sprite = MainCore.Spr.Get(UISprite.Circle256);
         Color c = UIColors.ObjectActive;
         c.a = 0f;
         img.color = c;

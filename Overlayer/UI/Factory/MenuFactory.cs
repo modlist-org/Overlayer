@@ -1,7 +1,7 @@
 ﻿using DG.Tweening;
+using Overlayer.Core;
 using Overlayer.Localization;
 using Overlayer.Resource;
-using Overlayer.UI.SpriteManage;
 using Overlayer.UI.Transition;
 using TMPro;
 using UnityEngine;
@@ -27,10 +27,10 @@ public static class MenuFactory {
     public static void CreateMenu(Transform parent) {
         items.Clear();
 
-        CreateItem(parent, "Overlayer", SpriteDatabase.Get(UISprite.Monitor128), (int)OriginalMenuState.Overlayer);
-        CreateItem(parent, "Settings", SpriteDatabase.Get(UISprite.Gear128), (int)OriginalMenuState.Settings);
-        CreateItem(parent, "Docs", SpriteDatabase.Get(UISprite.Book128), (int)OriginalMenuState.Docs);
-        CreateItem(parent, "Credits", SpriteDatabase.Get(UISprite.Star128), (int)OriginalMenuState.Credits);
+        CreateItem(parent, "Overlayer", MainCore.Spr.Get(UISprite.Monitor128), (int)OriginalMenuState.Overlayer);
+        CreateItem(parent, "Settings", MainCore.Spr.Get(UISprite.Gear128), (int)OriginalMenuState.Settings);
+        CreateItem(parent, "Docs", MainCore.Spr.Get(UISprite.Book128), (int)OriginalMenuState.Docs);
+        CreateItem(parent, "Credits", MainCore.Spr.Get(UISprite.Star128), (int)OriginalMenuState.Credits);
 
         ApplyState(UICore.CurrentMenuState, true);
     }
@@ -75,7 +75,7 @@ public static class MenuFactory {
 
         TMP_Text label = textObj.AddComponent<TextMeshProUGUI>();
         label.text = name;
-        label.font = ResourceManager.Get<TMP_FontAsset>(Asset.SUITRegular);
+        label.font = MainCore.Res.Get<TMP_FontAsset>(Asset.SUIT_Regular);
         label.fontSize = 18;
         label.color = Color.white;
         label.alignment = TextAlignmentOptions.Left;

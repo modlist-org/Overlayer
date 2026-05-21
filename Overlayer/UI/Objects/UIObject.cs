@@ -8,16 +8,15 @@ public abstract class UIObject {
     public string Id { get; }
     public RectTransform Rect { get; }
 
-    private bool _onlyModOn;
     public bool OnlyModOn {
-        get => _onlyModOn;
+        get;
         set {
-            if(_onlyModOn == value) {
+            if(field == value) {
                 return;
             }
 
-            _onlyModOn = value;
-            if(_onlyModOn) {
+            field = value;
+            if(field) {
                 SetBlocked(!MainCore.IsModEnabled, true);
                 MainCore.OnModEnabledChanged += ApplyStateForAction;
             } else {
@@ -26,11 +25,10 @@ public abstract class UIObject {
         }
     }
 
-    private CanvasGroup _canvasGroup;
     protected CanvasGroup CanvasGroup {
         get {
-            _canvasGroup ??= Rect.GetComponent<CanvasGroup>() ?? Rect.gameObject.AddComponent<CanvasGroup>();
-            return _canvasGroup;
+            field ??= Rect.GetComponent<CanvasGroup>() ?? Rect.gameObject.AddComponent<CanvasGroup>();
+            return field;
         }
     }
     private Sequence blockSeq;
@@ -41,7 +39,7 @@ public abstract class UIObject {
     }
 
     private void ApplyStateForAction(bool enabled, bool isDispose) {
-        if(!_onlyModOn || isDispose) {
+        if(!OnlyModOn || isDispose) {
             return;
         }
 

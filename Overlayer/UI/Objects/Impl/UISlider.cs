@@ -1,4 +1,3 @@
-using System;
 using DG.Tweening;
 using TMPro;
 using UnityEngine;
@@ -12,11 +11,10 @@ public class UISlider : UIObject {
     public float Max;
     public float Value { get; private set; }
 
-    private string _format;
     public string Format {
-        get => _format;
+        get;
         set {
-            _format = value;
+            field = value;
             UpdateValueText();
         }
     }
@@ -105,9 +103,7 @@ public class UISlider : UIObject {
     public void SetNormalized(float t, bool invoke = true)
         => Set(Mathf.Lerp(Min, Max, t), invoke);
 
-    private float ApplyFilter(float v) {
-        return Filter?.Invoke(v) ?? v;
-    }
+    private float ApplyFilter(float v) => Filter?.Invoke(v) ?? v;
 
     private void UpdateValueText() => ValueText?.text = Value.ToString(Format);
 
@@ -173,7 +169,5 @@ public class UISlider : UIObject {
         );
     }
 
-    public void OnDrag(float normalizedValue) {
-        SetNormalized(normalizedValue, true);
-    }
+    public void OnDrag(float normalizedValue) => SetNormalized(normalizedValue, true);
 }

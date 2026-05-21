@@ -4,7 +4,6 @@ using Overlayer.Localization;
 using Overlayer.Resource;
 using Overlayer.UI.Factory;
 using Overlayer.UI.Factory.Page;
-using Overlayer.UI.SpriteManage;
 using Overlayer.UI.Utility;
 using TMPro;
 using UnityEngine;
@@ -69,17 +68,15 @@ internal static class UICore {
     public static RectTransform Menu;
     private static RectTransform Page;
     private static CanvasGroup menuCanvasGroup;
-    
-    private static float panelScale = 1f;
 
     public static float PanelScale {
-        get => panelScale;
+        get;
         set {
-            panelScale = value;
+            field = value;
             canvasScaler.referenceResolution =
-                new Vector2(ReferenceResolution.x, ReferenceResolution.y) / panelScale;
+                new Vector2(ReferenceResolution.x, ReferenceResolution.y) / field;
         }
-    }
+    } = 1f;
 
     public static float PanelRatio {
         get => canvasScaler.matchWidthOrHeight;
@@ -94,7 +91,7 @@ internal static class UICore {
             var image = panel.AddComponent<Image>();
             image.color = UIColors.PanelBG;
             image.type = Image.Type.Sliced;
-            image.sprite = SpriteDatabase.Get(UISliceSprite.Circle256P1024);
+            image.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P1024);
         }
 
         Panel = panel.GetComponent<RectTransform>();
@@ -130,7 +127,7 @@ internal static class UICore {
             var maskImage = menuPanel.AddComponent<Image>();
             maskImage.color = Color.white;
             maskImage.type = Image.Type.Sliced;
-            maskImage.sprite = SpriteDatabase.Get(UISliceSprite.Circle256P1024);
+            maskImage.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P1024);
             maskImage.raycastTarget = false;
 
             var mask = menuPanel.AddComponent<Mask>();
@@ -217,7 +214,7 @@ internal static class UICore {
             powerIconRect.pivot = new Vector2(0.5f, 0.5f);
             powerIconRect.sizeDelta = new Vector2(26f, 26f);
             Image powerIconImage = powerIcon.AddComponent<Image>();
-            powerIconImage.sprite = SpriteDatabase.Get(UISprite.Power128);
+            powerIconImage.sprite = MainCore.Spr.Get(UISprite.Power128);
             powerIconImage.color = new(1f, 1f, 1f, 0.6f);
 
             GameObject version = new("Version");
@@ -230,7 +227,7 @@ internal static class UICore {
             versionRect.pivot = Vector2.zero;
             var versionText = version.AddComponent<TextMeshProUGUI>();
             versionText.text = $"v{MainCore.Version}";
-            versionText.font = ResourceManager.Get<TMP_FontAsset>(Asset.SUITRegular);
+            versionText.font = MainCore.Res.Get<TMP_FontAsset>(Asset.SUIT_Regular);
             versionText.fontSize = 12f;
             versionText.color = new Color(1f, 1f, 1f, 0.4f);
             versionText.characterSpacing = -3f;
@@ -245,7 +242,7 @@ internal static class UICore {
         var topImage = topBar.AddComponent<Image>();
         topImage.color = UIColors.TopBar;
         topImage.type = Image.Type.Sliced;
-        topImage.sprite = SpriteDatabase.Get(UISliceSprite.CircleHalf256P1024);
+        topImage.sprite = MainCore.Spr.Get(UISliceSprite.CircleHalf256P1024);
 
         var topRect = topBar.GetComponent<RectTransform>();
         topRect.anchorMin = new(0, 1);
@@ -262,7 +259,7 @@ internal static class UICore {
             logo.transform.SetParent(topBar.transform, false);
 
             var logoImage = logo.AddComponent<Image>();
-            logoImage.sprite = SpriteDatabase.Get(UISprite.OV5LogoOutline256);
+            logoImage.sprite = MainCore.Spr.Get(UISprite.OV5LogoOutline256);
 
             var logoRect = logo.GetComponent<RectTransform>();
             logoRect.anchorMin = new(0, 0.5f);
@@ -297,7 +294,7 @@ internal static class UICore {
             bg.transform.SetParent(close.transform, false);
 
             CloseImage = bg.AddComponent<Image>();
-            CloseImage.sprite = SpriteDatabase.Get(UISprite.Circle256);
+            CloseImage.sprite = MainCore.Spr.Get(UISprite.Circle256);
             CloseImage.color = new Color(UIColors.SoftRed.r, UIColors.SoftRed.g, UIColors.SoftRed.b, 0f);
 
             RectTransform bgRect = bg.GetComponent<RectTransform>();
@@ -311,7 +308,7 @@ internal static class UICore {
             xObj.transform.SetParent(close.transform, false);
 
             Image xImage = xObj.AddComponent<Image>();
-            xImage.sprite = SpriteDatabase.Get(UISprite.X128);
+            xImage.sprite = MainCore.Spr.Get(UISprite.X128);
 
             RectTransform xRect = xObj.GetComponent<RectTransform>();
             xRect.anchorMin = Vector2.zero;

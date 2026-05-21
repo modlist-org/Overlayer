@@ -1,6 +1,7 @@
 ﻿using DG.Tweening;
+using Overlayer.Core;
+using Overlayer.Resource;
 using Overlayer.UI.Generator;
-using Overlayer.UI.SpriteManage;
 using Overlayer.UI.Utility;
 using TMPro;
 using UnityEngine;
@@ -184,7 +185,7 @@ public class UIDropDown<T> : UIObject {
             rowRect.sizeDelta = new(0f, 50f);
 
             Image rowImage = row.AddComponent<Image>();
-            rowImage.sprite = SpriteDatabase.Get(UISliceSprite.Circle256P2048);
+            rowImage.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P2048);
             rowImage.type = Image.Type.Sliced;
             rowImage.color = Color.clear;
 

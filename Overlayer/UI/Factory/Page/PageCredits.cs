@@ -1,5 +1,5 @@
-﻿using Overlayer.Resource;
-using Overlayer.UI.SpriteManage;
+﻿using Overlayer.Core;
+using Overlayer.Resource;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -19,7 +19,7 @@ internal static class PageCredits {
         logoRect.anchoredPosition = new Vector2(0, 150);
 
         var logoImg = logo.AddComponent<Image>();
-        logoImg.sprite = SpriteDatabase.Get(UISprite.OV5LogoOutline256);
+        logoImg.sprite = MainCore.Spr.Get(UISprite.OV5LogoOutline256);
         logoImg.preserveAspect = true;
 
         GameObject title = new("Title");
@@ -34,7 +34,7 @@ internal static class PageCredits {
 
         var tmp = title.AddComponent<TextMeshProUGUI>();
         tmp.text = "Overlayer V5";
-        tmp.font = ResourceManager.Get<TMP_FontAsset>(Asset.SUITRegular);
+        tmp.font = MainCore.Res.Get<TMP_FontAsset>(Asset.SUIT_Regular);
         tmp.fontSize = 38;
         tmp.color = Color.white;
         tmp.alignment = TextAlignmentOptions.Center;
@@ -51,7 +51,7 @@ internal static class PageCredits {
 
         var subtitleTmp = subtitle.AddComponent<TextMeshProUGUI>();
         subtitleTmp.text = "Display everything as you wish.";
-        subtitleTmp.font = ResourceManager.Get<TMP_FontAsset>(Asset.SUITRegular);
+        subtitleTmp.font = MainCore.Res.Get<TMP_FontAsset>(Asset.SUIT_Regular);
         subtitleTmp.fontSize = 20;
         subtitleTmp.color = new Color(1f, 1f, 1f, 0.45f);
         subtitleTmp.alignment = TextAlignmentOptions.Center;
@@ -71,7 +71,7 @@ internal static class PageCredits {
             "<color=#FFFFFF66>from modlist.org</color>\n" +
             "<color=#FFFFFF88>Thank you for using Overlayer.</color>\n" +
             "<size=12><color=#FFFFFF33>\nLicensed under GPLv3</color></size>";
-        creditsTmp.font = ResourceManager.Get<TMP_FontAsset>(Asset.SUITRegular);
+        creditsTmp.font = MainCore.Res.Get<TMP_FontAsset>(Asset.SUIT_Regular);
         creditsTmp.fontSize = 26;
         creditsTmp.color = Color.white;
         creditsTmp.lineSpacing = 18;

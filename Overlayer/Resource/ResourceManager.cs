@@ -5,6 +5,26 @@ using Object = UnityEngine.Object;
 
 namespace Overlayer.Resource;
 
+public enum Asset {
+    SUIT_Regular,
+    SUIT_Medium,
+
+    OV5LogoOutline256,
+    Circle256,
+    CircleHalf256,
+    X128,
+    Monitor128,
+    Gear128,
+    Image128,
+    Text128,
+    Book128,
+    Star128,
+    ToggleCircle128,
+    CircleOutline256,
+    Triangle128,
+    Power128,
+}
+
 public sealed class ResourceManager(Assembly assembly, string resourcePath) : IDisposable {
     private readonly Dictionary<string, object>
         cache = [];
@@ -12,7 +32,7 @@ public sealed class ResourceManager(Assembly assembly, string resourcePath) : ID
     public byte[] Load(
         string path
     ) {
-        if (string.IsNullOrWhiteSpace(path)) {
+        if(string.IsNullOrWhiteSpace(path)) {
             return null;
         }
 
@@ -22,11 +42,11 @@ public sealed class ResourceManager(Assembly assembly, string resourcePath) : ID
                     resourcePath + path
                 );
 
-            if (stream == null) {
+            if(stream == null) {
                 return null;
             }
 
-            if (stream.Length <= 0) {
+            if(stream.Length <= 0) {
                 return [];
             }
 
@@ -34,14 +54,14 @@ public sealed class ResourceManager(Assembly assembly, string resourcePath) : ID
 
             int offset = 0;
 
-            while (offset < data.Length) {
+            while(offset < data.Length) {
                 int read = stream.Read(
                     data,
                     offset,
                     data.Length - offset
                 );
 
-                if (read <= 0) {
+                if(read <= 0) {
                     break;
                 }
 
@@ -52,8 +72,7 @@ public sealed class ResourceManager(Assembly assembly, string resourcePath) : ID
                 ? data
                 : null;
 
-        }
-        catch {
+        } catch {
             return null;
         }
     }
@@ -62,7 +81,7 @@ public sealed class ResourceManager(Assembly assembly, string resourcePath) : ID
         string path,
         FilterMode filter = FilterMode.Bilinear
     ) {
-        if (
+        if(
             cache.TryGetValue(
                 path,
                 out object cached
@@ -73,7 +92,7 @@ public sealed class ResourceManager(Assembly assembly, string resourcePath) : ID
 
         byte[] data = Load(path);
 
-        if (
+        if(
             data == null ||
             data.Length == 0
         ) {
@@ -88,7 +107,7 @@ public sealed class ResourceManager(Assembly assembly, string resourcePath) : ID
             true
         );
 
-        if (!texture.LoadImage(data)) {
+        if(!texture.LoadImage(data)) {
             Object.Destroy(texture);
 
             return null;
@@ -105,7 +124,7 @@ public sealed class ResourceManager(Assembly assembly, string resourcePath) : ID
         string path,
         string tempPath
     ) {
-        if (
+        if(
             cache.TryGetValue(
                 path,
                 out object cached
@@ -116,7 +135,7 @@ public sealed class ResourceManager(Assembly assembly, string resourcePath) : ID
 
         byte[] data = Load(path);
 
-        if (data == null) {
+        if(data == null) {
             return null;
         }
 
@@ -146,7 +165,7 @@ public sealed class ResourceManager(Assembly assembly, string resourcePath) : ID
     )
         where T : class {
 
-        if (
+        if(
             cache.TryGetValue(
                 path,
                 out object value
@@ -158,9 +177,28 @@ public sealed class ResourceManager(Assembly assembly, string resourcePath) : ID
         return null;
     }
 
+    public Texture2D GetTexture(
+    Asset asset,
+    FilterMode filter = FilterMode.Bilinear
+) {
+        return assetMap.TryGetValue(
+            asset,
+            out string path
+        )
+            ? LoadTexture(path, filter)
+            : null;
+    }
+
+    public T Get<T>(Asset asset) where T : class {
+        return assetMap.TryGetValue(
+            asset,
+            out string path
+        ) ? Get<T>(path) : null;
+    }
+
     public void Dispose() {
-        foreach (object item in cache.Values) {
-            switch (item) {
+        foreach(object item in cache.Values) {
+            switch(item) {
                 case Texture2D texture:
                     Object.Destroy(texture);
                     break;
@@ -173,4 +211,23 @@ public sealed class ResourceManager(Assembly assembly, string resourcePath) : ID
 
         cache.Clear();
     }
+
+    private readonly Dictionary<Asset, string> assetMap = new() {
+        [Asset.SUIT_Regular] = "Font.SUIT-Regular.otf",
+        [Asset.SUIT_Medium] = "Font.SUIT-Medium.otf",
+        [Asset.OV5LogoOutline256] = "Image.OV5LogoOutline256.png",
+        [Asset.Circle256] = "Image.Circle256.png",
+        [Asset.CircleHalf256] = "Image.CircleHalf256.png",
+        [Asset.X128] = "Image.X128.png",
+        [Asset.Monitor128] = "Image.Monitor128.png",
+        [Asset.Gear128] = "Image.Gear128.png",
+        [Asset.Image128] = "Image.Image128.png",
+        [Asset.Text128] = "Image.Text128.png",
+        [Asset.Book128] = "Image.Book128.png",
+        [Asset.Star128] = "Image.Star128.png",
+        [Asset.ToggleCircle128] = "Image.ToggleCircle128.png",
+        [Asset.CircleOutline256] = "Image.CircleOutline256.png",
+        [Asset.Triangle128] = "Image.Triangle128.png",
+        [Asset.Power128] = "Image.Power128.png"
+    };
 }

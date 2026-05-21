@@ -1,5 +1,5 @@
-﻿using UnityEngine;
-using DG.Tweening;
+﻿using DG.Tweening;
+using UnityEngine;
 
 public class UIScrollController : MonoBehaviour {
     public RectTransform content;
@@ -78,7 +78,7 @@ public class UIScrollController : MonoBehaviour {
         );
 
         float normalized = 1f - Mathf.Clamp01(
-            (local.y + viewportHeight * 0.5f) / viewportHeight
+            (local.y + (viewportHeight * 0.5f)) / viewportHeight
         );
 
         targetY = normalized * maxOffset;

@@ -1,5 +1,3 @@
-using System;
-
 namespace Overlayer.ModuleAPI;
 
 public abstract class OverlayerModule {

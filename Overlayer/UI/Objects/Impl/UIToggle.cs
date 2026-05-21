@@ -1,5 +1,6 @@
 ﻿using DG.Tweening;
-using Overlayer.UI.SpriteManage;
+using Overlayer.Core;
+using Overlayer.Resource;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -59,7 +60,7 @@ public class UIToggle : UIObject {
         circleSeq?.Kill();
         changeSeq?.Kill();
 
-        CircleImage.sprite = SpriteDatabase.Get(
+        CircleImage.sprite = MainCore.Spr.Get(
             Value ? UISprite.Circle256 : UISprite.ToggleCircle128
         );
 

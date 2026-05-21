@@ -1,5 +1,3 @@
-using System.IO;
-
 namespace Overlayer.Core.Service;
 
 public sealed class PathService(string rootPath) {

@@ -38,10 +38,10 @@ public static class ResourceLoader {
                 offset += read;
             }
 
-            if (offset == data.Length) {
+            if(offset == data.Length) {
                 return data;
             }
-            
+
             MainCore.Logger.Wrn($"Incomplete resource read: {resourceName}");
             return null;
 

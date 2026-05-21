@@ -1,5 +1,5 @@
 ﻿using Overlayer.Core;
-using Overlayer.UI.SpriteManage;
+using Overlayer.Resource;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -262,7 +262,7 @@ public class ResizeHandle
             rect.anchoredPosition = Vector2.zero;
 
             Image image = handle.AddComponent<Image>();
-            image.sprite = SpriteDatabase.Get(UISprite.Circle256);
+            image.sprite = MainCore.Spr.Get(UISprite.Circle256);
             image.color = Color.clear;
 
             ResizeHandle resize = handle.AddComponent<ResizeHandle>();

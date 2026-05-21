@@ -1,7 +1,6 @@
 ﻿using DG.Tweening;
 using Overlayer.Core;
 using Overlayer.Resource;
-using Overlayer.UI.SpriteManage;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -42,7 +41,7 @@ public class Tooltip {
 
         Image img = bg.AddComponent<Image>();
         img.color = new(0f, 0f, 0f, 0.6f);
-        img.sprite = SpriteDatabase.Get(UISliceSprite.Circle256P2048);
+        img.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P2048);
         img.type = Image.Type.Sliced;
 
         GameObject t = new("Text");
@@ -55,7 +54,7 @@ public class Tooltip {
         tr.offsetMax = new(-16f, -16f);
 
         text = t.AddComponent<TextMeshProUGUI>();
-        text.font = ResourceManager.Get<TMP_FontAsset>(Asset.SUITRegular);
+        text.font = MainCore.Res.Get<TMP_FontAsset>(Asset.SUIT_Regular);
         text.fontSize = 20f;
         text.color = Color.white;
         text.alignment = TextAlignmentOptions.Left;

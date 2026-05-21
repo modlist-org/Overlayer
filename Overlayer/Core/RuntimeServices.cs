@@ -5,9 +5,7 @@ namespace Overlayer.Core;
 public sealed class RuntimeServices {
     private readonly List<IRuntimeService> services = [];
 
-    public void Add(IRuntimeService service) {
-        services.Add(service);
-    }
+    public void Add(IRuntimeService service) => services.Add(service);
 
     public void Initialize() {
         foreach(var service in services) {

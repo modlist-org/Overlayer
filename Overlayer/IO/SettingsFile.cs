@@ -19,9 +19,7 @@ public sealed class SettingsFile<T>
 
     public SettingsFile(
         string path
-    ) {
-        Path = path;
-    }
+    ) => Path = path;
 
     public void Load() {
         if(!File.Exists(Path)) {

@@ -3,7 +3,6 @@ using Overlayer.Async;
 using Overlayer.Core;
 using Overlayer.IO;
 using Overlayer.Localization;
-using Overlayer.Patch.Safe;
 using Overlayer.UI.Generator;
 using Overlayer.UI.Objects;
 using Overlayer.UI.Objects.Impl;

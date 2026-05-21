@@ -437,8 +437,6 @@
 		<Compile Include="Core\Service\LocalizationService.cs" />
 		<Compile Include="Core\Service\ModuleService.cs" />
 		<Compile Include="Core\Service\PathService.cs" />
-		<Compile Include="Core\Service\ResourceService.cs" />
-		<Compile Include="Core\Service\SpriteService.cs" />
 		<Compile Include="Core\Service\UIService.cs" />
 		<Compile Include="IO\CoreSettings.cs" />
 		<Compile Include="IO\Interface\ISettingsFile.cs" />
@@ -472,8 +470,7 @@
 		<Compile Include="UI\Utility\DragHandler.cs" />
 		<Compile Include="UI\Factory\MenuFactory.cs" />
 		<Compile Include="UI\Utility\ResizeHandle.cs" />
-		<Compile Include="UI\SpriteManage\SpriteDatabase.cs" />
-		<Compile Include="UI\SpriteManage\SpriteFactory.cs" />
+		<Compile Include="Resource\SpriteManager.cs" />
 		<Compile Include="UI\UICore.cs" />
 		<Compile Include="UI\Utility\EmptyGraphic.cs" />
 		<Compile Include="UI\Utility\NonRaycastButton.cs" />
