@@ -2,7 +2,7 @@
 	<PropertyGroup>
 		<TargetFramework>netstandard2.1</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
-		<Nullable>enable</Nullable>
+		<Nullable>disable</Nullable>
 		<RootNamespace>Overlayer</RootNamespace>
 		<LangVersion>default</LangVersion>
 		<IsPackable>false</IsPackable>
@@ -454,12 +454,13 @@
 		<Compile Include="Patch\Safe\SafePatchManager.cs" />
 		<Compile Include="Resource/ResourceLoader.cs" />
 		<Compile Include="Resource/ResourceManager.cs" />
-		<Compile Include="Tag\Format\FormatMode.cs" />
-		<Compile Include="Tag\Parse\Parser.cs" />
+		<Compile Include="Tag\Replace\CompiledPlaceholder.cs" />
+		<Compile Include="Tag\Replace\Placeholder.cs" />
+		<Compile Include="Tag\Replace\ReplaseTagCache.cs" />
+		<Compile Include="Tag\Replace\Wrapper.cs" />
+		<Compile Include="Tag\Replace\Replacer.cs" />
 		<Compile Include="Tag\Tag.cs" />
 		<Compile Include="Tag\TagAttribute.cs" />
-		<Compile Include="Tag\TagCache.cs" />
-		<Compile Include="Tag\TagConverter.cs" />
 		<Compile Include="Tag\TagLoader.cs" />
 		<Compile Include="Tag\TagManager.cs" />
 		<Compile Include="UI\ColorPicker\ColorPicker.cs" />
@@ -508,10 +509,6 @@
 
 	<ItemGroup>
 	  <PackageReference Include="Microsoft.ClearScript.V8" Version="7.5.0" />
-	</ItemGroup>
-
-	<ItemGroup>
-	  <Folder Include="Tag\Replace\" />
 	</ItemGroup>
 
 	<Target Name="PostBuild" AfterTargets="Build">
