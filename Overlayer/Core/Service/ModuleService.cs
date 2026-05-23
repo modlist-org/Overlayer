@@ -3,7 +3,7 @@ using Overlayer.ModuleAPI;
 
 namespace Overlayer.Core.Service;
 
-public sealed class ModuleService(OverlayerLogger logger, UIService uiService) : IDisposable {
+public sealed class ModuleService(OverlayerLogger logger) : IDisposable {
     private readonly List<OverlayerModule> _loadedModules = [];
 
     public void DiscoverAndRegisterModules() {

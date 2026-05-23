@@ -77,7 +77,7 @@ public sealed class OverlayerRuntime {
         Localization = new LocalizationService(Paths.LangPath, Config, Logger);
 
         uiService = new UIService();
-        moduleService = new ModuleService(Logger, uiService);
+        moduleService = new ModuleService(Logger);
 
         services.Add(Localization);
         services.Add(uiService);
