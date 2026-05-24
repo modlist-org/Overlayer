@@ -1,6 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
 		<TargetFramework>netstandard2.1</TargetFramework>
+		<PlatformTarget>x64</PlatformTarget>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>disable</Nullable>
 		<RootNamespace>Overlayer</RootNamespace>
@@ -525,7 +526,9 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <PackageReference Include="Microsoft.ClearScript.V8" Version="7.5.0" />
+	  <PackageReference Include="Microsoft.ClearScript.V8" Version="7.5.1" />
+	  <PackageReference Include="Microsoft.ClearScript.V8.Native.linux-x64" Version="7.5.1" />
+	  <PackageReference Include="Microsoft.ClearScript.V8.Native.win-x64" Version="7.5.1" />
 	</ItemGroup>
 
 	<Target Name="PostBuild" AfterTargets="Build">
