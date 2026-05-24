@@ -47,22 +47,20 @@ public class Translator {
     /// </summary>
     public const string FALLBACK_LANGUAGE = "DEFAULT";
 
-    private string language = FALLBACK_LANGUAGE;
-
     /// <summary>
     /// Gets or sets the current language for translations.
     /// </summary>
     public string Language {
-        get => language;
+        get;
         set {
-            if(language == value) {
+            if(field == value) {
                 return;
             }
 
-            language = value;
-            OnLanguageChanged.Invoke(language);
+            field = value;
+            OnLanguageChanged.Invoke(field);
         }
-    }
+    } = FALLBACK_LANGUAGE;
 
     /// <summary>
     /// Gets the failure state of the translator.
@@ -112,7 +110,7 @@ public class Translator {
     /// <summary>
     /// Event triggered when the translator has finished initialization.
     /// </summary>
-   
+
     public event Action OnLoadStart = delegate { };
     public event Action<TranslationFailState> OnLoadEnd = delegate { };
     public event Action<string> OnLanguageChanged = delegate { };

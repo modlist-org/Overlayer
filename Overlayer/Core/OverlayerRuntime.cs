@@ -5,8 +5,6 @@ using Overlayer.Core.Service;
 using Overlayer.IO;
 using Overlayer.Patch.Safe;
 using Overlayer.Resource;
-using Overlayer.Tag;
-using Overlayer.Tag.Replace;
 using System.Reflection;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -94,24 +92,7 @@ public sealed class OverlayerRuntime {
 
         moduleService.DiscoverAndRegisterModules();
         moduleService.InitializeAllModules();
-
-        Task.Run(async () => {
-            await TagManager.InitializeAsync(Assembly);
-            Logger.Msg($"Tag Count: {TagManager.Count}");
-            Replacer r = new() {
-                Placeholder = new("Test", ["F2"])
-            };
-            Logger.Msg(r.Get());
-        });
-
-        
     }
-
-    [Tag(TagType = TagType.ProcessFormat)]
-    public static int Test() {
-        return 123132;
-    }
-
     public void Tick() => ticks.Tick();
 
     public void Dispose() {

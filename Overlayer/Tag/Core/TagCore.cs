@@ -1,6 +1,6 @@
 ﻿using System.Reflection;
 
-namespace Overlayer.Tag;
+namespace Overlayer.Tag.Core;
 
 [Flags]
 public enum TagType {
@@ -14,23 +14,22 @@ public enum TagType {
     Hide = 1 << 16,
 }
 
-public sealed class Tag {
+public sealed class TagCore {
     public string Name { get; }
     public TagType TagType { get; }
     public MethodInfo Method { get; }
     public ParameterInfo[] Parameters { get; }
     public int RequiredParameterCount { get; }
     public Type ReturnType { get; }
-    public MethodInfo ToStringMethod { get; }
 
-    public Tag(string name, MethodInfo method, TagType tagType) {
+    public TagCore(string name, MethodInfo method, TagType tagType) {
         Name = name;
         TagType = tagType;
         Method = method;
+
         Parameters = method.GetParameters();
 
         int required = 0;
-
         for(int i = 0; i < Parameters.Length; i++) {
             if(!Parameters[i].HasDefaultValue) {
                 required++;
@@ -38,14 +37,6 @@ public sealed class Tag {
         }
 
         RequiredParameterCount = required;
-
         ReturnType = method.ReturnType;
-
-        if(ReturnType != typeof(string)) {
-            ToStringMethod = ReturnType.GetMethod(
-                nameof(ToString),
-                Type.EmptyTypes
-            );
-        }
     }
 }

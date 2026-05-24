@@ -1,19 +1,15 @@
-﻿namespace Overlayer.Tag.Replace;
+﻿namespace Overlayer.Tag.Core;
 
 public readonly struct Placeholder(
     string name,
     string[] args
 ) : IEquatable<Placeholder> {
     public readonly string Name = name;
-    public readonly string[] Args = args?.ToArray() ?? [];
+    public readonly string[] Args = args ?? [];
 
     public bool Equals(Placeholder other) {
         if(Name != other.Name) {
             return false;
-        }
-
-        if(ReferenceEquals(Args, other.Args)) {
-            return true;
         }
 
         if(Args == null || other.Args == null) {

@@ -1,7 +1,7 @@
 ﻿using DG.Tweening;
 using Overlayer.Core;
-using Overlayer.Resource;
 using Overlayer.Localization;
+using Overlayer.Resource;
 using Overlayer.UI.Transition;
 using TMPro;
 using UnityEngine;
@@ -133,9 +133,7 @@ public static class MenuFactory {
                 .SetUpdate(true);
         });
 
-        Add(EventTriggerType.PointerClick, () => {
-            SetState(state);
-        });
+        Add(EventTriggerType.PointerClick, () => SetState(state));
 
         return menuItem;
     }

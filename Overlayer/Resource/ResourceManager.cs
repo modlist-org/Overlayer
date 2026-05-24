@@ -50,7 +50,7 @@ public sealed class ResourceManager(Assembly assembly, string resourcePath) : ID
             int offset = 0;
 
             while(offset < data.Length) {
-                int read = stream.Read(data,offset,  data.Length - offset);
+                int read = stream.Read(data, offset, data.Length - offset);
 
                 if(read <= 0) {
                     break;
@@ -95,7 +95,7 @@ public sealed class ResourceManager(Assembly assembly, string resourcePath) : ID
     }
 
     public TMP_FontAsset LoadFont(string path, string tempPath) {
-        if(cache.TryGetValue(path, out object cached) ) {
+        if(cache.TryGetValue(path, out object cached)) {
             return cached as TMP_FontAsset;
         }
 

@@ -1,22 +1,22 @@
 ﻿using System.Reflection;
 
-namespace Overlayer.Tag;
+namespace Overlayer.Tag.Core;
 
 public static class TagLoader {
-    public static Task<List<Tag>> LoadAsync(Assembly asm) {
+    public static Task<List<TagCore>> LoadAsync(Assembly asm) {
         return Task.Run(() => {
-            List<Tag> tags = [];
+            List<TagCore> tags = [];
 
             foreach(Type type in asm.GetTypes()) {
                 foreach(MethodInfo method in type.GetMethods(BindingFlags.Public | BindingFlags.Static)) {
                     TagAttribute attr = method.GetCustomAttribute<TagAttribute>();
                     if(attr == null) {
                         continue;
-                    } 
+                    }
 
                     string name = attr.Name ?? method.Name;
 
-                    tags.Add(new Tag(name, method, attr.TagType));
+                    tags.Add(new TagCore(name, method, attr.TagType));
                 }
             }
 
