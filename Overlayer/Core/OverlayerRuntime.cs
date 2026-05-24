@@ -1,4 +1,4 @@
-using Microsoft.ClearScript.V8;
+//using Microsoft.ClearScript.V8;
 using Overlayer.Async;
 using Overlayer.Compat;
 using Overlayer.Compat.Interface;
@@ -34,7 +34,7 @@ public sealed class OverlayerRuntime {
 
     public GameObject RootObject { get; private set; }
 
-    public V8ScriptEngine V8Engine { get; private set; }
+    //public V8ScriptEngine V8Engine { get; private set; }
 
     public readonly IOverlayerHost Host;
 
@@ -90,7 +90,7 @@ public sealed class OverlayerRuntime {
 
         services.Initialize();
 
-        V8Engine = new();
+        //V8Engine = new();
 
         moduleService.DiscoverAndRegisterModules();
         moduleService.InitializeAllModules();
