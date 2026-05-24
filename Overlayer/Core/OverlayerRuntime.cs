@@ -90,8 +90,7 @@ public sealed class OverlayerRuntime {
 
         services.Initialize();
 
-        Task.Run(async () =>
-        {
+        Task.Run(async () => {
             await TagManager.InitializeAsync(Assembly);
 
             var engine = new TextEngineCore {
@@ -101,7 +100,7 @@ public sealed class OverlayerRuntime {
             var text = engine.Text;
             var diags = engine.GetDiagnostics();
 
-            MainCore.Logger.Msg("\n"+RenderRustDiagnostics(text, diags));
+            MainCore.Logger.Msg("\n" + RenderRustDiagnostics(text, diags));
 
             MainCore.Logger.Msg($"[TEST] {engine.Get()}");
         });

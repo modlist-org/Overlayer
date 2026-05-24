@@ -73,13 +73,10 @@ public static class ExpressionBuilder {
                 Type.EmptyTypes
             );
 
-            result =
-                m != null
-                    ? Expression.Call(call, m)
-                    : Expression.Call(
-                        call,
-                        typeof(object).GetMethod(nameof(ToString))
-                    );
+            result = m != null ? Expression.Call(call, m) : Expression.Call(
+                call,
+                typeof(object).GetMethod(nameof(ToString))
+            );
         }
 
         body.Add(result);

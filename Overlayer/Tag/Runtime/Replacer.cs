@@ -5,17 +5,15 @@ namespace Overlayer.Tag.Runtime;
 public sealed class Replacer {
     public CompiledPlaceholder Compiled { get; private set; } = EmptyDelegates.EmptyCompiled;
 
-    private ParsedTag parsed;
-
     public ParsedTag Parsed {
-        get => parsed;
+        get;
         set {
-            if(parsed.Equals(value)) {
+            if(field.Equals(value)) {
                 return;
             }
 
-            parsed = value;
-            Compiled = TagCache.GetOrCompile(parsed);
+            field = value;
+            Compiled = TagCache.GetOrCompile(field);
         }
     }
 

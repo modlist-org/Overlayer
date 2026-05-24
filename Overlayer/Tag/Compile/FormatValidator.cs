@@ -1,6 +1,4 @@
-﻿using Overlayer.Tag.Diagnostics;
-
-namespace Overlayer.Tag.Compile;
+﻿namespace Overlayer.Tag.Compile;
 
 public static class FormatValidator {
     public static bool TryValidate(Type type, string format, out Exception exception) {

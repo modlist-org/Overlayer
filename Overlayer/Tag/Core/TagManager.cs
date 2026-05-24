@@ -1,5 +1,4 @@
-﻿using Overlayer.Compat.Interface;
-using Overlayer.Core;
+﻿using Overlayer.Core;
 using System.Reflection;
 
 namespace Overlayer.Tag.Core;

@@ -1,5 +1,4 @@
-﻿using Overlayer.Tag.Core;
-using Overlayer.Tag.Diagnostics;
+﻿using Overlayer.Tag.Diagnostics;
 using Overlayer.TextEngine.Parse;
 using Overlayer.TextEngine.Runtime;
 using System.Text;
@@ -7,16 +6,14 @@ using System.Text;
 namespace Overlayer.TextEngine.Core;
 
 public sealed class TextEngineCore {
-    private string text;
-
     public string Text {
-        get => text;
+        get;
         set {
-            if(text == value) {
+            if(field == value) {
                 return;
             }
 
-            text = value;
+            field = value;
             Compile();
         }
     }
@@ -27,12 +24,12 @@ public sealed class TextEngineCore {
         => [.. Segments.SelectMany(s => s.Replacer.Compiled.Diagnostics)];
 
     private void Compile() {
-        if(string.IsNullOrEmpty(text)) {
+        if(string.IsNullOrEmpty(Text)) {
             Segments = [];
             return;
         }
 
-        var tags = Parser.Parse(text);
+        var tags = Parser.Parse(Text);
 
         if(tags.Count == 0) {
             Segments = [];
@@ -56,22 +53,22 @@ public sealed class TextEngineCore {
 
     public string Get() {
         if(Segments == null || Segments.Length == 0) {
-            return text ?? string.Empty;
+            return Text ?? string.Empty;
         }
 
-        var sb = new StringBuilder(text.Length);
+        var sb = new StringBuilder(Text.Length);
         int last = 0;
 
         for(int i = 0; i < Segments.Length; i++) {
             var s = Segments[i];
 
-            sb.Append(text, last, s.Index - last);
+            sb.Append(Text, last, s.Index - last);
             sb.Append(s.Replacer.Get());
 
             last = s.Index + s.Length;
         }
 
-        sb.Append(text, last, text.Length - last);
+        sb.Append(Text, last, Text.Length - last);
 
         return sb.ToString();
     }
