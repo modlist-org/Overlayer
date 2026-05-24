@@ -12,36 +12,48 @@ public static class TagManager {
     private static Task _initTask;
 
     public static Task InitializeAsync(Assembly asm) {
+        bool isFirstInit;
+        Task task;
+
         lock(_lock) {
             if(_initTask != null) {
-                MainCore.Logger.Msg($"[{nameof(TagManager)}] Already initialized / returning existing task");
-                return _initTask;
+                isFirstInit = false;
+                task = _initTask;
+            } else {
+                isFirstInit = true;
+
+                _initTask = Task.Run(() => InitializeInternal(asm));
+                task = _initTask;
+            }
+        }
+
+        if(isFirstInit) {
+            MainCore.Logger.Msg($"[{nameof(TagManager)}] Initialization started");
+        } else {
+            MainCore.Logger.Msg($"[{nameof(TagManager)}] Already initialized / returning existing task");
+        }
+
+        return task;
+    }
+
+    private static void InitializeInternal(Assembly asm) {
+        try {
+            var list = TagLoader.LoadAsync(asm).GetAwaiter().GetResult();
+
+            MainCore.Logger.Msg($"[{nameof(TagManager)}] Loaded tags: {list.Count}");
+
+            var dict = new Dictionary<string, TagCore>(list.Count);
+
+            foreach(var tag in list) {
+                dict[tag.Name] = tag;
             }
 
-            MainCore.Logger.Msg($"[{nameof(TagManager)}] Initialization started");
+            _tags = dict;
 
-            _initTask = Task.Run(async () => {
-                try {
-                    var list = await TagLoader.LoadAsync(asm);
-
-                    MainCore.Logger.Msg($"[{nameof(TagManager)}] Loaded tags: {list.Count}");
-
-                    var dict = new Dictionary<string, TagCore>(list.Count);
-
-                    foreach(var tag in list) {
-                        dict[tag.Name] = tag;
-                    }
-
-                    _tags = dict;
-
-                    MainCore.Logger.Msg($"[{nameof(TagManager)}] Initialization completed. Total: {_tags.Count}");
-                } catch(Exception ex) {
-                    MainCore.Logger.Msg($"[{nameof(TagManager)}] Initialization failed: {ex}");
-                    throw;
-                }
-            });
-
-            return _initTask;
+            MainCore.Logger.Msg($"[{nameof(TagManager)}] Initialization completed. Total: {_tags.Count}");
+        } catch(Exception ex) {
+            MainCore.Logger.Msg($"[{nameof(TagManager)}] Initialization failed: {ex}");
+            throw;
         }
     }
 
@@ -49,8 +61,14 @@ public static class TagManager {
         => _tags.TryGetValue(name, out tag);
 
     public static void Set(TagCore tag) {
+        Dictionary<string, TagCore> newMap;
         lock(_lock) {
-            _tags[tag.Name] = tag;
+            newMap = new(_tags) {
+                [tag.Name] = tag
+            };
+
+            _tags = newMap;
         }
+        MainCore.Logger.Msg($"[{nameof(TagManager)}] Tag updated: {tag.Name}");
     }
 }

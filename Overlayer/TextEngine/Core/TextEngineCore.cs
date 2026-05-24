@@ -1,4 +1,5 @@
-﻿using Overlayer.Tag.Diagnostics;
+﻿using Overlayer.Core;
+using Overlayer.Tag.Diagnostics;
 using Overlayer.TextEngine.Parse;
 using Overlayer.TextEngine.Runtime;
 using System.Text;
@@ -6,70 +7,124 @@ using System.Text;
 namespace Overlayer.TextEngine.Core;
 
 public sealed class TextEngineCore {
+    private readonly object _lock = new();
+
+    private string text;
+    private Task _compileTask;
+
+    private volatile CompiledSegment[] segments;
+    private volatile TextEngineState state;
+
+    private int spinner;
+
     public string Text {
-        get;
+        get => text;
         set {
-            if(field == value) {
+            if(text == value) {
                 return;
             }
 
-            field = value;
-            Compile();
+            text = value;
+            StartCompile();
         }
     }
 
-    public CompiledSegment[] Segments;
+    public CompiledSegment[] Segments => segments;
 
-    public CompileDiagnostic[] GetDiagnostics()
-        => [.. Segments.SelectMany(s => s.Replacer.Compiled.Diagnostics)];
+    public TextEngineState State => state;
 
-    private void Compile() {
-        if(string.IsNullOrEmpty(Text)) {
-            Segments = [];
-            return;
+    public CompileDiagnostic[] GetDiagnostics() {
+        var segs = segments;
+        if(segs == null) {
+            return [];
         }
 
-        var tags = Parser.Parse(Text);
+        return [.. segs.SelectMany(s => s.Replacer.Compiled.Diagnostics)];
+    }
 
-        if(tags.Count == 0) {
-            Segments = [];
-            return;
+    private void StartCompile() {
+        lock(_lock) {
+            state = TextEngineState.Compiling;
+            spinner = 0;
+
+            _compileTask = Task.Run(CompileInternal);
         }
+    }
 
-        Segments = new CompiledSegment[tags.Count];
+    private void CompileInternal() {
+        try {
+            if(string.IsNullOrEmpty(text)) {
+                segments = [];
+                state = TextEngineState.Ready;
+                return;
+            }
 
-        for(int i = 0; i < tags.Count; i++) {
-            var t = tags[i];
+            var tags = Parser.Parse(text);
 
-            Segments[i] = new CompiledSegment(
-                t.Index,
-                t.Length,
-                new Tag.Runtime.Replacer {
-                    Parsed = t
-                }
-            );
+            if(tags.Count == 0) {
+                segments = [];
+                state = TextEngineState.Ready;
+                return;
+            }
+
+            var result = new CompiledSegment[tags.Count];
+
+            for(int i = 0; i < tags.Count; i++) {
+                var t = tags[i];
+
+                result[i] = new CompiledSegment(
+                    t.Index,
+                    t.Length,
+                    new Tag.Runtime.Replacer {
+                        Parsed = t
+                    }
+                );
+            }
+
+            segments = result;
+            state = TextEngineState.Ready;
+        } catch {
+            state = TextEngineState.Ready;
+            throw;
         }
     }
 
     public string Get() {
-        if(Segments == null || Segments.Length == 0) {
-            return Text ?? string.Empty;
+        if(state == TextEngineState.Compiling) {
+            return $"{MainCore.Tr.Get("COMPILING", "Compiling")} {GetSpinner()}";
         }
 
-        var sb = new StringBuilder(Text.Length);
+        var segs = segments;
+
+        if(segs == null || segs.Length == 0) {
+            return text ?? string.Empty;
+        }
+
+        var sb = new StringBuilder(text.Length);
         int last = 0;
 
-        for(int i = 0; i < Segments.Length; i++) {
-            var s = Segments[i];
+        for(int i = 0; i < segs.Length; i++) {
+            var s = segs[i];
 
-            sb.Append(Text, last, s.Index - last);
+            sb.Append(text, last, s.Index - last);
             sb.Append(s.Replacer.Get());
 
             last = s.Index + s.Length;
         }
 
-        sb.Append(Text, last, Text.Length - last);
+        sb.Append(text, last, text.Length - last);
 
         return sb.ToString();
     }
+
+    private char GetSpinner() {
+        char[] frames = { '|', '/', '-', '\\' };
+        return frames[spinner++ % frames.Length];
+    }
+}
+
+public enum TextEngineState {
+    Idle,
+    Compiling,
+    Ready
 }

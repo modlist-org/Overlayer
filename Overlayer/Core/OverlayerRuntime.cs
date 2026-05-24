@@ -90,19 +90,8 @@ public sealed class OverlayerRuntime {
 
         services.Initialize();
 
-        Task.Run(async () => {
-            await TagManager.InitializeAsync(Assembly);
-
-            var engine = new TextEngineCore {
-                Text = "Value: {Test:F10}, Bad: {Unknown:1}"
-            };
-
-            var text = engine.Text;
-            var diags = engine.GetDiagnostics();
-
-            MainCore.Logger.Msg("\n" + RenderRustDiagnostics(text, diags));
-
-            MainCore.Logger.Msg($"[TEST] {engine.Get()}");
+        Task.Run(() => {
+            _ = TagManager.InitializeAsync(Assembly);
         });
 
         SetModEnabled(Config.Data.Active, false);
@@ -111,51 +100,6 @@ public sealed class OverlayerRuntime {
 
         moduleService.DiscoverAndRegisterModules();
         moduleService.InitializeAllModules();
-    }
-
-    [Tag(TagType = TagType.ProcessFormat)]
-    public static double Test() => 123.12312312;
-
-    static string RenderRustDiagnostics(string text, IEnumerable<CompileDiagnostic> diags) {
-        var sb = new StringBuilder();
-
-        foreach(var d in diags) {
-            var ctx = d.Context;
-
-            string level = d.Severity switch {
-                CompileSeverity.Error => "ERROR",
-                CompileSeverity.Warning => "WARN",
-                _ => "INFO"
-            };
-
-            sb.AppendLine($"{level} [{d.Id}] : {d.Id}");
-
-            sb.AppendLine($"    ---> textEngine:{ctx.Index}");
-
-            sb.AppendLine($"    {text}");
-
-            sb.AppendLine($"    {BuildLineMarker(ctx.Index, ctx.Length)} here");
-
-            sb.AppendLine();
-        }
-
-        return sb.ToString();
-    }
-
-    static string BuildLineMarker(int start, int length) {
-        var sb = new StringBuilder();
-
-        for(int i = 0; i < start; i++) {
-            sb.Append(' ');
-        }
-
-        int len = Math.Max(length, 1);
-
-        for(int i = 0; i < len; i++) {
-            sb.Append('^');
-        }
-
-        return sb.ToString();
     }
 
     public void Tick() => ticks.Tick();
