@@ -1,4 +1,5 @@
-﻿using Overlayer.Compat;
+﻿using Microsoft.ClearScript.V8;
+using Overlayer.Compat;
 using Overlayer.Compat.Interface;
 using Overlayer.Core.Service;
 using Overlayer.IO;
@@ -25,11 +26,9 @@ public static class MainCore {
     public static Translator Tr => Runtime.Localization.Translator;
     public static ResourceManager Res => Runtime.Resource;
     public static SpriteManager Spr => Runtime.Sprite;
-
     public static IOverlayerHost Host => Runtime.Host;
-
     public static UnityEngine.GameObject Root => Runtime.RootObject;
-
+    public static V8ScriptEngine V8 => Runtime.V8Engine;
     public static bool IsModEnabled => Runtime.State.IsEnabled;
 
     public static void Initialize(IOverlayerHost host) {

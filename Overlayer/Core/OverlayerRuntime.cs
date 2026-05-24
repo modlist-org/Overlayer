@@ -1,3 +1,4 @@
+using Microsoft.ClearScript.V8;
 using Overlayer.Async;
 using Overlayer.Compat;
 using Overlayer.Compat.Interface;
@@ -6,10 +7,7 @@ using Overlayer.IO;
 using Overlayer.Patch.Safe;
 using Overlayer.Resource;
 using Overlayer.Tag.Core;
-using Overlayer.Tag.Diagnostics;
-using Overlayer.TextEngine.Core;
 using System.Reflection;
-using System.Text;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
@@ -35,6 +33,8 @@ public sealed class OverlayerRuntime {
     public SpriteManager Sprite { get; }
 
     public GameObject RootObject { get; private set; }
+
+    public V8ScriptEngine V8Engine { get; private set; }
 
     public readonly IOverlayerHost Host;
 
@@ -90,16 +90,18 @@ public sealed class OverlayerRuntime {
 
         services.Initialize();
 
-        Task.Run(() => {
-            _ = TagManager.InitializeAsync(Assembly);
-        });
+        V8Engine = new();
+
+        moduleService.DiscoverAndRegisterModules();
+        moduleService.InitializeAllModules();
 
         SetModEnabled(Config.Data.Active, false);
 
         Logger.Msg("Hello");
 
-        moduleService.DiscoverAndRegisterModules();
-        moduleService.InitializeAllModules();
+        Task.Run(() => {
+            _ = TagManager.InitializeAsync(Assembly);
+        });
     }
 
     public void Tick() => ticks.Tick();
