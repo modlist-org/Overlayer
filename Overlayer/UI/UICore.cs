@@ -4,6 +4,7 @@ using Overlayer.Localization;
 using Overlayer.Resource;
 using Overlayer.UI.Factory;
 using Overlayer.UI.Factory.Page;
+using Overlayer.UI.Objects;
 using Overlayer.UI.Utility;
 using TMPro;
 using UnityEngine;
@@ -396,6 +397,7 @@ public static class UICore {
             holdingToggle = false;
         }
 
+        UIObject.TickAll();
         Tooltip.Tick();
     }
 
@@ -524,16 +526,8 @@ public static class UICore {
         }
 
         resetSequence = DOTween.Sequence().SetUpdate(true)
-            .Join(
-                Panel
-                    .DOAnchorPos(LastPanelPosition, 0.26f)
-                    .SetEase(Ease.OutExpo)
-            )
-            .Join(
-                Panel
-                    .DOSizeDelta(LastPanelSize, 0.26f)
-                    .SetEase(Ease.OutExpo)
-            );
+            .Join(Panel.DOAnchorPos(LastPanelPosition, 0.26f).SetEase(Ease.OutExpo))
+            .Join(Panel.DOSizeDelta(LastPanelSize, 0.26f).SetEase(Ease.OutExpo));
     }
 
     private static bool isMenuOpen = false;
@@ -586,6 +580,58 @@ public static class UICore {
         } else {
             OpenMenu();
         }
+    }
+
+    public static List<string> Search(string query, IEnumerable<string> source) {
+        if(string.IsNullOrWhiteSpace(query)) {
+            return [.. source];
+        }
+
+        string q = NormalizeString(query);
+
+        if(string.IsNullOrEmpty(q)) {
+            return [];
+        }
+
+        return [..
+        source
+        .Select(original => new {
+            Original = original,
+            Normalized = NormalizeString(original)
+        })
+        .Select(x => new {
+            x.Original,
+            Score = ScoreMatch(x.Normalized, q)
+        })
+        .Where(x => x.Score > 0)
+        .OrderByDescending(x => x.Score)
+        .Select(x => x.Original)
+        ];
+    }
+
+    private static int ScoreMatch(string normalizedValue, string normalizedQuery) {
+        if(normalizedValue == normalizedQuery) {
+            return 100;
+        }
+
+        if(normalizedValue.StartsWith(normalizedQuery)) {
+            return 80;
+        }
+
+        if(normalizedValue.Contains(normalizedQuery)) {
+            return 50;
+        }
+
+        return 0;
+    }
+
+    public static string NormalizeString(string input) {
+        if(string.IsNullOrEmpty(input)) {
+            return string.Empty;
+        }
+
+        char[] chars = [.. input.Where(char.IsLetterOrDigit).Select(char.ToLowerInvariant)];
+        return new string(chars);
     }
 
     public static void Dispose() {

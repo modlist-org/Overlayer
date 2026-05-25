@@ -66,12 +66,14 @@ public class UIToggle : UIObject {
 
         CircleRect.sizeDelta = new(30f, 30f);
 
+        float target = DefaultValue != Value ? 1f : 0f;
+
         if(noAnimate) {
             CircleRect.sizeDelta = new(26f, 26f);
             CircleImage.color = Value ? UIColors.ObjectActive : UIColors.ObjectInactive;
 
             Color c = ChangedImage.color;
-            c.a = (DefaultValue != Value) ? 1f : 0f;
+            c.a = target;
             ChangedImage.color = c;
 
             return;
@@ -92,8 +94,6 @@ public class UIToggle : UIObject {
                     0.15f
                 ).SetEase(Ease.OutQuad)
             );
-
-        float target = DefaultValue != Value ? 1f : 0f;
 
         changeSeq = DOTween.Sequence().SetUpdate(true)
             .Append(

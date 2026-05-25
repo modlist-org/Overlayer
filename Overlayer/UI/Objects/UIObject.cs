@@ -5,6 +5,8 @@ using UnityEngine;
 namespace Overlayer.UI.Objects;
 
 public abstract class UIObject {
+    private static readonly List<UIObject> _tickables = [];
+
     public string Id { get; }
     public RectTransform Rect { get; }
 
@@ -66,5 +68,20 @@ public abstract class UIObject {
                 targetAlpha,
                 0.2f
             ).SetEase(Ease.OutSine));
+    }
+
+    public virtual void Dispose() => UnregisterTick();
+
+    protected void RegisterTick() => _tickables.Add(this);
+
+    protected void UnregisterTick() => _tickables.Remove(this);
+
+    public virtual void Tick() {
+    }
+
+    public static void TickAll() {
+        for(int i = 0; i < _tickables.Count; i++) {
+            _tickables[i].Tick();
+        }
     }
 }

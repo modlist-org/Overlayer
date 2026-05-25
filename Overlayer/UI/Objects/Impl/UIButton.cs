@@ -10,7 +10,7 @@ public class UIButton : UIObject {
     public TextMeshProUGUI Label { get; }
     public Image Background { get; }
 
-    private Sequence hoverSeq;
+    private Tween hoverTween;
 
     public UIButton(
         string id,
@@ -27,18 +27,21 @@ public class UIButton : UIObject {
     }
 
     public void OnHoverEnter() {
-        hoverSeq?.Kill();
-        hoverSeq = DOTween.Sequence().SetUpdate(true)
-            .Join(Background.DOColor(UIColors.ObjectActiveLightBright, 0.12f)
-                .SetEase(Ease.OutSine));
+        hoverTween?.Kill();
+
+        hoverTween = Background
+            .DOColor(UIColors.ObjectActiveLightBright, 0.12f)
+            .SetEase(Ease.OutSine)
+            .SetUpdate(true);
     }
 
     public void OnHoverExit() {
-        hoverSeq?.Kill();
+        hoverTween?.Kill();
 
-        hoverSeq = DOTween.Sequence().SetUpdate(true)
-            .Join(Background.DOColor(UIColors.ObjectButton, 0.12f)
-                .SetEase(Ease.OutSine));
+        hoverTween = Background
+            .DOColor(UIColors.ObjectButton, 0.12f)
+            .SetEase(Ease.OutSine)
+            .SetUpdate(true);
     }
 
     public void Click(bool invoke = true) {
@@ -50,17 +53,16 @@ public class UIButton : UIObject {
     }
 
     public void UpdateVisual(bool noAnimate = false) {
-        hoverSeq?.Kill();
+        hoverTween?.Kill();
+
         if(noAnimate) {
             Background.color = UIColors.ObjectButton;
             return;
         }
 
-        Background.color = UIColors.ObjectActiveBright;
-
-        hoverSeq = DOTween.Sequence().SetUpdate(true).Append(
-            Background.DOColor(UIColors.ObjectButton, 0.2f)
-                .SetEase(Ease.OutSine)
-        );
+        hoverTween = Background
+            .DOColor(UIColors.ObjectButton, 0.2f)
+            .SetEase(Ease.OutSine)
+            .SetUpdate(true);
     }
 }

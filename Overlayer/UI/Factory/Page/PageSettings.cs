@@ -3,8 +3,8 @@ using Overlayer.Async;
 using Overlayer.Core;
 using Overlayer.IO;
 using Overlayer.Localization;
+using Overlayer.Resource;
 using Overlayer.UI.Generator;
-using Overlayer.UI.Objects;
 using Overlayer.UI.Objects.Impl;
 using Overlayer.UI.Utility;
 using UnityEngine;
@@ -13,7 +13,8 @@ using UnityEngine.UI;
 namespace Overlayer.UI.Factory.Page;
 
 internal static class PageSettings {
-    private static readonly Dictionary<string, UIObject> objects = [];
+    private static readonly Dictionary<TextLocalization, (GameObject LabelRow, GameObject MainRow)> objects = [];
+    private static UIDropDown<string> languageDropdown;
 
     public static void Create(RectTransform parent) {
         GameObject pad = new("Pad");
@@ -63,14 +64,63 @@ internal static class PageSettings {
 
         CoreSettings defSet = new();
 
-        _ = GenerateUI.AddTextH1(GenerateUI.Row(content.transform))
-            .gameObject.AddComponent<TextLocalization>()
-            .Init("LANGUAGE", "Language");
+        var inputRow = GenerateUI.Row(content.transform);
+        var findInput = 
+        GenerateUI.Input(
+            inputRow,
+            null,
+            null,
+            value => {
+                bool isBlank = string.IsNullOrWhiteSpace(value);
+                Dictionary<GameObject, bool> labelActivationMap = [];
+
+                foreach(var pair in objects) {
+                    if(pair.Value.LabelRow != null) {
+                        labelActivationMap[pair.Value.LabelRow] = isBlank;
+                    }
+                }
+
+                string normalizedQuery = UICore.NormalizeString(value);
+
+                foreach(var pair in objects) {
+                    TextLocalization labelLoc = pair.Key;
+                    var (labelRow, mainRow) = pair.Value;
+
+                    if(labelRow == null || mainRow == null) {
+                        continue;
+                    }
+
+                    string normalizedTarget = labelLoc != null ? UICore.NormalizeString(labelLoc.Value) : string.Empty;
+
+                    bool isMainMatch = isBlank || (!string.IsNullOrEmpty(normalizedTarget) && normalizedTarget.Contains(normalizedQuery));
+
+                    mainRow.SetActive(isMainMatch);
+
+                    if(isMainMatch) {
+                        labelActivationMap[labelRow] = true;
+                    }
+                }
+
+                foreach(var kvp in labelActivationMap) {
+                    kvp.Key.SetActive(kvp.Value);
+                }
+
+                LayoutRebuilder.ForceRebuildLayoutImmediate(contentRect);
+            },
+            "Find",
+            MainCore.Spr.Get(UISprite.MagnifyingGlass128),
+            "search_find"
+        );
+        findInput.Placeholder.gameObject.AddComponent<TextLocalization>().Init("FIND", "Find");
+        findInput.InputField.characterLimit = 22;
+
+        var langLabelRow = GenerateUI.Row(content.transform);
+        var langText = GenerateUI.AddTextH1(langLabelRow);
+        var langTextTr = langText.gameObject.AddComponent<TextLocalization>().Init("LANGUAGE", "Language");
 
         string[] langs = [.. MainCore.Tr.GetLanguages().OrderBy(x => x, StringComparer.OrdinalIgnoreCase)];
-
         var langRow = GenerateUI.Row(content.transform);
-        UIDropDown<string> languageDropdown = GenerateUI.DropDown(
+        languageDropdown = GenerateUI.DropDown(
             langRow,
             null,
             MainCore.Tr.Language,
@@ -97,8 +147,6 @@ internal static class PageSettings {
             "language_dropdown"
         );
 
-        objects[languageDropdown.Id] = languageDropdown;
-
         UIButton langBtn = GenerateUI.Button(
             langRow,
             () => { },
@@ -119,7 +167,6 @@ internal static class PageSettings {
                 });
             });
         };
-
         {
             var br = langBtn.Rect;
             br.pivot = new(1f, 1f);
@@ -129,14 +176,15 @@ internal static class PageSettings {
             br.offsetMax = Vector2.zero;
         }
         langBtn.Label.gameObject.AddComponent<TextLocalization>().Init("RELOAD", "Reload");
-        objects[langBtn.Id] = langBtn;
 
-        _ = GenerateUI.AddTextH1(GenerateUI.Row(content.transform))
-           .gameObject.AddComponent<TextLocalization>()
-           .Init("OVERLAYER", "Overlayer");
+        objects[langTextTr] = (langLabelRow.gameObject, langRow.gameObject);
 
+        var overlayerText = GenerateUI.AddTextH1(GenerateUI.Row(content.transform));
+        var overlayerTextTr = overlayerText.gameObject.AddComponent<TextLocalization>().Init("OVERLAYER", "Overlayer");
+
+        var startupRow = GenerateUI.Row(content.transform);
         UIToggle startupToggle = GenerateUI.Toggle(
-            GenerateUI.Row(content.transform),
+            startupRow,
             defSet.ShowOnStartup,
             MainCore.Config.ShowOnStartup,
             toggle => {
@@ -146,11 +194,12 @@ internal static class PageSettings {
             "Show Overlayer Panel at Startup",
             "show_on_startup"
         );
-        startupToggle.Label.gameObject.AddComponent<TextLocalization>().Init("SHOW_OVERLAYER_PANEL_AT_STARTUP", "Show Overlayer Panel at Startup");
-        objects[startupToggle.Id] = startupToggle;
+        var startupToggleTr = startupToggle.Label.gameObject.AddComponent<TextLocalization>().Init("SHOW_OVERLAYER_PANEL_AT_STARTUP", "Show Overlayer Panel at Startup");
+        objects[startupToggleTr] = (overlayerText.gameObject, startupRow.gameObject);
 
+        var tooltipRow = GenerateUI.Row(content.transform);
         UIToggle tooltipToggle = GenerateUI.Toggle(
-            GenerateUI.Row(content.transform),
+            tooltipRow,
             defSet.Tooltip,
             MainCore.Config.Tooltip,
             toggle => {
@@ -161,15 +210,16 @@ internal static class PageSettings {
             "Show Tooltip",
             "show_tooltip"
         );
-        tooltipToggle.Label.gameObject.AddComponent<TextLocalization>().Init("SHOW_TOOLTIP", "Show Tooltip");
         tooltipToggle.Rect.AddToolTip(
             "DESC_SHOW_TOOLTIP",
             "This is a Tooltip!"
         );
-        objects[tooltipToggle.Id] = tooltipToggle;
+        var tooltipToggleTr = tooltipToggle.Label.gameObject.AddComponent<TextLocalization>().Init("SHOW_TOOLTIP", "Show Tooltip");
+        objects[tooltipToggleTr] = (overlayerText.gameObject, tooltipRow.gameObject);
 
+        var middleClickRow = GenerateUI.Row(content.transform);
         UIToggle middleClickToggle = GenerateUI.Toggle(
-            GenerateUI.Row(content.transform),
+            middleClickRow,
             defSet.MiddleClickToDefault,
             MainCore.Config.MiddleClickToDefault,
             toggle => {
@@ -179,20 +229,20 @@ internal static class PageSettings {
             "Middle-click to set as default",
             "middle_click_default"
         );
-        middleClickToggle.Label.gameObject.AddComponent<TextLocalization>().Init("MIDDLE_CLICK_TO_SET_AS_DEFAULT", "Middle-click to set as default");
         middleClickToggle.Rect.AddToolTip(
             "DESC_MIDDLE_CLICK_TO_SET_AS_DEFAULT",
             "Setting that restores an item to its default value when you middle-click on it.\nYou can identify it by a small dot at the top-left of the item"
         );
-        objects[middleClickToggle.Id] = middleClickToggle;
+        var middleClickToggleTr = middleClickToggle.Label.gameObject.AddComponent<TextLocalization>().Init("MIDDLE_CLICK_TO_SET_AS_DEFAULT", "Middle-click to set as default");
+        objects[middleClickToggleTr] = (overlayerText.gameObject, middleClickRow.gameObject);
 
         static float uiScaleFilter(float v) {
             v = Mathf.Round(v * 100f) / 100f;
             return Mathf.Clamp(v, 0.8f, 1.6f);
         }
-
+        var uiScaleRow = GenerateUI.Row(content.transform);
         UISlider uiScale = GenerateUI.Slider(
-            GenerateUI.Row(content.transform),
+            uiScaleRow,
             1f,
             0.8f,
             1.6f,
@@ -203,22 +253,19 @@ internal static class PageSettings {
             "UI Scale",
             "ui_scale"
         );
-
         uiScale.Format = "0.00x";
         uiScale.OnChanged = value => MainCore.Config.UIScale = value;
-
-        Sequence seq = null;
-
+        Sequence scaleSeq = null;
         uiScale.OnComplete = value => {
             MainCore.Config.UIScale = value;
             MainCore.ConfigFile.RequestSave();
 
-            seq?.Kill();
+            scaleSeq?.Kill();
 
             float scaleStart = UICore.PanelScale;
             Vector2 targetSize = UICore.DefaultPanelSize;
             UICore.LastPanelSize = targetSize;
-            seq = DOTween.Sequence().SetUpdate(true)
+            scaleSeq = DOTween.Sequence().SetUpdate(true)
                 .Append(
                     DOTween.To(
                         () => scaleStart,
@@ -232,23 +279,16 @@ internal static class PageSettings {
                     .SetEase(Ease.OutExpo)
                 );
         };
-        uiScale.Label.gameObject.AddComponent<TextLocalization>().Init("UI_SCALE", "UI Scale");
-        objects[uiScale.Id] = uiScale;
+        var uiScaleTr = uiScale.Label.gameObject.AddComponent<TextLocalization>().Init("UI_SCALE", "UI Scale");
+
+        objects[uiScaleTr] = (overlayerText.gameObject, uiScaleRow.gameObject);
     }
 
     internal static void OnTranslatorLoadEnd() {
-        if(
-            !objects.TryGetValue("language_dropdown", out UIObject obj) ||
-            obj is not UIDropDown<string> dropdown
-        ) {
-            return;
-        }
-
         string[] langs = [.. MainCore.Tr.GetLanguages().OrderBy(x => x, StringComparer.OrdinalIgnoreCase)];
 
-        dropdown.SetValues(langs);
-
-        dropdown.Set(
+        languageDropdown.SetValues(langs);
+        languageDropdown.Set(
             string.IsNullOrWhiteSpace(MainCore.Config.Language)
                 ? Translator.FALLBACK_LANGUAGE
                 : MainCore.Config.Language,

@@ -92,12 +92,12 @@ public sealed class OverlayerRuntime {
 
         //V8Engine = new();
 
-        moduleService.DiscoverAndRegisterModules();
-        moduleService.InitializeAllModules();
-
         SetModEnabled(Config.Data.Active, false);
 
         Logger.Msg("Hello");
+
+        moduleService.DiscoverAndRegisterModules();
+        moduleService.InitializeAllModules();
 
         Task.Run(() => {
             _ = TagManager.InitializeAsync(Assembly);

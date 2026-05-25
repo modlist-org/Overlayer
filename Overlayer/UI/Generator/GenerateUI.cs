@@ -201,7 +201,7 @@ public static class GenerateUI {
         }
 
         void SetFromMouse() {
-            Vector2 local = rect.InverseTransformPoint(Input.mousePosition);
+            Vector2 local = rect.InverseTransformPoint(UnityEngine.Input.mousePosition);
             float width = rect.rect.width;
 
             float t = Mathf.Clamp01((local.x + (width * 0.5f)) / width);
@@ -235,7 +235,7 @@ public static class GenerateUI {
         UnityUtils.AddEvent(EventTriggerType.BeginDrag, _ => isDragging = true, trigger);
 
         UnityUtils.AddEvent(EventTriggerType.Drag, _ => {
-            if(!isDragging || !Input.GetMouseButton(0)) {
+            if(!isDragging || !UnityEngine.Input.GetMouseButton(0)) {
                 return;
             }
 
@@ -456,6 +456,107 @@ public static class GenerateUI {
         return dropdown;
     }
 
+    public static UIInput Input(
+        Transform parent,
+        string defaultValue,
+        string value,
+        Action<string> onChanged,
+        string placeholder,
+        Sprite icon,
+        string id
+    ) {
+        RectTransform rect = BackGround();
+        rect.SetParent(parent, false);
+
+        GameObject change = AddSmallChangedCircle(rect);
+        Image changeImg = change.GetComponent<Image>();
+
+        GameObject iconObj = new("Icon");
+        iconObj.transform.SetParent(rect, false);
+
+        RectTransform circleRect = iconObj.AddComponent<RectTransform>();
+        circleRect.anchorMin = new(1f, 0.5f);
+        circleRect.anchorMax = new(1f, 0.5f);
+        circleRect.pivot = new(0.5f, 0.5f);
+        circleRect.anchoredPosition = new(-23f, 0f);
+        circleRect.sizeDelta = new(26f, 26f);
+
+        Image iconImage = iconObj.AddComponent<Image>();
+        iconImage.sprite = icon;
+        iconImage.color = new Color(1f, 1f, 1f, 0.2f);
+
+        GameObject inputObj = new("Input", typeof(RectTransform), typeof(RectMask2D));
+        inputObj.transform.SetParent(rect, false);
+
+        RectTransform inputRect = inputObj.GetComponent<RectTransform>();
+        inputRect.anchorMin = Vector2.zero;
+        inputRect.anchorMax = Vector2.one;
+        inputRect.offsetMin = new(12f, 4f);
+        inputRect.offsetMax = new(-12f, -4f);
+
+        TMP_InputField inputField = inputObj.AddComponent<TMP_InputField>();
+
+        var text = AddText(inputObj.transform);
+        text.font = MainCore.Res.Get<TMP_FontAsset>(Asset.SUIT_Medium);
+        text.text = value ?? string.Empty;
+        text.alignment = TextAlignmentOptions.Left;
+        text.textWrappingMode = TextWrappingModes.NoWrap;
+
+        RectTransform textRect = text.rectTransform;
+        textRect.anchorMin = Vector2.zero;
+        textRect.anchorMax = Vector2.one;
+        textRect.offsetMin = Vector2.zero;
+        textRect.offsetMax = Vector2.zero;
+
+        var placeholderText = AddText(inputObj.transform);
+        placeholderText.font = MainCore.Res.Get<TMP_FontAsset>(Asset.SUIT_Medium);
+        placeholderText.text = placeholder;
+        placeholderText.alignment = TextAlignmentOptions.Left;
+        placeholderText.textWrappingMode = TextWrappingModes.NoWrap;
+        placeholderText.color = new Color(1, 1, 1, 0.2f);
+
+        RectTransform placeholderRect = placeholderText.rectTransform;
+        placeholderRect.anchorMin = Vector2.zero;
+        placeholderRect.anchorMax = Vector2.one;
+        placeholderRect.offsetMin = Vector2.zero;
+        placeholderRect.offsetMax = Vector2.zero;
+
+        inputField.textViewport = inputRect;
+        inputField.textComponent = text;
+        inputField.placeholder = placeholderText;
+
+        inputField.lineType = TMP_InputField.LineType.SingleLine;
+        inputField.richText = false;
+
+        var input = new UIInput(
+            id,
+            rect,
+            inputField,
+            placeholderText,
+            iconImage,
+            changeImg,
+            defaultValue,
+            value,
+            onChanged
+        );
+
+        AddButton(rect.gameObject, btn => {
+            switch(btn) {
+                case InputButton.Middle:
+                    if(
+                        MainCore.Config.MiddleClickToDefault &&
+                        input.Value != input.DefaultValue
+                    ) {
+                        input.Reset();
+                    }
+
+                    break;
+            }
+        });
+
+        return input;
+    }
+
     public enum BackGroundType {
         Main,
         Sub,
@@ -548,11 +649,11 @@ public static class GenerateUI {
         }, trigger);
     }
 
-    public static TextMeshProUGUI AddText(RectTransform parent, bool noPad = false) => CreateText(parent, 24f, false, noPad);
+    public static TextMeshProUGUI AddText(Transform parent, bool noPad = false) => CreateText(parent, 24f, false, noPad);
 
-    public static TextMeshProUGUI AddTextH1(RectTransform parent) => CreateText(parent, 32f, true, true);
+    public static TextMeshProUGUI AddTextH1(Transform parent) => CreateText(parent, 32f, true, true);
 
-    private static TextMeshProUGUI CreateText(RectTransform parent, float size, bool bold, bool noPad) {
+    private static TextMeshProUGUI CreateText(Transform parent, float size, bool bold, bool noPad) {
         GameObject obj = new("Text");
         obj.transform.SetParent(parent, false);
 

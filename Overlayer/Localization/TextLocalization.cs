@@ -7,6 +7,7 @@ namespace Overlayer.Localization;
 public class TextLocalization : MonoBehaviour {
     public string Key;
     public string Default;
+    public string Value => tr?.Get(Key, Default) ?? Default;
 
     private Translator tr;
 
@@ -37,7 +38,7 @@ public class TextLocalization : MonoBehaviour {
             return;
         }
 
-        tmp.text = tr.Get(Key, Default);
+        tmp.text = Value;
     }
 
     public static void RefreshAll() {
