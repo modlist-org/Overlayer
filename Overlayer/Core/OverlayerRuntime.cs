@@ -25,7 +25,7 @@ public sealed class OverlayerRuntime {
 
     public PathService Paths { get; }
 
-    public SettingsFile<CoreSettings> Config;
+    public SettingsFile<CoreSettings> Config { get; }
 
     public LocalizationService Localization { get; private set; }
 
