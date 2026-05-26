@@ -44,5 +44,7 @@ Overlayer v5 utilizes runtime-loaded modules to support specific game features a
   - Original project/source: [Google V8](https://v8.dev/)
 - Overlayer is not affiliated with, endorsed by, or associated with Google or the V8 project.
 
+---
+
 > [!NOTE]
 > Overlayer V5 is currently under active development!
