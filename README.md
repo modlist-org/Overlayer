@@ -27,6 +27,11 @@ Custom Unity Overlay UI mode for users!
 2. Open your game's installation root folder.
 3. Extract all contents of the downloaded zip file directly into that folder.
 
+# ⌨️ Usage
+### Open Settings Menu
+By default, you can open the configuration and settings menu in-game by pressing:
+<kbd>Alt</kbd> + <kbd>`</kbd> (Backtick / Grave accent)
+
 # 🧩 [Modules](https://github.com/modlist-org/Overlayer-v5.Module)
 Overlayer v5 utilizes runtime-loaded modules to support specific game features and tag functionalities tailored for each title. To access these game-specific enhancements and tags, you need to install the appropriate module from the repository.
 > [!NOTE]
