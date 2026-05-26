@@ -15,21 +15,27 @@ public sealed class SettingsFile<T>(string path) where T : class, ISettingsFile,
 
     private bool saveScheduled;
 
-    public void Load() {
+    public bool Load() {
         try {
+            if(!File.Exists(Path)) {
+                return false;
+            }
+
             string json = File.ReadAllText(Path);
-
             JToken token = JToken.Parse(json);
-
             Data.Deserialize(token);
+
+            return true;
         } catch(Exception e) {
             MainCore.Logger.Err(
                 $"[{nameof(SettingsFile<>)}] Failed to load settings '{Path}': {e}"
             );
+
+            return false;
         }
     }
 
-    public void Save() {
+    public bool Save() {
         lock(saveLock) {
             try {
                 string dir = System.IO.Path.GetDirectoryName(Path);
@@ -39,12 +45,15 @@ public sealed class SettingsFile<T>(string path) where T : class, ISettingsFile,
                 }
 
                 string json = Data.Serialize().ToString();
-
                 File.WriteAllText(Path, json);
+
+                return true;
             } catch(Exception e) {
                 MainCore.Logger.Err(
-                    $"[{nameof(SettingsFile<T>)}] Failed to save settings '{Path}': {e}"
+                    $"[{nameof(SettingsFile<>)}] Failed to save settings '{Path}': {e}"
                 );
+
+                return false;
             }
         }
     }
