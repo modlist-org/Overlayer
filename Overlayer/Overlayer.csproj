@@ -429,7 +429,9 @@
 		<Compile Include="Async\MainThread.cs" />
 		<Compile Include="Compat\OverlayerLogger.cs" />
 		<Compile Include="ModuleAPI\OverlayerModule.cs" />
-		<Compile Include="Overlay\Overlay.cs" />
+		<Compile Include="Overlay\OvObject.cs" />
+		<Compile Include="Overlay\OvCanvas.cs" />
+		<Compile Include="Overlay\OverlayCore.cs" />
 		<Compile Include="Patch\Safe\SafeConditionalPatch.cs" />
 		<Compile Include="Patch\Safe\SafePatch.cs" />
 		<Compile Include="Patch\Safe\SafePatchAttribute.cs" />
