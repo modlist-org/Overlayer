@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
@@ -11,10 +10,10 @@ public static class OverlayCore {
     public static readonly List<OvCanvas> Canvases = [];
 
     public static void Initialize(GameObject parent) {
-        if (parent == null) {
+        if(parent == null) {
             return;
         }
-        if (Core != null) {
+        if(Core != null) {
             return;
         }
 
@@ -23,11 +22,11 @@ public static class OverlayCore {
     }
 
     public static void Dispose() {
-        if (Core == null) {
+        if(Core == null) {
             return;
         }
 
-        for (int i = Canvases.Count - 1; i >= 0; i--) {
+        for(int i = Canvases.Count - 1; i >= 0; i--) {
             Canvases[i].Dispose();
         }
 

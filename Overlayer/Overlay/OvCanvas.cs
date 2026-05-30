@@ -22,13 +22,13 @@ public class OvCanvas {
     }
 
     public void Dispose() {
-        for (int i = OvObjects.Count - 1; i >= 0; i--) {
+        for(int i = OvObjects.Count - 1; i >= 0; i--) {
             OvObjects[i].Dispose();
         }
 
         OvObjects.Clear();
 
-        if (Canvas != null) {
+        if(Canvas != null) {
             Object.Destroy(Canvas.gameObject);
         }
     }

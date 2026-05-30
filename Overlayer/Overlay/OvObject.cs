@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
@@ -11,7 +10,7 @@ public sealed class OvObject {
     public readonly RectTransform RectTransform;
 
     public OvObject Parent { get; private set; }
-    public readonly List<OvObject> Children = new();
+    public readonly List<OvObject> Children = [];
 
     public OvObject(string name = "OvObject") {
         GameObject = new GameObject(name, typeof(RectTransform));
@@ -20,7 +19,7 @@ public sealed class OvObject {
     }
 
     public void AttachChild(OvObject child) {
-        if (child == null || child.Parent == this) {
+        if(child == null || child.Parent == this) {
             return;
         }
 
@@ -32,7 +31,7 @@ public sealed class OvObject {
     }
 
     public void Detach() {
-        if (Parent == null) {
+        if(Parent == null) {
             return;
         }
 
@@ -43,12 +42,12 @@ public sealed class OvObject {
     }
 
     public void SetChildIndex(OvObject child, int index) {
-        if (child == null || child.Parent != this) {
+        if(child == null || child.Parent != this) {
             return;
         }
 
         int currentIndex = Children.IndexOf(child);
-        if (currentIndex < 0) {
+        if(currentIndex < 0) {
             return;
         }
 
@@ -59,29 +58,21 @@ public sealed class OvObject {
 
         child.GameObject.transform.SetSiblingIndex(index);
 
-        for (int i = 0; i < Children.Count; i++) {
+        for(int i = 0; i < Children.Count; i++) {
             Children[i].GameObject.transform.SetSiblingIndex(i);
         }
     }
 
-    public void BringToFront(OvObject child) {
-        SetChildIndex(child, Children.Count - 1);
-    }
+    public void BringToFront(OvObject child) => SetChildIndex(child, Children.Count - 1);
 
-    public void SendToBack(OvObject child) {
-        SetChildIndex(child, 0);
-    }
+    public void SendToBack(OvObject child) => SetChildIndex(child, 0);
 
-    public T Add<T>() where T : Component {
-        return GameObject.AddComponent<T>();
-    }
+    public T Add<T>() where T : Component => GameObject.AddComponent<T>();
 
-    public T Get<T>() where T : Component {
-        return GameObject.GetComponent<T>();
-    }
-    
+    public T Get<T>() where T : Component => GameObject.GetComponent<T>();
+
     public void Dispose() {
-        for (int i = Children.Count - 1; i >= 0; i--) {
+        for(int i = Children.Count - 1; i >= 0; i--) {
             Children[i].Dispose();
         }
 
@@ -90,7 +81,7 @@ public sealed class OvObject {
         Parent?.Children.Remove(this);
         Parent = null;
 
-        if (GameObject == null) {
+        if(GameObject == null) {
             return;
         }
 

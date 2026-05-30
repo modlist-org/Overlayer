@@ -11,7 +11,7 @@ public sealed class SettingsFile<T>(string path) where T : class, ISettingsFile,
 
     private readonly object saveLock = new();
 
-    private CancellationTokenSource saveCts;    
+    private CancellationTokenSource saveCts;
 
     private bool saveScheduled;
 
@@ -85,7 +85,7 @@ public sealed class SettingsFile<T>(string path) where T : class, ISettingsFile,
             } catch(OperationCanceledException) {
             } catch(Exception e) {
                 MainCore.Logger.Err(
-                    $"[{nameof(SettingsFile<T>)}] Failed to request save '{Path}': {e}"
+                    $"[{nameof(SettingsFile<>)}] Failed to request save '{Path}': {e}"
                 );
             } finally {
                 saveScheduled = false;

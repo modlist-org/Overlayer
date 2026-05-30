@@ -65,7 +65,7 @@ internal static class PageSettings {
         CoreSettings defSet = new();
 
         var inputRow = GenerateUI.Row(content.transform);
-        var findInput = 
+        var findInput =
         GenerateUI.Input(
             inputRow,
             null,
