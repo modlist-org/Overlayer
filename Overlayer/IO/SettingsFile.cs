@@ -92,4 +92,10 @@ public sealed class SettingsFile<T>(string path) where T : class, ISettingsFile,
             }
         });
     }
+
+    public void Dispose() {
+        if(Data is IDisposable disposable) {
+            disposable.Dispose();
+        }
+    }
 }

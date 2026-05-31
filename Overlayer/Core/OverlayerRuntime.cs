@@ -4,10 +4,13 @@ using Overlayer.Compat;
 using Overlayer.Compat.Interface;
 using Overlayer.Core.Service;
 using Overlayer.IO;
+using Overlayer.IO.User;
+using Overlayer.Overlay;
 using Overlayer.Patch.Safe;
 using Overlayer.Resource;
 using Overlayer.Tag.Core;
 using System.Reflection;
+using TMPro;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
@@ -98,10 +101,6 @@ public sealed class OverlayerRuntime {
 
         moduleService.DiscoverAndRegisterModules();
         moduleService.InitializeAllModules();
-
-        Task.Run(() => {
-            _ = TagManager.InitializeAsync(Assembly);
-        });
     }
 
     public void Tick() => ticks.Tick();
@@ -143,10 +142,38 @@ public sealed class OverlayerRuntime {
         moduleService?.NotifyEnabledChanged(enabled, isDispose);
 
         if(enabled) {
+            UserResourceManager.Initialize();
+
+            Task.Run(() => {
+                _ = TagManager.InitializeAsync(Assembly);
+            });
+
             SafePatchController.ApplyAll();
+
+            OverlayCore.Initialize(RootObject);
+
+            var canvas = OverlayCore.CreateOvCanvas();
+
+            var obj = canvas.CreateOvObject();
+            obj.Config.RectTransformConfig = new() {
+                SizeDelta = new(400, 100)
+            };
+            obj.Config.TextConfig = new();
+            obj.Config.ImageConfig = new();
+            obj.ApplyComponent();
+            MainCore.Logger.Msg((obj.Config.ImageConfig == null).ToString());
+            obj.ApplyConfig();
+
             Logger.Msg("Mod Enabled");
         } else {
+            OverlayCore.Dispose();
+
             SafePatchController.UnloadAll();
+
+            TagManager.Dispose();
+
+            UserResourceManager.Dispose();
+
             Logger.Msg("Mod Disabled");
         }
     }

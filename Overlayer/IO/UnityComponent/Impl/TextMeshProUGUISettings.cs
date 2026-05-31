@@ -7,7 +7,7 @@ namespace Overlayer.IO.UnityComponent.Impl;
 public class TextMeshProUGUISettings : UnityComponentSettingsBase {
     public string Text = "Text";
     public GradientColor Color = UnityEngine.Color.white;
-    public float FontSize = 24f;
+    public float FontSize = 42f;
     public bool RichText = true;
     public TextAlignmentOptions Alignment = TextAlignmentOptions.Center;
     public TextWrappingModes TextWrappingMode = TextWrappingModes.Normal;
@@ -19,6 +19,7 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase {
     public float OutlineWidth = 0.2f;
     public float FaceDilate = 0f;
     public float OutlineSoftness = 0f;
+    public TextOverflowModes OverFlowMode = TextOverflowModes.Overflow;
     public bool AutoSize = false;
     public Vector2 FontSizeRange = new(16, 64);
 
@@ -38,9 +39,11 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase {
         mat.SetFloat(ShaderUtilities.ID_OutlineWidth, EnableOutline ? OutlineWidth : 0f);
         mat.SetFloat(ShaderUtilities.ID_FaceDilate, FaceDilate);
         mat.SetFloat(ShaderUtilities.ID_OutlineSoftness, OutlineSoftness);
+        com.overflowMode = OverFlowMode;
         com.enableAutoSizing = AutoSize;
         com.fontSizeMin = FontSizeRange.x;
         com.fontSizeMax = FontSizeRange.y;
+        com.enableVertexGradient = true;
     }
 
     public override void FromUnity(GameObject source) {
@@ -60,6 +63,7 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase {
         OutlineWidth = mat.GetFloat(ShaderUtilities.ID_OutlineWidth);
         FaceDilate = mat.GetFloat(ShaderUtilities.ID_FaceDilate);
         OutlineSoftness = mat.GetFloat(ShaderUtilities.ID_OutlineSoftness);
+        OverFlowMode = com.overflowMode;
         EnableOutline = OutlineWidth > 0f;
         AutoSize = com.enableAutoSizing;
         FontSizeRange = new Vector2(com.fontSizeMin, com.fontSizeMax);
@@ -80,6 +84,7 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase {
             [nameof(OutlineColor)] = IOUtils.Write(OutlineColor),
             [nameof(OutlineWidth)] = OutlineWidth,
             [nameof(FaceDilate)] = FaceDilate,
+            [nameof(OverFlowMode)] = IOUtils.WriteEnum(OverFlowMode),
             [nameof(OutlineSoftness)] = OutlineSoftness,
             [nameof(AutoSize)] = AutoSize,
             [nameof(FontSizeRange)] = IOUtils.Write(FontSizeRange)
@@ -100,6 +105,7 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase {
         OutlineColor = IOUtils.Read(token, nameof(OutlineColor), OutlineColor);
         OutlineWidth = IOUtils.Read(token, nameof(OutlineWidth), OutlineWidth);
         FaceDilate = IOUtils.Read(token, nameof(FaceDilate), FaceDilate);
+        OverFlowMode = IOUtils.ReadEnum(token, nameof(OverFlowMode), OverFlowMode);
         OutlineSoftness = IOUtils.Read(token, nameof(OutlineSoftness), OutlineSoftness);
         AutoSize = IOUtils.Read(token, nameof(AutoSize), AutoSize);
         FontSizeRange = IOUtils.Read(token, nameof(FontSizeRange), FontSizeRange);

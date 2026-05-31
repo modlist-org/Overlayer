@@ -4,9 +4,19 @@ using Overlayer.IO.User.Impl;
 namespace Overlayer.IO.User;
 
 public static class UserResourceManager {
-    public static UserTexture2D T2D { get; } = new();
-    public static UserSprite Spr { get; } = new();
-    public static UserFont Fnt { get; } = new();
+    public static SettingsFile<UserResourceSettings> Config { get; } = new(MainCore.Paths.UserResourcePath);
+    public static UserTexture2D T2D => Config.Data.T2D;
+    public static UserSprite Spr => Config.Data.Spr;
+    public static UserFont Fnt => Config.Data.Fnt;
+
+    public static void Initialize() {
+        try {
+            Config.Load();
+            MainCore.Logger.Msg($"[{nameof(UserResourceManager)}] Initialized");
+        } catch(Exception e) {
+            MainCore.Logger.Err($"[{nameof(UserResourceManager)}] Initialize failed: {e}");
+        }
+    }
 
     private const string ModPathToken = "{ModPath}";
 
@@ -41,8 +51,12 @@ public static class UserResourceManager {
     }
 
     public static void Dispose() {
-        Fnt.Dispose();
-        Spr.Dispose();
-        T2D.Dispose();
+        try {
+            Config.Save();
+            Config.Dispose();
+            MainCore.Logger.Msg($"[{nameof(UserResourceManager)}] Disposed");
+        } catch(Exception e) {
+            MainCore.Logger.Err($"[{nameof(UserResourceManager)}] Dispose failed: {e}");
+        }
     }
 }

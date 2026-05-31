@@ -71,4 +71,14 @@ public static class TagManager {
         }
         MainCore.Logger.Msg($"[{nameof(TagManager)}] Tag updated: {tag.Name}");
     }
+
+    public static void Dispose() {
+        lock(_lock) {
+            _tags.Clear();
+        }
+
+        _initTask = null;
+
+        MainCore.Logger.Msg($"[{nameof(TagManager)}] Disposed");
+    }
 }

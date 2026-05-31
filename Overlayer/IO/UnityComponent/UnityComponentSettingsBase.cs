@@ -5,6 +5,7 @@ using UnityEngine;
 namespace Overlayer.IO.UnityComponent;
 
 public abstract class UnityComponentSettingsBase : ISettingsFile {
+    public bool ComponentEnabled;
     public abstract void ToUnity(GameObject target);
     public abstract void FromUnity(GameObject source);
 

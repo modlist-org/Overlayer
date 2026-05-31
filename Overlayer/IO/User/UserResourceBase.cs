@@ -15,15 +15,18 @@ public abstract class UserResourceBase<T> {
         return false;
     }
 
-    public bool TryGetKey(T value, out string key) {
-        foreach(var (k, (_, v)) in Cache) {
-            if(EqualityComparer<T>.Default.Equals(v, value)) {
-                key = k;
+    public bool TryGetKey(
+        Predicate<T> predicate,
+        out string key
+    ) {
+        foreach(var (cacheKey, (_, value)) in Cache) {
+            if(predicate(value)) {
+                key = cacheKey;
                 return true;
             }
         }
 
-        key = default;
+        key = string.Empty;
         return false;
     }
 

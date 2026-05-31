@@ -8,6 +8,8 @@ public sealed class PathService(string rootPath) {
     public string TempPath => Path.Combine(RootPath, "Temp");
     public string ModulePath => Path.Combine(RootPath, "Module");
 
+    public string UserResourcePath => Path.Combine(RootPath, "UserResources.json");
+
     public void Initialize() {
         Directory.CreateDirectory(RootPath);
         Directory.CreateDirectory(LangPath);

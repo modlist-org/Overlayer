@@ -21,6 +21,13 @@ public static class OverlayCore {
         Core.transform.SetParent(parent.transform, false);
     }
 
+    public static OvCanvas CreateOvCanvas() {
+        var canvas = new OvCanvas();
+        canvas.RectTransform.SetParent(Transform, false);
+        Canvases.Add(canvas);
+        return canvas;
+    }
+
     public static void Dispose() {
         if(Core == null) {
             return;

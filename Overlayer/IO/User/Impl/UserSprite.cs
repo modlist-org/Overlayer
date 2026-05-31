@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace Overlayer.IO.User.Impl;
 
-public class UserSprite : UserResourceBase<Sprite>, ISettingsFile {
+public class UserSprite : UserResourceBase<(Sprite sprite, string textureKey, SpriteSettings settings)>, ISettingsFile { 
     public enum Result {
         Success,
         KeyAlreadyExists,
@@ -27,7 +27,7 @@ public class UserSprite : UserResourceBase<Sprite>, ISettingsFile {
 
         try {
             if(Cache.ContainsKey(key)) {
-                sprite = Cache[key].value;
+                sprite = Cache[key].value.sprite;
                 return Result.KeyAlreadyExists;
             }
 
@@ -35,20 +35,21 @@ public class UserSprite : UserResourceBase<Sprite>, ISettingsFile {
                 return Result.NotFound;
             }
 
-            var spr = Sprite.Create(
-                value,
-                rect,
-                pivot,
-                pixelsPerUnit,
-                0,
-                SpriteMeshType.FullRect,
-                border,
-                false
+            var settings = new SpriteSettings {
+                Rect = rect,
+                Pivot = pivot,
+                PixelsPerUnit = pixelsPerUnit,
+                Border = border
+            };
+
+            var spr = settings.ToUnity(value.texture);
+
+            Cache[key] = (
+                textureKey,
+                (spr, textureKey, settings)
             );
 
-            Cache[key] = (textureKey, spr);
             sprite = spr;
-
             return Result.Success;
         } catch(Exception e) {
             MainCore.Logger.Err($"[{nameof(UserSprite)}] Sprite load failed: {e}");
@@ -59,13 +60,11 @@ public class UserSprite : UserResourceBase<Sprite>, ISettingsFile {
     public JToken Serialize() {
         var obj = new JObject();
 
-        foreach(var (key, (textureKey, sprite)) in Cache) {
-            var settings = new SpriteSettings {
-                UserSpriteKey = textureKey
+        foreach(var (key, (_, value)) in Cache) {
+            obj[key] = new JObject {
+                ["TextureKey"] = value.textureKey,
+                [nameof(SpriteSettings)] = value.settings.Serialize()
             };
-
-            settings.FromUnity(sprite);
-            obj[key] = settings.Serialize();
         }
 
         return obj;
@@ -80,12 +79,25 @@ public class UserSprite : UserResourceBase<Sprite>, ISettingsFile {
         }
 
         foreach(var property in obj.Properties()) {
+            if(property.Value is not JObject entry) {
+                continue;
+            }
+
+            var textureKey = IOUtils.Read(
+                entry,
+                "TextureKey",
+                string.Empty
+            );
+
             var settings = new SpriteSettings();
-            settings.Deserialize(property.Value);
+
+            if(entry[nameof(SpriteSettings)] is JToken settingsToken) {
+                settings.Deserialize(settingsToken);
+            }
 
             var result = Load(
                 property.Name,
-                settings.UserSpriteKey,
+                textureKey,
                 settings.Rect,
                 settings.Pivot,
                 settings.PixelsPerUnit,
@@ -95,16 +107,15 @@ public class UserSprite : UserResourceBase<Sprite>, ISettingsFile {
 
             if(result != Result.Success) {
                 MainCore.Logger.Wrn(
-                    $"[{nameof(UserSprite)}] {result} {{ \"{property.Name}\": \"{settings.UserSpriteKey}\" }}"
+                    $"[{nameof(UserSprite)}] {result} {{ \"{property.Name}\": \"{textureKey}\" }}"
                 );
             }
         }
     }
 
-
     public override void Dispose() {
         foreach(var (_, value) in Cache.Values) {
-            UnityEngine.Object.Destroy(value);
+            UnityEngine.Object.Destroy(value.sprite);
         }
 
         Cache.Clear();

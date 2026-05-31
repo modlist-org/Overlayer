@@ -1,16 +1,14 @@
 ﻿using Overlayer.IO.Interface;
 using Newtonsoft.Json.Linq;
 using UnityEngine;
-using Overlayer.IO.User;
 
 namespace Overlayer.IO.Unity;
 
 public class SpriteSettings : ISettingsFile {
-    public string UserSpriteKey;
-    public Rect Rect;
-    public Vector2 Pivot;
+    public Rect Rect = Rect.zero;
+    public Vector2 Pivot = new(0.5f, 0.5f);
     public float PixelsPerUnit = 100f;
-    public Vector4 Border;
+    public Vector4 Border = Vector4.zero;
 
     public void FromUnity(Sprite sprite) {
         Rect = sprite.rect;
@@ -19,11 +17,7 @@ public class SpriteSettings : ISettingsFile {
         Border = sprite.border;
     }
 
-    public Sprite ToUnity() {
-        if(!UserResourceManager.T2D.TryGet(UserSpriteKey, out var texture)) {
-            return null;
-        }
-
+    public Sprite ToUnity(Texture2D texture) {
         return Sprite.Create(
             texture,
             Rect,
@@ -38,7 +32,6 @@ public class SpriteSettings : ISettingsFile {
 
     public JToken Serialize() {
         return new JObject {
-            [nameof(UserSpriteKey)] = UserSpriteKey,
             [nameof(Rect)] = IOUtils.Write(Rect),
             [nameof(Pivot)] = IOUtils.Write(Pivot),
             [nameof(PixelsPerUnit)] = PixelsPerUnit,
@@ -47,7 +40,6 @@ public class SpriteSettings : ISettingsFile {
     }
 
     public void Deserialize(JToken token) {
-        UserSpriteKey = IOUtils.Read(token, nameof(UserSpriteKey), UserSpriteKey);
         Rect = IOUtils.Read(token, nameof(Rect), Rect);
         Pivot = IOUtils.Read(token, nameof(Pivot), Pivot);
         PixelsPerUnit = IOUtils.Read(token, nameof(PixelsPerUnit), PixelsPerUnit);
