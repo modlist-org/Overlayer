@@ -4,7 +4,7 @@ using UnityEngine.UI;
 
 namespace Overlayer.IO.UnityComponent.Impl;
 
-public class ImageSettings : UnitySettings {
+public class ImageSettings : UnitySettingsBase {
     public Color Color = Color.white;
     public Sprite Sprite = null;
     public bool PreserveAspect = false;

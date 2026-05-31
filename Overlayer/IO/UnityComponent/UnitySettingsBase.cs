@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace Overlayer.IO.UnityComponent;
 
-public abstract class UnitySettings : ISettingsFile {
+public abstract class UnitySettingsBase : ISettingsFile {
     public abstract void ToUnity(GameObject target);
     public abstract void FromUnity(GameObject source);
 
