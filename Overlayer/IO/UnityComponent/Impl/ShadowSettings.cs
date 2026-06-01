@@ -9,18 +9,30 @@ public class ShadowSettings : UnityComponentSettingsBase {
     public Color EffectColor = Color.black;
     public bool UseGraphicAlpha = true;
 
-    public override void ToUnity(GameObject target) {
+    public override bool ToUnity(GameObject target) {
         var com = target.GetComponent<Shadow>();
+        if (com == null) {
+            return false;
+        }
+        
         com.effectDistance = EffectDistance;
         com.effectColor = EffectColor;
         com.useGraphicAlpha = UseGraphicAlpha;
+        
+        return true;
     }
 
-    public override void FromUnity(GameObject source) {
+    public override bool FromUnity(GameObject source) {
         var com = source.GetComponent<Shadow>();
+        if (com == null) {
+            return false;
+        }
+        
         EffectDistance = com.effectDistance;
         EffectColor = com.effectColor;
         UseGraphicAlpha = com.useGraphicAlpha;
+        
+        return true;
     }
 
     public override JToken Serialize() {

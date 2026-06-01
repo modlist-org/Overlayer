@@ -1,3 +1,4 @@
+using Overlayer.Core;
 using Overlayer.IO.Overlay;
 using TMPro;
 using UnityEngine;
@@ -14,14 +15,6 @@ public sealed class OvObject {
     public readonly List<OvObject> Children = [];
 
     public OvObjectSettings Config = new();
-
-    private static readonly HashSet<Type> AllowedTypes = [
-        typeof(TextMeshProUGUI),
-        typeof(Image),
-        typeof(Mask),
-        typeof(Shadow),
-        typeof(RectMask2D),
-    ];
 
     public OvObject() {
         GameObject = new GameObject("OvObject", typeof(RectTransform));
@@ -43,15 +36,59 @@ public sealed class OvObject {
         Config.ImageConfig?.ToUnity(GameObject);
         Config.MaskConfig?.ToUnity(GameObject);
         Config.ShadowConfig?.ToUnity(GameObject);
-        ApplyMask2D(Config.HasMask2D);
     }
 
     public void ApplyComponent() {
-        Sync<TextMeshProUGUI>(Config.TextConfig != null);
-        Sync<Image>(Config.ImageConfig != null);
-        Sync<Mask>(Config.MaskConfig != null);
-        Sync<Shadow>(Config.ShadowConfig != null);
-        Sync<RectMask2D>(Config.RectTransformConfig != null);
+        var tmp = GameObject.GetComponent<TextMeshProUGUI>();
+        if (Config.TextConfig != null) {
+            if (tmp == null) {
+                GameObject.AddComponent<TextMeshProUGUI>();
+            }
+        } else {
+            if (tmp != null) {
+                Object.Destroy(tmp);
+            }
+        }
+        var img = GameObject.GetComponent<Image>();
+        if (Config.ImageConfig != null) {
+            if (img == null) {
+                GameObject.AddComponent<Image>();
+            }
+        } else {
+            if (img != null) {
+                Object.Destroy(img);
+            }
+        }
+        var msk = GameObject.GetComponent<Mask>();
+        if (Config.MaskConfig != null) {
+            if (msk == null) {
+                GameObject.AddComponent<Mask>();
+            }
+        } else {
+            if (msk != null) {
+                Object.Destroy(msk);
+            }
+        }
+        var sdw = GameObject.GetComponent<Shadow>();
+        if (Config.ShadowConfig != null) {
+            if (sdw == null) {
+                GameObject.AddComponent<Shadow>();
+            }
+        } else {
+            if (sdw != null) {
+                Object.Destroy(sdw);
+            }
+        }
+        var rm2 = GameObject.GetComponent<RectMask2D>();
+        if (Config.HasRectMask2D) {
+            if (rm2 == null) {
+                GameObject.AddComponent<RectMask2D>();
+            }
+        } else {
+            if (rm2 != null) {
+                Object.Destroy(rm2);
+            }
+        }
     }
 
     public void AttachChild(OvObject child) {
@@ -106,48 +143,7 @@ public sealed class OvObject {
     public void SendToBack(OvObject child) {
         SetChildIndex(child, 0);
     }
-
-    public T Add<T>() where T : Component {
-        var type = typeof(T);
-
-        if(!AllowedTypes.Contains(type)) {
-            return null;
-        }
-
-        return GameObject.GetComponent<T>() ?? GameObject.AddComponent<T>();
-    }
-
-    public T Get<T>() where T : Component => GameObject.GetComponent<T>();
-
-    public void Remove<T>() where T : Component {
-        var comp = GameObject.GetComponent<T>();
-
-        if(comp != null) {
-            Object.Destroy(comp);
-        }
-    }
-
-    private void Sync<T>(bool enable) where T : Component {
-        if(enable) {
-            Add<T>();
-        } else {
-            Remove<T>();
-        }
-    }
-
-    private void ApplyMask2D(bool enabled) {
-        var comp = Get<RectMask2D>();
-        if(enabled) {
-            if(comp == null) {
-                Add<RectMask2D>();
-            }
-        } else {
-            if(comp != null) {
-                Remove<RectMask2D>();
-            }
-        }
-    }
-
+    
     public void Dispose() {
         for(int i = Children.Count - 1; i >= 0; i--) {
             Children[i].Dispose();

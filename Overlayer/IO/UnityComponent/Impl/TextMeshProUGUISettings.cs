@@ -23,8 +23,12 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase {
     public bool AutoSize = false;
     public Vector2 FontSizeRange = new(16, 64);
 
-    public override void ToUnity(GameObject target) {
+    public override bool ToUnity(GameObject target) {
         var com = target.GetComponent<TextMeshProUGUI>();
+        if (com == null) {
+            return false;
+        }
+        
         com.text = Text;
         com.colorGradient = Color;
         com.fontSize = FontSize;
@@ -44,10 +48,15 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase {
         com.fontSizeMin = FontSizeRange.x;
         com.fontSizeMax = FontSizeRange.y;
         com.enableVertexGradient = true;
+
+        return true;
     }
 
-    public override void FromUnity(GameObject source) {
+    public override bool FromUnity(GameObject source) {
         var com = source.GetComponent<TextMeshProUGUI>();
+        if (com == null) {
+            return false;
+        }
 
         Text = com.text;
         Color = com.colorGradient;
@@ -67,6 +76,8 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase {
         EnableOutline = OutlineWidth > 0f;
         AutoSize = com.enableAutoSizing;
         FontSizeRange = new Vector2(com.fontSizeMin, com.fontSizeMax);
+
+        return true;
     }
 
     public override JToken Serialize() {

@@ -7,14 +7,26 @@ namespace Overlayer.IO.UnityComponent.Impl;
 public class MaskSettings : UnityComponentSettingsBase {
     public bool ShowMaskGraphic = true;
 
-    public override void ToUnity(GameObject target) {
+    public override bool ToUnity(GameObject target) {
         var com = target.GetComponent<Mask>();
+        if (com == null) {
+            return false;
+        }
+        
         com.showMaskGraphic = ShowMaskGraphic;
+        
+        return true;
     }
 
-    public override void FromUnity(GameObject source) {
+    public override bool FromUnity(GameObject source) {
         var com = source.GetComponent<Mask>();
+        if (com == null) {
+            return false;
+        }
+        
         ShowMaskGraphic = com.showMaskGraphic;
+        
+        return true;
     }
 
     public override JToken Serialize() {

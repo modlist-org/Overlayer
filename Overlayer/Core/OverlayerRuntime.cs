@@ -157,14 +157,22 @@ public sealed class OverlayerRuntime {
             var canvas = OverlayCore.CreateOvCanvas();
 
             var obj = canvas.CreateOvObject();
-            obj.Config.RectTransformConfig = new() {
-                SizeDelta = new(400, 100)
-            };
+            obj.Config.RectTransformConfig.SizeDelta = new(400, 100);
             obj.Config.TextConfig = new();
             obj.Config.ImageConfig = new();
             obj.ApplyComponent();
-            MainCore.Logger.Msg((obj.Config.ImageConfig == null).ToString());
             obj.ApplyConfig();
+            
+            /* Fuck
+            [ERROR] [Overlayer] System.NullReferenceException: Object reference not set to an instance of an object
+            at Overlayer.IO.UnityComponent.Impl.ImageSettings.ToUnity (UnityEngine.GameObject target) [0x00008] in <f64de5634531445fa16ca2041a434909>:0 
+            at Overlayer.Overlay.OvObject.ApplyConfig () [0x00061] in <f64de5634531445fa16ca2041a434909>:0 
+            at Overlayer.Core.OverlayerRuntime.SetModEnabled (System.Boolean enabled, System.Boolean isDispose) [0x0012e] in <f64de5634531445fa16ca2041a434909>:0 
+            at Overlayer.Core.OverlayerRuntime.Initialize () [0x000b9] in <f64de5634531445fa16ca2041a434909>:0 
+            at Overlayer.Core.MainCore.Initialize (Overlayer.Compat.Interface.IOverlayerHost host) [0x00021] in <f64de5634531445fa16ca2041a434909>:0 
+            at Overlayer.Loader.ML.Loader.OnInitializeMelon () [0x00001] in <760fe7bc661f443fa2dae6bde9ae6513>:0 
+            at MelonLoader.MelonBase.LoaderInitialized () [0x00000] in /home/runner/work/MelonLoader/MelonLoader/MelonLoader/Melons/MelonBase.cs:474 
+            */
             
             // Test End
 

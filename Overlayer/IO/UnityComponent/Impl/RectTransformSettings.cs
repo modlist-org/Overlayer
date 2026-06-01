@@ -12,26 +12,38 @@ public class RectTransformSettings : UnityComponentSettingsBase {
     public Vector2 OffsetMin = Vector2.zero;
     public Vector2 OffsetMax = Vector2.zero;
 
-    public override void ToUnity(GameObject target) {
-        var rectTransform = target.GetComponent<RectTransform>();
-        rectTransform.anchorMin = AnchorMin;
-        rectTransform.anchorMax = AnchorMax;
-        rectTransform.anchoredPosition = AnchoredPosition;
-        rectTransform.sizeDelta = SizeDelta;
-        rectTransform.pivot = Pivot;
-        rectTransform.offsetMin = OffsetMin;
-        rectTransform.offsetMax = OffsetMax;
+    public override bool ToUnity(GameObject target) {
+        var com = target.GetComponent<RectTransform>();
+        if (com == null) {
+            return false;
+        }
+        
+        com.anchorMin = AnchorMin;
+        com.anchorMax = AnchorMax;
+        com.anchoredPosition = AnchoredPosition;
+        com.sizeDelta = SizeDelta;
+        com.pivot = Pivot;
+        com.offsetMin = OffsetMin;
+        com.offsetMax = OffsetMax;
+
+        return true;
     }
 
-    public override void FromUnity(GameObject source) {
-        var rectTransform = source.GetComponent<RectTransform>();
-        AnchorMin = rectTransform.anchorMin;
-        AnchorMax = rectTransform.anchorMax;
-        AnchoredPosition = rectTransform.anchoredPosition;
-        SizeDelta = rectTransform.sizeDelta;
-        Pivot = rectTransform.pivot;
-        OffsetMin = rectTransform.offsetMin;
-        OffsetMax = rectTransform.offsetMax;
+    public override bool FromUnity(GameObject source) {
+        var com = source.GetComponent<RectTransform>();
+        if (com == null) {
+            return false;
+        }
+        
+        AnchorMin = com.anchorMin;
+        AnchorMax = com.anchorMax;
+        AnchoredPosition = com.anchoredPosition;
+        SizeDelta = com.sizeDelta;
+        Pivot = com.pivot;
+        OffsetMin = com.offsetMin;
+        OffsetMax = com.offsetMax;
+        
+        return true;
     }
 
     public override JToken Serialize() {

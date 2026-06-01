@@ -9,18 +9,30 @@ public class CanvasSettings : UnityComponentSettingsBase {
     public int SortingOrder = 32760;
     public bool PixelPerfect = false;
 
-    public override void ToUnity(GameObject target) {
+    public override bool ToUnity(GameObject target) {
         var com = target.GetComponent<Canvas>();
+        if (com == null) {
+            return false;
+        }
+        
         com.renderMode = RenderMode;
         com.sortingOrder = SortingOrder;
         com.pixelPerfect = PixelPerfect;
+        
+        return true;
     }
 
-    public override void FromUnity(GameObject source) {
+    public override bool FromUnity(GameObject source) {
         var com = source.GetComponent<Canvas>();
+        if (com == null) {
+            return false;
+        }
+        
         RenderMode = com.renderMode;
         SortingOrder = com.sortingOrder;
         PixelPerfect = com.pixelPerfect;
+        
+        return true;
     }
 
     public override JToken Serialize() {

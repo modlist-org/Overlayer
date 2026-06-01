@@ -12,7 +12,7 @@ public sealed class OvObjectSettings : ISettingsFile {
     public ImageSettings ImageConfig = null;
     public MaskSettings MaskConfig = null;
     public ShadowSettings ShadowConfig = null;
-    public bool HasMask2D = false;
+    public bool HasRectMask2D = false;
 
     public List<OvObjectSettings> Children = [];
 
@@ -34,8 +34,8 @@ public sealed class OvObjectSettings : ISettingsFile {
         if(ShadowConfig != null) {
             obj[nameof(ShadowConfig)] = ShadowConfig.Serialize();
         }
-        if(HasMask2D) {
-            obj[nameof(HasMask2D)] = true;
+        if(HasRectMask2D) {
+            obj[nameof(HasRectMask2D)] = true;
         }
         return obj;
     }
@@ -55,7 +55,7 @@ public sealed class OvObjectSettings : ISettingsFile {
         ImageConfig = ReadConfig<ImageSettings>(obj, nameof(ImageConfig));
         MaskConfig = ReadConfig<MaskSettings>(obj, nameof(MaskConfig));
         ShadowConfig = ReadConfig<ShadowSettings>(obj, nameof(ShadowConfig));
-        HasMask2D = IOUtils.Read(obj, nameof(HasMask2D), HasMask2D);
+        HasRectMask2D = IOUtils.Read(obj, nameof(HasRectMask2D), HasRectMask2D);
 
         Children.Clear();
 

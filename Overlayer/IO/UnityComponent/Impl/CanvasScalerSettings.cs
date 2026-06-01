@@ -13,24 +13,36 @@ public class CanvasScalerSettings : UnityComponentSettingsBase {
     public float ScaleFactor = 1f;
     public float DynamicPixelsPerUnit = 1f;
 
-    public override void ToUnity(GameObject target) {
+    public override bool ToUnity(GameObject target) {
         var com = target.GetComponent<CanvasScaler>();
+        if (com == null) {
+            return false;
+        }
+        
         com.uiScaleMode = UiScaleMode;
         com.referenceResolution = ReferenceResolution;
         com.matchWidthOrHeight = MatchWidthOrHeight;
         com.screenMatchMode = ScreenMatchMode;
         com.scaleFactor = ScaleFactor;
         com.dynamicPixelsPerUnit = DynamicPixelsPerUnit;
+
+        return true;
     }
 
-    public override void FromUnity(GameObject source) {
+    public override bool FromUnity(GameObject source) {
         var com = source.GetComponent<CanvasScaler>();
+        if (com == null) {
+            return false;
+        }
+        
         UiScaleMode = com.uiScaleMode;
         ReferenceResolution = com.referenceResolution;
         MatchWidthOrHeight = com.matchWidthOrHeight;
         ScreenMatchMode = com.screenMatchMode;
         ScaleFactor = com.scaleFactor;
         DynamicPixelsPerUnit = com.dynamicPixelsPerUnit;
+
+        return true;
     }
 
     public override JToken Serialize() {
