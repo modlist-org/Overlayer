@@ -1,6 +1,7 @@
 ﻿using Newtonsoft.Json.Linq;
 using Overlayer.IO.Interface;
 using Overlayer.IO.UnityComponent.Impl;
+using Unity.Profiling.LowLevel.Unsafe;
 namespace Overlayer.IO.Overlay;
 
 public sealed class OvObjectSettings : ISettingsFile {
@@ -12,6 +13,7 @@ public sealed class OvObjectSettings : ISettingsFile {
     public ImageSettings ImageConfig = null;
     public MaskSettings MaskConfig = null;
     public ShadowSettings ShadowConfig = null;
+    public OutlineSettings OutlineConfig = null;
     public bool HasRectMask2D = false;
 
     public List<OvObjectSettings> Children = [];
@@ -34,6 +36,9 @@ public sealed class OvObjectSettings : ISettingsFile {
         if(ShadowConfig != null) {
             obj[nameof(ShadowConfig)] = ShadowConfig.Serialize();
         }
+        if(OutlineConfig != null) {
+            obj[nameof(OutlineConfig)] = OutlineConfig.Serialize();
+        }
         if(HasRectMask2D) {
             obj[nameof(HasRectMask2D)] = true;
         }
@@ -55,6 +60,7 @@ public sealed class OvObjectSettings : ISettingsFile {
         ImageConfig = ReadConfig<ImageSettings>(obj, nameof(ImageConfig));
         MaskConfig = ReadConfig<MaskSettings>(obj, nameof(MaskConfig));
         ShadowConfig = ReadConfig<ShadowSettings>(obj, nameof(ShadowConfig));
+        OutlineConfig = ReadConfig<OutlineSettings>(obj, nameof(OutlineConfig));
         HasRectMask2D = IOUtils.Read(obj, nameof(HasRectMask2D), HasRectMask2D);
 
         Children.Clear();

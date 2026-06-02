@@ -156,10 +156,14 @@ public sealed class OverlayerRuntime {
             
             var canvas = OverlayCore.CreateOvCanvas();
 
-            var obj = canvas.CreateOvObject();
-            obj.Config.RectTransformConfig.SizeDelta = new(400, 100);
-            obj.Config.TextConfig = new();
-            obj.Config.ImageConfig = new();
+            var obj = canvas.CreateOvObject(new IO.Overlay.OvObjectSettings() {
+                RectTransformConfig = new() {
+                    SizeDelta = new Vector2(200, 200),
+                },
+                TextConfig = new(),
+                ImageConfig = new(),
+                OutlineConfig = new(),
+            });
             obj.ApplyComponent();
             obj.ApplyConfig();
             

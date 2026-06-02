@@ -1,4 +1,3 @@
-using Overlayer.Core;
 using Overlayer.IO.Overlay;
 using TMPro;
 using UnityEngine;
@@ -31,11 +30,12 @@ public sealed class OvObject {
 
     public void ApplyConfig() {
         GameObject.name = Config.Name;
-        Config.RectTransformConfig?.ToUnity(GameObject);
+        Config.RectTransformConfig.ToUnity(GameObject);
         Config.TextConfig?.ToUnity(GameObject);
         Config.ImageConfig?.ToUnity(GameObject);
         Config.MaskConfig?.ToUnity(GameObject);
         Config.ShadowConfig?.ToUnity(GameObject);
+        Config.OutlineConfig?.ToUnity(GameObject);
     }
 
     public void ApplyComponent() {
@@ -87,6 +87,16 @@ public sealed class OvObject {
         } else {
             if (rm2 != null) {
                 Object.Destroy(rm2);
+            }
+        }
+        var oln = GameObject.GetComponent<Outline>();
+        if(Config.OutlineConfig != null) {
+            if(oln == null) {
+                GameObject.AddComponent<Outline>();
+            }
+        } else {
+            if(oln != null) {
+                Object.Destroy(oln);
             }
         }
     }

@@ -7,7 +7,7 @@ namespace Overlayer.IO.UnityComponent.Impl;
 
 public class ImageSettings : UnityComponentSettingsBase {
     public Color Color = Color.white;
-    public string SpriteKey = string.Empty;
+    public string SpriteKey = null;
     public bool PreserveAspect = false;
     public Image.Type Type = Image.Type.Simple;
     public Image.FillMethod FillMethod = Image.FillMethod.Horizontal;
