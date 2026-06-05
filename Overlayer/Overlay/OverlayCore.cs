@@ -43,7 +43,7 @@ public static class OverlayCore {
 
         foreach(var file in files) {
             var wrapper = new SettingsFile<OvCanvas>(file);
-
+            
             if(wrapper.Load()) {
                 var canvas = wrapper.Data;
                 canvas.RectTransform.SetParent(Transform, false);

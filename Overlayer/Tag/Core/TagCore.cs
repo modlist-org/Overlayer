@@ -14,29 +14,46 @@ public enum TagType {
     Hide = 1 << 16,
 }
 
-public sealed class TagCore {
+public class TagCore {
     public string Name { get; }
     public TagType TagType { get; }
-    public MethodInfo Method { get; }
+    public MemberInfo Member { get; }
     public ParameterInfo[] Parameters { get; }
     public int RequiredParameterCount { get; }
     public Type ReturnType { get; }
 
-    public TagCore(string name, MethodInfo method, TagType tagType) {
+    public readonly bool IsMethod;
+    public readonly bool IsProperty;
+    public readonly bool IsField;
+
+    public TagCore(string name, MemberInfo member, TagType tagType) {
         Name = name;
         TagType = tagType;
-        Method = method;
+        Member = member;
 
-        Parameters = method.GetParameters();
+        IsMethod = member is MethodInfo;
+        IsProperty = member is PropertyInfo;
+        IsField = member is FieldInfo;
 
-        int required = 0;
-        for(int i = 0; i < Parameters.Length; i++) {
-            if(!Parameters[i].HasDefaultValue) {
-                required++;
-            }
+        if(member is MethodInfo method) {
+            Parameters = method.GetParameters();
+            ReturnType = method.ReturnType;
+        } else if(member is PropertyInfo prop) {
+            Parameters = prop.GetGetMethod()?.GetParameters() ?? [];
+            ReturnType = prop.PropertyType;
+        } else if(member is FieldInfo field) {
+            Parameters = [];
+            ReturnType = field.FieldType;
+        } else {
+            Parameters = [];
+            ReturnType = typeof(void);
         }
 
-        RequiredParameterCount = required;
-        ReturnType = method.ReturnType;
+        RequiredParameterCount = 0;
+        foreach(var p in Parameters) {
+            if(!p.HasDefaultValue) {
+                RequiredParameterCount++;
+            }
+        }
     }
 }

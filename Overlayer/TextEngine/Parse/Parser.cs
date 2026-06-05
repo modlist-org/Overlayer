@@ -3,6 +3,8 @@
 namespace Overlayer.TextEngine.Parse;
 
 public static class Parser {
+    private static readonly Regex Pattern =
+        new(@"\{(?<name>[A-Za-z0-9_]+)\}", RegexOptions.Compiled);
     private static readonly Regex ColonPattern =
         new(@"\{(?<name>[A-Za-z0-9_]+):(?<arg>[^}]*)\}", RegexOptions.Compiled);
     private static readonly Regex FuncPattern =
@@ -14,33 +16,26 @@ public static class Parser {
         var matches = ColonPattern.Matches(input)
             .Cast<Match>()
             .Concat(FuncPattern.Matches(input).Cast<Match>())
+            .Concat(Pattern.Matches(input).Cast<Match>())
             .OrderBy(m => m.Index);
 
         foreach(var m in matches) {
             string name = m.Groups["name"].Value;
-            string argsRaw = m.Groups["arg"].Success ? m.Groups["arg"].Value : m.Groups["args"].Value;
+            string argsRaw = m.Groups["arg"].Success
+                ? m.Groups["arg"].Value
+                : (m.Groups["args"].Success ? m.Groups["args"].Value : "");
 
-            string[] args;
-
-            if(string.IsNullOrWhiteSpace(argsRaw)) {
-                args = [];
-            } else {
-                args = argsRaw.Split(',');
-
-                for(int i = 0; i < args.Length; i++) {
-                    args[i] = args[i].Trim();
-                }
-            }
+            string[] args = string.IsNullOrWhiteSpace(argsRaw)
+                ? [] : [.. argsRaw.Split(',').Select(s => s.Trim())];
 
             result.Add(new ParsedTag(
-                input.Substring(m.Index, m.Length),
+                m.Value,
                 name,
                 args,
                 m.Index,
                 m.Length
             ));
         }
-
         return result;
     }
 }

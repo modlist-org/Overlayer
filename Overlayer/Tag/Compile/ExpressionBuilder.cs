@@ -44,10 +44,16 @@ public static class ExpressionBuilder {
             );
         }
 
-        var call = Expression.Call(
-            tag.Method,
-            BuildCallArgs(tag.Parameters, converted)
-        );
+        Expression call;
+        if(tag.Member is MethodInfo mi) {
+            call = Expression.Call(mi, BuildCallArgs(tag.Parameters, converted));
+        } else if(tag.Member is PropertyInfo pi) {
+            call = Expression.Property(null, pi);
+        } else if(tag.Member is FieldInfo fi) {
+            call = Expression.Field(null, fi);
+        } else {
+            throw new NotSupportedException("Unsupported member type");
+        }
 
         Expression result;
 

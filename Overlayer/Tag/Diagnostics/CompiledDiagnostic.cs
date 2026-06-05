@@ -17,4 +17,7 @@ public readonly record struct CompileDiagnostic {
         Context = context;
         Data = data;
     }
+
+    public override string ToString()
+        => $"[{Severity}] {Id} at {Context}: {string.Join(", ", Data)}";
 }

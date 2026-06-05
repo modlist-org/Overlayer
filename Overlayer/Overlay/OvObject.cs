@@ -1,6 +1,7 @@
 using Newtonsoft.Json.Linq;
 using Overlayer.IO.Interface;
 using Overlayer.IO.Overlay;
+using Overlayer.TextEngine.Core;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -40,7 +41,10 @@ public sealed class OvObject : ISettingsFile {
         GameObject.name = Config.Name;
         Config.RectTransformConfig.ToUnity(GameObject);
         Config.CanvasGroupConfig.ToUnity(GameObject);
-        Config.TextConfig?.ToUnity(GameObject);
+        if(Config.TextConfig != null) {
+            Config.TextConfig.ToUnity(GameObject);
+            GameObject.GetComponent<TextEngineUpdater>()?.SetText(Config.TextConfig.Text);
+        }
         Config.ImageConfig?.ToUnity(GameObject);
         Config.MaskConfig?.ToUnity(GameObject);
         Config.ShadowConfig?.ToUnity(GameObject);
@@ -52,7 +56,16 @@ public sealed class OvObject : ISettingsFile {
             return;
         }
 
-        EnsureComponent<TextMeshProUGUI>(Config.TextConfig != null);
+        bool tc = Config.TextConfig != null;
+        EnsureComponent<TextMeshProUGUI>(tc);
+        EnsureComponent<TextEngineUpdater>(tc);
+        if(tc) {
+            var tmp = GameObject.GetComponent<TextMeshProUGUI>();
+            var updater = GameObject.GetComponent<TextEngineUpdater>();
+            if(updater != null && tmp != null) {
+                updater.Init(tmp);
+            }
+        }
         EnsureComponent<Image>(Config.ImageConfig != null);
         EnsureComponent<Mask>(Config.MaskConfig != null);
         EnsureComponent<Shadow>(Config.ShadowConfig != null);
@@ -199,5 +212,19 @@ public sealed class OvObject : ISettingsFile {
             GameObject.transform.SetParent(null);
             Object.Destroy(GameObject);
         }
+    }
+
+    public class TextEngineUpdater : MonoBehaviour {
+        public TextMeshProUGUI Tmp;
+        public TextEngineCore Engine;
+
+        public void Init(TextMeshProUGUI tmp) {
+            Tmp = tmp;
+            Engine = new();
+        }
+
+        public void SetText(string text) => Engine.Text = text;
+
+        public void Update() => Tmp.text = Engine.Get();
     }
 }

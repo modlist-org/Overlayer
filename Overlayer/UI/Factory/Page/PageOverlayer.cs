@@ -77,7 +77,11 @@ internal static class PageOverlayer {
             FadeCanvasGroup(viewportCanvasGroup, 1f, true);
         });
 
-        MainCore.OnModEnabledChanged += (isEnabled, isDispose) => ToggleUIStateByMod(isEnabled);
+        MainCore.OnModEnabledChanged += (isEnabled, isDispose) => {
+            if(!isDispose) {
+                ToggleUIStateByMod(isEnabled);
+            }
+        };
 
         if(!MainCore.IsModEnabled) {
             ToggleUIStateByMod(false);
