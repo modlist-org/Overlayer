@@ -1,11 +1,12 @@
 ﻿using Newtonsoft.Json.Linq;
+using Overlayer.IO.Interface;
 using UnityEngine;
 using UnityEngine.UI;
 using static UnityEngine.UI.CanvasScaler;
 
 namespace Overlayer.IO.UnityComponent.Impl;
 
-public class CanvasScalerSettings : UnityComponentSettingsBase {
+public class CanvasScalerSettings : UnityComponentSettingsBase, ICopyable<CanvasScalerSettings> {
     public CanvasScaler.ScaleMode UiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
     public Vector2 ReferenceResolution = new(1920, 1080);
     public float MatchWidthOrHeight = 0.5f;
@@ -63,5 +64,16 @@ public class CanvasScalerSettings : UnityComponentSettingsBase {
         ScreenMatchMode = IOUtils.ReadEnum(token, nameof(ScreenMatchMode), ScreenMatchMode);
         ScaleFactor = IOUtils.Read(token, nameof(ScaleFactor), ScaleFactor);
         DynamicPixelsPerUnit = IOUtils.Read(token, nameof(DynamicPixelsPerUnit), DynamicPixelsPerUnit);
+    }
+
+    public CanvasScalerSettings Copy() {
+        return new CanvasScalerSettings {
+            UiScaleMode = UiScaleMode,
+            ReferenceResolution = ReferenceResolution,
+            MatchWidthOrHeight = MatchWidthOrHeight,
+            ScreenMatchMode = ScreenMatchMode,
+            ScaleFactor = ScaleFactor,
+            DynamicPixelsPerUnit = DynamicPixelsPerUnit
+        };
     }
 }

@@ -1,10 +1,11 @@
 ﻿using Newtonsoft.Json.Linq;
+using Overlayer.IO.Interface;
 using UnityEngine;
 using UnityEngine.UI;
 
 namespace Overlayer.IO.UnityComponent.Impl;
 
-public class ContentSizeFilterSettings : UnityComponentSettingsBase {
+public class ContentSizeFilterSettings : UnityComponentSettingsBase, ICopyable<ContentSizeFilterSettings> {
     public ContentSizeFitter.FitMode HorizontalFit = ContentSizeFitter.FitMode.PreferredSize;
     public ContentSizeFitter.FitMode VerticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
@@ -46,5 +47,12 @@ public class ContentSizeFilterSettings : UnityComponentSettingsBase {
 
         HorizontalFit = IOUtils.ReadEnum(token, nameof(HorizontalFit), HorizontalFit);
         VerticalFit = IOUtils.ReadEnum(token, nameof(VerticalFit), VerticalFit);
+    }
+
+    public ContentSizeFilterSettings Copy() {
+        return new ContentSizeFilterSettings {
+            HorizontalFit = HorizontalFit,
+            VerticalFit = VerticalFit
+        };
     }
 }

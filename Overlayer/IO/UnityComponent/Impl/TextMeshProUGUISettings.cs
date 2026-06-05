@@ -1,10 +1,11 @@
 ﻿using Newtonsoft.Json.Linq;
+using Overlayer.IO.Interface;
 using TMPro;
 using UnityEngine;
 
 namespace Overlayer.IO.UnityComponent.Impl;
 
-public class TextMeshProUGUISettings : UnityComponentSettingsBase {
+public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<TextMeshProUGUISettings> {
     public string Text = "Text";
     public GradientColor Color = UnityEngine.Color.white;
     public float FontSize = 42f;
@@ -120,5 +121,27 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase {
         OutlineSoftness = IOUtils.Read(token, nameof(OutlineSoftness), OutlineSoftness);
         AutoSize = IOUtils.Read(token, nameof(AutoSize), AutoSize);
         FontSizeRange = IOUtils.Read(token, nameof(FontSizeRange), FontSizeRange);
+    }
+
+    public TextMeshProUGUISettings Copy() {
+        return new TextMeshProUGUISettings {
+            Text = Text,
+            Color = Color,
+            FontSize = FontSize,
+            RichText = RichText,
+            Alignment = Alignment,
+            TextWrappingMode = TextWrappingMode,
+            LineSpacing = LineSpacing,
+            CharacterSpacing = CharacterSpacing,
+            WordSpacing = WordSpacing,
+            EnableOutline = EnableOutline,
+            OutlineColor = OutlineColor,
+            OutlineWidth = OutlineWidth,
+            FaceDilate = FaceDilate,
+            OverFlowMode = OverFlowMode,
+            OutlineSoftness = OutlineSoftness,
+            AutoSize = AutoSize,
+            FontSizeRange = FontSizeRange
+        };
     }
 }

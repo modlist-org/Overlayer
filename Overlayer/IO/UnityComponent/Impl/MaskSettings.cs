@@ -1,10 +1,11 @@
 ﻿using Newtonsoft.Json.Linq;
+using Overlayer.IO.Interface;
 using Overlayer.IO.Unity;
 using UnityEngine;
 using UnityEngine.UI;
 namespace Overlayer.IO.UnityComponent.Impl;
 
-public class MaskSettings : UnityComponentSettingsBase {
+public class MaskSettings : UnityComponentSettingsBase, ICopyable<MaskSettings> {
     public bool ShowMaskGraphic = true;
 
     public override bool ToUnity(GameObject target) {
@@ -37,5 +38,11 @@ public class MaskSettings : UnityComponentSettingsBase {
 
     public override void Deserialize(JToken token) {
         ShowMaskGraphic = IOUtils.Read(token, nameof(ShowMaskGraphic), ShowMaskGraphic);
+    }
+
+    public MaskSettings Copy() {
+        return new MaskSettings {
+            ShowMaskGraphic = ShowMaskGraphic,
+        };
     }
 }

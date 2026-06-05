@@ -1,10 +1,11 @@
 ﻿using Newtonsoft.Json.Linq;
+using Overlayer.IO.Interface;
 using UnityEngine;
 using UnityEngine.UI;
 
 namespace Overlayer.IO.UnityComponent.Impl;
 
-public class ShadowSettings : UnityComponentSettingsBase {
+public class ShadowSettings : UnityComponentSettingsBase, ICopyable<ShadowSettings> {
     public Vector2 EffectDistance = new(6, -6);
     public Color EffectColor = Color.black;
     public bool UseGraphicAlpha = true;
@@ -47,5 +48,13 @@ public class ShadowSettings : UnityComponentSettingsBase {
         EffectDistance = IOUtils.Read(token, nameof(EffectDistance), EffectDistance);
         EffectColor = IOUtils.Read(token, nameof(EffectColor), EffectColor);
         UseGraphicAlpha = IOUtils.Read(token, nameof(UseGraphicAlpha), UseGraphicAlpha);
+    }
+
+    public ShadowSettings Copy() {
+        return new ShadowSettings {
+            EffectDistance = EffectDistance,
+            EffectColor = EffectColor,
+            UseGraphicAlpha = UseGraphicAlpha
+        };
     }
 }

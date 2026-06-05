@@ -48,7 +48,7 @@ public class PageSwicher {
         pageSeq.Join(toPage.DOAnchorPosX(0f, 0.45f).SetEase(Ease.OutExpo).SetDelay(0.05f));
         pageSeq.Join(toCg.DOFade(1f, 0.3f));
 
-        pageSeq.Insert(0.16f, DOTween.To(
+        pageSeq.Insert(0.1f, DOTween.To(
             () => 0,
             _ => {
                 toCg.interactable = true;

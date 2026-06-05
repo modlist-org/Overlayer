@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace Overlayer.IO.Overlay;
 
-public sealed class OvCanvasSettings : ISettingsFile {
+public sealed class OvCanvasSettings : ISettingsFile, ICopyable<OvCanvasSettings> {
     public string Name = "OvCanvas";
     public RectTransformSettings RectTransformConfig = new() {
         AnchorMin = Vector2.zero,
@@ -41,5 +41,15 @@ public sealed class OvCanvasSettings : ISettingsFile {
         CanvasConfig.Deserialize(obj[nameof(CanvasConfig)]);
         CanvasScalerConfig.Deserialize(obj[nameof(CanvasScalerConfig)]);
         GraphicRaycasterConfig.Deserialize(obj[nameof(GraphicRaycasterConfig)]);
+    }
+
+    public OvCanvasSettings Copy() {
+        return new OvCanvasSettings {
+            Name = Name,
+            RectTransformConfig = RectTransformConfig?.Copy(),
+            CanvasConfig = CanvasConfig?.Copy(),
+            CanvasScalerConfig = CanvasScalerConfig?.Copy(),
+            GraphicRaycasterConfig = GraphicRaycasterConfig?.Copy()
+        };
     }
 }

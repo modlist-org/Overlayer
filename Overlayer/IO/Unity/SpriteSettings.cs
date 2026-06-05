@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace Overlayer.IO.Unity;
 
-public class SpriteSettings : ISettingsFile {
+public class SpriteSettings : ISettingsFile, ICopyable<SpriteSettings> {
     public Rect Rect = Rect.zero;
     public Vector2 Pivot = new(0.5f, 0.5f);
     public float PixelsPerUnit = 100f;
@@ -44,5 +44,14 @@ public class SpriteSettings : ISettingsFile {
         Pivot = IOUtils.Read(token, nameof(Pivot), Pivot);
         PixelsPerUnit = IOUtils.Read(token, nameof(PixelsPerUnit), PixelsPerUnit);
         Border = IOUtils.Read(token, nameof(Border), Border);
+    }
+
+    public SpriteSettings Copy() {
+        return new SpriteSettings {
+            Rect = Rect,
+            Pivot = Pivot,
+            PixelsPerUnit = PixelsPerUnit,
+            Border = Border
+        };
     }
 }

@@ -19,9 +19,13 @@ public class OvCanvas : ISettingsFile {
     public OvCanvasSettings Config = new();
 
     public OvCanvas() {
-        GameObject = new("OvCanvas", typeof(RectTransform), typeof(Canvas), typeof(CanvasGroup), typeof(CanvasScaler), typeof(GraphicRaycaster)) {
-            layer = OverlayCore.LAYER
-        };
+        GameObject = new("OvCanvas",
+            typeof(RectTransform),
+            typeof(Canvas),
+            typeof(CanvasGroup),
+            typeof(CanvasScaler),
+            typeof(GraphicRaycaster)
+        );
         GameObject.transform.SetParent(OverlayCore.Transform, false);
         RectTransform = GameObject.GetComponent<RectTransform>();
         Canvas = GameObject.GetComponent<Canvas>();

@@ -1,9 +1,10 @@
 using Newtonsoft.Json.Linq;
+using Overlayer.IO.Interface;
 using UnityEngine;
 
 namespace Overlayer.IO.UnityComponent.Impl;
 
-public class RectTransformSettings : UnityComponentSettingsBase {
+public class RectTransformSettings : UnityComponentSettingsBase, ICopyable<RectTransformSettings> {
     public enum RectMode {
         CenterFixed,
         Stretch
@@ -100,5 +101,19 @@ public class RectTransformSettings : UnityComponentSettingsBase {
             OffsetMin = IOUtils.Read(token, nameof(OffsetMin), OffsetMin);
             OffsetMax = IOUtils.Read(token, nameof(OffsetMax), OffsetMax);
         }
+    }
+
+    public RectTransformSettings Copy() {
+        return new RectTransformSettings {
+            Mode = Mode,
+            Anchor = Anchor,
+            AnchoredPosition = AnchoredPosition,
+            SizeDelta = SizeDelta,
+            Pivot = Pivot,
+            AnchorMin = AnchorMin,
+            AnchorMax = AnchorMax,
+            OffsetMin = OffsetMin,
+            OffsetMax = OffsetMax
+        };
     }
 }

@@ -20,9 +20,10 @@ public sealed class OvObject : ISettingsFile {
     public OvObjectSettings Config = new();
 
     public OvObject() {
-        GameObject = new GameObject("OvObject", typeof(RectTransform), typeof(CanvasGroup)) {
-            layer = OverlayCore.LAYER
-        };
+        GameObject = new GameObject("OvObject",
+            typeof(RectTransform),
+            typeof(CanvasGroup)
+        );
         RectTransform = GameObject.GetComponent<RectTransform>();
         CanvasGroup = GameObject.GetComponent<CanvasGroup>();
 

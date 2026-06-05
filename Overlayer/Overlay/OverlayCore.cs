@@ -1,4 +1,3 @@
-using Newtonsoft.Json.Linq;
 using Overlayer.Core;
 using Overlayer.IO;
 using UnityEngine;
@@ -14,16 +13,15 @@ public static class OverlayCore {
 
     private static readonly string SaveDir = Path.Combine(MainCore.Paths.RootPath, "Canvases");
 
-    public const int LAYER = 5;
+    public static int GetCanvasIndex(OvCanvas canvas)
+        => canvas == null ? -1 : Canvases.IndexOf(canvas);
 
     public static void Initialize(GameObject parent) {
         if(parent == null || Core != null) {
             return;
         }
 
-        Core = new GameObject(nameof(OverlayCore)) {
-            layer = LAYER
-        };
+        Core = new GameObject(nameof(OverlayCore));
         Core.transform.SetParent(parent.transform, false);
 
         LoadAllCanvases();
@@ -44,55 +42,31 @@ public static class OverlayCore {
         var files = Directory.GetFiles(SaveDir, "*.json").OrderBy(Path.GetFileName);
 
         foreach(var file in files) {
-            var settingsWrapper = new SettingsFile<OvCanvas>(file);
+            var wrapper = new SettingsFile<OvCanvas>(file);
 
-            if(settingsWrapper.Load()) {
-                var loadedCanvas = settingsWrapper.Data;
-
-                loadedCanvas.RectTransform.SetParent(Transform, false);
-
-                var fullToken = new JObject {
-                    [nameof(OvCanvas.Config)] = loadedCanvas.Config.Serialize(),
-                    [nameof(OvCanvas.OvObjects)] = new JArray(loadedCanvas.OvObjects.Select(x => x.Serialize()))
-                };
-
-                try {
-                    var rawToken = JToken.Parse(File.ReadAllText(file));
-                    loadedCanvas.Deserialize(rawToken);
-                } catch(Exception ex) {
-                    MainCore.Logger.Err($"[{nameof(OverlayCore)}] Failed to deserialize canvas from {file}: {ex}");
-                }
-
-                Canvases.Add(loadedCanvas);
-            } else {
-                settingsWrapper.Dispose();
+            if(wrapper.Load()) {
+                var canvas = wrapper.Data;
+                canvas.RectTransform.SetParent(Transform, false);
+                canvas.ApplyConfig();
+                Canvases.Add(canvas);
             }
         }
     }
     private static void SaveAllCanvases() {
         try {
-            if(Directory.Exists(SaveDir)) {
-                var oldFiles = Directory.GetFiles(SaveDir, "Canvas*.json");
-                foreach(var f in oldFiles) {
-                    File.Delete(f);
-                }
-            } else {
+            if(!Directory.Exists(SaveDir)) {
                 Directory.CreateDirectory(SaveDir);
             }
 
             for(int i = 0; i < Canvases.Count; i++) {
                 string filePath = Path.Combine(SaveDir, $"Canvas{i}.json");
+                var wrapper = new SettingsFile<OvCanvas>(filePath);
 
-                var settingsWrapper = new SettingsFile<OvCanvas>(filePath);
+                wrapper.Data.Config = Canvases[i].Config.Copy();
+                wrapper.Data.OvObjects.Clear();
+                wrapper.Data.OvObjects.AddRange(Canvases[i].OvObjects);
 
-                settingsWrapper.Data.Config = Canvases[i].Config;
-
-                settingsWrapper.Data.OvObjects.Clear();
-                foreach(var obj in Canvases[i].OvObjects) {
-                    settingsWrapper.Data.OvObjects.Add(obj);
-                }
-
-                settingsWrapper.Save();
+                wrapper.Save();
             }
         } catch(Exception e) {
             MainCore.Logger.Err($"[{nameof(OverlayCore)}] Failed to save all canvases: {e}");

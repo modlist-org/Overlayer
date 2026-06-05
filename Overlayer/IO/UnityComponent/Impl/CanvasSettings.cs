@@ -1,10 +1,11 @@
 using Newtonsoft.Json.Linq;
+using Overlayer.IO.Interface;
 using Overlayer.IO.UnityComponent;
 using UnityEngine;
 
 namespace Overlayer.IO.Overlay;
 
-public class CanvasSettings : UnityComponentSettingsBase {
+public class CanvasSettings : UnityComponentSettingsBase, ICopyable<CanvasSettings> {
     public RenderMode RenderMode = RenderMode.ScreenSpaceOverlay;
     public int SortingOrder = 32760;
     public bool PixelPerfect = false;
@@ -47,5 +48,13 @@ public class CanvasSettings : UnityComponentSettingsBase {
         RenderMode = IOUtils.ReadEnum(token, nameof(RenderMode), RenderMode);
         SortingOrder = IOUtils.Read(token, nameof(SortingOrder), SortingOrder);
         PixelPerfect = IOUtils.Read(token, nameof(PixelPerfect), PixelPerfect);
+    }
+
+    public CanvasSettings Copy() {
+        return new CanvasSettings {
+            RenderMode = RenderMode,
+            SortingOrder = SortingOrder,
+            PixelPerfect = PixelPerfect
+        };
     }
 }

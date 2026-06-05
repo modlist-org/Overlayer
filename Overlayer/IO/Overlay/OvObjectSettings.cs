@@ -3,7 +3,7 @@ using Overlayer.IO.Interface;
 using Overlayer.IO.UnityComponent.Impl;
 namespace Overlayer.IO.Overlay;
 
-public sealed class OvObjectSettings : ISettingsFile {
+public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings> {
     public string Name = "OvObject";
 
     public RectTransformSettings RectTransformConfig = new();
@@ -59,6 +59,19 @@ public sealed class OvObjectSettings : ISettingsFile {
         ShadowConfig = ReadConfig<ShadowSettings>(obj, nameof(ShadowConfig));
         OutlineConfig = ReadConfig<OutlineSettings>(obj, nameof(OutlineConfig));
         HasRectMask2D = IOUtils.Read(obj, nameof(HasRectMask2D), HasRectMask2D);
+    }
+
+    public OvObjectSettings Copy() {
+        return new OvObjectSettings {
+            Name = Name,
+            RectTransformConfig = RectTransformConfig?.Copy(),
+            TextConfig = TextConfig?.Copy(),
+            ImageConfig = ImageConfig?.Copy(),
+            MaskConfig = MaskConfig?.Copy(),
+            ShadowConfig = ShadowConfig?.Copy(),
+            OutlineConfig = OutlineConfig?.Copy(),
+            HasRectMask2D = HasRectMask2D
+        };
     }
 
     private static T ReadConfig<T>(JObject obj, string key)

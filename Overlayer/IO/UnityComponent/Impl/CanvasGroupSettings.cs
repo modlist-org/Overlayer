@@ -1,8 +1,9 @@
 ﻿using Newtonsoft.Json.Linq;
+using Overlayer.IO.Interface;
 using UnityEngine;
 namespace Overlayer.IO.UnityComponent.Impl;
 
-public class CanvasGroupSettings : UnityComponentSettingsBase {
+public class CanvasGroupSettings : UnityComponentSettingsBase, ICopyable<CanvasGroupSettings> {
     public float Alpha = 1f;
     public bool Interactable = false;
     public bool BlocksRaycasts = false;
@@ -50,5 +51,14 @@ public class CanvasGroupSettings : UnityComponentSettingsBase {
         Interactable = IOUtils.Read(token, nameof(Interactable), Interactable);
         BlocksRaycasts = IOUtils.Read(token, nameof(BlocksRaycasts), BlocksRaycasts);
         IgnoreParentGroups = IOUtils.Read(token, nameof(IgnoreParentGroups), IgnoreParentGroups);
+    }
+
+    public CanvasGroupSettings Copy() {
+        return new CanvasGroupSettings {
+            Alpha = Alpha,
+            Interactable = Interactable,
+            BlocksRaycasts = BlocksRaycasts,
+            IgnoreParentGroups = IgnoreParentGroups
+        };
     }
 }

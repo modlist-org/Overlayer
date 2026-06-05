@@ -7,7 +7,7 @@ using UnityEngine;
 /// <summary>
 /// Represents a color that supports either a solid color mode or a 4-corner vertex gradient mode.
 /// </summary>
-public struct GradientColor : ISettingsFile {
+public struct GradientColor : ISettingsFile, ICopyable<GradientColor> {
     private bool solidColor;
 
     private VertexGradient data;
@@ -170,6 +170,17 @@ public struct GradientColor : ISettingsFile {
         solidColor = true;
 
         RebuildCache();
+    }
+
+    public GradientColor Copy() {
+        return new GradientColor {
+            solidColor = solidColor,
+            data = data,
+            TLHex = TLHex,
+            TRHex = TRHex,
+            BLHex = BLHex,
+            BRHex = BRHex
+        };
     }
 
     public static implicit operator Color(GradientColor color) => color.data.topLeft;

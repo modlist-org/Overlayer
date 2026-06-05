@@ -1,11 +1,12 @@
 ﻿using Newtonsoft.Json.Linq;
+using Overlayer.IO.Interface;
 using Overlayer.IO.User;
 using UnityEngine;
 using UnityEngine.UI;
 
 namespace Overlayer.IO.UnityComponent.Impl;
 
-public class ImageSettings : UnityComponentSettingsBase {
+public class ImageSettings : UnityComponentSettingsBase, ICopyable<ImageSettings> {
     public Color Color = Color.white;
     public string SpriteKey = null;
     public bool PreserveAspect = false;
@@ -70,5 +71,16 @@ public class ImageSettings : UnityComponentSettingsBase {
         Type = IOUtils.ReadEnum(token, nameof(Type), Type);
         FillMethod = IOUtils.ReadEnum(token, nameof(FillMethod), FillMethod);
         FillAmount = IOUtils.Read(token, nameof(FillAmount), FillAmount);
+    }
+
+    public ImageSettings Copy() {
+        return new ImageSettings {
+            Color = Color,
+            SpriteKey = SpriteKey,
+            PreserveAspect = PreserveAspect,
+            Type = Type,
+            FillMethod = FillMethod,
+            FillAmount = FillAmount
+        };
     }
 }

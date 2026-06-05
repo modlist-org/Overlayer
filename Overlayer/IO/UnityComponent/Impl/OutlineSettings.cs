@@ -1,9 +1,10 @@
 ﻿using Newtonsoft.Json.Linq;
+using Overlayer.IO.Interface;
 using UnityEngine;
 using UnityEngine.UI;
 namespace Overlayer.IO.UnityComponent.Impl;
 
-public class OutlineSettings : UnityComponentSettingsBase {
+public class OutlineSettings : UnityComponentSettingsBase, ICopyable<OutlineSettings> {
     public bool Enabled = true;
     public Color EffectColor = Color.red;
     public Vector2 EffectDistance = new(1f, -1f);
@@ -46,5 +47,13 @@ public class OutlineSettings : UnityComponentSettingsBase {
         EffectColor = IOUtils.Read(token, nameof(EffectColor), EffectColor);
         EffectDistance = IOUtils.Read(token, nameof(EffectDistance), EffectDistance);
         Enabled = IOUtils.Read(token, nameof(Enabled), Enabled);
+    }
+
+    public OutlineSettings Copy() {
+        return new OutlineSettings {
+            EffectColor = EffectColor,
+            EffectDistance = EffectDistance,
+            Enabled = Enabled
+        };
     }
 }

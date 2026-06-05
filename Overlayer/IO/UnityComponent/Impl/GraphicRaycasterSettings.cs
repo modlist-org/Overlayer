@@ -1,10 +1,11 @@
 ﻿using Newtonsoft.Json.Linq;
+using Overlayer.IO.Interface;
 using UnityEngine;
 using UnityEngine.UI;
 
 namespace Overlayer.IO.UnityComponent.Impl;
 
-public class GraphicRaycasterSettings : UnityComponentSettingsBase {
+public class GraphicRaycasterSettings : UnityComponentSettingsBase, ICopyable<GraphicRaycasterSettings> {
     public bool Enabled = true;
 
     public override bool ToUnity(GameObject target) {
@@ -35,7 +36,12 @@ public class GraphicRaycasterSettings : UnityComponentSettingsBase {
         };
     }
 
-    public override void Deserialize(JToken token) {
-        Enabled = IOUtils.Read(token, nameof(Enabled), Enabled);
+    public override void Deserialize(JToken token)
+        => Enabled = IOUtils.Read(token, nameof(Enabled), Enabled);
+
+    public GraphicRaycasterSettings Copy() {
+        return new GraphicRaycasterSettings {
+            Enabled = Enabled
+        };
     }
 }
