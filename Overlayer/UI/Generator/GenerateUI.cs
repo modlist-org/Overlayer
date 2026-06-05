@@ -598,7 +598,6 @@ public static class GenerateUI {
 
         GameObject hover = new("Hover");
         hover.transform.SetParent(obj.transform, false);
-        hover.transform.SetAsFirstSibling();
 
         RectTransform hoverRect = hover.AddComponent<RectTransform>();
         hoverRect.anchorMin = Vector2.zero;

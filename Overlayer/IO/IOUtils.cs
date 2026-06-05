@@ -192,13 +192,14 @@ public static class IOUtils {
         }
 
         try {
-            var result = value.ToObject<GradientColor>();
+            var result = new GradientColor();
+            result.Deserialize(value);
             return result;
         } catch {
             return fallback;
         }
     }
 
-    public static JToken Write(GradientColor value) => JToken.FromObject(value);
+    public static JToken Write(GradientColor value) => value.Serialize();
     #endregion
 }

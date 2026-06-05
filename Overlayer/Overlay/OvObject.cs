@@ -1,3 +1,6 @@
+using Newtonsoft.Json.Linq;
+using Overlayer.IO;
+using Overlayer.IO.Interface;
 using Overlayer.IO.Overlay;
 using TMPro;
 using UnityEngine;
@@ -6,9 +9,10 @@ using Object = UnityEngine.Object;
 
 namespace Overlayer.Overlay;
 
-public sealed class OvObject {
+public sealed class OvObject : ISettingsFile {
     public readonly GameObject GameObject;
     public readonly RectTransform RectTransform;
+    public readonly CanvasGroup CanvasGroup;
 
     public OvObject Parent { get; private set; }
     public readonly List<OvObject> Children = [];
@@ -16,8 +20,11 @@ public sealed class OvObject {
     public OvObjectSettings Config = new();
 
     public OvObject() {
-        GameObject = new GameObject("OvObject", typeof(RectTransform));
+        GameObject = new GameObject("OvObject", typeof(RectTransform), typeof(CanvasGroup)) {
+            layer = OverlayCore.LAYER
+        };
         RectTransform = GameObject.GetComponent<RectTransform>();
+        CanvasGroup = GameObject.GetComponent<CanvasGroup>();
 
         ApplyConfig();
     }
@@ -32,6 +39,7 @@ public sealed class OvObject {
     public void ApplyConfig() {
         GameObject.name = Config.Name;
         Config.RectTransformConfig.ToUnity(GameObject);
+        Config.CanvasGroupConfig.ToUnity(GameObject);
         Config.TextConfig?.ToUnity(GameObject);
         Config.ImageConfig?.ToUnity(GameObject);
         Config.MaskConfig?.ToUnity(GameObject);
@@ -132,14 +140,51 @@ public sealed class OvObject {
         }
     }
 
-    public void BringToFront(OvObject child) {
-        SetChildIndex(child, Children.Count - 1);
+    public void BringToFront(OvObject child) => SetChildIndex(child, Children.Count - 1);
+
+    public void SendToBack(OvObject child) => SetChildIndex(child, 0);
+
+    public JToken Serialize() {
+        var json = new JObject {
+            [nameof(Config)] = Config.Serialize()
+        };
+
+        if(Children != null && Children.Count > 0) {
+            json[nameof(Children)] = new JArray(Children.Select(x => x.Serialize()));
+        }
+
+        return json;
     }
 
-    public void SendToBack(OvObject child) {
-        SetChildIndex(child, 0);
+    public void Deserialize(JToken token) {
+        if(token == null) {
+            return;
+        }
+
+        if(token[nameof(Config)] != null) {
+            Config.Deserialize(token[nameof(Config)]);
+        }
+
+        if(token[nameof(Children)] is JArray array) {
+            for(int i = Children.Count - 1; i >= 0; i--) {
+                Children[i].Dispose();
+            }
+            Children.Clear();
+
+            foreach(var item in array) {
+                var obj = new OvObject();
+                obj.Deserialize(item);
+
+                obj.ApplyComponent();
+                obj.ApplyConfig();
+
+                Attach(obj);
+            }
+        }
+
+        ApplyConfig();
     }
-    
+
     public void Dispose() {
         for(int i = Children.Count - 1; i >= 0; i--) {
             Children[i].Dispose();

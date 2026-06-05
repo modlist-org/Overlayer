@@ -14,11 +14,12 @@ public sealed class OvCanvasSettings : ISettingsFile {
         OffsetMax = Vector2.zero,
         Pivot = new Vector2(0.5f, 0.5f)
     };
+    public CanvasGroupSettings CanvasGroupConfig = new() {
+        BlocksRaycasts = true,
+    };
     public CanvasSettings CanvasConfig = new();
     public CanvasScalerSettings CanvasScalerConfig = new();
     public GraphicRaycasterSettings GraphicRaycasterConfig = new();
-
-    public List<OvObjectSettings> OvObjectConfigs = [];
 
     public JToken Serialize() {
         return new JObject {
@@ -27,7 +28,6 @@ public sealed class OvCanvasSettings : ISettingsFile {
             [nameof(CanvasConfig)] = CanvasConfig.Serialize(),
             [nameof(CanvasScalerConfig)] = CanvasScalerConfig.Serialize(),
             [nameof(GraphicRaycasterConfig)] = GraphicRaycasterConfig.Serialize(),
-            [nameof(OvObjectConfigs)] = new JArray(OvObjectConfigs.Select(x => x.Serialize()))
         };
     }
 
@@ -41,14 +41,5 @@ public sealed class OvCanvasSettings : ISettingsFile {
         CanvasConfig.Deserialize(obj[nameof(CanvasConfig)]);
         CanvasScalerConfig.Deserialize(obj[nameof(CanvasScalerConfig)]);
         GraphicRaycasterConfig.Deserialize(obj[nameof(GraphicRaycasterConfig)]);
-
-        OvObjectConfigs.Clear();
-        if(obj[nameof(OvObjectConfigs)] is JArray arr) {
-            foreach(var item in arr) {
-                var o = new OvObjectSettings();
-                o.Deserialize(item);
-                OvObjectConfigs.Add(o);
-            }
-        }
     }
 }

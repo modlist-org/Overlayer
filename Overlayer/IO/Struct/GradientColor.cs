@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json.Linq;
+using Overlayer.IO;
 using Overlayer.IO.Interface;
 using TMPro;
 using UnityEngine;
@@ -132,20 +133,19 @@ public struct GradientColor : ISettingsFile {
         BRHex = ColorUtility.ToHtmlStringRGBA(data.bottomRight);
     }
 
-    public JToken Serialize() {
+    public readonly JToken Serialize() {
         if(solidColor) {
-            return new JValue(data.topLeft);
+            return IOUtils.Write(data.topLeft);
         }
 
-        return new JArray {
-            data.topLeft.r,
-            data.topLeft.g,
-            data.topLeft.b,
-            data.topLeft.a
-        };
+        return IOUtils.Write(data.topLeft);
     }
 
     public void Deserialize(JToken token) {
+        if(token == null) {
+            return;
+        }
+
         if(token.Type == JTokenType.Array) {
             var arr = (JArray)token;
 

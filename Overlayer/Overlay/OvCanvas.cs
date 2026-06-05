@@ -1,14 +1,16 @@
+using Newtonsoft.Json.Linq;
+using Overlayer.IO.Interface;
 using Overlayer.IO.Overlay;
-using Overlayer.IO.UnityComponent.Impl;
 using UnityEngine;
 using UnityEngine.UI;
 using Object = UnityEngine.Object;
 
 namespace Overlayer.Overlay;
 
-public class OvCanvas {
+public class OvCanvas : ISettingsFile {
     public readonly GameObject GameObject;
     public readonly RectTransform RectTransform;
+    public readonly CanvasGroup CanvasGroup;
     public readonly Canvas Canvas;
     public readonly CanvasScaler CanvasScaler;
     public readonly GraphicRaycaster GraphicRaycaster;
@@ -17,10 +19,13 @@ public class OvCanvas {
     public OvCanvasSettings Config = new();
 
     public OvCanvas() {
-        GameObject = new("OvCanvas", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+        GameObject = new("OvCanvas", typeof(RectTransform), typeof(Canvas), typeof(CanvasGroup), typeof(CanvasScaler), typeof(GraphicRaycaster)) {
+            layer = OverlayCore.LAYER
+        };
         GameObject.transform.SetParent(OverlayCore.Transform, false);
         RectTransform = GameObject.GetComponent<RectTransform>();
         Canvas = GameObject.GetComponent<Canvas>();
+        CanvasGroup = GameObject.GetComponent<CanvasGroup>();
         CanvasScaler = GameObject.GetComponent<CanvasScaler>();
         GraphicRaycaster = GameObject.GetComponent<GraphicRaycaster>();
 
@@ -36,6 +41,7 @@ public class OvCanvas {
     public void ApplyConfig() {
         GameObject.name = Config.Name;
         Config.RectTransformConfig.ToUnity(GameObject);
+        Config.CanvasGroupConfig.ToUnity(GameObject);
         Config.CanvasConfig.ToUnity(GameObject);
         Config.CanvasScalerConfig.ToUnity(GameObject);
         Config.GraphicRaycasterConfig.ToUnity(GameObject);
@@ -97,6 +103,47 @@ public class OvCanvas {
             return;
         }
         RectTransform.SetSiblingIndex(0);
+    }
+
+    public JToken Serialize() {
+        var json = new JObject {
+            [nameof(Config)] = Config.Serialize()
+        };
+
+        if(OvObjects != null && OvObjects.Count > 0) {
+            json[nameof(OvObjects)] = new JArray(OvObjects.Select(x => x.Serialize()));
+        }
+
+        return json;
+    }
+
+    public void Deserialize(JToken token) {
+        if(token == null) {
+            return;
+        }
+
+        if(token[nameof(Config)] != null) {
+            Config.Deserialize(token[nameof(Config)]);
+        }
+
+        if(token[nameof(OvObjects)] is JArray array) {
+            for(int i = OvObjects.Count - 1; i >= 0; i--) {
+                OvObjects[i].Dispose();
+            }
+            OvObjects.Clear();
+
+            foreach(var item in array) {
+                var obj = new OvObject();
+                obj.Deserialize(item);
+
+                obj.ApplyComponent();
+                obj.ApplyConfig();
+
+                Attach(obj);
+            }
+        }
+
+        ApplyConfig();
     }
 
     public void Dispose() {

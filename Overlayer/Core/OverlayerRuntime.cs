@@ -140,9 +140,6 @@ public sealed class OverlayerRuntime {
             Config.RequestSave();
         }
 
-        OnModEnabledChanged?.Invoke(enabled, isDispose);
-        moduleService?.NotifyEnabledChanged(enabled, isDispose);
-
         if(enabled) {
             UserResourceManager.Initialize();
 
@@ -154,57 +151,14 @@ public sealed class OverlayerRuntime {
 
             OverlayCore.Initialize(RootObject);
 
-            // OvObject Test Logic Begin
-            
-            var canvas = OverlayCore.CreateOvCanvas();
-
-            var obj = canvas.CreateOvObject();
-
-            obj.Config.RectTransformConfig = new() {
-                Mode = RectTransformSettings.RectMode.CenterFixed,
-                SizeDelta = new Vector2(200, 200),
-                Anchor = new Vector2(0.5f, 0.5f),
-                AnchoredPosition = Vector2.zero,
-                Pivot = new Vector2(0.5f, 0.5f)
-            };
-
-            obj.Config.ImageConfig = new() {
-                Color = Color.blue
-            };
-
-            obj.Config.OutlineConfig = new() {
-                EffectColor = Color.red,
-                EffectDistance = new Vector2(2, -2)
-            };
-
-            obj.ApplyComponent();
-            obj.ApplyConfig();
-
-            var textObj = new OvObject();
-            obj.Attach(textObj);
-
-            textObj.Config.RectTransformConfig = new() {
-                Mode = RectTransformSettings.RectMode.Stretch,
-                AnchorMin = Vector2.zero,
-                AnchorMax = Vector2.one,
-                OffsetMin = Vector2.zero,
-                OffsetMax = Vector2.zero
-            };
-
-            textObj.Config.TextConfig = new() {
-                Text = "Hello, Overlayer!",
-                FontSize = 48,
-                Color = Color.white,
-                Alignment = TMPro.TextAlignmentOptions.TopLeft
-            };
-
-            textObj.ApplyComponent();
-            textObj.ApplyConfig();
-
-            // Test End
+            OnModEnabledChanged?.Invoke(true, isDispose);
+            moduleService?.NotifyEnabledChanged(true, isDispose);
 
             Logger.Msg("Mod Enabled");
         } else {
+            moduleService?.NotifyEnabledChanged(false, isDispose);
+            OnModEnabledChanged?.Invoke(false, isDispose);
+
             OverlayCore.Dispose();
 
             SafePatchController.UnloadAll();

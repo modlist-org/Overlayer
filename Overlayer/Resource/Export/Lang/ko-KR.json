@@ -12,6 +12,7 @@
     "FIND": "찾기",
     "LANGUAGE": "언어",
     "MIDDLE_CLICK_TO_SET_AS_DEFAULT": "가운데 버튼으로 기본값",
+    "ONLY_AVAILABLE_WHEN_ENABLED": "모드가 활성화된 경우에만 사용할 수 있습니다!",
     "OVERLAYER": "오버레이어",
     "RELOAD": "다시 불러오기",
     "RELOADING": "다시 불러오는 중...",

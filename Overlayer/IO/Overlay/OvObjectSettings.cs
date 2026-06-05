@@ -7,6 +7,7 @@ public sealed class OvObjectSettings : ISettingsFile {
     public string Name = "OvObject";
 
     public RectTransformSettings RectTransformConfig = new();
+    public CanvasGroupSettings CanvasGroupConfig = new();
 
     public TextMeshProUGUISettings TextConfig = null;
     public ImageSettings ImageConfig = null;
@@ -15,13 +16,10 @@ public sealed class OvObjectSettings : ISettingsFile {
     public OutlineSettings OutlineConfig = null;
     public bool HasRectMask2D = false;
 
-    public List<OvObjectSettings> Children = [];
-
     public JToken Serialize() {
         var obj = new JObject {
             [nameof(Name)] = Name,
             [nameof(RectTransformConfig)] = RectTransformConfig?.Serialize(),
-            [nameof(Children)] = new JArray(Children.Select(x => x.Serialize()))
         };
         if(TextConfig != null) {
             obj[nameof(TextConfig)] = TextConfig.Serialize();
@@ -61,16 +59,6 @@ public sealed class OvObjectSettings : ISettingsFile {
         ShadowConfig = ReadConfig<ShadowSettings>(obj, nameof(ShadowConfig));
         OutlineConfig = ReadConfig<OutlineSettings>(obj, nameof(OutlineConfig));
         HasRectMask2D = IOUtils.Read(obj, nameof(HasRectMask2D), HasRectMask2D);
-
-        Children.Clear();
-
-        if(obj[nameof(Children)] is JArray arr) {
-            foreach(var item in arr) {
-                var child = new OvObjectSettings();
-                child.Deserialize(item);
-                Children.Add(child);
-            }
-        }
     }
 
     private static T ReadConfig<T>(JObject obj, string key)

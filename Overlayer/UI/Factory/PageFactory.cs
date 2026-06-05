@@ -28,6 +28,7 @@ public static class PageFactory {
 
         PageCredits.Create(UICore.Pages[(int)OriginalMenuState.Credits]);
         PageSettings.Create(UICore.Pages[(int)OriginalMenuState.Settings]);
+        PageOverlayer.Create(UICore.Pages[(int)OriginalMenuState.Overlayer]);
 
         return PagesContaner;
     }
