@@ -33,7 +33,7 @@ Custom Unity Overlay UI mode for users!
 * **Reset Window Layout:** Hold the window toggle key (<kbd>Alt</kbd> + <kbd>`</kbd>) for **over 0.4 seconds** to reset the window's size and position to default.
 * **Toggle Menu:** Click the **logo in the top-left corner** of the settings window to open and close the navigation menu.
 
-# 🧩 [Modules](https://github.com/modlist-org/Overlayer-v5.Module)
+# 🧩 [Modules](https://github.com/modlist-org/Overlayer.Module)
 Overlayer v5 utilizes runtime-loaded modules to support specific game features and tag functionalities tailored for each title. To access these game-specific enhancements and tags, you need to install the appropriate module from the repository.
 > [!NOTE]
 > Modules require this base mod environment to function and cannot run standalone.
