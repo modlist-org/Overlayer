@@ -13,8 +13,10 @@ using GTweens.Extensions;
 
 using GTweens.Builders;
 using Overlayer.Tween;
+using Overlayer.Compat.OVC;
 
-#if IL2CPP
+
+#if ML && IL2CPP
 using Il2CppTMPro;
 #else
 using TMPro;
@@ -211,7 +213,7 @@ public static class GenerateUI {
         }
 
         void SetFromMouse() {
-            Vector2 local = rect.InverseTransformPoint(UnityEngine.Input.mousePosition);
+            Vector2 local = rect.InverseTransformPoint(OVC_Input.MousePosition);
             float width = rect.rect.width;
 
             float t = Mathf.Clamp01((local.x + (width * 0.5f)) / width);
@@ -245,7 +247,7 @@ public static class GenerateUI {
         UnityUtils.AddEvent(EventTriggerType.BeginDrag, _ => isDragging = true, trigger);
 
         UnityUtils.AddEvent(EventTriggerType.Drag, _ => {
-            if(!isDragging || !UnityEngine.Input.GetMouseButton(0)) {
+            if(!isDragging || !OVC_Input.GetMouseButton(0)) {
                 return;
             }
 

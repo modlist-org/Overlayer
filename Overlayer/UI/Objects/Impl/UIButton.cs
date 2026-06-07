@@ -7,11 +7,13 @@ using Overlayer.Tween;
 using GTweens.Easings;
 using Overlayer.Core;
 
-#if IL2CPP
+#if ML && IL2CPP
 using Il2CppTMPro;
 #else
 using TMPro;
 #endif
+
+namespace Overlayer.UI.Objects.Impl;
 
 public class UIButton : UIObject {
     public Action OnClick { get; set; }

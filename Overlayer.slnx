@@ -1,10 +1,14 @@
 <Solution>
   <Configurations>
-    <BuildType Name="Debug" />
-    <BuildType Name="Debug_IL2CPP" />
-    <BuildType Name="Release" />
-    <BuildType Name="Release_IL2CPP" />
+    <BuildType Name="Debug_ML" />
+    <BuildType Name="Debug_ML_IL2CPP" />
+    <BuildType Name="Release_ML" />
+    <BuildType Name="Release_ML_IL2CPP" />
   </Configurations>
-  <Project Path="Overlayer.Loader.ML\Overlayer.Loader.ML.csproj" />
-  <Project Path="Overlayer/Overlayer.csproj" />
+  <Project Path="Overlayer/Overlayer.csproj">
+    <BuildType Solution="Debug_ML_IL2CPP|*" Project="Debug_ML_IL2CPP" />
+    <BuildType Solution="Debug_ML|*" Project="Debug_ML" />
+    <BuildType Solution="Release_ML_IL2CPP|*" Project="Release_ML_IL2CPP" />
+    <BuildType Solution="Release_ML|*" Project="Release_ML" />
+  </Project>
 </Solution>

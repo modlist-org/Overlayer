@@ -6,7 +6,8 @@ using UnityEngine;
 using UnityEngine.UI;
 using Object = UnityEngine.Object;
 
-#if IL2CPP
+#if ML && IL2CPP
+using MelonLoader;
 using Il2CppTMPro;
 #else
 using TMPro;
@@ -216,7 +217,16 @@ public sealed class OvObject : ISettingsFile {
         }
     }
 
-    public class TextEngineUpdater : MonoBehaviour {
+#if ML && IL2CPP
+    [RegisterTypeInIl2Cpp]
+#endif
+    public class TextEngineUpdater
+#if ML && IL2CPP
+        (IntPtr ptr) : MonoBehaviour(ptr)
+#else
+        : MonoBehaviour
+#endif
+    {
         public TextMeshProUGUI Tmp;
         public TextEngineCore Engine;
 

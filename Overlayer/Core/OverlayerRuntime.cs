@@ -41,6 +41,8 @@ public sealed class OverlayerRuntime {
 
     //public V8ScriptEngine V8Engine { get; private set; }
 
+    public ModuleService ModuleService { get; private set; }
+
     public readonly IOverlayerHost Host;
 
     private readonly RuntimeServices services;
@@ -48,7 +50,6 @@ public sealed class OverlayerRuntime {
 
     private UIService uiService;
     private TweenService tweenService;
-    private ModuleService moduleService;
 
     public OverlayerRuntime(IOverlayerHost host) {
         Host = host;
@@ -89,7 +90,7 @@ public sealed class OverlayerRuntime {
 
         uiService = new UIService();
         tweenService = new TweenService(TweensContext);
-        moduleService = new ModuleService(Logger);
+        ModuleService = new ModuleService(Logger);
 
         services.Add(Localization);
         services.Add(uiService);
@@ -106,8 +107,8 @@ public sealed class OverlayerRuntime {
 
         Logger.Msg("Hello");
 
-        moduleService.DiscoverAndRegisterModules();
-        moduleService.InitializeAllModules();
+        ModuleService.DiscoverAndRegisterModules();
+        ModuleService.InitializeAllModules();
     }
 
     public void Tick() => ticks.Tick();
@@ -117,7 +118,7 @@ public sealed class OverlayerRuntime {
 
         Config.Save();
 
-        moduleService?.Dispose();
+        ModuleService?.Dispose();
 
         services.Dispose();
 
@@ -157,11 +158,11 @@ public sealed class OverlayerRuntime {
             OverlayCore.Initialize(RootObject);
 
             OnModEnabledChanged?.Invoke(true, isDispose);
-            moduleService?.NotifyEnabledChanged(true, isDispose);
+            ModuleService?.NotifyEnabledChanged(true, isDispose);
 
             Logger.Msg("Mod Enabled");
         } else {
-            moduleService?.NotifyEnabledChanged(false, isDispose);
+            ModuleService?.NotifyEnabledChanged(false, isDispose);
             OnModEnabledChanged?.Invoke(false, isDispose);
 
             OverlayCore.Dispose();

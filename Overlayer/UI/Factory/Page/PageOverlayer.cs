@@ -1,5 +1,4 @@
-﻿using Overlayer.Compat.Attribute;
-using Overlayer.Core;
+﻿using Overlayer.Core;
 using Overlayer.Localization;
 using Overlayer.Overlay;
 using Overlayer.Resource;
@@ -14,7 +13,8 @@ using Overlayer.Tween;
 using GTweens.Easings;
 using GTweens.Tweens;
 
-#if IL2CPP
+#if ML && IL2CPP
+using MelonLoader;
 using Il2CppTMPro;
 #else
 using TMPro;
@@ -72,7 +72,12 @@ internal static class PageOverlayer {
         layout.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
         layout.constraintCount = 3;
         layout.spacing = new Vector2(18, 18);
-        layout.padding = new RectOffset(18, 18, 18, 18);
+        layout.padding = new() {
+            left = 18,
+            right = 18,
+            top = 18,
+            bottom = 18
+        };
 
         var keeper = grid.AddComponent<GridRatioKeeper>();
         keeper.Setup(contentRectRef);
@@ -332,7 +337,9 @@ internal static class PageOverlayer {
         }
     }
 
-    [RegisterIl2Cpp]
+#if ML && IL2CPP
+    [RegisterTypeInIl2Cpp]
+#endif
     public class GridRatioKeeper : MonoBehaviour {
 
         private RectTransform rectTransform;

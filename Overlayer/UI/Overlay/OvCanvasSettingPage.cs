@@ -11,8 +11,7 @@ using Overlayer.Tween;
 using GTweens.Easings;
 using GTweens.Builders;
 
-
-#if IL2CPP
+#if ML && IL2CPP
 using Il2CppTMPro;
 #else
 using TMPro;
@@ -172,8 +171,7 @@ public class OvCanvasSettingPage : IDisposable {
         }, "Blocks Raycasts", "blocks_raycasts");
 
         GameObject.SetActive(true);
-        
-        
+
         if(noAnimate) {
             CanvasGroup.alpha = 1f;
             CanvasGroup.blocksRaycasts = true;

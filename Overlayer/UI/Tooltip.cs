@@ -8,8 +8,10 @@ using GTweens.Extensions;
 
 using GTweens.Builders;
 using GTweens.Easings;
+using Overlayer.Compat.OVC;
 
-#if IL2CPP
+
+#if ML && IL2CPP
 using Il2CppTMPro;
 #else
 using TMPro;
@@ -77,7 +79,7 @@ public class Tooltip {
 
         float scale = MainCore.Conf.UIScale;
 
-        Vector2 mouse = Input.mousePosition;
+        Vector2 mouse = OVC_Input.MousePosition;
 
         Vector2 offset = new Vector2(24f, -28f) * scale;
         Vector2 target = mouse + offset;
@@ -113,7 +115,7 @@ public class Tooltip {
         Vector2 size = text.GetPreferredValues(tip);
         rect.sizeDelta = new(size.x + 32f, size.y + 32f);
 
-        rect.position = Input.mousePosition + new Vector3(20f, -20f, 0f);
+        rect.position = OVC_Input.MousePosition + new Vector2(20f, -20f);
 
         canvas.alpha = 0f;
         visible = true;

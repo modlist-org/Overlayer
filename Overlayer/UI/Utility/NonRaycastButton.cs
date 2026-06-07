@@ -1,15 +1,45 @@
 using UnityEngine;
-using UnityEngine.Events;
 using UnityEngine.EventSystems;
 
-namespace Overlayer.UI.Utility;
+#if ML && IL2CPP
+using MelonLoader;
+using Il2CppInterop.Runtime;
+#endif
 
-public class NonRaycastButton : MonoBehaviour, IPointerClickHandler {
-    public UnityAction onClick;
+namespace Overlayer.UI.Utility; 
+#if ML && IL2CPP
+[RegisterTypeInIl2Cpp]
+#endif
+public class NonRaycastButton
+#if ML && IL2CPP
+    (IntPtr ptr) : MonoBehaviour(ptr)
+# else 
+    : MonoBehaviour
+#endif
+{
 
-    public void OnPointerClick(PointerEventData eventData) {
-        if(!eventData.dragging) {
-            onClick?.Invoke();
-        }
+    public Action onClick;
+
+    private void Start() {
+        var trigger = gameObject.AddComponent<EventTrigger>();
+
+        var entry = new EventTrigger.Entry { eventID = EventTriggerType.PointerClick };
+
+        entry.callback.AddListener(
+#if ML && IL2CPP
+            DelegateSupport.ConvertDelegate<UnityEngine.Events.UnityAction<BaseEventData>>(new Action<BaseEventData>((e) =>
+#else            
+            (e) =>
+#endif
+            OnClickInternal()
+#if ML && IL2CPP
+            ))
+#endif
+        );
+        trigger.triggers.Add(entry);
+    }
+
+    private void OnClickInternal() {
+        onClick?.Invoke();
     }
 }

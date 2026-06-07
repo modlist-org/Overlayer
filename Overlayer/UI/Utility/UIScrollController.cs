@@ -3,8 +3,25 @@ using GTweens.Extensions;
 using GTweens.Tweens;
 using Overlayer.Core;
 using UnityEngine;
+using Overlayer.Compat.OVC;
 
-public class UIScrollController : MonoBehaviour {
+
+#if ML && IL2CPP
+using MelonLoader;
+#endif
+
+namespace Overlayer.UI.Utility;
+
+#if ML && IL2CPP
+[RegisterTypeInIl2Cpp]
+#endif
+public class UIScrollController
+#if ML && IL2CPP
+    (IntPtr ptr) : MonoBehaviour(ptr)
+#else
+    : MonoBehaviour
+#endif
+{
     public RectTransform content;
     public RectTransform viewport;
 
@@ -38,7 +55,7 @@ public class UIScrollController : MonoBehaviour {
     }
 
     private void HandleWheel() {
-        float wheel = Input.mouseScrollDelta.y;
+        float wheel = OVC_Input.MouseScrollDelta.y;
 
         if(Mathf.Abs(wheel) <= 0.0001f) {
             return;
@@ -49,11 +66,11 @@ public class UIScrollController : MonoBehaviour {
     }
 
     private void HandleRightDrag() {
-        if(Input.GetMouseButtonDown(1)) {
+        if(OVC_Input.GetMouseButtonDown(1)) {
             rightDragging = true;
         }
 
-        if(Input.GetMouseButtonUp(1)) {
+        if(OVC_Input.GetMouseButtonUp(1)) {
             rightDragging = false;
             ApplyTween();
         }
@@ -71,7 +88,7 @@ public class UIScrollController : MonoBehaviour {
             return;
         }
 
-        Vector2 mouse = Input.mousePosition;
+        Vector2 mouse = OVC_Input.MousePosition;
 
         RectTransformUtility.ScreenPointToLocalPointInRectangle(
             viewport,

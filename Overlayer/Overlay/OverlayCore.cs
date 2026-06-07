@@ -52,6 +52,7 @@ public static class OverlayCore {
             }
         }
     }
+
     private static void SaveAllCanvases() {
         try {
             if(!Directory.Exists(SaveDir)) {

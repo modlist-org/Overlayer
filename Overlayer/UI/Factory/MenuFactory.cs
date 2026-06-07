@@ -7,11 +7,11 @@ using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using GTweens.Tweens;
 using Overlayer.Tween;
-
 using GTweens.Builders;
 using GTweens.Easings;
 
-#if IL2CPP
+#if ML && IL2CPP
+using Il2CppInterop.Runtime;
 using Il2CppTMPro;
 #else
 using TMPro;
@@ -116,7 +116,16 @@ public static class MenuFactory {
                 eventID = type
             };
 
-            e.callback.AddListener(_ => cb());
+            e.callback.AddListener(
+#if ML && IL2CPP
+                DelegateSupport.ConvertDelegate<UnityEngine.Events.UnityAction<BaseEventData>>(new Action<BaseEventData>(
+#endif
+                (_) => cb()
+#if ML && IL2CPP
+                ))
+#endif
+            );
+
             trigger.triggers.Add(e);
         }
 

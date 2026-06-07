@@ -102,9 +102,7 @@ public static class GTweenExtentions {
 
         return GTweenExtensions.Tween(
             () => 0f,
-            x => {
-                target.localRotation = Quaternion.Slerp(fromRot, toRot, x);
-            },
+            x => target.localRotation = Quaternion.Slerp(fromRot, toRot, x),
             1f,
             duration
         );

@@ -3,7 +3,7 @@ using Overlayer.Core;
 using Overlayer.IO.Interface;
 using UnityEngine;
 
-#if IL2CPP
+#if ML && IL2CPP
 using Il2CppTMPro;
 #else
 using TMPro;

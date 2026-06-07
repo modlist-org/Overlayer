@@ -15,8 +15,10 @@ using GTweens.Builders;
 using GTweens.Extensions;
 using Overlayer.Tween;
 using GTweens.Easings;
+using Overlayer.Compat.OVC;
 
-#if IL2CPP
+#if ML && IL2CPP
+using Il2CppInterop.Runtime;
 using Il2CppTMPro;
 #else
 using TMPro;
@@ -313,9 +315,13 @@ public static class UICore {
             layout.childControlHeight = false;
             layout.childForceExpandWidth = true;
             layout.childForceExpandHeight = false;
-
             layout.spacing = 0f;
-            layout.padding = new RectOffset(0, 0, 0, 0);
+            layout.padding = new() {
+                left = 0,
+                right = 0,
+                top = 0,
+                bottom = 0
+            };
 
             var fitter = content.AddComponent<ContentSizeFitter>();
             fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
@@ -333,12 +339,16 @@ public static class UICore {
             powerRect.pivot = new Vector2(0.5f, 0f);
             var powerBg = power.AddComponent<Image>();
             powerBg.color = MainCore.Conf.Active
-                    ? new(0, 0, 0, 0.1f)
-                    : UIColors.SoftRed;
+                ? new(0, 0, 0, 0.1f)
+                : UIColors.SoftRed;
             var btn = power.AddComponent<Button>();
             btn.transition = Selectable.Transition.None;
             GTween powerSeq = null;
-            btn.onClick.AddListener(() => {
+            btn.onClick.AddListener(
+#if ML && IL2CPP
+            new Action(
+#endif
+            () => {
                 bool enable = MainCore.Conf.Active = !MainCore.Conf.Active;
                 MainCore.SetModEnabled(enable);
 
@@ -352,7 +362,12 @@ public static class UICore {
                     .Build();
 
                 MainCore.TC.Play(powerSeq);
-            });
+            })
+#if ML && IL2CPP
+            );
+#else
+            ;
+#endif
             GameObject powerIcon = new("PowerIcon");
             powerIcon.transform.SetParent(powerRect, false);
             RectTransform powerIconRect = powerIcon.AddComponent<RectTransform>();
@@ -416,7 +431,11 @@ public static class UICore {
             logoRect.sizeDelta = new(46f, 46f);
 
             var btn = logo.AddComponent<NonRaycastButton>();
+#if ML && IL2CPP
+            btn.onClick += new Action(ToggleMenu);
+#else
             btn.onClick += ToggleMenu;
+#endif
         }
 
         {
@@ -434,7 +453,11 @@ public static class UICore {
             // Button
             var btn = close.AddComponent<Button>();
             btn.transition = Selectable.Transition.None;
+#if ML && IL2CPP
+            btn.onClick.AddListener(new System.Action(() => Close()));
+#else
             btn.onClick.AddListener(() => Close());
+#endif
 
             // Background circle (hover layer)
             GameObject bg = new("Bg");
@@ -468,12 +491,32 @@ public static class UICore {
             var enter = new EventTrigger.Entry {
                 eventID = EventTriggerType.PointerEnter
             };
-            enter.callback.AddListener(_ => CloseImage.color = new Color(CloseImage.color.r, CloseImage.color.g, CloseImage.color.b, 1f));
+            enter.callback.AddListener(
+#if ML && IL2CPP
+                DelegateSupport.ConvertDelegate<UnityEngine.Events.UnityAction<BaseEventData>>(new Action<BaseEventData>((_) =>
+#else
+                (_) =>
+#endif
+                CloseImage.color = new Color(CloseImage.color.r, CloseImage.color.g, CloseImage.color.b, 1f)
+#if ML && IL2CPP
+                ))
+#endif
+            );
 
             var exit = new EventTrigger.Entry {
                 eventID = EventTriggerType.PointerExit
             };
-            exit.callback.AddListener(_ => CloseImage.color = new Color(CloseImage.color.r, CloseImage.color.g, CloseImage.color.b, 0f));
+            exit.callback.AddListener(
+#if ML && IL2CPP
+                DelegateSupport.ConvertDelegate<UnityEngine.Events.UnityAction<BaseEventData>>(new Action<BaseEventData>((_) =>
+#else
+                (_) =>
+#endif
+                CloseImage.color = new Color(CloseImage.color.r, CloseImage.color.g, CloseImage.color.b, 0f)
+#if ML && IL2CPP
+                ))
+#endif
+            );
 
             trigger.triggers.Add(enter);
             trigger.triggers.Add(exit);
@@ -502,12 +545,12 @@ public static class UICore {
         }
 
         bool pressed =
-            Input.GetKey(KeyCode.LeftAlt)
-            && Input.GetKey(KeyCode.BackQuote);
+            OVC_Input.GetKey(KeyCode.LeftAlt)
+            && OVC_Input.GetKey(KeyCode.BackQuote);
 
         // key down
-        if(Input.GetKey(KeyCode.LeftAlt)
-            && Input.GetKeyDown(KeyCode.BackQuote)) {
+        if(OVC_Input.GetKey(KeyCode.LeftAlt)
+            && OVC_Input.GetKeyDown(KeyCode.BackQuote)) {
             Toggle();
 
             holdStartTime = Time.unscaledTime;
@@ -523,7 +566,7 @@ public static class UICore {
         }
 
         // key up
-        if(Input.GetKeyUp(KeyCode.BackQuote)) {
+        if(OVC_Input.GetKeyUp(KeyCode.BackQuote)) {
             holdingToggle = false;
         }
 

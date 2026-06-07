@@ -1,7 +1,8 @@
 ﻿using Overlayer.Core;
 using UnityEngine;
 
-#if IL2CPP
+#if ML && IL2CPP
+using MelonLoader;
 using Il2CppTMPro;
 #else
 using TMPro;
@@ -9,7 +10,16 @@ using TMPro;
 
 namespace Overlayer.Localization;
 
-public class TextLocalization : MonoBehaviour {
+#if ML && IL2CPP
+[RegisterTypeInIl2Cpp]
+#endif
+public class TextLocalization
+#if ML && IL2CPP
+    (IntPtr ptr) : MonoBehaviour(ptr)
+#else
+    : MonoBehaviour
+#endif
+{
     public string Key;
     public string Default;
     public string Value => tr?.Get(Key, Default) ?? Default;

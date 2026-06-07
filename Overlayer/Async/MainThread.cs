@@ -1,9 +1,26 @@
 ﻿using System.Collections.Concurrent;
 using UnityEngine;
+using Overlayer.Core;
+
+#if ML && IL2CPP
+using MelonLoader;
+#endif
 
 namespace Overlayer.Async;
 
-internal sealed class MainThread : MonoBehaviour {
+#if ML && IL2CPP
+[RegisterTypeInIl2Cpp]
+internal sealed
+#else
+public
+#endif
+class MainThread
+#if ML && IL2CPP
+    (IntPtr ptr) : MonoBehaviour(ptr)
+#else
+    : MonoBehaviour
+#endif
+{
     private static readonly ConcurrentQueue<Action> queue = new();
 
     public static void Enqueue(Action action) {
@@ -18,8 +35,8 @@ internal sealed class MainThread : MonoBehaviour {
         while(queue.TryDequeue(out Action action)) {
             try {
                 action();
-            } catch(Exception ex) {
-                Debug.LogException(ex);
+            } catch(Exception e) {
+                MainCore.Log.Err(e.Message);
             }
         }
     }

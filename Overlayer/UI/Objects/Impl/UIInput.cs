@@ -6,7 +6,8 @@ using GTweens.Easings;
 using GTweens.Builders;
 using Overlayer.Core;
 
-#if IL2CPP
+#if ML && IL2CPP
+using Il2CppInterop.Runtime;
 using Il2CppTMPro;
 #else
 using TMPro;
@@ -58,7 +59,15 @@ public sealed class UIInput : UIObject {
 
         SetupInputField();
 
-        InputField.onValueChanged.AddListener(OnValueChanged);
+        InputField.onValueChanged.AddListener(
+#if ML && IL2CPP
+            DelegateSupport.ConvertDelegate<UnityEngine.Events.UnityAction<string>>(new Action<string>(
+#endif
+            OnValueChanged
+#if ML && IL2CPP
+            ))
+#endif
+        );
 
         UpdateVisual(true);
     }
@@ -169,8 +178,10 @@ public sealed class UIInput : UIObject {
             return;
         }
 
-        if(!caretLooping)
+        if(!caretLooping) {
             return;
+        }
+
         caretLooping = false;
 
         caretTween?.Kill();

@@ -4,6 +4,11 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
+#if ML && IL2CPP
+using MelonLoader;
+using Il2CppInterop.Runtime;
+#endif
+
 namespace Overlayer.UI.Utility;
 
 public enum ResizeHandleType {
@@ -18,12 +23,19 @@ public enum ResizeHandleType {
     BottomRight
 }
 
+#if ML && IL2CPP
+[RegisterTypeInIl2Cpp]
+#endif
 public class ResizeHandle
-    : MonoBehaviour,
-      IPointerDownHandler,
-      IDragHandler {
-    public ResizeHandleType Type;
 
+#if ML && IL2CPP
+    (IntPtr ptr) : MonoBehaviour(ptr)
+#else
+    : MonoBehaviour
+#endif
+    {
+
+    public ResizeHandleType Type;
     public RectTransform Panel;
 
     private Vector2 startMouse;
@@ -33,19 +45,61 @@ public class ResizeHandle
     public const float MIN_WIDTH = 900f;
     public const float MIN_HEIGHT = 500f;
 
-    public void OnPointerDown(PointerEventData eventData) {
+    private void Awake() {
+        var trigger = gameObject.AddComponent<EventTrigger>();
+
+        var downEntry = new EventTrigger.Entry {
+            eventID = EventTriggerType.PointerDown
+        };
+
+        downEntry.callback.AddListener(
+#if ML && IL2CPP
+            DelegateSupport.ConvertDelegate<UnityEngine.Events.UnityAction<BaseEventData>>(new Action<BaseEventData>((e) =>
+#else
+            (e) =>
+#endif
+            {
+                if(e is PointerEventData ped) {
+                    OnPointerDownInternal(ped);
+                }
+            }
+#if ML && IL2CPP
+            ))
+#endif
+        );
+        trigger.triggers.Add(downEntry);
+
+        var dragEntry = new EventTrigger.Entry { eventID = EventTriggerType.Drag };
+        dragEntry.callback.AddListener(
+#if ML && IL2CPP
+            DelegateSupport.ConvertDelegate<UnityEngine.Events.UnityAction<BaseEventData>>(new Action<BaseEventData>((e) =>
+#else
+            (e) =>
+#endif
+            {
+                if(e is PointerEventData ped) {
+                    OnDragInternal(ped);
+                }
+            }
+#if ML && IL2CPP
+            ))
+#endif
+        );
+        trigger.triggers.Add(dragEntry);
+    }
+
+    private void OnPointerDownInternal(PointerEventData eventData) {
         RectTransformUtility.ScreenPointToLocalPointInRectangle(
             Panel.parent as RectTransform,
             eventData.position,
-            null,
+            eventData.pressEventCamera,
             out startMouse
         );
-
         startSize = Panel.sizeDelta;
         startPos = Panel.anchoredPosition;
     }
 
-    public void OnDrag(PointerEventData eventData) {
+    private void OnDragInternal(PointerEventData eventData) {
         RectTransformUtility.ScreenPointToLocalPointInRectangle(
             Panel.parent as RectTransform,
             eventData.position,
@@ -269,27 +323,6 @@ public class ResizeHandle
 
             resize.Type = type;
             resize.Panel = parent;
-
-            EventTrigger trigger = handle.AddComponent<EventTrigger>();
-
-            var enter = new EventTrigger.Entry {
-                eventID = EventTriggerType.PointerEnter
-            };
-
-            enter.callback.AddListener(_ => {
-
-            });
-
-            var exit = new EventTrigger.Entry {
-                eventID = EventTriggerType.PointerExit
-            };
-
-            exit.callback.AddListener(_ => {
-
-            });
-
-            trigger.triggers.Add(enter);
-            trigger.triggers.Add(exit);
         }
     }
 }

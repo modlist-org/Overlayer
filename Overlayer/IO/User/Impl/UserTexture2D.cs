@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json.Linq;
+using Overlayer.Compat.OVC;
 using Overlayer.Core;
 using Overlayer.IO.Unity;
 using UnityEngine;
@@ -39,7 +40,7 @@ public class UserTexture2D : UserResourceBase<(Texture2D texture, Texture2DSetti
             var data = File.ReadAllBytes(path);
 
             var tex = new Texture2D(2, 2, TextureFormat.RGBA32, mipChain, linear);
-            tex.LoadImage(data);
+            OVC_Texture2D.LoadImage(tex, data);
 
             Cache[key] = (
                 path,

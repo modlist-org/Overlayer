@@ -7,7 +7,7 @@ using GTweens.Extensions;
 using GTweens.Builders;
 using GTweens.Easings;
 
-#if IL2CPP
+#if ML && IL2CPP
 using Il2CppTMPro;
 #else
 using TMPro;
