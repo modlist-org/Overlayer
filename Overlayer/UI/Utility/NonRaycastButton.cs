@@ -1,5 +1,7 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
+using Overlayer.Core;
+
 
 #if ML && IL2CPP
 using MelonLoader;
@@ -31,7 +33,9 @@ public class NonRaycastButton
 #else            
             (e) =>
 #endif
-            OnClickInternal()
+            {
+                OnClickInternal();
+            }
 #if ML && IL2CPP
             ))
 #endif

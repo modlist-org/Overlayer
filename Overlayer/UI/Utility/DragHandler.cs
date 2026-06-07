@@ -1,5 +1,7 @@
 ﻿using UnityEngine;
 using UnityEngine.EventSystems;
+using Overlayer.Compat.OVC;
+
 
 #if ML && IL2CPP
 using MelonLoader;
@@ -32,15 +34,11 @@ public class DragHandler
         var downEntry = new EventTrigger.Entry { eventID = EventTriggerType.PointerDown };
         downEntry.callback.AddListener(
 #if ML && IL2CPP
-            DelegateSupport.ConvertDelegate<UnityEngine.Events.UnityAction<BaseEventData>>(new Action<BaseEventData>((e) =>
+            DelegateSupport.ConvertDelegate<UnityEngine.Events.UnityAction<BaseEventData>>(new Action<BaseEventData>((_) =>
 #else
-            (e) => 
+            (_) => 
 #endif
-            { 
-                if(e is PointerEventData ped) {
-                    OnPointerDownInternal(ped);
-                }
-            }
+            OnPointerDownInternal()
 #if ML && IL2CPP
             ))
 #endif
@@ -50,15 +48,11 @@ public class DragHandler
         var dragEntry = new EventTrigger.Entry { eventID = EventTriggerType.Drag };
         dragEntry.callback.AddListener(
 #if ML && IL2CPP
-            DelegateSupport.ConvertDelegate<UnityEngine.Events.UnityAction<BaseEventData>>(new Action<BaseEventData>((e) =>
+            DelegateSupport.ConvertDelegate<UnityEngine.Events.UnityAction<BaseEventData>>(new Action<BaseEventData>((_) =>
 #else
-            (e) => 
+            (_) => 
 #endif
-            { 
-                if(e is PointerEventData ped) {
-                    OnDragInternal(ped);
-                }
-            }
+            OnDragInternal()
 #if ML && IL2CPP
             ))
 #endif
@@ -66,31 +60,43 @@ public class DragHandler
         trigger.triggers.Add(dragEntry);
     }
 
-    private void OnPointerDownInternal(PointerEventData eventData) {
+    private void OnPointerDownInternal() {
         if(rect == null || canvas == null) {
             return;
         }
 
         RectTransformUtility.ScreenPointToLocalPointInRectangle(
             rect.parent as RectTransform,
-            eventData.position,
-            canvas.worldCamera,
+            OVC_Input.MousePosition,
+            null,
             out Vector2 localPoint
         );
         offset = rect.anchoredPosition - localPoint;
     }
 
-    private void OnDragInternal(PointerEventData eventData) {
-        if(rect == null || canvas == null) {
-            return;
+    private void OnDragInternal() {
+        if(rect == null) {
+            rect = transform.parent?.GetComponent<RectTransform>();
+            if(rect == null) {
+                return;
+            }
+        }
+        if(canvas == null) {
+            canvas = GetComponentInParent<Canvas>();
+            if(canvas == null) {
+                return;
+            }
         }
 
+        Camera cam = (canvas.renderMode == RenderMode.ScreenSpaceOverlay) ? null : canvas.worldCamera;
+
         RectTransformUtility.ScreenPointToLocalPointInRectangle(
-            rect.parent as RectTransform,
-            eventData.position,
-            canvas.worldCamera,
+            rect,
+            OVC_Input.MousePosition,
+            cam,
             out Vector2 localPoint
         );
+
         rect.anchoredPosition = localPoint + offset;
     }
 }

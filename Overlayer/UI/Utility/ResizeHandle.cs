@@ -3,6 +3,8 @@ using Overlayer.Resource;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
+using Overlayer.Compat.OVC;
+
 
 #if ML && IL2CPP
 using MelonLoader;
@@ -48,21 +50,15 @@ public class ResizeHandle
     private void Awake() {
         var trigger = gameObject.AddComponent<EventTrigger>();
 
-        var downEntry = new EventTrigger.Entry {
-            eventID = EventTriggerType.PointerDown
-        };
+        var downEntry = new EventTrigger.Entry { eventID = EventTriggerType.PointerDown };
 
         downEntry.callback.AddListener(
 #if ML && IL2CPP
-            DelegateSupport.ConvertDelegate<UnityEngine.Events.UnityAction<BaseEventData>>(new Action<BaseEventData>((e) =>
+            DelegateSupport.ConvertDelegate<UnityEngine.Events.UnityAction<BaseEventData>>(new Action<BaseEventData>((_) =>
 #else
-            (e) =>
+            (_) =>
 #endif
-            {
-                if(e is PointerEventData ped) {
-                    OnPointerDownInternal(ped);
-                }
-            }
+                OnPointerDownInternal()
 #if ML && IL2CPP
             ))
 #endif
@@ -72,15 +68,11 @@ public class ResizeHandle
         var dragEntry = new EventTrigger.Entry { eventID = EventTriggerType.Drag };
         dragEntry.callback.AddListener(
 #if ML && IL2CPP
-            DelegateSupport.ConvertDelegate<UnityEngine.Events.UnityAction<BaseEventData>>(new Action<BaseEventData>((e) =>
+            DelegateSupport.ConvertDelegate<UnityEngine.Events.UnityAction<BaseEventData>>(new Action<BaseEventData>((_) =>
 #else
-            (e) =>
+            (_) =>
 #endif
-            {
-                if(e is PointerEventData ped) {
-                    OnDragInternal(ped);
-                }
-            }
+                OnDragInternal()
 #if ML && IL2CPP
             ))
 #endif
@@ -88,21 +80,34 @@ public class ResizeHandle
         trigger.triggers.Add(dragEntry);
     }
 
-    private void OnPointerDownInternal(PointerEventData eventData) {
+    private void OnPointerDownInternal() {
+        RectTransform parentRect = transform.parent?.GetComponent<RectTransform>();
+
+        if(!parentRect) {
+            return;
+        }
+
         RectTransformUtility.ScreenPointToLocalPointInRectangle(
-            Panel.parent as RectTransform,
-            eventData.position,
-            eventData.pressEventCamera,
+            parentRect,
+            OVC_Input.MousePosition,
+            null,
             out startMouse
         );
+
         startSize = Panel.sizeDelta;
         startPos = Panel.anchoredPosition;
     }
 
-    private void OnDragInternal(PointerEventData eventData) {
+    private void OnDragInternal() {
+        RectTransform parentRect = transform.parent?.GetComponent<RectTransform>();
+
+        if(!parentRect) {
+            return;
+        }
+
         RectTransformUtility.ScreenPointToLocalPointInRectangle(
-            Panel.parent as RectTransform,
-            eventData.position,
+            parentRect,
+            OVC_Input.MousePosition,
             null,
             out Vector2 currentMouse
         );

@@ -1,5 +1,6 @@
 ﻿using System.Reflection;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 namespace Overlayer.Compat.OVC;
 
@@ -88,6 +89,34 @@ public static class OVC_Input {
     public static bool GetMouseButtonUp(int btn) {
         EnsureInitialized();
         return t_Mouse != null ? TryInvoke(p_btnWasReleased, GetMouseBtnControl(btn)) : Input.GetMouseButtonUp(btn);
+    }
+
+    public static PointerEventData.InputButton GetPressedMouseButton() {
+        if(GetMouseButton(0)) {
+            return PointerEventData.InputButton.Left;
+        }
+        if(GetMouseButton(1)) {
+            return PointerEventData.InputButton.Right;
+        }
+        if(GetMouseButton(2)) {
+            return PointerEventData.InputButton.Middle;
+        }
+
+        return PointerEventData.InputButton.Left;
+    }
+
+    public static PointerEventData.InputButton GetClickMouseButton() {
+        if(GetMouseButtonDown(0)) {
+            return PointerEventData.InputButton.Left;
+        }
+        if(GetMouseButtonDown(1)) {
+            return PointerEventData.InputButton.Right;
+        }
+        if(GetMouseButtonDown(2)) {
+            return PointerEventData.InputButton.Middle;
+        }
+
+        return PointerEventData.InputButton.Left;
     }
 
     public static Vector2 MousePosition {
