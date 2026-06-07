@@ -237,7 +237,7 @@ internal static class PageOverlayer {
         var go = new GameObject("AddTile");
         go.transform.SetParent(parent, false);
         go.AddComponent<RectTransform>();
-        go.GetComponent<EmptyGraphic>().raycastTarget = true;
+        go.AddComponent<EmptyGraphic>().raycastTarget = true;
 
         GameObject bgGo = new("Background");
         bgGo.transform.SetParent(go.transform, false);
