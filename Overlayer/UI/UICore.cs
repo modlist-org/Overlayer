@@ -158,7 +158,7 @@ public static class UICore {
                     .Append(firstRunHelperImage.GTAlpha(1.6f, 0.1f).SetEasing(Easing.OutSine))
                     .Append(firstRunHelperImage.GTAlpha(0.04f, 1f).SetEasing(Easing.OutSine))
                     .Build()
-                    .SetLoops(-1);
+                    .SetMaxLoops();
 
                 string fullText = "Press Alt + ` (BackQuote, left of 1 key)";
                 secondRunHelperTextSequence = GTweenSequenceBuilder.New()
