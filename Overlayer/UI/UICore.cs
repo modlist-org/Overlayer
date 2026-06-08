@@ -86,8 +86,6 @@ public static class UICore {
         TextLocalization.RefreshAll();
 
         if(MainCore.Conf.IsFirstRun) {
-            MainCore.Conf.IsFirstRun = false;
-            MainCore.ConfMgr.Save();
             MakeFirstRunHelper();
         }
 
@@ -161,16 +159,16 @@ public static class UICore {
                     .Build()
                     .SetMaxLoops();
 
-                string fullText = "Press Alt + ` (BackQuote, left of 1 key)";
+                const string fullText = "Press Alt + ` (BackQuote, left of 1 key)";
                 secondRunHelperTextSequence = GTweenSequenceBuilder.New()
                     .Append(GTweenExtensions.Tween(
                         () => 0,
                         x => firstRunHelperText.text = fullText[..x],
                         fullText.Length,
                         1.4f
-                    ))
+                    ).SetEasing(Easing.OutSine))
                     .Build();
-
+                
                 MainCore.TC.Play(firstRunHelperImageSequence);
                 MainCore.TC.Play(secondRunHelperTextSequence);
             });
@@ -178,11 +176,14 @@ public static class UICore {
     }
 
     private static void EndFirstRunHelper() {
+        MainCore.Conf.IsFirstRun = false;
+        MainCore.ConfMgr.Save();
+        
         firstRunHelperImageSequence?.Kill();
         secondRunHelperTextSequence?.Kill();
 
         firstRunHelperText.text = "";
-        string endText = "Great Job!";
+        const string endText = "Great Job!";
 
         var sequence = GTweenSequenceBuilder.New()
             .Append(firstRunHelperImage.GTAlpha(1.0f, 0.2f).SetEasing(Easing.OutSine))
@@ -197,7 +198,7 @@ public static class UICore {
             .Join(firstRunHelperText.GTAlpha(0f, 2.0f))
 
             .AppendCallback(() => {
-                if(firstRunCanvasObj != null) {
+                if(!firstRunCanvasObj) {
                     UnityEngine.Object.Destroy(firstRunCanvasObj);
                 }
             })
