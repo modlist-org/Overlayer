@@ -13,15 +13,20 @@ public static class TagLoader {
                         continue;
                     }
 
-                    if(member is PropertyInfo pi) {
-                        var method = pi.GetGetMethod();
-                        if(method != null) {
-                            tags.Add(new TagCore(attr.Name ?? pi.Name, method, attr.TagType, attr.Desc));
+                    switch (member) {
+                        case PropertyInfo pi: {
+                            var method = pi.GetGetMethod();
+                            if(method != null) {
+                                tags.Add(new TagCore(attr.Name ?? pi.Name, method, attr.TagType, attr.Desc));
+                            }
+                            break;
                         }
-                    } else if(member is MethodInfo mi) {
-                        tags.Add(new TagCore(attr.Name ?? mi.Name, mi, attr.TagType, attr.Desc));
-                    } else if(member is FieldInfo fi) {
-                        tags.Add(new TagCore(attr.Name ?? fi.Name, fi, attr.TagType, attr.Desc));
+                        case MethodInfo mi:
+                            tags.Add(new TagCore(attr.Name ?? mi.Name, mi, attr.TagType, attr.Desc));
+                            break;
+                        case FieldInfo fi:
+                            tags.Add(new TagCore(attr.Name ?? fi.Name, fi, attr.TagType, attr.Desc));
+                            break;
                     }
                 }
             }

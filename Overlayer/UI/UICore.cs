@@ -16,6 +16,7 @@ using GTweens.Extensions;
 using Overlayer.Tween;
 using GTweens.Easings;
 using Overlayer.Compat.OVC;
+using GTweenExtensions = GTweens.Extensions.GTweenExtensions;
 
 #if ML && IL2CPP
 using Il2CppInterop.Runtime;
@@ -768,58 +769,6 @@ public static class UICore {
         } else {
             OpenMenu();
         }
-    }
-
-    public static List<string> Search(string query, IEnumerable<string> source) {
-        if(string.IsNullOrWhiteSpace(query)) {
-            return [.. source];
-        }
-
-        string q = NormalizeString(query);
-
-        if(string.IsNullOrEmpty(q)) {
-            return [];
-        }
-
-        return [..
-        source
-        .Select(original => new {
-            Original = original,
-            Normalized = NormalizeString(original)
-        })
-        .Select(x => new {
-            x.Original,
-            Score = ScoreMatch(x.Normalized, q)
-        })
-        .Where(x => x.Score > 0)
-        .OrderByDescending(x => x.Score)
-        .Select(x => x.Original)
-        ];
-    }
-
-    private static int ScoreMatch(string normalizedValue, string normalizedQuery) {
-        if(normalizedValue == normalizedQuery) {
-            return 100;
-        }
-
-        if(normalizedValue.StartsWith(normalizedQuery)) {
-            return 80;
-        }
-
-        if(normalizedValue.Contains(normalizedQuery)) {
-            return 50;
-        }
-
-        return 0;
-    }
-
-    public static string NormalizeString(string input) {
-        if(string.IsNullOrEmpty(input)) {
-            return string.Empty;
-        }
-
-        char[] chars = [.. input.Where(char.IsLetterOrDigit).Select(char.ToLowerInvariant)];
-        return new string(chars);
     }
 
     public static void Dispose() {

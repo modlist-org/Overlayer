@@ -18,20 +18,18 @@ public static class TagManager {
         lock(_lock) {
             if(_initTask != null) {
                 isFirstInit = false;
-                task = _initTask;
             } else {
                 isFirstInit = true;
 
                 _initTask = Task.Run(() => InitializeInternal(asm));
-                task = _initTask;
             }
+
+            task = _initTask;
         }
 
-        if(isFirstInit) {
-            MainCore.Log.Msg($"[{nameof(TagManager)}] Initialization started");
-        } else {
-            MainCore.Log.Msg($"[{nameof(TagManager)}] Already initialized / returning existing task");
-        }
+        MainCore.Log.Msg(isFirstInit
+            ? $"[{nameof(TagManager)}] Initialization started"
+            : $"[{nameof(TagManager)}] Already initialized / returning existing task");
 
         return task;
     }
@@ -61,9 +59,8 @@ public static class TagManager {
         => _tags.TryGetValue(name, out tag);
 
     public static void Set(TagCore tag) {
-        Dictionary<string, TagCore> newMap;
         lock(_lock) {
-            newMap = new(_tags) {
+            Dictionary<string, TagCore> newMap = new(_tags) {
                 [tag.Name] = tag
             };
 

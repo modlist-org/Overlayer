@@ -14,6 +14,7 @@ using GTweens.Extensions;
 using GTweens.Builders;
 using Overlayer.Tween;
 using Overlayer.Compat.OVC;
+using GTweenExtensions = GTweens.Extensions.GTweenExtensions;
 
 #if ML && IL2CPP
 using Il2CppTMPro;

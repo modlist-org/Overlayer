@@ -12,6 +12,7 @@ using Overlayer.Tween;
 using GTweens.Builders;
 using GTweens.Easings;
 using GTweens.Extensions;
+using GTweenExtensions = GTweens.Extensions.GTweenExtensions;
 
 #if ML && IL2CPP
 using Il2CppTMPro;

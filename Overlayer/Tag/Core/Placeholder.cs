@@ -20,13 +20,7 @@ public readonly struct Placeholder(
             return false;
         }
 
-        for(int i = 0; i < Args.Length; i++) {
-            if(Args[i] != other.Args[i]) {
-                return false;
-            }
-        }
-
-        return true;
+        return !Args.Where((t, i) => t != other.Args[i]).Any();
     }
 
     public override bool Equals(object obj) {
@@ -39,10 +33,12 @@ public readonly struct Placeholder(
 
         hash.Add(Name);
 
-        if(Args != null) {
-            for(int i = 0; i < Args.Length; i++) {
-                hash.Add(Args[i]);
-            }
+        if (Args == null) {
+            return hash.ToHashCode();
+        }
+
+        foreach (var t in Args) {
+            hash.Add(t);
         }
 
         return hash.ToHashCode();

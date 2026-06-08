@@ -101,9 +101,7 @@ public sealed class TextEngineCore {
         var sb = new StringBuilder(Text.Length);
         int last = 0;
 
-        for(int i = 0; i < segs.Length; i++) {
-            var s = segs[i];
-
+        foreach (var s in segs) {
             sb.Append(Text, last, s.Index - last);
             sb.Append(s.Replacer.Get());
 
@@ -116,7 +114,7 @@ public sealed class TextEngineCore {
     }
 
     private char GetSpinner() {
-        char[] frames = { '|', '/', '-', '\\' };
+        char[] frames = ['|', '/', '-', '\\'];
         return frames[spinner++ % frames.Length];
     }
 }

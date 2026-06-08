@@ -1,6 +1,5 @@
 ﻿using GTweens.Builders;
 using GTweens.Easings;
-using GTweens.Extensions;
 using GTweens.Tweens;
 using Overlayer.Async;
 using Overlayer.Core;
@@ -11,8 +10,10 @@ using Overlayer.Tween;
 using Overlayer.UI.Generator;
 using Overlayer.UI.Objects.Impl;
 using Overlayer.UI.Utility;
+using Overlayer.Utility;
 using UnityEngine;
 using UnityEngine.UI;
+using GTweenExtensions = GTweens.Extensions.GTweenExtensions;
 
 namespace Overlayer.UI.Factory.Page;
 
@@ -61,7 +62,7 @@ internal static class PageSettings {
         layout.childForceExpandWidth = true;
         layout.childForceExpandHeight = false;
 
-        ContentSizeFitter fitter = content.AddComponent<ContentSizeFitter>();
+        var fitter = content.AddComponent<ContentSizeFitter>();
         fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
         pad.AddComponent<UIScrollController>().SetContent(contentRect, viewportRect);
@@ -78,23 +79,20 @@ internal static class PageSettings {
                 bool isBlank = string.IsNullOrWhiteSpace(value);
                 Dictionary<GameObject, bool> labelActivationMap = [];
 
-                foreach(var pair in objects) {
-                    if(pair.Value.LabelRow != null) {
-                        labelActivationMap[pair.Value.LabelRow] = isBlank;
-                    }
+                foreach (var pair in objects.Where(pair => pair.Value.LabelRow != null)) {
+                    labelActivationMap[pair.Value.LabelRow] = isBlank;
                 }
 
-                string normalizedQuery = UICore.NormalizeString(value);
+                string normalizedQuery = StringUtils.Normalize(value);
 
-                foreach(var pair in objects) {
-                    TextLocalization labelLoc = pair.Key;
-                    var (labelRow, mainRow) = pair.Value;
+                foreach(var (labelLoc, valueTuple) in objects) {
+                    var (labelRow, mainRow) = valueTuple;
 
                     if(labelRow == null || mainRow == null) {
                         continue;
                     }
 
-                    string normalizedTarget = labelLoc != null ? UICore.NormalizeString(labelLoc.Value) : string.Empty;
+                    string normalizedTarget = labelLoc != null ? StringUtils.Normalize(labelLoc.Value) : string.Empty;
 
                     bool isMainMatch = isBlank || (!string.IsNullOrEmpty(normalizedTarget) && normalizedTarget.Contains(normalizedQuery));
 
@@ -151,7 +149,7 @@ internal static class PageSettings {
             "language_dropdown"
         );
 
-        UIButton langBtn = GenerateUI.Button(
+        var langBtn = GenerateUI.Button(
             langRow,
             () => { },
             "Reload",
@@ -187,7 +185,7 @@ internal static class PageSettings {
         var overlayerTextTr = overlayerText.gameObject.AddComponent<TextLocalization>().Init("OVERLAYER", "Overlayer");
 
         var startupRow = GenerateUI.Row(content.transform);
-        UIToggle startupToggle = GenerateUI.Toggle(
+        var startupToggle = GenerateUI.Toggle(
             startupRow,
             defSet.ShowOnStartup,
             MainCore.Conf.ShowOnStartup,
@@ -202,7 +200,7 @@ internal static class PageSettings {
         objects[startupToggleTr] = (overlayerText.gameObject, startupRow.gameObject);
 
         var tooltipRow = GenerateUI.Row(content.transform);
-        UIToggle tooltipToggle = GenerateUI.Toggle(
+        var tooltipToggle = GenerateUI.Toggle(
             tooltipRow,
             defSet.Tooltip,
             MainCore.Conf.Tooltip,
@@ -240,12 +238,8 @@ internal static class PageSettings {
         var middleClickToggleTr = middleClickToggle.Label.gameObject.AddComponent<TextLocalization>().Init("MIDDLE_CLICK_TO_SET_AS_DEFAULT", "Middle-click to set as default");
         objects[middleClickToggleTr] = (overlayerText.gameObject, middleClickRow.gameObject);
 
-        static float uiScaleFilter(float v) {
-            v = Mathf.Round(v * 100f) / 100f;
-            return Mathf.Clamp(v, 0.8f, 1.6f);
-        }
         var uiScaleRow = GenerateUI.Row(content.transform);
-        UISlider uiScale = GenerateUI.Slider(
+        var uiScale = GenerateUI.Slider(
             uiScaleRow,
             1f,
             0.8f,
@@ -260,6 +254,7 @@ internal static class PageSettings {
         uiScale.Format = "0.00x";
         uiScale.OnChanged = value => MainCore.Conf.UIScale = value;
         GTween scaleSeq = null;
+        var targetSize = UICore.DefaultPanelSize;
         uiScale.OnComplete = value => {
             MainCore.Conf.UIScale = value;
             MainCore.ConfMgr.RequestSave();
@@ -267,7 +262,6 @@ internal static class PageSettings {
             scaleSeq?.Kill();
 
             float scaleStart = UICore.PanelScale;
-            Vector2 targetSize = UICore.DefaultPanelSize;
             UICore.LastPanelSize = targetSize;
 
             scaleSeq = GTweenSequenceBuilder.New()
@@ -290,6 +284,12 @@ internal static class PageSettings {
         var uiScaleTr = uiScale.Label.gameObject.AddComponent<TextLocalization>().Init("UI_SCALE", "UI Scale");
 
         objects[uiScaleTr] = (overlayerText.gameObject, uiScaleRow.gameObject);
+        return;
+
+        static float uiScaleFilter(float v) {
+            v = Mathf.Round(v * 100f) / 100f;
+            return Mathf.Clamp(v, 0.8f, 1.6f);
+        }
     }
 
     internal static void OnTranslatorLoadEnd() {

@@ -37,18 +37,23 @@ public class TagCore {
         IsProperty = member is PropertyInfo;
         IsField = member is FieldInfo;
 
-        if(member is MethodInfo method) {
-            Parameters = method.GetParameters();
-            ReturnType = method.ReturnType;
-        } else if(member is PropertyInfo prop) {
-            Parameters = prop.GetGetMethod()?.GetParameters() ?? [];
-            ReturnType = prop.PropertyType;
-        } else if(member is FieldInfo field) {
-            Parameters = [];
-            ReturnType = field.FieldType;
-        } else {
-            Parameters = [];
-            ReturnType = typeof(void);
+        switch (member) {
+            case MethodInfo method:
+                Parameters = method.GetParameters();
+                ReturnType = method.ReturnType;
+                break;
+            case PropertyInfo prop:
+                Parameters = prop.GetGetMethod()?.GetParameters() ?? [];
+                ReturnType = prop.PropertyType;
+                break;
+            case FieldInfo field:
+                Parameters = [];
+                ReturnType = field.FieldType;
+                break;
+            default:
+                Parameters = [];
+                ReturnType = typeof(void);
+                break;
         }
 
         RequiredParameterCount = 0;

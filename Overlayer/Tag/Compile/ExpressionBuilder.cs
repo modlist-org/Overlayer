@@ -81,7 +81,7 @@ public static class ExpressionBuilder {
 
             result = m != null ? Expression.Call(call, m) : Expression.Call(
                 call,
-                typeof(object).GetMethod(nameof(ToString))
+                typeof(object).GetMethod(nameof(ToString))!
             );
         }
 

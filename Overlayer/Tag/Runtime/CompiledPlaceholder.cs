@@ -16,13 +16,16 @@ public sealed class CompiledPlaceholder {
         bool hasError = false;
         bool hasWarning = false;
 
-        for(int i = 0; i < Diagnostics.Length; i++) {
-            var severity = Diagnostics[i].Severity;
+        foreach (var t in Diagnostics) {
+            var severity = t.Severity;
 
-            if(severity == CompileSeverity.Error) {
-                hasError = true;
-            } else if(severity == CompileSeverity.Warning) {
-                hasWarning = true;
+            switch (severity) {
+                case CompileSeverity.Error:
+                    hasError = true;
+                    break;
+                case CompileSeverity.Warning:
+                    hasWarning = true;
+                    break;
             }
         }
 

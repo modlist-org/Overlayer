@@ -76,7 +76,7 @@ public static class SignatureResolver {
             }
         }
 
-        CompileState state =
+        var state =
             args.Length < minRequired
                 ? CompileState.Error
                 : args.Length > valueParamCount
