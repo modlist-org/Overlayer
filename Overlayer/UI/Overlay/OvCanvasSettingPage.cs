@@ -83,7 +83,7 @@ public class OvCanvasSettingPage : IDisposable {
             if(btn == InputButton.Left) {
                 onBackAction?.Invoke();
             }
-        }, false);
+        }, null);
 
         GameObject titleGo = new("TitleText");
         titleGo.transform.SetParent(headerGo.transform, false);

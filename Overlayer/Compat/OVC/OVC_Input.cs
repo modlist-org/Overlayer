@@ -1,6 +1,5 @@
 ﻿using System.Reflection;
 using UnityEngine;
-using UnityEngine.EventSystems;
 
 namespace Overlayer.Compat.OVC;
 
@@ -19,6 +18,7 @@ namespace Overlayer.Compat.OVC;
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
+
 public static class OVC_Input {
     private static Type t_Keyboard, t_Key, t_ButtonControl, t_Mouse, t_Pointer;
     private static PropertyInfo p_kbCurrent, p_kbIndexer, p_btnIsPressed, p_btnWasPressed, p_btnWasReleased;
@@ -40,7 +40,7 @@ public static class OVC_Input {
 
         if(t_Keyboard != null) {
             p_kbCurrent = t_Keyboard.GetProperty("current", BindingFlags.Public | BindingFlags.Static);
-            p_kbIndexer = t_Keyboard.GetProperty("Item", new Type[] { t_Key });
+            p_kbIndexer = t_Keyboard.GetProperty("Item", [t_Key]);
             p_btnIsPressed = t_ButtonControl.GetProperty("isPressed");
             p_btnWasPressed = t_ButtonControl.GetProperty("wasPressedThisFrame");
             p_btnWasReleased = t_ButtonControl.GetProperty("wasReleasedThisFrame");
@@ -53,8 +53,6 @@ public static class OVC_Input {
             p_middleBtn = t_Mouse.GetProperty("middleButton");
             p_mouseScroll = t_Mouse.GetProperty("scroll");
             p_mousePosition = t_Pointer.GetProperty("position");
-
-            // Vector2 읽기를 위한 ReadValue 메서드 (리플렉션 복잡도 감소를 위해 동적 조회)
             m_ReadV2 = t_Pointer.Assembly.GetType("UnityEngine.InputSystem.InputControl`1")
                 .MakeGenericType(typeof(Vector2)).GetMethod("ReadValue");
         }
@@ -91,34 +89,6 @@ public static class OVC_Input {
         return t_Mouse != null ? TryInvoke(p_btnWasReleased, GetMouseBtnControl(btn)) : Input.GetMouseButtonUp(btn);
     }
 
-    public static PointerEventData.InputButton GetPressedMouseButton() {
-        if(GetMouseButton(0)) {
-            return PointerEventData.InputButton.Left;
-        }
-        if(GetMouseButton(1)) {
-            return PointerEventData.InputButton.Right;
-        }
-        if(GetMouseButton(2)) {
-            return PointerEventData.InputButton.Middle;
-        }
-
-        return PointerEventData.InputButton.Left;
-    }
-
-    public static PointerEventData.InputButton GetClickMouseButton() {
-        if(GetMouseButtonDown(0)) {
-            return PointerEventData.InputButton.Left;
-        }
-        if(GetMouseButtonDown(1)) {
-            return PointerEventData.InputButton.Right;
-        }
-        if(GetMouseButtonDown(2)) {
-            return PointerEventData.InputButton.Middle;
-        }
-
-        return PointerEventData.InputButton.Left;
-    }
-
     public static Vector2 MousePosition {
         get {
             EnsureInitialized();
@@ -147,7 +117,7 @@ public static class OVC_Input {
         }
 
         s = s.Replace("Alpha", "Digit").Replace("Control", "Ctrl").Replace("Return", "Enter");
-        try { return p_kbIndexer.GetValue(p_kbCurrent.GetValue(null), new object[] { Enum.Parse(t_Key, s) }); } catch { return null; }
+        try { return p_kbIndexer.GetValue(p_kbCurrent.GetValue(null), [Enum.Parse(t_Key, s)]); } catch { return null; }
     }
 
     private static object GetMouseBtnControl(int btn) {

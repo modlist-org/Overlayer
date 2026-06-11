@@ -17,7 +17,6 @@ public class NonRaycastButton
     : MonoBehaviour
 #endif
 {
-
     public Action onClick;
 
     private void Start() {

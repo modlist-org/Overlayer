@@ -24,7 +24,7 @@ public class UIScrollController
     public RectTransform content;
     public RectTransform viewport;
 
-    public float wheelStrength = 0.32f;
+    public float wheelStrength = 42f;
 
     public float dragSensitivity = 1f;
     public float dragToScrollRatio = 1f;
@@ -33,7 +33,6 @@ public class UIScrollController
     public Easing scrollEase = Easing.OutCirc;
 
     private bool rightDragging;
-    private Vector2 lastMousePos;
 
     private float targetY;
     private GTween scrollTween;
@@ -105,13 +104,12 @@ public class UIScrollController
         ApplyTween();
     }
 
-    private void AddDelta(float deltaNormalized) {
+    private void AddDelta(float deltaPixels) {
         float contentHeight = content.rect.height;
         float viewportHeight = viewport.rect.height;
-
         float maxOffset = Mathf.Max(0f, contentHeight - viewportHeight);
 
-        targetY += deltaNormalized * maxOffset;
+        targetY += deltaPixels;
         targetY = Mathf.Clamp(targetY, 0f, maxOffset);
     }
 

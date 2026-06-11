@@ -233,7 +233,7 @@ internal static class PageOverlayer {
                     settingPage?.Open(canvas);
                     break;
             }
-        }, outline: true);
+        }, bg.AddComponent<EventTrigger>());
 
         return bg;
     }
@@ -275,30 +275,30 @@ internal static class PageOverlayer {
         txt.color = Color.white;
         txt.raycastTarget = false;
 
+        var trigger = go.AddComponent<EventTrigger>();
         GenerateUI.AddButton(go, btn => {
             switch(btn) {
                 case InputButton.Left:
                     onClick?.Invoke();
                     break;
             }
-        }, false);
-
-        EventTrigger trigger = go.GetComponent<EventTrigger>();
+        }, trigger);
 
         GTween bgTween = null;
-        UnityUtils.AddEvent(EventTriggerType.PointerEnter, () => {
-            bgTween?.Kill();
-            bgTween = bgImg.GTColor(UIColors.ObjectActiveLightBright, 0.12f)
-                .SetEasing(Easing.OutSine);
-            MainCore.TC.Play(bgTween);
-        }, trigger);
-
-        UnityUtils.AddEvent(EventTriggerType.PointerExit, () => {
-            bgTween?.Kill();
-            bgTween = bgImg.GTColor(UIColors.ObjectButton, 0.12f)
-                .SetEasing(Easing.OutSine);
-            MainCore.TC.Play(bgTween);
-        }, trigger);
+        UnityUtils.AddEvents(trigger,
+            (EventTriggerType.PointerEnter, () => {
+                bgTween?.Kill();
+                bgTween = bgImg.GTColor(UIColors.ObjectActiveLightBright, 0.12f)
+                    .SetEasing(Easing.OutSine);
+                MainCore.TC.Play(bgTween);
+            }),
+            (EventTriggerType.PointerExit, () => {
+                bgTween?.Kill();
+                bgTween = bgImg.GTColor(UIColors.ObjectButton, 0.12f)
+                    .SetEasing(Easing.OutSine);
+                MainCore.TC.Play(bgTween);
+            })
+        );
 
         return go;
     }

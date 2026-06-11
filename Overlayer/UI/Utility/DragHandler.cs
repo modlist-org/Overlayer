@@ -19,7 +19,6 @@ public class DragHandler
     : MonoBehaviour
 #endif
 {
-
     private RectTransform rect;
     private Vector2 offset;
 

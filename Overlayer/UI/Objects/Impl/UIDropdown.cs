@@ -121,11 +121,13 @@ public class UIDropDown<T> : UIObject {
 
     public void SetExpanded(bool expanded) {
         Expanded = expanded;
-
-        ListObject?.SetActive(expanded);
-
+        if(ListObject != null) {
+            ListObject.SetActive(expanded);
+            if(expanded) {
+                LayoutRebuilder.ForceRebuildLayoutImmediate(ListRect);
+            }
+        }
         UpdateVisual();
-
         OnLayoutChanged?.Invoke();
     }
 
@@ -177,8 +179,11 @@ public class UIDropDown<T> : UIObject {
             return;
         }
 
-        foreach(Transform child in ListObject.transform) {
-            Object.Destroy(child.gameObject);
+        for(int i = ListObject.transform.childCount - 1; i >= 0; i--) {
+            Transform child = ListObject.transform.GetChild(i);
+            if(child != null && !child.Equals(null)) {
+                Object.Destroy(child.gameObject);
+            }
         }
 
         foreach(T item in Values) {
@@ -200,33 +205,39 @@ public class UIDropDown<T> : UIObject {
 
             GTween hoverSeq = null;
 
-            UnityUtils.AddEvent(EventTriggerType.PointerEnter, () => {
-                hoverSeq?.Kill();
-                hoverSeq = GTweenSequenceBuilder.New()
-                    .Append(rowImage.GTColor(UIColors.ObjectActive, 0.12f).SetEasing(Easing.OutSine))
-                    .Build();
-                MainCore.TC.Play(hoverSeq);
-            }, trigger);
+            UnityUtils.AddEvents(trigger,
+                (EventTriggerType.PointerEnter, (e) => {
+                    hoverSeq?.Kill();
+                    hoverSeq = GTweenSequenceBuilder.New()
+                        .Append(rowImage.GTColor(UIColors.ObjectActive, 0.12f).SetEasing(Easing.OutSine))
+                        .Build();
+                    MainCore.TC.Play(hoverSeq);
+                }),
+                (EventTriggerType.PointerExit, (e) => {
+                    hoverSeq?.Kill();
+                    hoverSeq = GTweenSequenceBuilder.New()
+                        .Append(rowImage.GTColor(Color.clear, 0.12f).SetEasing(Easing.OutSine))
+                        .Build();
+                    MainCore.TC.Play(hoverSeq);
+                }),
+                (EventTriggerType.PointerClick, (e) => {
+#pragma warning disable IDE0019
+                    PointerEventData pointerData =
+#pragma warning restore IDE0019
+#if ML && IL2CPP
+                    e.TryCast<PointerEventData>();
+#else
+                    e as PointerEventData;
+#endif
+                    if(pointerData == null || pointerData.button != PointerEventData.InputButton.Left) {
+                        return;
+                    }
 
-            UnityUtils.AddEvent(EventTriggerType.PointerExit, () => {
-                hoverSeq?.Kill();
-                hoverSeq = GTweenSequenceBuilder.New()
-                    .Append(rowImage.GTColor(Color.clear, 0.12f).SetEasing(Easing.OutSine))
-                    .Build();
-                MainCore.TC.Play(hoverSeq);
-            }, trigger);
-
-            UnityUtils.AddEvent(EventTriggerType.PointerClick, () => {
-                if(OVC_Input.GetClickMouseButton() != PointerEventData.InputButton.Left) {
-                    return;
-                }
-
-                Set(item);
-
-                rowImage.color = Color.clear;
-
-                SetExpanded(false);
-            }, trigger);
+                    Set(item);
+                    rowImage.color = Color.clear;
+                    SetExpanded(false);
+                })
+            );
         }
     }
 

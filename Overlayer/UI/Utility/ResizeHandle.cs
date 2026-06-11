@@ -34,8 +34,7 @@ public class ResizeHandle
 #else
     : MonoBehaviour
 #endif
-    {
-
+{
     public ResizeHandleType Type;
     public RectTransform Panel;
     public RectTransform PanelParent;

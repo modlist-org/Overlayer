@@ -9,8 +9,6 @@ using UnityEngine.UI;
 using static UnityEngine.EventSystems.PointerEventData;
 using GTweens.Tweens;
 using GTweens.Easings;
-using GTweens.Extensions;
-
 using GTweens.Builders;
 using Overlayer.Tween;
 using Overlayer.Compat.OVC;
@@ -95,7 +93,7 @@ public static class GenerateUI {
 
                     break;
             }
-        });
+        }, rect.gameObject.AddComponent<EventTrigger>());
 
         return toggle;
     }
@@ -128,13 +126,12 @@ public static class GenerateUI {
             if(btn == InputButton.Left) {
                 button.Click();
             }
-        }, false);
+        }, null);
 
-        EventTrigger trigger = rect.gameObject.GetComponent<EventTrigger>()
-            ?? rect.gameObject.AddComponent<EventTrigger>();
-
-        UnityUtils.AddEvent(EventTriggerType.PointerEnter, () => button.OnHoverEnter(), trigger);
-        UnityUtils.AddEvent(EventTriggerType.PointerExit, () => button.OnHoverExit(), trigger);
+        UnityUtils.AddEvents(rect.gameObject.AddComponent<EventTrigger>(),
+            (EventTriggerType.PointerEnter, button.OnHoverEnter),
+            (EventTriggerType.PointerExit, button.OnHoverExit)
+        );
 
         return button;
     }
@@ -153,8 +150,6 @@ public static class GenerateUI {
     ) {
         RectTransform rect = BackGround();
         rect.SetParent(parent, false);
-
-        rect.gameObject.AddComponent<EventTrigger>();
 
         GameObject change = AddSmallChangedCircle(rect);
         Image changeImg = change.GetComponent<Image>();
@@ -222,13 +217,10 @@ public static class GenerateUI {
             slider.Set(Apply(v));
         }
 
+        var trigger = rect.gameObject.AddComponent<EventTrigger>();
+
         AddButton(rect.gameObject, e => {
             switch(e) {
-                case InputButton.Left:
-                    SetFromMouse();
-                    slider.OnComplete?.Invoke(slider.Value);
-                    break;
-
                 case InputButton.Middle:
                     if(!MainCore.Conf.MiddleClickToDefault) {
                         break;
@@ -237,38 +229,39 @@ public static class GenerateUI {
                     slider.OnComplete?.Invoke(slider.Value);
                     break;
             }
-        }, true);
+        }, trigger);
 
-        EventTrigger trigger = rect.gameObject.GetComponent<EventTrigger>()
-            ?? rect.gameObject.AddComponent<EventTrigger>();
         bool isDragging = false;
 
-        UnityUtils.AddEvent(EventTriggerType.BeginDrag, () => {
-            isDragging = true;
-            SetFromMouse();
-        }, trigger);
-
-        UnityUtils.AddEvent(EventTriggerType.Drag, () => {
-            if(isDragging && OVC_Input.GetMouseButton(0)) {
+        UnityUtils.AddEvents(trigger,
+            (EventTriggerType.PointerClick, () => {
                 SetFromMouse();
-            } else {
-                isDragging = false;
-            }
-        }, trigger);
-
-        UnityUtils.AddEvent(EventTriggerType.EndDrag, () => {
-            if(isDragging) {
-                isDragging = false;
                 slider.OnComplete?.Invoke(slider.Value);
-            }
-        }, trigger);
-
-        UnityUtils.AddEvent(EventTriggerType.PointerUp, () => {
-            if(isDragging) {
-                isDragging = false;
-                slider.OnComplete?.Invoke(slider.Value);
-            }
-        }, trigger);
+            }),
+            (EventTriggerType.BeginDrag, () => {
+                isDragging = true;
+                SetFromMouse();
+            }),
+            (EventTriggerType.Drag, () => {
+                if(isDragging && OVC_Input.GetMouseButton(0)) {
+                    SetFromMouse();
+                } else {
+                    isDragging = false;
+                }
+            }),
+            (EventTriggerType.EndDrag, () => {
+                if(isDragging) {
+                    isDragging = false;
+                    slider.OnComplete?.Invoke(slider.Value);
+                }
+            }),
+            (EventTriggerType.PointerUp, () => {
+                if(isDragging) {
+                    isDragging = false;
+                    slider.OnComplete?.Invoke(slider.Value);
+                }
+            })
+        );
 
         slider.Set(Apply(value), false);
 
@@ -373,11 +366,9 @@ public static class GenerateUI {
             float rowHeight = 50f;
             float spacing = layout.spacing;
 
-            float listHeight =
-                (values.Count * rowHeight) +
-                (Mathf.Max(0, values.Count - 1) * spacing);
+            float listHeight = (dropdown.Values.Count * rowHeight) + spacing;
 
-            float targetHeight = dropdown.Expanded ? 162f + listHeight : 50f;
+            float targetHeight = dropdown.Expanded ? (62f + listHeight) : 50f;
             float targetAlpha = dropdown.Expanded ? 1f : 0f;
 
             layoutSeq?.Kill();
@@ -406,53 +397,7 @@ public static class GenerateUI {
             MainCore.TC.Play(layoutSeq);
         }
 
-        dropdown.OnLayoutChanged = () => {
-            UpdateHeight();
-            LayoutRebuilder.ForceRebuildLayoutImmediate(rootRect);
-        };
-
-        foreach(T item in values) {
-            GameObject row = new("Row");
-            row.transform.SetParent(list.transform, false);
-
-            RectTransform rowRect = row.AddComponent<RectTransform>();
-            rowRect.sizeDelta = new(0f, 50f);
-
-            Image rowImage = row.AddComponent<Image>();
-            rowImage.color = Color.clear;
-            rowImage.type = Image.Type.Sliced;
-            rowImage.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P2048);
-
-            TextMeshProUGUI rowText = AddText(rowRect);
-            rowText.text = display(item);
-
-            EventTrigger trigger = row.AddComponent<EventTrigger>();
-            GTween hoverSeq = null;
-
-            UnityUtils.AddEvent(EventTriggerType.PointerEnter, () => {
-                hoverSeq?.Kill();
-                hoverSeq = GTweenSequenceBuilder.New()
-                    .Append(
-                        rowImage.GTColor(UIColors.ObjectActive, 0.12f)
-                            .SetEasing(Easing.OutSine)
-                    )
-                    .Build();
-
-                MainCore.TC.Play(hoverSeq);
-            }, trigger);
-
-            UnityUtils.AddEvent(EventTriggerType.PointerExit, () => {
-                hoverSeq?.Kill();
-                hoverSeq = GTweenSequenceBuilder.New()
-                    .Append(
-                        rowImage.GTColor(Color.clear, 0.12f)
-                            .SetEasing(Easing.OutSine)
-                    )
-                    .Build();
-
-                MainCore.TC.Play(hoverSeq);
-            }, trigger);
-        }
+        dropdown.OnLayoutChanged = UpdateHeight;
 
         AddButton(rect.gameObject, btn => {
             switch(btn) {
@@ -474,8 +419,9 @@ public static class GenerateUI {
                     }
                     break;
             }
-        });
+        }, rect.gameObject.AddComponent<EventTrigger>());
 
+        dropdown.RebuildList();
         UpdateHeight();
         return dropdown;
     }
@@ -577,7 +523,7 @@ public static class GenerateUI {
 
                     break;
             }
-        });
+        }, rect.gameObject.AddComponent<EventTrigger>());
 
         return input;
     }
@@ -605,18 +551,13 @@ public static class GenerateUI {
         return rect;
     }
 
-    public static void AddButton(GameObject obj, Action<InputButton> onClick, bool outline = true) {
-        EventTrigger trigger = obj.AddComponent<EventTrigger>();
+    public static void AddButton(GameObject obj, Action<InputButton> onClick, EventTrigger outlineTrigger) {
+        obj.AddComponent<OventHandler>().OnClick += onClick;
 
-        AddClick(trigger, onClick);
-
-        if(outline) {
-            AddOutlineHover(obj, trigger);
+        if(outlineTrigger != null) {
+            AddOutlineHover(obj, outlineTrigger);
         }
     }
-
-    private static void AddClick(EventTrigger trigger, Action<InputButton> onClick)
-        => UnityUtils.AddEvent(EventTriggerType.PointerClick, () => onClick?.Invoke(OVC_Input.GetClickMouseButton()), trigger);
 
     private static void AddOutlineHover(GameObject obj, EventTrigger trigger) {
         GTween hoverSeq = null;
@@ -639,40 +580,28 @@ public static class GenerateUI {
         Color baseColor = UIColors.ObjectActive;
         hoverImage.color = new Color(baseColor.r, baseColor.g, baseColor.b, 0f);
 
-        UnityUtils.AddEvent(EventTriggerType.PointerEnter, () => {
-            hoverSeq?.Kill();
-            hoverSeq = GTweenSequenceBuilder.New()
-                .Append(GTweenExtensions.Tween(
-                    () => hoverImage.color.a,
-                    x => {
-                        Color c = hoverImage.color;
-                        c.a = x;
-                        hoverImage.color = c;
-                    },
-                    1f,
-                    0.1f
-                ).SetEasing(Easing.OutSine))
-                .Build();
-
-            MainCore.TC.Play(hoverSeq);
-        }, trigger);
-
-        UnityUtils.AddEvent(EventTriggerType.PointerExit, () => {
-            hoverSeq?.Kill();
-            hoverSeq = GTweenSequenceBuilder.New()
-                .Append(GTweenExtensions.Tween(
-                    () => hoverImage.color.a,
-                    x => {
-                        Color c = hoverImage.color;
-                        c.a = x;
-                        hoverImage.color = c;
-                    },
-                    0f,
-                    0.1f
-                ).SetEasing(Easing.OutSine))
-                .Build();
-            MainCore.TC.Play(hoverSeq);
-        }, trigger);
+        UnityUtils.AddEvents(trigger,
+            (EventTriggerType.PointerEnter, () => {
+                hoverSeq?.Kill();
+                hoverSeq = GTweenSequenceBuilder.New()
+                    .Append(GTweenExtensions.Tween(
+                        () => hoverImage.color.a,
+                        x => { Color c = hoverImage.color; c.a = x; hoverImage.color = c; },
+                        1f, 0.1f
+                    ).SetEasing(Easing.OutSine)).Build();
+                MainCore.TC.Play(hoverSeq);
+            }),
+            (EventTriggerType.PointerExit, () => {
+                hoverSeq?.Kill();
+                hoverSeq = GTweenSequenceBuilder.New()
+                    .Append(GTweenExtensions.Tween(
+                        () => hoverImage.color.a,
+                        x => { Color c = hoverImage.color; c.a = x; hoverImage.color = c; },
+                        0f, 0.1f
+                    ).SetEasing(Easing.OutSine)).Build();
+                MainCore.TC.Play(hoverSeq);
+            })
+        );
     }
 
     public static TextMeshProUGUI AddText(Transform parent, bool noPad = false) => CreateText(parent, 24f, false, noPad);
@@ -732,16 +661,9 @@ public static class GenerateUI {
         EventTrigger trigger = parent.gameObject.GetComponent<EventTrigger>()
             ?? parent.gameObject.AddComponent<EventTrigger>();
 
-        UnityUtils.AddEvent(
-            EventTriggerType.PointerEnter,
-            () => Tooltip.Show(getText()),
-            trigger
-        );
-
-        UnityUtils.AddEvent(
-            EventTriggerType.PointerExit,
-            () => Tooltip.Hide(),
-            trigger
+        UnityUtils.AddEvents(trigger,
+            (EventTriggerType.PointerEnter, () => Tooltip.Show(getText())),
+            (EventTriggerType.PointerExit, Tooltip.Hide)
         );
 
         return parent;
