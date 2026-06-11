@@ -234,28 +234,41 @@ public static class GenerateUI {
         bool isDragging = false;
 
         UnityUtils.AddEvents(trigger,
-            (EventTriggerType.PointerClick, () => {
-                SetFromMouse();
-                slider.OnComplete?.Invoke(slider.Value);
+            (EventTriggerType.PointerClick, (e) => {
+#pragma warning disable IDE0019
+                PointerEventData pointerData =
+#pragma warning restore IDE0019
+#if ML && IL2CPP
+                e.TryCast<PointerEventData>();
+#else
+                e as PointerEventData;
+#endif
+                if(pointerData != null && pointerData.button == InputButton.Left) {
+                    SetFromMouse();
+                    slider.OnComplete?.Invoke(slider.Value);
+                }
             }),
-            (EventTriggerType.BeginDrag, () => {
+            (EventTriggerType.BeginDrag, (e) => {
+                if(!OVC_Input.GetMouseButton(0)) {
+                    return;
+                }
                 isDragging = true;
                 SetFromMouse();
             }),
-            (EventTriggerType.Drag, () => {
+            (EventTriggerType.Drag, (e) => {
                 if(isDragging && OVC_Input.GetMouseButton(0)) {
                     SetFromMouse();
                 } else {
                     isDragging = false;
                 }
             }),
-            (EventTriggerType.EndDrag, () => {
+            (EventTriggerType.EndDrag, (e) => {
                 if(isDragging) {
                     isDragging = false;
                     slider.OnComplete?.Invoke(slider.Value);
                 }
             }),
-            (EventTriggerType.PointerUp, () => {
+            (EventTriggerType.PointerUp, (e) => {
                 if(isDragging) {
                     isDragging = false;
                     slider.OnComplete?.Invoke(slider.Value);
