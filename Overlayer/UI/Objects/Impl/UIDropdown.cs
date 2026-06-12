@@ -24,30 +24,21 @@ namespace Overlayer.UI.Objects.Impl;
 public class UIDropDown<T> : UIObject {
     public T DefaultValue { get; }
     public T Value { get; private set; }
-
     public IReadOnlyList<T> Values { get; private set; }
-
     public Func<T, string> Display { get; }
     public Action<T> OnChanged { get; }
-
     public TextMeshProUGUI Label { get; }
-
     public Image TriangleImage { get; }
     public RectTransform TriangleRect { get; }
-
     public Image ChangedImage { get; }
-
     public GameObject ListObject { get; }
     public RectTransform ListRect { get; }
-
     public CanvasGroup ListCanvasGroup { get; }
-
     public bool Expanded { get; private set; }
 
     public Action OnLayoutChanged;
 
-    private GTween triangleSeq;
-    private GTween changeSeq;
+    private GTween triangleSeq, changeSeq;
 
     public UIDropDown(
         string id,

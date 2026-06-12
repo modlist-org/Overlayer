@@ -25,8 +25,7 @@ public class UIToggle : UIObject {
     public Image ChangedImage { get; }
     public RectTransform CircleRect { get; }
 
-    private GTween circleSeq;
-    private GTween changeSeq;
+    private GTween circleSeq, changeSeq;
 
     public UIToggle(
         string id,

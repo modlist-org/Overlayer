@@ -19,7 +19,6 @@ public class UISlider : UIObject {
     public float Min;
     public float Max;
     public float Value { get; private set; }
-
     public string Format {
         get;
         set {
@@ -27,23 +26,17 @@ public class UISlider : UIObject {
             UpdateValueText();
         }
     }
-
     public Action<float> OnChanged;
     public Action<float> OnComplete;
-
     public Func<float, float> Filter;
-
     public RectTransform FillRect { get; }
     public Image FillImage { get; }
-
     public TextMeshProUGUI Label { get; }
     public TextMeshProUGUI ValueText { get; }
-
     public Image ChangedImage { get; }
     public Image ChangedUpImage { get; }
 
-    private GTween fillSeq;
-    private GTween changeSeq;
+    private GTween fillSeq, changeSeq;
 
     public UISlider(
         string id,
