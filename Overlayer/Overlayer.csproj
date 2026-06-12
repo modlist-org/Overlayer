@@ -172,6 +172,26 @@
 		<EnableDefaultCompileItems>true</EnableDefaultCompileItems>
 	</PropertyGroup>
 
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_ML|AnyCPU'">
+	  <Optimize>False</Optimize>
+	  <DebugType>embedded</DebugType>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_ML|AnyCPU'">
+	  <Optimize>False</Optimize>
+	  <DebugType>embedded</DebugType>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_ML_IL2CPP|AnyCPU'">
+	  <Optimize>False</Optimize>
+	  <DebugType>embedded</DebugType>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_ML_IL2CPP|AnyCPU'">
+	  <Optimize>False</Optimize>
+	  <DebugType>embedded</DebugType>
+	</PropertyGroup>
+
 	<ItemGroup>
 		<EmbeddedResource Include="Resource\Embedded\**\*" />
 	</ItemGroup>
