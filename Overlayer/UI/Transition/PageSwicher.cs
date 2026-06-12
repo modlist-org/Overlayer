@@ -36,38 +36,32 @@ public class PageSwicher {
         }
 
         fromPage.anchoredPosition = Vector2.zero;
-        toPage.anchoredPosition = new Vector2(600f, 0f);
+        toPage.anchoredPosition = new Vector2(1100f, 0f);
 
         fromCg.alpha = 1f;
         toCg.alpha = 0f;
 
         fromCg.interactable = false;
         fromCg.blocksRaycasts = false;
-
         toCg.interactable = false;
         toCg.blocksRaycasts = false;
 
         pageSeq = GTweenSequenceBuilder.New()
-            .Join(fromPage.GTAnchorPosX(-600f, 0.35f).SetEasing(Easing.OutCubic))
+            .Join(fromPage.GTAnchorPosX(-1100f, 0.45f).SetEasing(Easing.OutExpo))
             .Join(fromCg.GTFade(0f, 0.3f))
-            .Join(
-                GTweenSequenceBuilder.New()
-                    .AppendTime(0.05f)
-                    .Append(toPage.GTAnchorPosX(0f, 0.45f).SetEasing(Easing.OutExpo))
-                    .Build()
-            )
+            .Join(toPage.GTAnchorPosX(0f, 0.45f).SetEasing(Easing.OutExpo))
             .Join(toCg.GTFade(1f, 0.3f))
-            .Join(
-                GTweenSequenceBuilder.New()
-                    .AppendTime(0.1f)
-                    .AppendCallback(() => {
-                        toCg.interactable = true;
-                        toCg.blocksRaycasts = true;
-                    })
-                    .Build()
+            .Join(GTweenSequenceBuilder.New()
+                .AppendTime(0.1f)
+                .AppendCallback(() => {
+                    toCg.interactable = true;
+                    toCg.blocksRaycasts = true;
+                }).Build()
             )
-            .Build();
-
+            .AppendCallback(() => {
+                fromCg.interactable = false;
+                fromCg.blocksRaycasts = false;
+            }).Build();
         MainCore.TC.Play(pageSeq);
 
         return true;
