@@ -1,6 +1,7 @@
 ﻿using GTweens.Builders;
 using GTweens.Easings;
 using GTweens.Tweens;
+using Newtonsoft.Json.Linq;
 using Overlayer.Async;
 using Overlayer.Core;
 using Overlayer.IO;
@@ -254,13 +255,13 @@ internal static class PageSettings {
         var uiScaleRow = GenerateUI.Row(content.transform);
         var uiScale = GenerateUI.Slider(
             uiScaleRow,
-            1f,
+            defSet.UIScale,
             0.8f,
             1.6f,
             MainCore.Conf.UIScale,
             "0.00x",
             true,
-            uiScaleFilter,
+            value => MathF.Round(value, 2),
             value => MainCore.Conf.UIScale = value,
             value => {
                 MainCore.Conf.UIScale = value;
@@ -294,14 +295,28 @@ internal static class PageSettings {
         );
         var targetSize = UICore.DefaultPanelSize;
         var uiScaleTr = uiScale.Label.gameObject.AddComponent<TextLocalization>().Init("UI_SCALE", "UI Scale");
-
         objects[uiScaleTr] = (overlayerText.gameObject, uiScaleRow.gameObject);
-        return;
 
-        static float uiScaleFilter(float v) {
-            v = Mathf.Round(v * 100f) / 100f;
-            return Mathf.Clamp(v, 0.8f, 1.6f);
-        }
+        var sliderSensitivityRow = GenerateUI.Row(content.transform);
+        var sliderSensitivity = GenerateUI.Slider(
+            sliderSensitivityRow,
+            defSet.SliderSensitivity,
+            0.1f,
+            2.0f,
+            MainCore.Conf.SliderSensitivity,
+            "0.00x",
+            false,
+            value => MathF.Round(value, 2),
+            value => MainCore.Conf.SliderSensitivity = value,
+            value => {
+                MainCore.Conf.SliderSensitivity = value;
+                MainCore.ConfMgr.RequestSave();
+            },
+            "Slider Sensitivity",
+            "slider_sensitivity"
+        );
+        var sliderSensitivityTr = sliderSensitivity.Label.gameObject.AddComponent<TextLocalization>().Init("SLIDER_SENSITIVITY", "Slider Sensitivity");
+        objects[sliderSensitivityTr] = (overlayerText.gameObject, sliderSensitivityRow.gameObject);
     }
 
     internal static void OnTranslatorLoadEnd() {

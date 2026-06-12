@@ -104,15 +104,15 @@ public class ResizeHandle
         Vector2 pivot = Panel.pivot;
 
         if(Type is ResizeHandleType.Right or ResizeHandleType.TopRight or ResizeHandleType.BottomRight) {
-            newSize.x = Mathf.Max(minW, startSize.x + delta.x);
+            newSize.x = Math.Max(minW, startSize.x + delta.x);
         } else if(Type is ResizeHandleType.Left or ResizeHandleType.TopLeft or ResizeHandleType.BottomLeft) {
-            newSize.x = Mathf.Max(minW, startSize.x - delta.x);
+            newSize.x = Math.Max(minW, startSize.x - delta.x);
         }
 
         if(Type is ResizeHandleType.Top or ResizeHandleType.TopLeft or ResizeHandleType.TopRight) {
-            newSize.y = Mathf.Max(minH, startSize.y + delta.y);
+            newSize.y = Math.Max(minH, startSize.y + delta.y);
         } else if(Type is ResizeHandleType.Bottom or ResizeHandleType.BottomLeft or ResizeHandleType.BottomRight) {
-            newSize.y = Mathf.Max(minH, startSize.y - delta.y);
+            newSize.y = Math.Max(minH, startSize.y - delta.y);
         }
 
         Vector2 sizeDiff = newSize - startSize;

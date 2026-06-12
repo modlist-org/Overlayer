@@ -88,8 +88,8 @@ public class Tooltip {
         float maxX = Screen.width - size.x;
         float maxY = Screen.height - size.y;
 
-        target.x = Mathf.Clamp(target.x, 0f, maxX);
-        target.y = Mathf.Clamp(target.y, 0f, maxY);
+        target.x = Math.Clamp(target.x, 0f, maxX);
+        target.y = Math.Clamp(target.y, 0f, maxY);
 
         rect.position = Vector2.SmoothDamp(
             rect.position,

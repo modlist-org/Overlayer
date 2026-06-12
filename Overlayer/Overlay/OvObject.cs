@@ -148,7 +148,7 @@ public sealed class OvObject : ISettingsFile {
 
         Children.RemoveAt(currentIndex);
 
-        index = Mathf.Clamp(index, 0, Children.Count);
+        index = Math.Clamp(index, 0, Children.Count);
         Children.Insert(index, child);
 
         for(int i = 0; i < Children.Count; i++) {

@@ -6,6 +6,8 @@ using GTweens.Extensions;
 using GTweens.Builders;
 using GTweens.Easings;
 using NCalc;
+using static UnityEngine.EventSystems.StandaloneInputModule;
+
 
 #if ML && IL2CPP
 using Il2CppTMPro;
@@ -87,7 +89,7 @@ public class UISlider : UIObject {
         UseInputClamp = useInputClamp;
         Filter = filter;
         Value = ApplyFilter(value);
-        Value = Mathf.Clamp(Value, Min, Max);
+        Value = Math.Clamp(Value, Min, Max);
 
         RegisterTick();
         UpdateVisual(true);
@@ -117,6 +119,10 @@ public class UISlider : UIObject {
             return Value;
         }
 
+        if(!UseInputClamp) {
+            return value;
+        }
+
         if(value < min) {
             return min;
         }
@@ -139,7 +145,7 @@ public class UISlider : UIObject {
         changeSeq?.Kill();
 
         float t = Normalize();
-        float changeAlpha = Mathf.Abs(DefaultValue - Value) > 0.001f ? 1f : 0f;
+        float changeAlpha = Math.Abs(DefaultValue - Value) > 0.001f ? 1f : 0f;
 
         if(noAnimate) {
             Vector2 fra = FillRect.anchorMax;

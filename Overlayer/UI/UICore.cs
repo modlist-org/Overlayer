@@ -35,9 +35,9 @@ public enum OriginalMenuState {
 }
 
 public static class UICore {
-    private static GameObject canvasObj;
-    private static Canvas canvas;
-    private static CanvasScaler canvasScaler;
+    public static GameObject CanvasObj;
+    public static Canvas Canvas;
+    public static CanvasScaler CanvasScaler;
 
     public static readonly Dictionary<int, RectTransform> Pages = [];
     public static int CurrentMenuState = (int)OriginalMenuState.Overlayer;
@@ -47,26 +47,26 @@ public static class UICore {
     private static Action<TranslationFailState> _onRefresh;
 
     public static void Initialize() {
-        canvasObj = new GameObject("OverlayerUICanvas");
-        canvasObj.transform.SetParent(MainCore.Root.transform, false);
-        canvasObj.SetActive(false);
+        CanvasObj = new GameObject("OverlayerUICanvas");
+        CanvasObj.transform.SetParent(MainCore.Root.transform, false);
+        CanvasObj.SetActive(false);
 
-        canvas = canvasObj.AddComponent<Canvas>();
-        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        canvas.sortingOrder = 32767;
+        Canvas = CanvasObj.AddComponent<Canvas>();
+        Canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        Canvas.sortingOrder = 32767;
 
-        canvasScaler = canvasObj.AddComponent<CanvasScaler>();
-        canvasScaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        CanvasScaler = CanvasObj.AddComponent<CanvasScaler>();
+        CanvasScaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
         //canvasScaler.referenceResolution = new(1920, 1080);
         PanelScale = MainCore.Conf.UIScale;
-        canvasScaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
-        canvasScaler.matchWidthOrHeight = 0.5f;
+        CanvasScaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+        CanvasScaler.matchWidthOrHeight = 0.5f;
 
-        canvasObj.AddComponent<GraphicRaycaster>();
+        CanvasObj.AddComponent<GraphicRaycaster>();
 
         CreatePanel();
-        ResizeHandle.CreateResizeHandles(Panel, canvasObj.GetComponent<RectTransform>());
-        Tooltip.Initialize(canvasObj.transform);
+        ResizeHandle.CreateResizeHandles(Panel, CanvasObj.GetComponent<RectTransform>());
+        Tooltip.Initialize(CanvasObj.transform);
 
         _onPageSettings = state => {
             if(state == TranslationFailState.Success) {
@@ -220,19 +220,19 @@ public static class UICore {
         get;
         set {
             field = value;
-            canvasScaler.referenceResolution =
+            CanvasScaler.referenceResolution =
                 new Vector2(ReferenceResolution.x, ReferenceResolution.y) / field;
         }
     } = 1f;
 
     public static float PanelRatio {
-        get => canvasScaler.matchWidthOrHeight;
-        set => canvasScaler.matchWidthOrHeight = value;
+        get => CanvasScaler.matchWidthOrHeight;
+        set => CanvasScaler.matchWidthOrHeight = value;
     }
 
     private static void CreatePanel() {
         GameObject panel = new("Panel");
-        panel.transform.SetParent(canvasObj.transform, false);
+        panel.transform.SetParent(CanvasObj.transform, false);
 
         {
             var image = panel.AddComponent<Image>();
@@ -537,12 +537,12 @@ public static class UICore {
     public static Vector2 LastPanelSize;
 
     public static Vector2 DefaultPanelSize => new(
-        Mathf.Min(1280f / MainCore.Conf.UIScale, Screen.width / MainCore.Conf.UIScale),
-        Mathf.Min(720f / MainCore.Conf.UIScale, Screen.height / MainCore.Conf.UIScale)
+        Math.Min(1280f / MainCore.Conf.UIScale, Screen.width / MainCore.Conf.UIScale),
+        Math.Min(720f / MainCore.Conf.UIScale, Screen.height / MainCore.Conf.UIScale)
     );
 
     public static void HandleUpdate() {
-        if(canvasObj == null) {
+        if(CanvasObj == null) {
             return;
         }
 
@@ -633,7 +633,7 @@ public static class UICore {
             Panel.anchoredPosition = LastPanelPosition;
             Panel.sizeDelta = LastPanelSize;
 
-            canvasObj.SetActive(true);
+            CanvasObj.SetActive(true);
             return;
         }
 
@@ -642,7 +642,7 @@ public static class UICore {
         Panel.anchoredPosition = startPos;
         Panel.sizeDelta = LastPanelSize;
 
-        canvasObj.SetActive(true);
+        CanvasObj.SetActive(true);
 
         panelTweener = Panel.GTAnchorPos(LastPanelPosition, 0.1f)
             .SetEasing(Easing.OutExpo);
@@ -682,7 +682,7 @@ public static class UICore {
         }
 
         if(noAnimate) {
-            canvasObj.SetActive(false);
+            CanvasObj.SetActive(false);
             return;
         }
 
@@ -691,7 +691,7 @@ public static class UICore {
         panelTweener = Panel
             .GTAnchorPos(targetPos, 0.1f)
             .SetEasing(Easing.OutExpo)
-            .OnComplete(() => canvasObj.SetActive(false));
+            .OnComplete(() => CanvasObj.SetActive(false));
         MainCore.TC.Play(panelTweener);
     }
 
@@ -776,7 +776,7 @@ public static class UICore {
         MainCore.Tr.OnLoadEnd -= _onPageSettings;
         MainCore.Tr.OnLoadEnd -= _onRefresh;
         Tooltip.Dispose();
-        UnityEngine.Object.Destroy(canvasObj);
-        canvasObj = null;
+        UnityEngine.Object.Destroy(CanvasObj);
+        CanvasObj = null;
     }
 }

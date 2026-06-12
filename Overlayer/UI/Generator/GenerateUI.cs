@@ -10,9 +10,10 @@ using static UnityEngine.EventSystems.PointerEventData;
 using GTweens.Tweens;
 using GTweens.Easings;
 using GTweens.Builders;
-using Overlayer.Tween;
 using Overlayer.Compat.OVC;
 using GTweenExtensions = GTweens.Extensions.GTweenExtensions;
+using System.Collections;
+
 
 #if ML && IL2CPP
 using Il2CppTMPro;
@@ -178,6 +179,9 @@ public static class GenerateUI {
         GameObject inputObj = new("ValueInput");
         inputObj.transform.SetParent(rect, false);
 
+        CanvasGroup inputCanvasGroup = inputObj.AddComponent<CanvasGroup>();
+        inputCanvasGroup.blocksRaycasts = false;
+
         RectTransform inputRect = inputObj.AddComponent<RectTransform>();
         inputRect.anchorMin = Vector2.zero;
         inputRect.anchorMax = Vector2.one;
@@ -223,20 +227,14 @@ public static class GenerateUI {
 
         float Apply(float v) {
             v = filter != null ? filter(v) : v;
-            return Mathf.Clamp(v, min, max);
-        }
-
-        void SetFromMouse() {
-            Vector2 local = rect.InverseTransformPoint(OVC_Input.MousePosition);
-            float width = rect.rect.width;
-
-            float t = Mathf.Clamp01((local.x + (width * 0.5f)) / width);
-            float v = Mathf.Lerp(min, max, t);
-
-            slider.Set(Apply(v));
+            return Math.Clamp(v, min, max);
         }
 
         bool isDragging = false;
+        float cachedValue = 0f;
+        Vector2Int resetPos = Vector2Int.zero;
+        Vector2 previousMousePos = Vector2.zero;
+        bool justWarped = false;
 
         UnityUtils.AddEvents(trigger,
             (EventTriggerType.BeginDrag, (e) => {
@@ -244,11 +242,45 @@ public static class GenerateUI {
                     return;
                 }
                 isDragging = true;
-                SetFromMouse();
+                cachedValue = slider.Value;
+
+                resetPos = Vector2Int.RoundToInt(OVC_Input.OSMousePosition);
+                previousMousePos = OVC_Input.MousePosition;
+                justWarped = false;
             }),
             (EventTriggerType.Drag, (e) => {
                 if(isDragging && OVC_Input.GetMouseButton(0)) {
-                    SetFromMouse();
+                    Vector2 currentMousePos = OVC_Input.MousePosition;
+                    Vector2 mousePixelDelta = currentMousePos - previousMousePos;
+                    previousMousePos = currentMousePos;
+
+                    if(justWarped) {
+                        mousePixelDelta = Vector2.zero;
+                        justWarped = false;
+                    }
+
+                    float finalPixelWidth = inputRect.rect.width * UICore.Canvas.scaleFactor;
+                    cachedValue += mousePixelDelta.x * (slider.Max - slider.Min) * MainCore.Conf.SliderSensitivity / finalPixelWidth;
+                    cachedValue = Math.Clamp(cachedValue, min, max);
+                    slider.Set(Apply(cachedValue));
+
+                    Cursor.visible = false;
+
+                    Vector2Int currentOSPos = OVC_Input.OSMousePosition;
+                    int screenWidth = Screen.currentResolution.width;
+                    int padding = 5;
+
+                    if(currentOSPos.x <= padding) {
+                        currentOSPos.x = screenWidth - padding - 1;
+                        OVC_Input.OSMousePosition = new(currentOSPos.x, currentOSPos.y);
+                        previousMousePos = new(Screen.width - padding - 1, currentMousePos.y);
+                        justWarped = true;
+                    } else if(currentOSPos.x >= screenWidth - padding) {
+                        currentOSPos.x = padding + 1;
+                        OVC_Input.OSMousePosition = new(currentOSPos.x, currentOSPos.y);
+                        previousMousePos = new(padding + 1, currentMousePos.y);
+                        justWarped = true;
+                    }
                 } else {
                     isDragging = false;
                 }
@@ -257,13 +289,34 @@ public static class GenerateUI {
                 if(isDragging) {
                     isDragging = false;
                     slider.OnComplete?.Invoke(slider.Value);
+
+                    OVC_Input.OSMousePosition = resetPos;
+                    Cursor.visible = true;
                 }
             }),
             (EventTriggerType.PointerUp, (e) => {
                 if(isDragging) {
-                    isDragging = false;
-                    slider.OnComplete?.Invoke(slider.Value);
+                    return;
                 }
+
+#pragma warning disable IDE0019
+                var ped =
+#pragma warning restore IDE0019
+#if ML && IL2CPP                
+                e.TryCast<PointerEventData>();
+#else
+                e as PointerEventData;
+#endif
+                if(ped != null && ped.button != InputButton.Left) {
+                    return;
+                }
+
+                if(EventSystem.current) {
+                    EventSystem.current.SetSelectedGameObject(null);
+                }
+
+                inputField.Select();
+                inputField.ActivateInputField();
             })
         );
 

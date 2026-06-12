@@ -1,4 +1,6 @@
-﻿using System.Reflection;
+﻿using Overlayer.Compat.OVC.OS;
+using Overlayer.Compat.OVC.OS.Impl;
+using System.Reflection;
 using UnityEngine;
 
 namespace Overlayer.Compat.OVC;
@@ -22,9 +24,10 @@ namespace Overlayer.Compat.OVC;
 public static class OVC_Input {
     private static Type t_Keyboard, t_Key, t_ButtonControl, t_Mouse, t_Pointer;
     private static PropertyInfo p_kbCurrent, p_kbIndexer, p_btnIsPressed, p_btnWasPressed, p_btnWasReleased;
-    private static PropertyInfo p_mouseCurrent, p_mousePosition, p_mouseScroll;
+    private static PropertyInfo p_mouseCurrent, p_mousePosition, p_mouseScroll, p_mouseDelta;
     private static PropertyInfo p_leftBtn, p_rightBtn, p_middleBtn;
     private static MethodInfo m_ReadV2;
+    private static OVC_OSAPI _osAPI;
     private static bool _initialized;
 
     private static void EnsureInitialized() {
@@ -53,9 +56,29 @@ public static class OVC_Input {
             p_middleBtn = t_Mouse.GetProperty("middleButton");
             p_mouseScroll = t_Mouse.GetProperty("scroll");
             p_mousePosition = t_Pointer.GetProperty("position");
+            p_mouseDelta = t_Pointer.GetProperty("delta");
             m_ReadV2 = t_Pointer.Assembly.GetType("UnityEngine.InputSystem.InputControl`1")
                 .MakeGenericType(typeof(Vector2)).GetMethod("ReadValue");
         }
+
+        switch(Application.platform) {
+            case RuntimePlatform.WindowsPlayer:
+            case RuntimePlatform.WindowsEditor:
+                _osAPI = new OVC_Win();
+                break;
+            case RuntimePlatform.LinuxPlayer:
+            case RuntimePlatform.LinuxEditor:
+                _osAPI = new OVC_Linux();
+                break;
+            case RuntimePlatform.OSXPlayer:
+            case RuntimePlatform.OSXEditor:
+                _osAPI = new OVC_Mac();
+                break;
+            default:
+                _osAPI = null;
+                break;
+        }
+
         _initialized = true;
     }
 
@@ -96,6 +119,26 @@ public static class OVC_Input {
                 try { return (Vector2)m_ReadV2.Invoke(p_mousePosition.GetValue(p_mouseCurrent.GetValue(null)), null); } catch { return Vector2.zero; }
             }
             return Input.mousePosition;
+        }
+    }
+
+    public static Vector2Int OSMousePosition {
+        get {
+            EnsureInitialized();
+            if(_osAPI == null) {
+                return Vector2Int.zero;
+            }
+
+            Vector2Int nativePos = _osAPI.GetCursorPosition();
+            return new Vector2Int(nativePos.x, nativePos.y);
+        }
+        set {
+            EnsureInitialized();
+            if(_osAPI == null) {
+                return;
+            }
+
+            _osAPI.SetCursorPosition(value.x, value.y);
         }
     }
 

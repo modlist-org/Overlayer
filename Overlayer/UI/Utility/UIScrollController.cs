@@ -55,7 +55,7 @@ public class UIScrollController
     private void HandleWheel() {
         float wheel = OVC_Input.MouseScrollDelta.y;
 
-        if(Mathf.Abs(wheel) <= 0.0001f) {
+        if(Math.Abs(wheel) <= 0.0001f) {
             return;
         }
 
@@ -80,7 +80,7 @@ public class UIScrollController
         float contentHeight = content.rect.height;
         float viewportHeight = viewport.rect.height;
 
-        float maxOffset = Mathf.Max(0f, contentHeight - viewportHeight);
+        float maxOffset = Math.Max(0f, contentHeight - viewportHeight);
 
         if(maxOffset <= 0f) {
             return;
@@ -95,8 +95,9 @@ public class UIScrollController
             out Vector2 local
         );
 
-        float normalized = 1f - Mathf.Clamp01(
-            (local.y + (viewportHeight * 0.5f)) / viewportHeight
+        float normalized = 1f - Math.Clamp(
+            (local.y + (viewportHeight * 0.5f)) / viewportHeight,
+            0f, 1f
         );
 
         targetY = normalized * maxOffset;
@@ -107,10 +108,10 @@ public class UIScrollController
     private void AddDelta(float deltaPixels) {
         float contentHeight = content.rect.height;
         float viewportHeight = viewport.rect.height;
-        float maxOffset = Mathf.Max(0f, contentHeight - viewportHeight);
+        float maxOffset = Math.Max(0f, contentHeight - viewportHeight);
 
         targetY += deltaPixels;
-        targetY = Mathf.Clamp(targetY, 0f, maxOffset);
+        targetY = Math.Clamp(targetY, 0f, maxOffset);
     }
 
     private void ApplyTween() {

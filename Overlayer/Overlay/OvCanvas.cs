@@ -85,7 +85,7 @@ public class OvCanvas : ISettingsFile {
         if(RectTransform == null || RectTransform.parent == null) {
             return;
         }
-        index = Mathf.Clamp(index, 0, RectTransform.parent.childCount - 1);
+        index = Math.Clamp(index, 0, RectTransform.parent.childCount - 1);
         RectTransform.SetSiblingIndex(index);
     }
 
