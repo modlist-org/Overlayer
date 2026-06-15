@@ -29,7 +29,7 @@ public sealed class OVC_Linux : OVC_OSAPI {
             IntPtr rootWindow = XDefaultRootWindow(display);
             XWarpPointer(display, IntPtr.Zero, rootWindow, 0, 0, 0, 0, x, y);
             XFlush(display);
-        } catch { } finally {
+        } finally {
             if(display != IntPtr.Zero) {
                 XCloseDisplay(display);
             }
@@ -46,7 +46,7 @@ public sealed class OVC_Linux : OVC_OSAPI {
                 XQueryPointer(display, rootWindow, out _, out _, out int rootX, out int rootY, out _, out _, out _);
                 return new Vector2Int(rootX, rootY);
             }
-        } catch { } finally {
+        } finally {
             if(display != IntPtr.Zero) {
                 XCloseDisplay(display);
             }
