@@ -1,0 +1,32 @@
+root = true
+
+[*.cs]
+# ==========================================
+# 1. 중괄호(Braces) 배치 설정 - K&R 핵심
+# ==========================================
+# 모든 코드 요소(클래스, 메서드, 제어문 등)의 여는 중괄호({)를 같은 줄에 배치
+csharp_new_line_before_open_brace = none
+
+# ==========================================
+# 2. 제어 흐름 키워드 줄바꿈 방지 (Same-line 연속)
+# ==========================================
+# } else { 형태 유지 (else를 다음 줄로 넘기지 않음)
+csharp_new_line_before_else = false
+
+# } catch { 형태 유지
+csharp_new_line_before_catch = false
+
+# } finally { 형태 유지
+csharp_new_line_before_finally = false
+
+# ==========================================
+# 3. 초기화 식 및 쿼리문 줄바꿈 설정
+# ==========================================
+# 객체 초기화자 { Name = "A", Age = 10 } 내부 멤버들을 새 줄로 강제 분리하지 않음
+csharp_new_line_before_members_in_object_initializers = false
+
+# 무명 객체 초기화자 내부 멤버들을 새 줄로 강제 분리하지 않음
+csharp_new_line_before_members_in_anonymous_types = false
+
+# LINQ 쿼리 식의 절(clause)을 무조건 새 줄로 내리지 않음
+csharp_new_line_between_query_expression_clauses = false
