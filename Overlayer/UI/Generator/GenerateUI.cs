@@ -1,4 +1,4 @@
-﻿using Overlayer.Core;
+using Overlayer.Core;
 using Overlayer.Localization;
 using Overlayer.Resource;
 using Overlayer.UI.Objects.Impl;
@@ -733,5 +733,155 @@ public static class GenerateUI {
         );
 
         return parent;
+    }
+
+    public static (RectTransform cardRect, RectTransform contentRect) ComponentCard(
+        Transform parent,
+        string title,
+        bool activeValue,
+        Action<bool> onActiveChanged,
+        Action onDeleteClick,
+        bool showDeleteButton = true
+    ) {
+        GameObject cardGo = new("ComponentCard_" + title);
+        cardGo.transform.SetParent(parent, false);
+
+        RectTransform cardRect = cardGo.AddComponent<RectTransform>();
+        cardRect.anchorMin = new Vector2(0f, 1f);
+        cardRect.anchorMax = new Vector2(1f, 1f);
+        cardRect.pivot = new Vector2(0.5f, 1f);
+        cardRect.sizeDelta = new Vector2(0f, 0f);
+
+        var cardLayout = cardGo.AddComponent<VerticalLayoutGroup>();
+        cardLayout.spacing = 0f;
+        cardLayout.childControlWidth = true;
+        cardLayout.childControlHeight = false;
+        cardLayout.childForceExpandWidth = true;
+        cardLayout.childForceExpandHeight = false;
+
+        var cardFitter = cardGo.AddComponent<ContentSizeFitter>();
+        cardFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+        GameObject headerGo = new("Header");
+        headerGo.transform.SetParent(cardGo.transform, false);
+        RectTransform headerRect = headerGo.AddComponent<RectTransform>();
+
+        var headerLayout = headerGo.AddComponent<LayoutElement>();
+        headerLayout.preferredHeight = 40f;
+        headerLayout.minHeight = 40f;
+
+        var headerImg = headerGo.AddComponent<Image>();
+        headerImg.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P2048);
+        headerImg.type = Image.Type.Sliced;
+        headerImg.color = UIColors.MenuBG;
+
+        var headerHLayout = headerGo.AddComponent<HorizontalLayoutGroup>();
+        headerHLayout.padding = new RectOffset(10, 10, 0, 0);
+        headerHLayout.spacing = 8f;
+        headerHLayout.childControlWidth = false;
+        headerHLayout.childControlHeight = true;
+        headerHLayout.childForceExpandWidth = false;
+        headerHLayout.childForceExpandHeight = false;
+        headerHLayout.childAlignment = TextAnchor.MiddleLeft;
+
+        GameObject checkboxGo = new("Checkbox");
+        checkboxGo.transform.SetParent(headerGo.transform, false);
+        RectTransform checkboxRect = checkboxGo.AddComponent<RectTransform>();
+        checkboxRect.sizeDelta = new Vector2(20f, 20f);
+
+        var checkboxImg = checkboxGo.AddComponent<Image>();
+        checkboxImg.sprite = MainCore.Spr.Get(UISprite.Circle256);
+        checkboxImg.color = activeValue ? UIColors.ObjectActive : new Color(0.2f, 0.2f, 0.2f, 0.8f);
+
+        bool isCurrentActive = activeValue;
+        AddButton(checkboxGo, btn => {
+            if(btn == InputButton.Left) {
+                isCurrentActive = !isCurrentActive;
+                checkboxImg.color = isCurrentActive ? UIColors.ObjectActive : new Color(0.2f, 0.2f, 0.2f, 0.8f);
+                onActiveChanged?.Invoke(isCurrentActive);
+            }
+        });
+
+        GameObject titleTriggerGo = new("TitleTrigger");
+        titleTriggerGo.transform.SetParent(headerGo.transform, false);
+        RectTransform titleTriggerRect = titleTriggerGo.AddComponent<RectTransform>();
+        var titleTriggerLE = titleTriggerGo.AddComponent<LayoutElement>();
+        titleTriggerLE.flexibleWidth = 1f;
+
+        var triggerHLayout = titleTriggerGo.AddComponent<HorizontalLayoutGroup>();
+        triggerHLayout.padding = new RectOffset();
+        triggerHLayout.childControlWidth = true;
+        triggerHLayout.childControlHeight = true;
+        triggerHLayout.childForceExpandWidth = true;
+        triggerHLayout.childForceExpandHeight = true;
+
+        GameObject titleGo = new("TitleText");
+        titleGo.transform.SetParent(titleTriggerGo.transform, false);
+        var titleText = titleGo.AddComponent<TextMeshProUGUI>();
+        titleText.font = MainCore.Res.Get<TMP_FontAsset>(Asset.SUIT_Medium);
+        titleText.fontSize = 20f;
+        titleText.text = title;
+        titleText.color = Color.white;
+        titleText.alignment = TextAlignmentOptions.Left;
+        titleText.verticalAlignment = VerticalAlignmentOptions.Middle;
+        titleText.characterSpacing = -3f;
+
+        if(showDeleteButton) {
+            GameObject deleteGo = new("DeleteBtn");
+            deleteGo.transform.SetParent(headerGo.transform, false);
+            RectTransform deleteRect = deleteGo.AddComponent<RectTransform>();
+            deleteRect.sizeDelta = new Vector2(22f, 22f);
+
+            var deleteImg = deleteGo.AddComponent<Image>();
+            deleteImg.sprite = MainCore.Spr.Get(UISprite.X128);
+            deleteImg.color = UIColors.SoftRed;
+
+            AddOutlineHover(deleteGo, deleteGo.AddComponent<EventTrigger>());
+            AddButton(deleteGo, btn => {
+                if(btn == InputButton.Left) {
+                    onDeleteClick?.Invoke();
+                }
+            });
+        }
+
+        GameObject contentGo = new("Content");
+        contentGo.transform.SetParent(cardGo.transform, false);
+        RectTransform contentRect = contentGo.AddComponent<RectTransform>();
+
+        var contentLayout = contentGo.AddComponent<VerticalLayoutGroup>();
+        contentLayout.padding = new RectOffset(12, 12, 8, 8);
+        contentLayout.spacing = 8f;
+        contentLayout.childControlWidth = true;
+        contentLayout.childControlHeight = false;
+        contentLayout.childForceExpandWidth = true;
+        contentLayout.childForceExpandHeight = false;
+
+        var contentFitter = contentGo.AddComponent<ContentSizeFitter>();
+        contentFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+        var contentImg = contentGo.AddComponent<Image>();
+        contentImg.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P2048);
+        contentImg.type = Image.Type.Sliced;
+        contentImg.color = UIColors.ObjectBG;
+
+        bool isExpanded = true;
+        AddButton(titleTriggerGo, btn => {
+            if(btn == InputButton.Left) {
+                isExpanded = !isExpanded;
+                contentGo.SetActive(isExpanded);
+                LayoutRebuilder.ForceRebuildLayoutImmediate(cardRect);
+
+                Transform p = cardGo.transform.parent;
+                while(p != null) {
+                    var pRect = p.GetComponent<RectTransform>();
+                    if(pRect != null) {
+                        LayoutRebuilder.ForceRebuildLayoutImmediate(pRect);
+                    }
+                    p = p.parent;
+                }
+            }
+        });
+
+        return (cardRect, contentRect);
     }
 }
