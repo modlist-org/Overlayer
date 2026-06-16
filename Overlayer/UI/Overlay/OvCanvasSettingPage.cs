@@ -512,8 +512,8 @@ public class OvCanvasSettingPage : IDisposable {
             if(currentCanvas == null) return;
 
             // Render Canvas Own Settings
-            var nameRow = GenerateUI.Row(inspectorContent, 50f);
-            GenerateUI.Input(nameRow, "", currentCanvas.Config.Name, val => {
+            var canvasNameRow = GenerateUI.Row(inspectorContent, 50f);
+            GenerateUI.Input(canvasNameRow, "", currentCanvas.Config.Name, val => {
                 currentCanvas.Config.Name = val;
                 titleText.text = val;
                 currentCanvas.ApplyConfig();
@@ -521,8 +521,8 @@ public class OvCanvasSettingPage : IDisposable {
                 SaveConfig();
             }, "Canvas Name", null, "canvas_name");
 
-            var raycastRow = GenerateUI.Row(inspectorContent, 50f);
-            GenerateUI.Toggle(raycastRow, true, currentCanvas.Config.CanvasGroupConfig.BlocksRaycasts, val => {
+            var canvasRaycastRow = GenerateUI.Row(inspectorContent, 50f);
+            GenerateUI.Toggle(canvasRaycastRow, true, currentCanvas.Config.CanvasGroupConfig.BlocksRaycasts, val => {
                 currentCanvas.Config.CanvasGroupConfig.BlocksRaycasts = val;
                 currentCanvas.ApplyConfig();
                 SaveConfig();
@@ -542,8 +542,8 @@ public class OvCanvasSettingPage : IDisposable {
             SaveConfig();
         }, "Active", "obj_active");
 
-        var nameRow = GenerateUI.Row(inspectorContent, 50f);
-        var nameInput = GenerateUI.Input(nameRow, "OvObject", obj.Config.Name, val => {
+        var objNameRow = GenerateUI.Row(inspectorContent, 50f);
+        var nameInput = GenerateUI.Input(objNameRow, "OvObject", obj.Config.Name, val => {
             obj.Config.Name = val;
             obj.ApplyConfig();
             RebuildHierarchy();
