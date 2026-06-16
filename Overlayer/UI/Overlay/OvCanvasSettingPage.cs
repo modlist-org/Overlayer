@@ -2,6 +2,7 @@ using Overlayer.Core;
 using Overlayer.Overlay;
 using Overlayer.Resource;
 using Overlayer.UI.Generator;
+using Overlayer.UI.Objects;
 using Overlayer.UI.Utility;
 using UnityEngine;
 using UnityEngine.UI;
@@ -40,6 +41,10 @@ public class OvCanvasSettingPage : IDisposable {
     private RectTransform inspectorContent;
 
     private GTween canvasFadeTween;
+
+    private readonly List<UIObject> hierarchyUiObjects = new();
+    private readonly List<UIObject> inspectorUiObjects = new();
+    private readonly List<UIObject> permanentUiObjects = new();
 
     public OvCanvasSettingPage(Transform parent, Action onBack) {
         onBackAction = onBack;
@@ -150,7 +155,7 @@ public class OvCanvasSettingPage : IDisposable {
         hierVLayout.padding = new RectOffset(10, 10, 10, 10);
         hierVLayout.spacing = 10f;
         hierVLayout.childControlWidth = true;
-        hierVLayout.childControlHeight = false;
+        hierVLayout.childControlHeight = true; // Enabled to honor child heights
         hierVLayout.childForceExpandWidth = true;
         hierVLayout.childForceExpandHeight = false;
 
@@ -162,6 +167,9 @@ public class OvCanvasSettingPage : IDisposable {
         hierTitleTxt.fontSize = 20f;
         hierTitleTxt.text = "Hierarchy";
         hierTitleTxt.color = Color.white;
+        var hierTitleLE = hierTitle.AddComponent<LayoutElement>();
+        hierTitleLE.preferredHeight = 30f;
+        hierTitleLE.minHeight = 30f;
 
         // Hierarchy Scroll View
         GameObject hierViewport = new("HierarchyViewport");
@@ -185,7 +193,7 @@ public class OvCanvasSettingPage : IDisposable {
         var hierContentLayout = hierContent.AddComponent<VerticalLayoutGroup>();
         hierContentLayout.spacing = 6f;
         hierContentLayout.childControlWidth = true;
-        hierContentLayout.childControlHeight = false;
+        hierContentLayout.childControlHeight = true;
         hierContentLayout.childForceExpandWidth = true;
         hierContentLayout.childForceExpandHeight = false;
 
@@ -201,6 +209,8 @@ public class OvCanvasSettingPage : IDisposable {
         var hierCreateLE = hierCreateToolbar.AddComponent<LayoutElement>();
         hierCreateLE.preferredHeight = 36f;
         hierCreateLE.minHeight = 36f;
+        hierCreateLE.flexibleWidth = 0f;
+        hierCreateLE.flexibleHeight = 0f;
 
         var createHLayout = hierCreateToolbar.AddComponent<HorizontalLayoutGroup>();
         createHLayout.spacing = 8f;
@@ -209,7 +219,7 @@ public class OvCanvasSettingPage : IDisposable {
         createHLayout.childForceExpandWidth = true;
         createHLayout.childForceExpandHeight = true;
 
-        GenerateUI.Button(hierCreateToolbar.transform, () => {
+        var btnText = GenerateUI.Button(hierCreateToolbar.transform, () => {
             if(currentCanvas == null) return;
             OvObject newObj = selectedObject != null ? selectedObject.CreateOvObject() : currentCanvas.CreateOvObject();
             newObj.Config.Name = "TextObject";
@@ -221,8 +231,10 @@ public class OvCanvasSettingPage : IDisposable {
             RebuildInspector();
             SaveConfig();
         }, "Text", "btn_hier_add_text");
+        btnText.Rect.offsetMax = Vector2.zero;
+        permanentUiObjects.Add(btnText);
 
-        GenerateUI.Button(hierCreateToolbar.transform, () => {
+        var btnImage = GenerateUI.Button(hierCreateToolbar.transform, () => {
             if(currentCanvas == null) return;
             OvObject newObj = selectedObject != null ? selectedObject.CreateOvObject() : currentCanvas.CreateOvObject();
             newObj.Config.Name = "ImageObject";
@@ -234,8 +246,10 @@ public class OvCanvasSettingPage : IDisposable {
             RebuildInspector();
             SaveConfig();
         }, "Image", "btn_hier_add_image");
+        btnImage.Rect.offsetMax = Vector2.zero;
+        permanentUiObjects.Add(btnImage);
 
-        GenerateUI.Button(hierCreateToolbar.transform, () => {
+        var btnEmpty = GenerateUI.Button(hierCreateToolbar.transform, () => {
             if(currentCanvas == null) return;
             OvObject newObj = selectedObject != null ? selectedObject.CreateOvObject() : currentCanvas.CreateOvObject();
             newObj.Config.Name = "EmptyObject";
@@ -246,6 +260,8 @@ public class OvCanvasSettingPage : IDisposable {
             RebuildInspector();
             SaveConfig();
         }, "Empty", "btn_hier_add_empty");
+        btnEmpty.Rect.offsetMax = Vector2.zero;
+        permanentUiObjects.Add(btnEmpty);
 
 
         // Hierarchy Control Toolbar (Up, Down, Detach, Delete)
@@ -255,6 +271,8 @@ public class OvCanvasSettingPage : IDisposable {
         var hierCtrlLE = hierCtrlToolbar.AddComponent<LayoutElement>();
         hierCtrlLE.preferredHeight = 36f;
         hierCtrlLE.minHeight = 36f;
+        hierCtrlLE.flexibleWidth = 0f;
+        hierCtrlLE.flexibleHeight = 0f;
 
         var ctrlHLayout = hierCtrlToolbar.AddComponent<HorizontalLayoutGroup>();
         ctrlHLayout.spacing = 8f;
@@ -263,33 +281,44 @@ public class OvCanvasSettingPage : IDisposable {
         ctrlHLayout.childForceExpandWidth = true;
         ctrlHLayout.childForceExpandHeight = true;
 
-        GenerateUI.Button(hierCtrlToolbar.transform, () => {
+        var btnUp = GenerateUI.Button(hierCtrlToolbar.transform, () => {
             if(selectedObject == null || currentCanvas == null) return;
             MoveSelectedOrder(-1);
         }, "Up", "btn_hier_up");
+        btnUp.Rect.offsetMax = Vector2.zero;
+        permanentUiObjects.Add(btnUp);
 
-        GenerateUI.Button(hierCtrlToolbar.transform, () => {
+        var btnDown = GenerateUI.Button(hierCtrlToolbar.transform, () => {
             if(selectedObject == null || currentCanvas == null) return;
             MoveSelectedOrder(1);
         }, "Down", "btn_hier_down");
+        btnDown.Rect.offsetMax = Vector2.zero;
+        permanentUiObjects.Add(btnDown);
 
-        GenerateUI.Button(hierCtrlToolbar.transform, () => {
+        var btnDetach = GenerateUI.Button(hierCtrlToolbar.transform, () => {
             if(selectedObject == null || selectedObject.Parent == null) return;
             selectedObject.Detach();
             RebuildHierarchy();
             RebuildInspector();
             SaveConfig();
         }, "Detach", "btn_hier_detach");
+        btnDetach.Rect.offsetMax = Vector2.zero;
+        permanentUiObjects.Add(btnDetach);
 
-        GenerateUI.Button(hierCtrlToolbar.transform, () => {
+        var btnDel = GenerateUI.Button(hierCtrlToolbar.transform, () => {
             if(selectedObject == null) return;
             var toDelete = selectedObject;
             selectedObject = null;
+            if(toDelete.Parent == null) {
+                currentCanvas.Detach(toDelete);
+            }
             toDelete.Dispose();
             RebuildHierarchy();
             RebuildInspector();
             SaveConfig();
         }, "Del", "btn_hier_del");
+        btnDel.Rect.offsetMax = Vector2.zero;
+        permanentUiObjects.Add(btnDel);
 
 
         // ==================== 2. Inspector Column ====================
@@ -308,7 +337,7 @@ public class OvCanvasSettingPage : IDisposable {
         inspVLayout.padding = new RectOffset(10, 10, 10, 10);
         inspVLayout.spacing = 10f;
         inspVLayout.childControlWidth = true;
-        inspVLayout.childControlHeight = false;
+        inspVLayout.childControlHeight = true; // Enabled to honor child heights
         inspVLayout.childForceExpandWidth = true;
         inspVLayout.childForceExpandHeight = false;
 
@@ -320,6 +349,9 @@ public class OvCanvasSettingPage : IDisposable {
         inspTitleTxt.fontSize = 20f;
         inspTitleTxt.text = "Inspector";
         inspTitleTxt.color = Color.white;
+        var inspTitleLE = inspTitle.AddComponent<LayoutElement>();
+        inspTitleLE.preferredHeight = 30f;
+        inspTitleLE.minHeight = 30f;
 
         // Inspector Scroll View
         GameObject inspViewport = new("InspectorViewport");
@@ -343,7 +375,7 @@ public class OvCanvasSettingPage : IDisposable {
         var inspContentLayout = inspContent.AddComponent<VerticalLayoutGroup>();
         inspContentLayout.spacing = 12f;
         inspContentLayout.childControlWidth = true;
-        inspContentLayout.childControlHeight = false;
+        inspContentLayout.childControlHeight = true;
         inspContentLayout.childForceExpandWidth = true;
         inspContentLayout.childForceExpandHeight = false;
 
@@ -415,6 +447,11 @@ public class OvCanvasSettingPage : IDisposable {
     }
 
     private void RebuildHierarchy() {
+        foreach(var obj in hierarchyUiObjects) {
+            obj.Dispose();
+        }
+        hierarchyUiObjects.Clear();
+
         foreach(Transform child in hierarchyContent) {
             UnityEngine.Object.Destroy(child.gameObject);
         }
@@ -434,14 +471,23 @@ public class OvCanvasSettingPage : IDisposable {
     }
 
     private void RenderCanvasRootItem() {
-        var row = GenerateUI.Row(hierarchyContent, 36f);
+        var row = GenerateUI.Row(hierarchyContent, 50f);
+
+        // Add Horizontal Layout to Row to organize indent & button
+        var hLayout = row.gameObject.AddComponent<HorizontalLayoutGroup>();
+        hLayout.childControlWidth = true;
+        hLayout.childControlHeight = true;
+        hLayout.childForceExpandWidth = false;
+        hLayout.childForceExpandHeight = true;
+        hLayout.spacing = 4f;
+        hLayout.padding = new RectOffset(0, 0, 0, 0);
 
         GameObject itemBtn = new("CanvasRootButton");
         itemBtn.transform.SetParent(row, false);
         var itemBtnRect = itemBtn.AddComponent<RectTransform>();
         var itemBtnLE = itemBtn.AddComponent<LayoutElement>();
         itemBtnLE.flexibleWidth = 1f;
-        itemBtnLE.preferredHeight = 36f;
+        itemBtnLE.preferredHeight = 50f;
 
         var btnImg = itemBtn.AddComponent<Image>();
         btnImg.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P2048);
@@ -450,21 +496,31 @@ public class OvCanvasSettingPage : IDisposable {
 
         var tmp = GenerateUI.AddText(itemBtn.transform, true);
         tmp.text = $"Canvas: {currentCanvas.Config.Name}";
-        tmp.fontSize = 18f;
+        tmp.fontSize = 20f;
         tmp.color = Color.white;
         tmp.alignment = TextAlignmentOptions.Left;
         tmp.verticalAlignment = VerticalAlignmentOptions.Middle;
 
         GenerateUI.AddOutlineHover(itemBtn, itemBtn.AddComponent<EventTrigger>());
-        GenerateUI.AddButton(itemBtn, btn => {
+        var triggerBtn = GenerateUI.AddButton(itemBtn, btn => {
             if(btn == InputButton.Left) {
                 SelectObject(null);
             }
         });
+        itemBtnRect.offsetMax = Vector2.zero;
     }
 
     private void RenderHierarchyItem(OvObject obj, int depth) {
         var row = GenerateUI.Row(hierarchyContent, 36f);
+
+        // Add Horizontal Layout to Row to organize indent & button
+        var hLayout = row.gameObject.AddComponent<HorizontalLayoutGroup>();
+        hLayout.childControlWidth = true;
+        hLayout.childControlHeight = true;
+        hLayout.childForceExpandWidth = false;
+        hLayout.childForceExpandHeight = true;
+        hLayout.spacing = 4f;
+        hLayout.padding = new RectOffset(0, 0, 0, 0);
 
         // depth starts at 0, but since we have CanvasRoot, we indent by depth + 1
         GameObject indent = new("Indent");
@@ -492,11 +548,12 @@ public class OvCanvasSettingPage : IDisposable {
         tmp.verticalAlignment = VerticalAlignmentOptions.Middle;
 
         GenerateUI.AddOutlineHover(itemBtn, itemBtn.AddComponent<EventTrigger>());
-        GenerateUI.AddButton(itemBtn, btn => {
+        var triggerBtn = GenerateUI.AddButton(itemBtn, btn => {
             if(btn == InputButton.Left) {
                 SelectObject(obj);
             }
         });
+        itemBtnRect.offsetMax = Vector2.zero;
 
         for(int i = 0; i < obj.Children.Count; i++) {
             RenderHierarchyItem(obj.Children[i], depth + 1);
@@ -504,6 +561,11 @@ public class OvCanvasSettingPage : IDisposable {
     }
 
     private void RebuildInspector() {
+        foreach(var uiObj in inspectorUiObjects) {
+            uiObj.Dispose();
+        }
+        inspectorUiObjects.Clear();
+
         foreach(Transform child in inspectorContent) {
             UnityEngine.Object.Destroy(child.gameObject);
         }
@@ -513,20 +575,24 @@ public class OvCanvasSettingPage : IDisposable {
 
             // Render Canvas Own Settings
             var canvasNameRow = GenerateUI.Row(inspectorContent, 50f);
-            GenerateUI.Input(canvasNameRow, "", currentCanvas.Config.Name, val => {
+            var canvasNameInput = GenerateUI.Input(canvasNameRow, "", currentCanvas.Config.Name, val => {
                 currentCanvas.Config.Name = val;
                 titleText.text = val;
                 currentCanvas.ApplyConfig();
                 RebuildHierarchy(); // Sync Canvas root name instantly
                 SaveConfig();
             }, "Canvas Name", null, "canvas_name");
+            canvasNameInput.Rect.offsetMax = Vector2.zero; // Stretch to fill width
+            inspectorUiObjects.Add(canvasNameInput);
 
-            var canvasRaycastRow = GenerateUI.Row(inspectorContent, 50f);
-            GenerateUI.Toggle(canvasRaycastRow, true, currentCanvas.Config.CanvasGroupConfig.BlocksRaycasts, val => {
+            var raycastRow = GenerateUI.Row(inspectorContent, 50f);
+            var raycastToggle = GenerateUI.Toggle(raycastRow, true, currentCanvas.Config.CanvasGroupConfig.BlocksRaycasts, val => {
                 currentCanvas.Config.CanvasGroupConfig.BlocksRaycasts = val;
                 currentCanvas.ApplyConfig();
                 SaveConfig();
             }, "Blocks Raycasts", "blocks_raycasts");
+            raycastToggle.Rect.offsetMax = Vector2.zero; // Stretch to fill width
+            inspectorUiObjects.Add(raycastToggle);
 
             LayoutRebuilder.ForceRebuildLayoutImmediate(inspectorContent);
             return;
@@ -541,14 +607,18 @@ public class OvCanvasSettingPage : IDisposable {
             obj.ApplyConfig();
             SaveConfig();
         }, "Active", "obj_active");
+        activeToggle.Rect.offsetMax = Vector2.zero;
+        inspectorUiObjects.Add(activeToggle);
 
-        var objNameRow = GenerateUI.Row(inspectorContent, 50f);
-        var nameInput = GenerateUI.Input(objNameRow, "OvObject", obj.Config.Name, val => {
+        var nameRow = GenerateUI.Row(inspectorContent, 50f);
+        var nameInput = GenerateUI.Input(nameRow, "OvObject", obj.Config.Name, val => {
             obj.Config.Name = val;
             obj.ApplyConfig();
             RebuildHierarchy();
             SaveConfig();
         }, "Object Name", null, "obj_name");
+        nameInput.Rect.offsetMax = Vector2.zero;
+        inspectorUiObjects.Add(nameInput);
 
         // 1. RectTransform Card
         var rectCfg = obj.Config.RectTransformConfig;
@@ -557,46 +627,58 @@ public class OvCanvasSettingPage : IDisposable {
         }, null, showDeleteButton: false);
 
         var posRowX = GenerateUI.Row(transContent, 50f);
-        GenerateUI.Slider(posRowX, 0f, -1000f, 1000f, rectCfg.AnchoredPosition.x, "F0", false, null, val => {
+        var sliderPosX = GenerateUI.Slider(posRowX, 0f, -1000f, 1000f, rectCfg.AnchoredPosition.x, "F0", false, null, val => {
             rectCfg.AnchoredPosition = new Vector2(val, rectCfg.AnchoredPosition.y);
             obj.ApplyConfig();
             SaveConfig();
         }, null, "Pos X", "pos_x");
+        sliderPosX.Rect.offsetMax = Vector2.zero;
+        inspectorUiObjects.Add(sliderPosX);
 
         var posRowY = GenerateUI.Row(transContent, 50f);
-        GenerateUI.Slider(posRowY, 0f, -1000f, 1000f, rectCfg.AnchoredPosition.y, "F0", false, null, val => {
+        var sliderPosY = GenerateUI.Slider(posRowY, 0f, -1000f, 1000f, rectCfg.AnchoredPosition.y, "F0", false, null, val => {
             rectCfg.AnchoredPosition = new Vector2(rectCfg.AnchoredPosition.x, val);
             obj.ApplyConfig();
             SaveConfig();
         }, null, "Pos Y", "pos_y");
+        sliderPosY.Rect.offsetMax = Vector2.zero;
+        inspectorUiObjects.Add(sliderPosY);
 
         var sizeRowW = GenerateUI.Row(transContent, 50f);
-        GenerateUI.Slider(sizeRowW, 100f, 10f, 2000f, rectCfg.SizeDelta.x, "F0", false, null, val => {
+        var sliderSizeW = GenerateUI.Slider(sizeRowW, 100f, 10f, 2000f, rectCfg.SizeDelta.x, "F0", false, null, val => {
             rectCfg.SizeDelta = new Vector2(val, rectCfg.SizeDelta.y);
             obj.ApplyConfig();
             SaveConfig();
         }, null, "Width", "size_w");
+        sliderSizeW.Rect.offsetMax = Vector2.zero;
+        inspectorUiObjects.Add(sliderSizeW);
 
         var sizeRowH = GenerateUI.Row(transContent, 50f);
-        GenerateUI.Slider(sizeRowH, 100f, 10f, 2000f, rectCfg.SizeDelta.y, "F0", false, null, val => {
+        var sliderSizeH = GenerateUI.Slider(sizeRowH, 100f, 10f, 2000f, rectCfg.SizeDelta.y, "F0", false, null, val => {
             rectCfg.SizeDelta = new Vector2(rectCfg.SizeDelta.x, val);
             obj.ApplyConfig();
             SaveConfig();
         }, null, "Height", "size_h");
+        sliderSizeH.Rect.offsetMax = Vector2.zero;
+        inspectorUiObjects.Add(sliderSizeH);
 
         var pivRowX = GenerateUI.Row(transContent, 50f);
-        GenerateUI.Slider(pivRowX, 0.5f, 0f, 1f, rectCfg.Pivot.x, "F2", false, null, val => {
+        var sliderPivX = GenerateUI.Slider(pivRowX, 0.5f, 0f, 1f, rectCfg.Pivot.x, "F2", false, null, val => {
             rectCfg.Pivot = new Vector2(val, rectCfg.Pivot.y);
             obj.ApplyConfig();
             SaveConfig();
         }, null, "Pivot X", "piv_x");
+        sliderPivX.Rect.offsetMax = Vector2.zero;
+        inspectorUiObjects.Add(sliderPivX);
 
         var pivRowY = GenerateUI.Row(transContent, 50f);
-        GenerateUI.Slider(pivRowY, 0.5f, 0f, 1f, rectCfg.Pivot.y, "F2", false, null, val => {
+        var sliderPivY = GenerateUI.Slider(pivRowY, 0.5f, 0f, 1f, rectCfg.Pivot.y, "F2", false, null, val => {
             rectCfg.Pivot = new Vector2(rectCfg.Pivot.x, val);
             obj.ApplyConfig();
             SaveConfig();
         }, null, "Pivot Y", "piv_y");
+        sliderPivY.Rect.offsetMax = Vector2.zero;
+        inspectorUiObjects.Add(sliderPivY);
 
         // 2. Text Component Card
         if(obj.Config.TextConfig != null) {
@@ -615,58 +697,70 @@ public class OvCanvasSettingPage : IDisposable {
             });
 
             var txtValRow = GenerateUI.Row(cardContent, 50f);
-            GenerateUI.Input(txtValRow, "", textCfg.Text, val => {
+            var txtInput = GenerateUI.Input(txtValRow, "", textCfg.Text, val => {
                 textCfg.Text = val;
                 obj.ApplyConfig();
                 SaveConfig();
             }, "Text Content", null, "txt_content");
+            txtInput.Rect.offsetMax = Vector2.zero;
+            inspectorUiObjects.Add(txtInput);
 
             var txtSizeRow = GenerateUI.Row(cardContent, 50f);
-            GenerateUI.Slider(txtSizeRow, 24f, 8f, 120f, textCfg.FontSize, "F0", false, null, val => {
+            var txtSizeSlider = GenerateUI.Slider(txtSizeRow, 24f, 8f, 120f, textCfg.FontSize, "F0", false, null, val => {
                 textCfg.FontSize = val;
                 obj.ApplyConfig();
                 SaveConfig();
             }, null, "Font Size", "txt_size");
+            txtSizeSlider.Rect.offsetMax = Vector2.zero;
+            inspectorUiObjects.Add(txtSizeSlider);
 
             var rRow = GenerateUI.Row(cardContent, 50f);
             Color curColR = textCfg.Color;
-            GenerateUI.Slider(rRow, 1f, 0f, 1f, curColR.r, "F2", false, null, val => {
+            var txtColRSlider = GenerateUI.Slider(rRow, 1f, 0f, 1f, curColR.r, "F2", false, null, val => {
                 Color c = textCfg.Color;
                 c.r = val;
                 textCfg.Color = c;
                 obj.ApplyConfig();
                 SaveConfig();
             }, null, "Color R", "txt_col_r");
+            txtColRSlider.Rect.offsetMax = Vector2.zero;
+            inspectorUiObjects.Add(txtColRSlider);
 
             var gRow = GenerateUI.Row(cardContent, 50f);
             Color curColG = textCfg.Color;
-            GenerateUI.Slider(gRow, 1f, 0f, 1f, curColG.g, "F2", false, null, val => {
+            var txtColGSlider = GenerateUI.Slider(gRow, 1f, 0f, 1f, curColG.g, "F2", false, null, val => {
                 Color c = textCfg.Color;
                 c.g = val;
                 textCfg.Color = c;
                 obj.ApplyConfig();
                 SaveConfig();
             }, null, "Color G", "txt_col_g");
+            txtColGSlider.Rect.offsetMax = Vector2.zero;
+            inspectorUiObjects.Add(txtColGSlider);
 
             var bRow = GenerateUI.Row(cardContent, 50f);
             Color curColB = textCfg.Color;
-            GenerateUI.Slider(bRow, 1f, 0f, 1f, curColB.b, "F2", false, null, val => {
+            var txtColBSlider = GenerateUI.Slider(bRow, 1f, 0f, 1f, curColB.b, "F2", false, null, val => {
                 Color c = textCfg.Color;
                 c.b = val;
                 textCfg.Color = c;
                 obj.ApplyConfig();
                 SaveConfig();
             }, null, "Color B", "txt_col_b");
+            txtColBSlider.Rect.offsetMax = Vector2.zero;
+            inspectorUiObjects.Add(txtColBSlider);
 
             var aRow = GenerateUI.Row(cardContent, 50f);
             Color curColA = textCfg.Color;
-            GenerateUI.Slider(aRow, 1f, 0f, 1f, curColA.a, "F2", false, null, val => {
+            var txtColASlider = GenerateUI.Slider(aRow, 1f, 0f, 1f, curColA.a, "F2", false, null, val => {
                 Color c = textCfg.Color;
                 c.a = val;
                 textCfg.Color = c;
                 obj.ApplyConfig();
                 SaveConfig();
             }, null, "Color A", "txt_col_a");
+            txtColASlider.Rect.offsetMax = Vector2.zero;
+            inspectorUiObjects.Add(txtColASlider);
         }
 
         // 3. Image Component Card
@@ -686,32 +780,40 @@ public class OvCanvasSettingPage : IDisposable {
             });
 
             var rRow = GenerateUI.Row(cardContent, 50f);
-            GenerateUI.Slider(rRow, 1f, 0f, 1f, imgCfg.Color.r, "F2", false, null, val => {
+            var imgColRSlider = GenerateUI.Slider(rRow, 1f, 0f, 1f, imgCfg.Color.r, "F2", false, null, val => {
                 imgCfg.Color = new Color(val, imgCfg.Color.g, imgCfg.Color.b, imgCfg.Color.a);
                 obj.ApplyConfig();
                 SaveConfig();
             }, null, "Color R", "img_col_r");
+            imgColRSlider.Rect.offsetMax = Vector2.zero;
+            inspectorUiObjects.Add(imgColRSlider);
 
             var gRow = GenerateUI.Row(cardContent, 50f);
-            GenerateUI.Slider(gRow, 1f, 0f, 1f, imgCfg.Color.g, "F2", false, null, val => {
+            var imgColGSlider = GenerateUI.Slider(gRow, 1f, 0f, 1f, imgCfg.Color.g, "F2", false, null, val => {
                 imgCfg.Color = new Color(imgCfg.Color.r, val, imgCfg.Color.b, imgCfg.Color.a);
                 obj.ApplyConfig();
                 SaveConfig();
             }, null, "Color G", "img_col_g");
+            imgColGSlider.Rect.offsetMax = Vector2.zero;
+            inspectorUiObjects.Add(imgColGSlider);
 
             var bRow = GenerateUI.Row(cardContent, 50f);
-            GenerateUI.Slider(bRow, 1f, 0f, 1f, imgCfg.Color.b, "F2", false, null, val => {
+            var imgColBSlider = GenerateUI.Slider(bRow, 1f, 0f, 1f, imgCfg.Color.b, "F2", false, null, val => {
                 imgCfg.Color = new Color(imgCfg.Color.r, imgCfg.Color.g, val, imgCfg.Color.a);
                 obj.ApplyConfig();
                 SaveConfig();
             }, null, "Color B", "img_col_b");
+            imgColBSlider.Rect.offsetMax = Vector2.zero;
+            inspectorUiObjects.Add(imgColBSlider);
 
             var aRow = GenerateUI.Row(cardContent, 50f);
-            GenerateUI.Slider(aRow, 1f, 0f, 1f, imgCfg.Color.a, "F2", false, null, val => {
+            var imgColASlider = GenerateUI.Slider(aRow, 1f, 0f, 1f, imgCfg.Color.a, "F2", false, null, val => {
                 imgCfg.Color = new Color(imgCfg.Color.r, imgCfg.Color.g, imgCfg.Color.b, val);
                 obj.ApplyConfig();
                 SaveConfig();
             }, null, "Color A", "img_col_a");
+            imgColASlider.Rect.offsetMax = Vector2.zero;
+            inspectorUiObjects.Add(imgColASlider);
         }
 
         // 4. Shadow Component Card
@@ -730,18 +832,22 @@ public class OvCanvasSettingPage : IDisposable {
             });
 
             var distRowX = GenerateUI.Row(cardContent, 50f);
-            GenerateUI.Slider(distRowX, 2f, -50f, 50f, shadCfg.EffectDistance.x, "F0", false, null, val => {
+            var shadDistXSlider = GenerateUI.Slider(distRowX, 2f, -50f, 50f, shadCfg.EffectDistance.x, "F0", false, null, val => {
                 shadCfg.EffectDistance = new Vector2(val, shadCfg.EffectDistance.y);
                 obj.ApplyConfig();
                 SaveConfig();
             }, null, "Distance X", "shad_dist_x");
+            shadDistXSlider.Rect.offsetMax = Vector2.zero;
+            inspectorUiObjects.Add(shadDistXSlider);
 
             var distRowY = GenerateUI.Row(cardContent, 50f);
-            GenerateUI.Slider(distRowY, -2f, -50f, 50f, shadCfg.EffectDistance.y, "F0", false, null, val => {
+            var shadDistYSlider = GenerateUI.Slider(distRowY, -2f, -50f, 50f, shadCfg.EffectDistance.y, "F0", false, null, val => {
                 shadCfg.EffectDistance = new Vector2(shadCfg.EffectDistance.x, val);
                 obj.ApplyConfig();
                 SaveConfig();
             }, null, "Distance Y", "shad_dist_y");
+            shadDistYSlider.Rect.offsetMax = Vector2.zero;
+            inspectorUiObjects.Add(shadDistYSlider);
         }
 
         // 5. Outline Component Card
@@ -760,18 +866,22 @@ public class OvCanvasSettingPage : IDisposable {
             });
 
             var distRowX = GenerateUI.Row(cardContent, 50f);
-            GenerateUI.Slider(distRowX, 2f, -50f, 50f, outCfg.EffectDistance.x, "F0", false, null, val => {
+            var outDistXSlider = GenerateUI.Slider(distRowX, 2f, -50f, 50f, outCfg.EffectDistance.x, "F0", false, null, val => {
                 outCfg.EffectDistance = new Vector2(val, outCfg.EffectDistance.y);
                 obj.ApplyConfig();
                 SaveConfig();
             }, null, "Distance X", "out_dist_x");
+            outDistXSlider.Rect.offsetMax = Vector2.zero;
+            inspectorUiObjects.Add(outDistXSlider);
 
             var distRowY = GenerateUI.Row(cardContent, 50f);
-            GenerateUI.Slider(distRowY, -2f, -50f, 50f, outCfg.EffectDistance.y, "F0", false, null, val => {
+            var outDistYSlider = GenerateUI.Slider(distRowY, -2f, -50f, 50f, outCfg.EffectDistance.y, "F0", false, null, val => {
                 outCfg.EffectDistance = new Vector2(outCfg.EffectDistance.x, val);
                 obj.ApplyConfig();
                 SaveConfig();
             }, null, "Distance Y", "out_dist_y");
+            outDistYSlider.Rect.offsetMax = Vector2.zero;
+            inspectorUiObjects.Add(outDistYSlider);
         }
 
         // 6. Add Component Dropdown
@@ -783,7 +893,7 @@ public class OvCanvasSettingPage : IDisposable {
 
         if(addableList.Count > 1) {
             var addRow = GenerateUI.Row(inspectorContent, 50f);
-            GenerateUI.DropDown(
+            var addDropdown = GenerateUI.DropDown(
                 addRow,
                 "Add Component...",
                 "Add Component...",
@@ -809,6 +919,8 @@ public class OvCanvasSettingPage : IDisposable {
                 },
                 "add_component_dd"
             );
+            addDropdown.Rect.offsetMax = Vector2.zero;
+            inspectorUiObjects.Add(addDropdown);
         }
 
         LayoutRebuilder.ForceRebuildLayoutImmediate(inspectorContent);
@@ -830,6 +942,21 @@ public class OvCanvasSettingPage : IDisposable {
 
     public void Dispose() {
         canvasFadeTween?.Kill();
+
+        foreach(var obj in hierarchyUiObjects) {
+            obj.Dispose();
+        }
+        hierarchyUiObjects.Clear();
+
+        foreach(var obj in inspectorUiObjects) {
+            obj.Dispose();
+        }
+        inspectorUiObjects.Clear();
+
+        foreach(var obj in permanentUiObjects) {
+            obj.Dispose();
+        }
+        permanentUiObjects.Clear();
 
         if(GameObject != null) {
             UnityEngine.Object.Destroy(GameObject);

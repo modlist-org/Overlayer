@@ -1,4 +1,4 @@
-﻿using GTweens.Builders;
+using GTweens.Builders;
 using GTweens.Easings;
 using GTweens.Extensions;
 using GTweens.Tweens;
@@ -31,6 +31,12 @@ public class UIInputCore {
         OnChanged = onChanged;
         OnEndEdit = onEndEdit;
 
+        SetupInputField();
+        
+        if (InputField.text != (value ?? string.Empty)) {
+            InputField.text = value ?? string.Empty;
+        }
+
         InputField.onValueChanged.AddListener(
 #if ML && IL2CPP
             DelegateSupport.ConvertDelegate<UnityEngine.Events.UnityAction<string>>(new Action<string>(
@@ -50,8 +56,6 @@ public class UIInputCore {
             ))
 #endif
         );
-
-        SetupInputField();
     }
 
     public void OnTick() {

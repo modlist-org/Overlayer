@@ -1,4 +1,4 @@
-﻿using Overlayer.Core;
+using Overlayer.Core;
 using Overlayer.Localization;
 using Overlayer.Overlay;
 using Overlayer.Resource;
@@ -70,7 +70,7 @@ internal static class PageOverlayer {
         grid.AddComponent<RectTransform>();
         GridLayoutGroup layout = grid.AddComponent<GridLayoutGroup>();
         layout.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
-        layout.constraintCount = 3;
+        layout.constraintCount = 2;
         layout.spacing = new Vector2(18, 18);
         layout.padding = new() {
             left = 18,

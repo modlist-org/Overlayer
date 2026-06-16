@@ -1,4 +1,4 @@
-﻿using Overlayer.Core;
+using Overlayer.Core;
 using Overlayer.Resource;
 using UnityEngine;
 using UnityEngine.UI;
@@ -116,5 +116,11 @@ public class UIToggle : UIObject {
                 ).SetEasing(Easing.OutSine)
             ).Build();
         MainCore.TC.Play(changeSeq);
+    }
+
+    public override void Dispose() {
+        base.Dispose();
+        circleSeq?.Kill();
+        changeSeq?.Kill();
     }
 }

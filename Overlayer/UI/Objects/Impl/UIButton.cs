@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using UnityEngine.UI;
 using GTweens.Tweens;
 using Overlayer.Tween;
@@ -72,5 +72,10 @@ public class UIButton : UIObject {
             .GTColor(UIColors.ObjectButton, 0.2f)
             .SetEasing(Easing.OutSine);
         MainCore.TC.Play(hoverTween);
+    }
+
+    public override void Dispose() {
+        base.Dispose();
+        hoverTween?.Kill();
     }
 }

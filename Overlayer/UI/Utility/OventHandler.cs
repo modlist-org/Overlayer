@@ -1,4 +1,4 @@
-﻿using Overlayer.Compat.OVC;
+using Overlayer.Compat.OVC;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -20,28 +20,35 @@ public class OventHandler
 {
     private RectTransform _rectTransform;
     public Action<PointerEventData.InputButton> OnClick;
+    private bool _isHovered;
 
     void Awake() => _rectTransform = GetComponent<RectTransform>();
 
-    void Update() {
-        for(int i = 0; i < 3; i++) {
-            if(OVC_Input.GetMouseButtonDown(i)) {
-                if(IsMouseOver()) {
-                    OnClick?.Invoke((PointerEventData.InputButton)i);
-                }
-            }
+    void Start() {
+        var trigger = GetComponent<EventTrigger>();
+        if(trigger == null) {
+            trigger = gameObject.AddComponent<EventTrigger>();
         }
+
+        UnityUtils.AddEvents(trigger,
+            (EventTriggerType.PointerEnter, () => _isHovered = true),
+            (EventTriggerType.PointerExit, () => _isHovered = false)
+        );
     }
 
-    private bool IsMouseOver() {
-        Vector2 localPoint;
-        RectTransformUtility.ScreenPointToLocalPointInRectangle(
-            _rectTransform,
-            OVC_Input.MousePosition,
-            null,
-            out localPoint
-        );
+    void OnDisable() {
+        _isHovered = false;
+    }
 
-        return _rectTransform.rect.Contains(localPoint);
+    void Update() {
+        if(!_isHovered) {
+            return;
+        }
+
+        for(int i = 0; i < 3; i++) {
+            if(OVC_Input.GetMouseButtonDown(i)) {
+                OnClick?.Invoke((PointerEventData.InputButton)i);
+            }
+        }
     }
 }

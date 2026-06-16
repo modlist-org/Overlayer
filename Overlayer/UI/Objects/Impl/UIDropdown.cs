@@ -1,4 +1,4 @@
-﻿using Overlayer.Core;
+using Overlayer.Core;
 using Overlayer.Resource;
 using Overlayer.UI.Generator;
 using Overlayer.UI.Utility;
@@ -38,6 +38,8 @@ public class UIDropDown<T> : UIObject {
     public Action OnLayoutChanged;
 
     private GTween triangleSeq, changeSeq;
+    public GTween LayoutSeq { get; set; }
+    private readonly List<GTween> itemHoverTweens = new();
 
     public UIDropDown(
         string id,
@@ -169,6 +171,11 @@ public class UIDropDown<T> : UIObject {
             return;
         }
 
+        foreach(var tween in itemHoverTweens) {
+            tween?.Kill();
+        }
+        itemHoverTweens.Clear();
+
         for(int i = ListObject.transform.childCount - 1; i >= 0; i--) {
             Transform child = ListObject.transform.GetChild(i);
             if(child != null && !child.Equals(null)) {
@@ -198,17 +205,21 @@ public class UIDropDown<T> : UIObject {
             UnityUtils.AddEvents(trigger,
                 (EventTriggerType.PointerEnter, (e) => {
                     hoverSeq?.Kill();
+                    itemHoverTweens.Remove(hoverSeq);
                     hoverSeq = GTweenSequenceBuilder.New()
                         .Append(rowImage.GTColor(UIColors.ObjectActive, 0.12f).SetEasing(Easing.OutSine))
                         .Build();
+                    itemHoverTweens.Add(hoverSeq);
                     MainCore.TC.Play(hoverSeq);
                 }
             ),
                 (EventTriggerType.PointerExit, (e) => {
                     hoverSeq?.Kill();
+                    itemHoverTweens.Remove(hoverSeq);
                     hoverSeq = GTweenSequenceBuilder.New()
                         .Append(rowImage.GTColor(Color.clear, 0.12f).SetEasing(Easing.OutSine))
                         .Build();
+                    itemHoverTweens.Add(hoverSeq);
                     MainCore.TC.Play(hoverSeq);
                 }
             ),
@@ -237,5 +248,16 @@ public class UIDropDown<T> : UIObject {
     public override void SetBlocked(bool blocked, bool noAnimate = false) {
         base.SetBlocked(blocked, noAnimate);
         SetExpanded(false);
+    }
+
+    public override void Dispose() {
+        base.Dispose();
+        triangleSeq?.Kill();
+        changeSeq?.Kill();
+        LayoutSeq?.Kill();
+        foreach(var tween in itemHoverTweens) {
+            tween?.Kill();
+        }
+        itemHoverTweens.Clear();
     }
 }

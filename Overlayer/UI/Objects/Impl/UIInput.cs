@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using UnityEngine.UI;
 using GTweens.Tweens;
 using GTweens.Extensions;
@@ -80,6 +80,9 @@ public sealed class UIInput : UIObject {
     }
 
     private void UpdateIconImage(bool focused) {
+        if(IconImage == null || !IconImage.enabled || IconImage.sprite == null) {
+            return;
+        }
         iconTween?.Kill();
         iconTween = GTweenSequenceBuilder.New()
             .Append(GTweenExtensions.Tween(

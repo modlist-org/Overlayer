@@ -419,7 +419,6 @@ public static class GenerateUI {
             onChanged
         );
 
-        GTween layoutSeq = null;
         LayoutElement parentLayout = parent.GetComponent<LayoutElement>();
         void UpdateHeight() {
             float rowHeight = 50f;
@@ -430,9 +429,9 @@ public static class GenerateUI {
             float targetHeight = dropdown.Expanded ? (62f + listHeight) : 50f;
             float targetAlpha = dropdown.Expanded ? 1f : 0f;
 
-            layoutSeq?.Kill();
+            dropdown.LayoutSeq?.Kill();
 
-            layoutSeq = GTweenSequenceBuilder.New()
+            dropdown.LayoutSeq = GTweenSequenceBuilder.New()
                 .Join(
                     GTweenExtensions.Tween(
                         () => parentLayout.preferredHeight,
@@ -453,7 +452,7 @@ public static class GenerateUI {
                     ).SetEasing(Easing.OutSine)
                 )
                 .Build();
-            MainCore.TC.Play(layoutSeq);
+            MainCore.TC.Play(dropdown.LayoutSeq);
         }
 
         dropdown.OnLayoutChanged = UpdateHeight;
@@ -514,7 +513,11 @@ public static class GenerateUI {
 
         Image iconImage = iconObj.AddComponent<Image>();
         iconImage.sprite = icon;
-        iconImage.color = new Color(1f, 1f, 1f, 0.2f);
+        if(icon == null) {
+            iconImage.enabled = false;
+        } else {
+            iconImage.color = new Color(1f, 1f, 1f, 0.2f);
+        }
 
         GameObject inputObj = new("Input");
         inputObj.transform.SetParent(rect, false);
@@ -572,7 +575,31 @@ public static class GenerateUI {
             onChanged
         );
 
-        AddOutlineHover(rect.gameObject, rect.gameObject.AddComponent<EventTrigger>());
+        var trigger = rect.gameObject.AddComponent<EventTrigger>();
+        AddOutlineHover(rect.gameObject, trigger);
+
+        UnityUtils.AddEvents(trigger,
+            (EventTriggerType.PointerUp, (e) => {
+#pragma warning disable IDE0019
+                var ped =
+#pragma warning restore IDE0019
+#if ML && IL2CPP                
+                e.TryCast<PointerEventData>();
+#else
+                e as PointerEventData;
+#endif
+                if(ped != null && ped.button != InputButton.Left) {
+                    return;
+                }
+
+                if(EventSystem.current) {
+                    EventSystem.current.SetSelectedGameObject(null);
+                }
+
+                inputField.Select();
+                inputField.ActivateInputField();
+            })
+        );
 
         AddButton(rect.gameObject, btn => {
             switch(btn) {
@@ -642,15 +669,18 @@ public static class GenerateUI {
         Color baseColor = UIColors.ObjectActive;
         hoverImage.color = new Color(baseColor.r, baseColor.g, baseColor.b, 0f);
 
+        var destroyer = hover.AddComponent<TweenDestroyer>();
+
         UnityUtils.AddEvents(trigger,
             (EventTriggerType.PointerEnter, () => {
                 hoverSeq?.Kill();
                 hoverSeq = GTweenSequenceBuilder.New()
                     .Append(GTweenExtensions.Tween(
-                        () => hoverImage.color.a,
-                        x => { Color c = hoverImage.color; c.a = x; hoverImage.color = c; },
+                        () => hoverImage ? hoverImage.color.a : 0f,
+                        x => { if(hoverImage) { Color c = hoverImage.color; c.a = x; hoverImage.color = c; } },
                         1f, 0.1f
                     ).SetEasing(Easing.OutSine)).Build();
+                destroyer.Set(hoverSeq);
                 MainCore.TC.Play(hoverSeq);
             }
         ),
@@ -658,10 +688,11 @@ public static class GenerateUI {
                 hoverSeq?.Kill();
                 hoverSeq = GTweenSequenceBuilder.New()
                     .Append(GTweenExtensions.Tween(
-                        () => hoverImage.color.a,
-                        x => { Color c = hoverImage.color; c.a = x; hoverImage.color = c; },
+                        () => hoverImage ? hoverImage.color.a : 0f,
+                        x => { if(hoverImage) { Color c = hoverImage.color; c.a = x; hoverImage.color = c; } },
                         0f, 0.1f
                     ).SetEasing(Easing.OutSine)).Build();
+                destroyer.Set(hoverSeq);
                 MainCore.TC.Play(hoverSeq);
             }
         )
@@ -755,12 +786,9 @@ public static class GenerateUI {
         var cardLayout = cardGo.AddComponent<VerticalLayoutGroup>();
         cardLayout.spacing = 0f;
         cardLayout.childControlWidth = true;
-        cardLayout.childControlHeight = false;
+        cardLayout.childControlHeight = true;
         cardLayout.childForceExpandWidth = true;
         cardLayout.childForceExpandHeight = false;
-
-        var cardFitter = cardGo.AddComponent<ContentSizeFitter>();
-        cardFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
         GameObject headerGo = new("Header");
         headerGo.transform.SetParent(cardGo.transform, false);
@@ -778,7 +806,7 @@ public static class GenerateUI {
         var headerHLayout = headerGo.AddComponent<HorizontalLayoutGroup>();
         headerHLayout.padding = new RectOffset(10, 10, 0, 0);
         headerHLayout.spacing = 8f;
-        headerHLayout.childControlWidth = false;
+        headerHLayout.childControlWidth = true;
         headerHLayout.childControlHeight = true;
         headerHLayout.childForceExpandWidth = false;
         headerHLayout.childForceExpandHeight = false;
@@ -788,6 +816,9 @@ public static class GenerateUI {
         checkboxGo.transform.SetParent(headerGo.transform, false);
         RectTransform checkboxRect = checkboxGo.AddComponent<RectTransform>();
         checkboxRect.sizeDelta = new Vector2(20f, 20f);
+        var checkboxLE = checkboxGo.AddComponent<LayoutElement>();
+        checkboxLE.preferredWidth = 20f;
+        checkboxLE.preferredHeight = 20f;
 
         var checkboxImg = checkboxGo.AddComponent<Image>();
         checkboxImg.sprite = MainCore.Spr.Get(UISprite.Circle256);
@@ -831,6 +862,9 @@ public static class GenerateUI {
             deleteGo.transform.SetParent(headerGo.transform, false);
             RectTransform deleteRect = deleteGo.AddComponent<RectTransform>();
             deleteRect.sizeDelta = new Vector2(22f, 22f);
+            var deleteLE = deleteGo.AddComponent<LayoutElement>();
+            deleteLE.preferredWidth = 22f;
+            deleteLE.preferredHeight = 22f;
 
             var deleteImg = deleteGo.AddComponent<Image>();
             deleteImg.sprite = MainCore.Spr.Get(UISprite.X128);
@@ -852,12 +886,9 @@ public static class GenerateUI {
         contentLayout.padding = new RectOffset(12, 12, 8, 8);
         contentLayout.spacing = 8f;
         contentLayout.childControlWidth = true;
-        contentLayout.childControlHeight = false;
+        contentLayout.childControlHeight = true;
         contentLayout.childForceExpandWidth = true;
         contentLayout.childForceExpandHeight = false;
-
-        var contentFitter = contentGo.AddComponent<ContentSizeFitter>();
-        contentFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
         var contentImg = contentGo.AddComponent<Image>();
         contentImg.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P2048);
@@ -883,5 +914,16 @@ public static class GenerateUI {
         });
 
         return (cardRect, contentRect);
+    }
+
+    public class TweenDestroyer : MonoBehaviour {
+        private GTween tween;
+        public void Set(GTween newTween) {
+            tween?.Kill();
+            tween = newTween;
+        }
+        void OnDestroy() {
+            tween?.Kill();
+        }
     }
 }
