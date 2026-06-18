@@ -246,8 +246,7 @@ public static class GenerateUI {
                 resetPos = Vector2Int.RoundToInt(OVC_Input.OSMousePosition);
                 previousMousePos = OVC_Input.MousePosition;
                 justWarped = false;
-            }
-        ),
+            }),
             (EventTriggerType.Drag, (e) => {
                 if(isDragging && OVC_Input.GetMouseButton(0)) {
                     Vector2 currentMousePos = OVC_Input.MousePosition;
@@ -284,8 +283,7 @@ public static class GenerateUI {
                 } else {
                     isDragging = false;
                 }
-            }
-        ),
+            }),
             (EventTriggerType.EndDrag, (e) => {
                 if(isDragging) {
                     isDragging = false;
@@ -294,8 +292,7 @@ public static class GenerateUI {
                     OVC_Input.OSMousePosition = resetPos;
                     Cursor.visible = true;
                 }
-            }
-        ),
+            }),
             (EventTriggerType.PointerUp, (e) => {
                 if(isDragging) {
                     return;
@@ -319,8 +316,7 @@ public static class GenerateUI {
 
                 inputField.Select();
                 inputField.ActivateInputField();
-            }
-        )
+            })
         );
 
         slider.Set(Apply(value), false);
