@@ -598,7 +598,8 @@ public static class GenerateUI {
 
                 inputField.Select();
                 inputField.ActivateInputField();
-            })
+            }
+        )
         );
 
         AddButton(rect.gameObject, btn => {
@@ -804,7 +805,12 @@ public static class GenerateUI {
         headerImg.color = UIColors.MenuBG;
 
         var headerHLayout = headerGo.AddComponent<HorizontalLayoutGroup>();
-        headerHLayout.padding = new RectOffset(10, 10, 0, 0);
+        headerHLayout.padding = new RectOffset {
+            left = 10,
+            right = 10,
+            top = 0,
+            bottom = 0
+        };
         headerHLayout.spacing = 8f;
         headerHLayout.childControlWidth = true;
         headerHLayout.childControlHeight = true;
@@ -883,7 +889,12 @@ public static class GenerateUI {
         RectTransform contentRect = contentGo.AddComponent<RectTransform>();
 
         var contentLayout = contentGo.AddComponent<VerticalLayoutGroup>();
-        contentLayout.padding = new RectOffset(12, 12, 8, 8);
+        contentLayout.padding = new RectOffset {
+            left = 10,
+            right = 10,
+            top = 8,
+            bottom = 8
+        };
         contentLayout.spacing = 8f;
         contentLayout.childControlWidth = true;
         contentLayout.childControlHeight = true;
@@ -922,8 +933,6 @@ public static class GenerateUI {
             tween?.Kill();
             tween = newTween;
         }
-        void OnDestroy() {
-            tween?.Kill();
-        }
+        void OnDestroy() => tween?.Kill();
     }
 }

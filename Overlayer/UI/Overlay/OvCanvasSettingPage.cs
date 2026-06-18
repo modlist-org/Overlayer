@@ -10,16 +10,11 @@ using static UnityEngine.EventSystems.PointerEventData;
 using GTweens.Tweens;
 using Overlayer.Tween;
 using GTweens.Easings;
-using GTweens.Builders;
-using System;
-using System.Collections.Generic;
 using UnityEngine.EventSystems;
 using Overlayer.IO.UnityComponent.Impl;
-using Overlayer.IO.Overlay;
 
 #if ML && IL2CPP
 using Il2CppTMPro;
-using Il2CppSystem.Collections.Generic;
 #else
 using TMPro;
 #endif
@@ -42,9 +37,9 @@ public class OvCanvasSettingPage : IDisposable {
 
     private GTween canvasFadeTween;
 
-    private readonly List<UIObject> hierarchyUiObjects = new();
-    private readonly List<UIObject> inspectorUiObjects = new();
-    private readonly List<UIObject> permanentUiObjects = new();
+    private readonly System.Collections.Generic.List<UIObject> hierarchyUiObjects = [];
+    private readonly System.Collections.Generic.List<UIObject> inspectorUiObjects = [];
+    private readonly System.Collections.Generic.List<UIObject> permanentUiObjects = [];
 
     public OvCanvasSettingPage(Transform parent, Action onBack) {
         onBackAction = onBack;
@@ -152,7 +147,12 @@ public class OvCanvasSettingPage : IDisposable {
         hierBG.color = UIColors.PanelBG;
 
         var hierVLayout = hierarchyCol.AddComponent<VerticalLayoutGroup>();
-        hierVLayout.padding = new RectOffset(10, 10, 10, 10);
+        hierVLayout.padding = new RectOffset {
+            left = 10,
+            right = 10,
+            top = 10,
+            bottom = 10
+        };
         hierVLayout.spacing = 10f;
         hierVLayout.childControlWidth = true;
         hierVLayout.childControlHeight = true; // Enabled to honor child heights
@@ -220,7 +220,10 @@ public class OvCanvasSettingPage : IDisposable {
         createHLayout.childForceExpandHeight = true;
 
         var btnText = GenerateUI.Button(hierCreateToolbar.transform, () => {
-            if(currentCanvas == null) return;
+            if(currentCanvas == null) {
+                return;
+            }
+
             OvObject newObj = selectedObject != null ? selectedObject.CreateOvObject() : currentCanvas.CreateOvObject();
             newObj.Config.Name = "TextObject";
             newObj.Config.TextConfig = new TextMeshProUGUISettings();
@@ -235,7 +238,10 @@ public class OvCanvasSettingPage : IDisposable {
         permanentUiObjects.Add(btnText);
 
         var btnImage = GenerateUI.Button(hierCreateToolbar.transform, () => {
-            if(currentCanvas == null) return;
+            if(currentCanvas == null) {
+                return;
+            }
+
             OvObject newObj = selectedObject != null ? selectedObject.CreateOvObject() : currentCanvas.CreateOvObject();
             newObj.Config.Name = "ImageObject";
             newObj.Config.ImageConfig = new ImageSettings();
@@ -250,7 +256,10 @@ public class OvCanvasSettingPage : IDisposable {
         permanentUiObjects.Add(btnImage);
 
         var btnEmpty = GenerateUI.Button(hierCreateToolbar.transform, () => {
-            if(currentCanvas == null) return;
+            if(currentCanvas == null) {
+                return;
+            }
+
             OvObject newObj = selectedObject != null ? selectedObject.CreateOvObject() : currentCanvas.CreateOvObject();
             newObj.Config.Name = "EmptyObject";
             newObj.ApplyComponent();
@@ -262,7 +271,6 @@ public class OvCanvasSettingPage : IDisposable {
         }, "Empty", "btn_hier_add_empty");
         btnEmpty.Rect.offsetMax = Vector2.zero;
         permanentUiObjects.Add(btnEmpty);
-
 
         // Hierarchy Control Toolbar (Up, Down, Detach, Delete)
         GameObject hierCtrlToolbar = new("HierarchyControlToolbar");
@@ -282,21 +290,30 @@ public class OvCanvasSettingPage : IDisposable {
         ctrlHLayout.childForceExpandHeight = true;
 
         var btnUp = GenerateUI.Button(hierCtrlToolbar.transform, () => {
-            if(selectedObject == null || currentCanvas == null) return;
+            if(selectedObject == null || currentCanvas == null) {
+                return;
+            }
+
             MoveSelectedOrder(-1);
         }, "Up", "btn_hier_up");
         btnUp.Rect.offsetMax = Vector2.zero;
         permanentUiObjects.Add(btnUp);
 
         var btnDown = GenerateUI.Button(hierCtrlToolbar.transform, () => {
-            if(selectedObject == null || currentCanvas == null) return;
+            if(selectedObject == null || currentCanvas == null) {
+                return;
+            }
+
             MoveSelectedOrder(1);
         }, "Down", "btn_hier_down");
         btnDown.Rect.offsetMax = Vector2.zero;
         permanentUiObjects.Add(btnDown);
 
         var btnDetach = GenerateUI.Button(hierCtrlToolbar.transform, () => {
-            if(selectedObject == null || selectedObject.Parent == null) return;
+            if(selectedObject == null || selectedObject.Parent == null) {
+                return;
+            }
+
             selectedObject.Detach();
             RebuildHierarchy();
             RebuildInspector();
@@ -306,7 +323,10 @@ public class OvCanvasSettingPage : IDisposable {
         permanentUiObjects.Add(btnDetach);
 
         var btnDel = GenerateUI.Button(hierCtrlToolbar.transform, () => {
-            if(selectedObject == null) return;
+            if(selectedObject == null) {
+                return;
+            }
+
             var toDelete = selectedObject;
             selectedObject = null;
             if(toDelete.Parent == null) {
@@ -319,7 +339,6 @@ public class OvCanvasSettingPage : IDisposable {
         }, "Del", "btn_hier_del");
         btnDel.Rect.offsetMax = Vector2.zero;
         permanentUiObjects.Add(btnDel);
-
 
         // ==================== 2. Inspector Column ====================
         GameObject inspectorCol = new("InspectorColumn");
@@ -334,7 +353,12 @@ public class OvCanvasSettingPage : IDisposable {
         inspBG.color = UIColors.PanelBG;
 
         var inspVLayout = inspectorCol.AddComponent<VerticalLayoutGroup>();
-        inspVLayout.padding = new RectOffset(10, 10, 10, 10);
+        hierVLayout.padding = new RectOffset {
+            left = 10,
+            right = 10,
+            top = 10,
+            bottom = 10
+        };
         inspVLayout.spacing = 10f;
         inspVLayout.childControlWidth = true;
         inspVLayout.childControlHeight = true; // Enabled to honor child heights
@@ -387,11 +411,16 @@ public class OvCanvasSettingPage : IDisposable {
 
     private void MoveSelectedOrder(int direction) {
         var obj = selectedObject;
-        if(obj == null) return;
+        if(obj == null) {
+            return;
+        }
 
         if(obj.Parent == null) {
             int index = currentCanvas.OvObjects.IndexOf(obj);
-            if(index < 0) return;
+            if(index < 0) {
+                return;
+            }
+
             int targetIndex = index + direction;
             if(targetIndex >= 0 && targetIndex < currentCanvas.OvObjects.Count) {
                 currentCanvas.OvObjects.RemoveAt(index);
@@ -405,7 +434,10 @@ public class OvCanvasSettingPage : IDisposable {
         } else {
             var parent = obj.Parent;
             int index = parent.Children.IndexOf(obj);
-            if(index < 0) return;
+            if(index < 0) {
+                return;
+            }
+
             int targetIndex = index + direction;
             if(targetIndex >= 0 && targetIndex < parent.Children.Count) {
                 parent.SetChildIndex(obj, targetIndex);
@@ -442,9 +474,7 @@ public class OvCanvasSettingPage : IDisposable {
         RebuildInspector();
     }
 
-    private void SaveConfig() {
-        OverlayCore.SaveAllCanvases();
-    }
+    private void SaveConfig() => OverlayCore.SaveAllCanvases();
 
     private void RebuildHierarchy() {
         foreach(var obj in hierarchyUiObjects) {
@@ -480,7 +510,12 @@ public class OvCanvasSettingPage : IDisposable {
         hLayout.childForceExpandWidth = false;
         hLayout.childForceExpandHeight = true;
         hLayout.spacing = 4f;
-        hLayout.padding = new RectOffset(0, 0, 0, 0);
+        hLayout.padding = new RectOffset {
+            left = 0,
+            right = 0,
+            top = 0,
+            bottom = 0
+        };
 
         GameObject itemBtn = new("CanvasRootButton");
         itemBtn.transform.SetParent(row, false);
@@ -520,7 +555,12 @@ public class OvCanvasSettingPage : IDisposable {
         hLayout.childForceExpandWidth = false;
         hLayout.childForceExpandHeight = true;
         hLayout.spacing = 4f;
-        hLayout.padding = new RectOffset(0, 0, 0, 0);
+        hLayout.padding = new RectOffset {
+            left = 0,
+            right = 0,
+            top = 0,
+            bottom = 0
+        };
 
         // depth starts at 0, but since we have CanvasRoot, we indent by depth + 1
         GameObject indent = new("Indent");
@@ -571,7 +611,9 @@ public class OvCanvasSettingPage : IDisposable {
         }
 
         if(selectedObject == null) {
-            if(currentCanvas == null) return;
+            if(currentCanvas == null) {
+                return;
+            }
 
             // Render Canvas Own Settings
             var canvasNameRow = GenerateUI.Row(inspectorContent, 50f);
@@ -685,7 +727,7 @@ public class OvCanvasSettingPage : IDisposable {
             var textCfg = obj.Config.TextConfig;
             var (card, cardContent) = GenerateUI.ComponentCard(inspectorContent, "Text (TextMeshPro)", true, active => {
                 var tmpComp = obj.GameObject.GetComponent<TextMeshProUGUI>();
-                if(tmpComp != null) tmpComp.enabled = active;
+                tmpComp?.enabled = active;
                 SaveConfig();
             }, () => {
                 obj.Config.TextConfig = null;
@@ -768,7 +810,7 @@ public class OvCanvasSettingPage : IDisposable {
             var imgCfg = obj.Config.ImageConfig;
             var (card, cardContent) = GenerateUI.ComponentCard(inspectorContent, "Image", true, active => {
                 var imgComp = obj.GameObject.GetComponent<Image>();
-                if(imgComp != null) imgComp.enabled = active;
+                imgComp?.enabled = active;
                 SaveConfig();
             }, () => {
                 obj.Config.ImageConfig = null;
@@ -821,7 +863,7 @@ public class OvCanvasSettingPage : IDisposable {
             var shadCfg = obj.Config.ShadowConfig;
             var (card, cardContent) = GenerateUI.ComponentCard(inspectorContent, "Shadow", true, active => {
                 var shadComp = obj.GameObject.GetComponent<Shadow>();
-                if(shadComp != null) shadComp.enabled = active;
+                shadComp?.enabled = active;
                 SaveConfig();
             }, () => {
                 obj.Config.ShadowConfig = null;
@@ -855,7 +897,7 @@ public class OvCanvasSettingPage : IDisposable {
             var outCfg = obj.Config.OutlineConfig;
             var (card, cardContent) = GenerateUI.ComponentCard(inspectorContent, "Outline", true, active => {
                 var outComp = obj.GameObject.GetComponent<Outline>();
-                if(outComp != null) outComp.enabled = active;
+                outComp?.enabled = active;
                 SaveConfig();
             }, () => {
                 obj.Config.OutlineConfig = null;
@@ -885,11 +927,22 @@ public class OvCanvasSettingPage : IDisposable {
         }
 
         // 6. Add Component Dropdown
-        List<string> addableList = ["Add Component..."];
-        if(obj.Config.TextConfig == null) addableList.Add("Text (TextMeshPro)");
-        if(obj.Config.ImageConfig == null) addableList.Add("Image");
-        if(obj.Config.ShadowConfig == null) addableList.Add("Shadow");
-        if(obj.Config.OutlineConfig == null) addableList.Add("Outline");
+        System.Collections.Generic.List<string> addableList = ["Add Component..."];
+        if(obj.Config.TextConfig == null) {
+            addableList.Add("Text (TextMeshPro)");
+        }
+
+        if(obj.Config.ImageConfig == null) {
+            addableList.Add("Image");
+        }
+
+        if(obj.Config.ShadowConfig == null) {
+            addableList.Add("Shadow");
+        }
+
+        if(obj.Config.OutlineConfig == null) {
+            addableList.Add("Outline");
+        }
 
         if(addableList.Count > 1) {
             var addRow = GenerateUI.Row(inspectorContent, 50f);
