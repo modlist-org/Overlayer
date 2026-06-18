@@ -157,7 +157,7 @@ public class UIInputCore {
             .Append(GTweenExtensions.Tween(
                 () => InputField.caretColor.a,
                 x => {
-                    var c = UIColors.ObjectActive;
+                    var c = InputField.caretColor;
                     c.a = x;
                     InputField.caretColor = c;
                 },
@@ -167,7 +167,7 @@ public class UIInputCore {
             .Append(GTweenExtensions.Tween(
                 () => InputField.caretColor.a,
                 x => {
-                    var c = UIColors.ObjectActive;
+                    var c = InputField.caretColor;
                     c.a = x;
                     InputField.caretColor = c;
                 },

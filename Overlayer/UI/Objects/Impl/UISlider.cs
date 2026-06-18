@@ -7,6 +7,8 @@ using GTweens.Easings;
 using Overlayer.Utility.Math;
 using Overlayer.Tween;
 using GTweenExtensions = GTweens.Extensions.GTweenExtensions;
+using static UnityEngine.CullingGroup;
+
 
 #if ML && IL2CPP
 using Il2CppTMPro;
@@ -213,13 +215,21 @@ public class UISlider : UIObject {
         stateSeq?.Kill();
 
         float targetAlpha = isCalculating ? 0f : 1f;
-        Color fillTargetColor = new(targetColor.r, targetColor.g, targetColor.b, targetAlpha);
+
+        Color startOutline = OutlineImage.color;
+        Color startFill = FillImage.color;
+        Color startChanged = ChangedImage.color;
+        Color startChangedUp = ChangedUpImage.color;
+        Color startCaret = InputCore.InputField.caretColor;
 
         stateSeq = GTweenSequenceBuilder.New()
-            .Join(OutlineImage.GTColor(targetColor, 0.2f).SetEasing(Easing.OutSine))
-            .Join(FillImage.GTColor(fillTargetColor, 0.2f).SetEasing(Easing.OutSine))
-            .Join(ChangedImage.GTColorRGB(targetColor, 0.2f).SetEasing(Easing.OutSine))
-            .Build();
+            .Join(GTweenExtensions.Tween(() => 0f, x => {
+                OutlineImage.color = Color.Lerp(startOutline, targetColor, x);
+                FillImage.color = Color.Lerp(startFill, new(targetColor.r, targetColor.g, targetColor.b, targetAlpha), x);
+                ChangedImage.color = Color.Lerp(startChanged, new(targetColor.r, targetColor.g, targetColor.b, startChanged.a), x);
+                ChangedUpImage.color = Color.Lerp(startChangedUp, new(targetColor.r, targetColor.g, targetColor.b, startChangedUp.a), x);
+                InputCore.InputField.caretColor = Color.Lerp(startCaret, new(targetColor.r, targetColor.g, targetColor.b, startCaret.a), x);
+            }, 1f, 0.2f).SetEasing(Easing.OutSine)).Build();
 
         MainCore.TC.Play(stateSeq);
     }
