@@ -37,9 +37,11 @@ public class OvCanvasSettingPage : IDisposable {
 
     private GTween canvasFadeTween;
 
+#pragma warning disable IDE0001
     private readonly System.Collections.Generic.List<UIObject> hierarchyUiObjects = [];
     private readonly System.Collections.Generic.List<UIObject> inspectorUiObjects = [];
     private readonly System.Collections.Generic.List<UIObject> permanentUiObjects = [];
+#pragma warning restore IDE0001
 
     public OvCanvasSettingPage(Transform parent, Action onBack) {
         onBackAction = onBack;
@@ -927,7 +929,9 @@ public class OvCanvasSettingPage : IDisposable {
         }
 
         // 6. Add Component Dropdown
+#pragma warning disable IDE0001
         System.Collections.Generic.List<string> addableList = ["Add Component..."];
+#pragma warning restore IDE0001
         if(obj.Config.TextConfig == null) {
             addableList.Add("Text (TextMeshPro)");
         }
