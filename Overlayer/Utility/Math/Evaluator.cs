@@ -6,7 +6,8 @@ public enum EvalState {
     OK,
     Error,
     Same,
-    OutRange
+    OverRange,
+    UnderRange
 }
 
 public static class Evaluator<T> where T : struct, IComparable, IConvertible {
@@ -30,8 +31,12 @@ public static class Evaluator<T> where T : struct, IComparable, IConvertible {
             T result = (T)Convert.ChangeType(evalResult, typeof(T));
 
             if(min.HasValue && max.HasValue) {
-                if(result.CompareTo(min.Value) < 0 || result.CompareTo(max.Value) > 0) {
-                    return (Clamp(result, min.Value, max.Value), EvalState.OutRange);
+                if(result.CompareTo(min.Value) < 0) {
+                    return (min.Value, EvalState.UnderRange);
+                }
+
+                if(result.CompareTo(max.Value) > 0) {
+                    return (max.Value, EvalState.OverRange);
                 }
             }
 

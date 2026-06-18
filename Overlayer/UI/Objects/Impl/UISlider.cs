@@ -5,10 +5,7 @@ using Overlayer.Core;
 using GTweens.Builders;
 using GTweens.Easings;
 using Overlayer.Utility.Math;
-using Overlayer.Tween;
 using GTweenExtensions = GTweens.Extensions.GTweenExtensions;
-using static UnityEngine.CullingGroup;
-
 
 #if ML && IL2CPP
 using Il2CppTMPro;
@@ -76,15 +73,24 @@ public class UISlider : UIObject {
                 var (result, state) = Evaluator<float>.Evaluate(val, LastValidValue ?? Value, Min, Max);
                 LastValidValue = state != EvalState.Error ? result : null;
 
-                bool isCalc = state is EvalState.OK or EvalState.OutRange or EvalState.Same;
+                bool isCalc = state is EvalState.OK or EvalState.OverRange or EvalState.UnderRange or EvalState.Same;
+
                 if(isCalc) {
                     string valStr = (Filter?.Invoke(result) ?? result).ToString();
-                    string symbol = (state == EvalState.OutRange) ? "≈" : "=";
+
+                    // 상태에 따른 기호 결정
+                    string symbol = state switch {
+                        EvalState.OverRange => "<",
+                        EvalState.UnderRange => ">",
+                        _ => "="
+                    };
+
                     PreviewLabel.text = $"{valStr} {symbol} <color=#00000000>{val}</color>";
                 } else {
                     PreviewLabel.text = "";
                 }
-                SetStateVisuals(MathVisuals.GetStateColor(state), true);
+
+                SetStateVisuals(MathVisuals.GetStateColor(state), state != EvalState.OK && state != EvalState.Same);
             },
             (val) => {
                 if(LastValidValue == null) {
