@@ -15,6 +15,8 @@ namespace Overlayer.Resource;
 public enum Asset {
     SUIT_Regular,
     SUIT_Medium,
+    JetBrainsMonoNL_Regular,
+    JetBrainsMonoNL_Medium,
 
     OV5LogoOutline256,
     Circle256,
@@ -168,6 +170,8 @@ public sealed class ResourceManager(Assembly assembly, string resourcePath) : ID
     private readonly Dictionary<Asset, string> assetMap = new() {
         [Asset.SUIT_Regular] = "Font.SUIT-Regular.otf",
         [Asset.SUIT_Medium] = "Font.SUIT-Medium.otf",
+        [Asset.JetBrainsMonoNL_Regular] = "Font.JetBrainsMonoNL-Regular.ttf",
+        [Asset.JetBrainsMonoNL_Medium] = "Font.JetBrainsMonoNL-Medium.ttf",
         [Asset.OV5LogoOutline256] = "Image.OV5LogoOutline256.png",
         [Asset.Circle256] = "Image.Circle256.png",
         [Asset.CircleHalf256] = "Image.CircleHalf256.png",

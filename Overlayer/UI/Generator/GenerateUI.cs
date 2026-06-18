@@ -191,6 +191,7 @@ public static class GenerateUI {
         var textComp = AddText(inputObj.transform);
         textComp.alignment = TextAlignmentOptions.Right;
         textComp.verticalAlignment = VerticalAlignmentOptions.Middle;
+        textComp.font = MainCore.Res.Get<TMP_FontAsset>(Asset.JetBrainsMonoNL_Medium);
 
         inputField.textComponent = textComp;
         inputField.textViewport = inputRect;
