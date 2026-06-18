@@ -665,7 +665,7 @@ public static class GenerateUI {
         hoverRect.offsetMax = Vector2.zero;
 
         Image hoverImage = hover.AddComponent<Image>();
-        hoverImage.sprite = MainCore.Spr.Get(UISliceSprite.CircleOutline256P2048);
+        hoverImage.sprite = MainCore.Spr.Get(UISliceSprite.CircleOutline256O64P2048);
         hoverImage.type = Image.Type.Sliced;
 
         Color baseColor = UIColors.ObjectActive;

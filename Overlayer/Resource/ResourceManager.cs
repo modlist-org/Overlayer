@@ -29,7 +29,8 @@ public enum Asset {
     Book128,
     Star128,
     ToggleCircle128,
-    CircleOutline256,
+    CircleOutline256O32,
+    CircleOutline256O64,
     Triangle128,
     Power128,
     MagnifyingGlass128,
@@ -102,7 +103,6 @@ public sealed class ResourceManager(Assembly assembly, string resourcePath) : ID
         }
 
         byte[] data = Load(path);
-
         if(data == null) {
             return null;
         }
@@ -116,6 +116,25 @@ public sealed class ResourceManager(Assembly assembly, string resourcePath) : ID
 
         Font font = new(tempPath);
         TMP_FontAsset asset = TMP_FontAsset.CreateFontAsset(font);
+
+        if(path.Contains("JetBrainsMonoNL")) {
+            string fileName = Path.GetFileNameWithoutExtension(path);
+            string style = fileName.Split('-')[1];
+
+            if(Enum.TryParse("SUIT_" + style, out Asset suitAsset)) {
+                string suitPath = assetMap[suitAsset];
+                string suitTempPath = Path.Combine(MainCore.Paths.TempPath, $"SUIT_{style}.otf");
+
+                TMP_FontAsset suitFont = LoadFont(suitPath, suitTempPath);
+
+                if(suitFont != null) {
+                    asset.fallbackFontAssetTable ??= new();
+                    if(!asset.fallbackFontAssetTable.Contains(suitFont)) {
+                        asset.fallbackFontAssetTable.Add(suitFont);
+                    }
+                }
+            }
+        }
 
         cache[path] = asset;
         return asset;
@@ -183,7 +202,8 @@ public sealed class ResourceManager(Assembly assembly, string resourcePath) : ID
         [Asset.Book128] = "Image.Book128.png",
         [Asset.Star128] = "Image.Star128.png",
         [Asset.ToggleCircle128] = "Image.ToggleCircle128.png",
-        [Asset.CircleOutline256] = "Image.CircleOutline256.png",
+        [Asset.CircleOutline256O32] = "Image.CircleOutline256O32.png",
+        [Asset.CircleOutline256O64] = "Image.CircleOutline256O64.png",
         [Asset.Triangle128] = "Image.Triangle128.png",
         [Asset.Power128] = "Image.Power128.png",
         [Asset.MagnifyingGlass128] = "Image.MagnifyingGlass128.png"

@@ -250,12 +250,6 @@ public static class UICore {
         panel.AddComponent<RectMask2D>();
 
         {
-            var outline = panel.AddComponent<Outline>();
-            outline.effectColor = Color.white;
-            outline.effectDistance = new(2, -2);
-        }
-
-        {
             // Menu Panel
             GameObject menuPanel = new("MenuPanel");
             menuPanel.transform.SetParent(panel.transform, false);
@@ -521,6 +515,25 @@ public static class UICore {
 
             trigger.triggers.Add(enter);
             trigger.triggers.Add(exit);
+        }
+
+        {
+            // Outline
+            GameObject outlineObj = new("Outline");
+            outlineObj.transform.SetParent(Panel, false);
+            outlineObj.transform.SetAsLastSibling();
+
+            var outline = outlineObj.AddComponent<Image>();
+            outline.color = Color.white;
+            outline.sprite = MainCore.Spr.Get(UISliceSprite.CircleOutline256O32P1024);
+            outline.type = Image.Type.Sliced;
+            outline.raycastTarget = false;
+
+            var outlineRect = outlineObj.GetComponent<RectTransform>();
+            outlineRect.anchorMin = Vector2.zero;
+            outlineRect.anchorMax = Vector2.one;
+            outlineRect.offsetMin = Vector2.zero;
+            outlineRect.offsetMax = Vector2.zero;
         }
     }
 

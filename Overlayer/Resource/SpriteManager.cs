@@ -23,8 +23,9 @@ public enum UISliceSprite {
     Circle256P1024,
     Circle256P2048,
     CircleHalf256P1024,
-    CircleOutline256P1024,
-    CircleOutline256P2048,
+    CircleOutline256O32P1024,
+    CircleOutline256O64P1024,
+    CircleOutline256O64P2048,
 }
 
 public sealed class SpriteManager(ResourceManager resource) : IDisposable {
@@ -168,7 +169,8 @@ public sealed class SpriteManager(ResourceManager resource) : IDisposable {
         [UISliceSprite.Circle256P1024] = (Asset.Circle256, 1024f),
         [UISliceSprite.Circle256P2048] = (Asset.Circle256, 2048f),
         [UISliceSprite.CircleHalf256P1024] = (Asset.CircleHalf256, 1024f),
-        [UISliceSprite.CircleOutline256P1024] = (Asset.CircleOutline256, 1024f),
-        [UISliceSprite.CircleOutline256P2048] = (Asset.CircleOutline256, 2048f)
+        [UISliceSprite.CircleOutline256O32P1024] = (Asset.CircleOutline256O32, 1024f),
+        [UISliceSprite.CircleOutline256O64P1024] = (Asset.CircleOutline256O64, 1024f),
+        [UISliceSprite.CircleOutline256O64P2048] = (Asset.CircleOutline256O64, 2048f)
     };
 }
