@@ -179,22 +179,38 @@ public static class GenerateUI {
 
         CanvasGroup inputCanvasGroup = inputObj.AddComponent<CanvasGroup>();
         inputCanvasGroup.blocksRaycasts = false;
-
         RectTransform inputRect = inputObj.AddComponent<RectTransform>();
         inputRect.anchorMin = Vector2.zero;
         inputRect.anchorMax = Vector2.one;
-        inputRect.offsetMin = new(16f, 4f);
-        inputRect.offsetMax = new(-8f, -4f);
+        inputRect.offsetMin = Vector2.zero;
+        inputRect.offsetMax = Vector2.zero;
         inputObj.AddComponent<RectMask2D>();
 
+        TextMeshProUGUI previewLabel = AddText(inputObj.transform, true);
+        previewLabel.rectTransform.anchorMin = Vector2.zero;
+        previewLabel.rectTransform.anchorMax = Vector2.one;
+        previewLabel.rectTransform.pivot = new(1f, 0.5f);
+        previewLabel.rectTransform.offsetMin = Vector2.zero;
+        previewLabel.rectTransform.offsetMax = new(-14f, 0);
+        previewLabel.alignment = TextAlignmentOptions.Right;
+        previewLabel.verticalAlignment = VerticalAlignmentOptions.Middle;
+        previewLabel.font = MainCore.Res.Get<TMP_FontAsset>(Asset.JetBrainsMonoNL_Medium);
+        previewLabel.color = new(1f, 1f, 1f, 0.6f);
+
         TMP_InputField inputField = inputObj.AddComponent<TMP_InputField>();
-        var textComp = AddText(inputObj.transform);
+        var textComp = AddText(inputObj.transform, true);
+        textComp.rectTransform.anchorMin = Vector2.zero;
+        textComp.rectTransform.anchorMax = Vector2.one;
+        textComp.rectTransform.pivot = new(1f, 0.5f);
+        textComp.rectTransform.offsetMin = Vector2.zero;
+        textComp.rectTransform.offsetMax = Vector2.zero;
         textComp.alignment = TextAlignmentOptions.Right;
         textComp.verticalAlignment = VerticalAlignmentOptions.Middle;
         textComp.font = MainCore.Res.Get<TMP_FontAsset>(Asset.JetBrainsMonoNL_Medium);
 
         inputField.textComponent = textComp;
         inputField.textViewport = inputRect;
+        inputField.targetGraphic = textComp;
 
         Image fillImg = fill.AddComponent<Image>();
         fillImg.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P2048);
@@ -207,7 +223,7 @@ public static class GenerateUI {
         var trigger = rect.gameObject.AddComponent<EventTrigger>();
 
         UISlider slider = new(
-            id, rect, fillRect, fillImg, label, inputField,
+            id, rect, fillRect, fillImg, label, inputField, previewLabel,
             changeImg, changeUpImg, AddOutlineHover(rect.gameObject, trigger), defaultValue, min, max,
             value, format, useInputClamp, filter, onChanged, onComplete
         );

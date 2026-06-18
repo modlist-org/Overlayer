@@ -20,5 +20,9 @@ public static class UIColors {
     public static readonly Color ObjectActiveLightBright = new(0.557f, 0.596f, 1f, 1f);
     public static readonly Color ObjectButton = new(0.478f, 0.514f, 0.875f, 1f);
 
+    public static readonly Color ObjectActiveMathOk = new(0.588f, 1f, 0.569f, 1f);
+    public static readonly Color ObjectActiveMathWarn = new(1f, 0.898f, 0.569f, 1f);
+    public static readonly Color ObjectActiveMathErr = new(1f, 0.569f, 0.569f, 1f);
+
     public static readonly Color SoftRed = new(0.886f, 0.404f, 0.427f, 1f);
 }

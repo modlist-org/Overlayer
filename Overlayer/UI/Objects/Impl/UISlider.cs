@@ -2,10 +2,11 @@ using UnityEngine;
 using UnityEngine.UI;
 using GTweens.Tweens;
 using Overlayer.Core;
-using GTweens.Extensions;
 using GTweens.Builders;
 using GTweens.Easings;
-using NCalc;
+using Overlayer.Utility.Math;
+using Overlayer.Tween;
+using GTweenExtensions = GTweens.Extensions.GTweenExtensions;
 
 #if ML && IL2CPP
 using Il2CppTMPro;
@@ -30,11 +31,14 @@ public class UISlider : UIObject {
     public Image FillImage { get; }
     public TextMeshProUGUI Label { get; }
     public UIInputCore InputCore { get; }
+    public TextMeshProUGUI PreviewLabel { get; }
     public Image ChangedImage { get; }
     public Image ChangedUpImage { get; }
     public Image OutlineImage { get; }
+    public float? LastValidValue { get; private set; }
+    private bool isUpdatingFromCode;
 
-    private GTween fillSeq, changeSeq;
+    private GTween fillSeq, changeSeq, stateSeq;
 
     public UISlider(
         string id,
@@ -43,6 +47,7 @@ public class UISlider : UIObject {
         Image fillImage,
         TextMeshProUGUI label,
         TMP_InputField valueInputField,
+        TextMeshProUGUI previewLabel,
         Image changedImage,
         Image changedUpImage,
         Image outlineImage,
@@ -60,23 +65,41 @@ public class UISlider : UIObject {
         FillImage = fillImage;
         FillImage.color = UIColors.ObjectActive;
         Label = label;
-        InputCore = new UIInputCore(valueInputField, null, value.ToString(format), null,
+        InputCore = new UIInputCore(valueInputField, null, value.ToString(format),
             (val) => {
-                try {
-                    Expression e = new(val);
-                    object result = e.Evaluate();
-                    float valResult = Convert.ToSingle(result);
-
-                    Set(valResult, true);
-                    OnComplete?.Invoke(Value);
-                } catch {
-                    InputCore.SetValue(Value.ToString(Format), false);
+                if(isUpdatingFromCode) {
+                    return;
                 }
+
+                var (result, state) = Evaluator<float>.Evaluate(val, LastValidValue ?? Value, Min, Max);
+                LastValidValue = state != EvalState.Error ? result : null;
+
+                bool isCalc = state is EvalState.OK or EvalState.OutRange or EvalState.Same;
+                if(isCalc) {
+                    string valStr = (Filter?.Invoke(result) ?? result).ToString();
+                    string symbol = (state == EvalState.OutRange) ? "≈" : "=";
+                    PreviewLabel.text = $"{valStr} {symbol} <color=#00000000>{val}</color>";
+                } else {
+                    PreviewLabel.text = "";
+                }
+                SetStateVisuals(MathVisuals.GetStateColor(state), isCalc);
+            },
+            (val) => {
+                if(LastValidValue == null) {
+                    InputCore.SetValue(Value.ToString(Format), false);
+                } else {
+                    Set(LastValidValue.Value, true);
+                    OnComplete?.Invoke(Value);
+                }
+
+                PreviewLabel.text = "";
+                SetStateVisuals(UIColors.ObjectActive, false);
             }
         );
         valueInputField.onSelect.AddListener((_) => {
             valueInputField.text = Value.ToString();
         });
+        PreviewLabel = previewLabel;
         ChangedImage = changedImage;
         ChangedUpImage = changedUpImage;
         ChangedUpImage.color = UIColors.ObjectBG;
@@ -99,19 +122,20 @@ public class UISlider : UIObject {
     public override void Tick() => InputCore.OnTick();
 
     public void Set(float value, bool invoke = true) {
-        if(float.IsNaN(value)) {
+        if(float.IsNaN(value))
             return;
-        }
 
         value = ApplyFilter(value);
-
         Value = ClampSafe(value, Min, Max);
 
         if(invoke) {
             OnChanged?.Invoke(Value);
         }
 
+        isUpdatingFromCode = true;
         InputCore.SetValue(Value.ToString(Format), false);
+        isUpdatingFromCode = false;
+
         UpdateVisual();
     }
 
@@ -185,6 +209,22 @@ public class UISlider : UIObject {
     }
 
     public void OnDrag(float normalizedValue) => SetNormalized(normalizedValue, true);
+    private void SetStateVisuals(Color targetColor, bool isCalculating = false) {
+        stateSeq?.Kill();
+        float targetAlpha = isCalculating ? 0f : 1f;
+
+        Color currentChangedColor = ChangedImage.color;
+        Color targetChangedColor = new(targetColor.r, targetColor.g, targetColor.b, currentChangedColor.a);
+
+        stateSeq = GTweenSequenceBuilder.New()
+            .Join(OutlineImage.GTColor(targetColor, 0.2f).SetEasing(Easing.OutSine))
+            .Join(FillImage.GTColor(targetColor, 0.2f).SetEasing(Easing.OutSine))
+            .Join(FillImage.GTAlpha(targetAlpha, 0.2f).SetEasing(Easing.OutSine))
+            .Join(ChangedImage.GTColor(targetChangedColor, 0.2f).SetEasing(Easing.OutSine))
+            .Build();
+
+        MainCore.TC.Play(stateSeq);
+    }
 
     public override void Dispose() {
         base.Dispose();
