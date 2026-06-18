@@ -77,8 +77,6 @@ public class UISlider : UIObject {
 
                 if(isCalc) {
                     string valStr = (Filter?.Invoke(result) ?? result).ToString();
-
-                    // 상태에 따른 기호 결정
                     string symbol = state switch {
                         EvalState.OverRange => "<",
                         EvalState.UnderRange => ">",
@@ -90,7 +88,7 @@ public class UISlider : UIObject {
                     PreviewLabel.text = "";
                 }
 
-                SetStateVisuals(MathVisuals.GetStateColor(state), state != EvalState.OK && state != EvalState.Same);
+                SetStateVisuals(MathVisuals.GetStateColor(state), state is not EvalState.OK and not EvalState.Same);
             },
             (val) => {
                 if(LastValidValue == null) {
