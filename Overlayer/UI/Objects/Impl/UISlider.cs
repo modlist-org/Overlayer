@@ -6,6 +6,8 @@ using GTweens.Builders;
 using GTweens.Easings;
 using Overlayer.Utility.Math;
 using GTweenExtensions = GTweens.Extensions.GTweenExtensions;
+using Il2CppInterop.Runtime;
+
 
 #if ML && IL2CPP
 using Il2CppTMPro;
@@ -102,9 +104,15 @@ public class UISlider : UIObject {
                 SetStateVisuals(UIColors.ObjectActive, false);
             }
         );
-        valueInputField.onSelect.AddListener((_) => {
-            valueInputField.text = Value.ToString();
-        });
+        valueInputField.onValueChanged.AddListener(
+#if ML && IL2CPP
+            DelegateSupport.ConvertDelegate<UnityEngine.Events.UnityAction<string>>(new Action<string>(
+#endif
+                (_) => valueInputField.text = Value.ToString()
+#if ML && IL2CPP
+            ))
+#endif
+        );
         PreviewLabel = previewLabel;
         ChangedImage = changedImage;
         ChangedUpImage = changedUpImage;
@@ -128,8 +136,9 @@ public class UISlider : UIObject {
     public override void Tick() => InputCore.OnTick();
 
     public void Set(float value, bool invoke = true) {
-        if(float.IsNaN(value))
+        if(float.IsNaN(value)) {
             return;
+        }
 
         value = ApplyFilter(value);
         Value = ClampSafe(value, Min, Max);
