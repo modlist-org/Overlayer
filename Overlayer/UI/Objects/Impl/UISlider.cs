@@ -6,10 +6,9 @@ using GTweens.Builders;
 using GTweens.Easings;
 using Overlayer.Utility.Math;
 using GTweenExtensions = GTweens.Extensions.GTweenExtensions;
-using Il2CppInterop.Runtime;
-
 
 #if ML && IL2CPP
+using Il2CppInterop.Runtime;
 using Il2CppTMPro;
 #else
 using TMPro;
