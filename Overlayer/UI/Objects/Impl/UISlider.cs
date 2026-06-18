@@ -82,7 +82,7 @@ public class UISlider : UIObject {
                 } else {
                     PreviewLabel.text = "";
                 }
-                SetStateVisuals(MathVisuals.GetStateColor(state), isCalc);
+                SetStateVisuals(MathVisuals.GetStateColor(state), true);
             },
             (val) => {
                 if(LastValidValue == null) {
@@ -209,18 +209,16 @@ public class UISlider : UIObject {
     }
 
     public void OnDrag(float normalizedValue) => SetNormalized(normalizedValue, true);
-    private void SetStateVisuals(Color targetColor, bool isCalculating = false) {
+    private void SetStateVisuals(Color targetColor, bool isCalculating) {
         stateSeq?.Kill();
-        float targetAlpha = isCalculating ? 0f : 1f;
 
-        Color currentChangedColor = ChangedImage.color;
-        Color targetChangedColor = new(targetColor.r, targetColor.g, targetColor.b, currentChangedColor.a);
+        float targetAlpha = isCalculating ? 0f : 1f;
+        Color fillTargetColor = new(targetColor.r, targetColor.g, targetColor.b, targetAlpha);
 
         stateSeq = GTweenSequenceBuilder.New()
             .Join(OutlineImage.GTColor(targetColor, 0.2f).SetEasing(Easing.OutSine))
-            .Join(FillImage.GTColor(targetColor, 0.2f).SetEasing(Easing.OutSine))
-            .Join(FillImage.GTAlpha(targetAlpha, 0.2f).SetEasing(Easing.OutSine))
-            .Join(ChangedImage.GTColor(targetChangedColor, 0.2f).SetEasing(Easing.OutSine))
+            .Join(FillImage.GTColor(fillTargetColor, 0.2f).SetEasing(Easing.OutSine))
+            .Join(ChangedImage.GTColorRGB(targetColor, 0.2f).SetEasing(Easing.OutSine))
             .Build();
 
         MainCore.TC.Play(stateSeq);

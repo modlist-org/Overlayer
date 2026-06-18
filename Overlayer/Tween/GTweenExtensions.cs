@@ -33,6 +33,21 @@ public static class GTweenExtensions {
                 duration
             );
         }
+
+        public GTween GTColorRGB(Color to, float duration) {
+            var from = target ? target.color : Color.white;
+            return GTweens.Extensions.GTweenExtensions.Tween(
+                () => 0f,
+                x => {
+                    if(target) {
+                        Color lerped = Color.Lerp(from, to, x);
+                        target.color = new Color(lerped.r, lerped.g, lerped.b, target.color.a);
+                    }
+                },
+                1f,
+                duration
+            );
+        }
     }
 
     public static GTween GTFade(this CanvasGroup target, float to, float duration) {
