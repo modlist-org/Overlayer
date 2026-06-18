@@ -74,6 +74,9 @@ public class UISlider : UIObject {
                 }
             }
         );
+        valueInputField.onSelect.AddListener((_) => {
+            valueInputField.text = Value.ToString();
+        });
         ChangedImage = changedImage;
         ChangedUpImage = changedUpImage;
         ChangedUpImage.color = UIColors.ObjectBG;
