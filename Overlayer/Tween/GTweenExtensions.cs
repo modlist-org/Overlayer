@@ -28,7 +28,7 @@ public static class GTweenExtensions {
             var from = target ? target.color : Color.white;
             return GTweens.Extensions.GTweenExtensions.Tween(
                 () => 0f,
-                x => { if(target) target.color = Color.Lerp(from, to, x); },
+                x => { if(target) { target.color = Color.Lerp(from, to, x); } },
                 1f,
                 duration
             );
@@ -38,7 +38,7 @@ public static class GTweenExtensions {
     public static GTween GTFade(this CanvasGroup target, float to, float duration) {
         return GTweens.Extensions.GTweenExtensions.Tween(
             () => target ? target.alpha : 0f,
-            x => { if(target) target.alpha = x; },
+            x => { if(target) { target.alpha = x; } },
             to,
             duration
         );
@@ -49,7 +49,7 @@ public static class GTweenExtensions {
             var from = target ? target.anchoredPosition : Vector2.zero;
             return GTweens.Extensions.GTweenExtensions.Tween(
                 () => 0f,
-                x => { if(target) target.anchoredPosition = Vector2.LerpUnclamped(from, to, x); },
+                x => { if(target) { target.anchoredPosition = Vector2.LerpUnclamped(from, to, x); } },
                 1f,
                 duration
             );
@@ -89,7 +89,7 @@ public static class GTweenExtensions {
             var from = target ? target.sizeDelta : Vector2.zero;
             return GTweens.Extensions.GTweenExtensions.Tween(
                 () => 0f,
-                x => { if(target) target.sizeDelta = Vector2.LerpUnclamped(from, to, x); },
+                x => { if(target) { target.sizeDelta = Vector2.LerpUnclamped(from, to, x); } },
                 1f,
                 duration
             );
@@ -99,7 +99,7 @@ public static class GTweenExtensions {
             var from = target ? target.offsetMin : Vector2.zero;
             return GTweens.Extensions.GTweenExtensions.Tween(
                 () => 0f,
-                x => { if(target) target.offsetMin = Vector2.LerpUnclamped(from, to, x); },
+                x => { if(target) { target.offsetMin = Vector2.LerpUnclamped(from, to, x); } },
                 1f,
                 duration
             );
@@ -117,7 +117,7 @@ public static class GTweenExtensions {
 
             return GTweens.Extensions.GTweenExtensions.Tween(
                 () => 0f,
-                x => { if(target) target.localEulerAngles = from + (delta * x); },
+                x => { if(target) { target.localEulerAngles = from + (delta * x); } },
                 1f,
                 duration
             );
