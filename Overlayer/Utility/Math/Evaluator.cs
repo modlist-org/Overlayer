@@ -49,12 +49,4 @@ public static class Evaluator<T> where T : struct, IComparable, IConvertible {
             return (currentVal, EvalState.Error);
         }
     }
-
-    private static T Clamp(T val, T min, T max) {
-        if(val.CompareTo(min) < 0) {
-            return min;
-        }
-
-        return val.CompareTo(max) > 0 ? max : val;
-    }
 }
