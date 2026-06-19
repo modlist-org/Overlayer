@@ -12,8 +12,8 @@ public enum EvalState {
 
 public static class Evaluator<T> where T : struct, IComparable, IConvertible {
     private static readonly Dictionary<string, double> Constants = new() {
-        { "PI", System.Math.PI }, { "pi", System.Math.PI },
-        { "E", System.Math.E },   { "e", System.Math.E }
+        { "PI", System.Math.PI },
+        { "E", System.Math.E }
     };
 
     public static (T result, EvalState state) Evaluate(string exprStr, T currentVal, T? min = null, T? max = null) {
@@ -22,7 +22,7 @@ public static class Evaluator<T> where T : struct, IComparable, IConvertible {
         }
 
         try {
-            var e = new Expression(exprStr);
+            var e = new Expression(exprStr, EvaluateOptions.IgnoreCase);
             foreach(var constant in Constants) {
                 e.Parameters[constant.Key] = constant.Value;
             }
