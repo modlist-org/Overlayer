@@ -6,6 +6,8 @@ using GTweens.Builders;
 using GTweens.Easings;
 using Overlayer.Utility.Math;
 using GTweenExtensions = GTweens.Extensions.GTweenExtensions;
+using System.Runtime.InteropServices;
+
 
 #if ML && IL2CPP
 using Il2CppInterop.Runtime;
@@ -75,8 +77,6 @@ public class UISlider : UIObject {
                     ? Evaluator<float>.Evaluate(val, Value, Min, Max)
                     : Evaluator<float>.Evaluate(val, Value);
 
-                MainCore.Log.Msg($"State: {state}, Color: {MathVisuals.GetStateColor(state)}");
-
                 LastValidValue = state != EvalState.Error ? result : null;
 
                 bool isCalc = state != EvalState.Error;
@@ -90,11 +90,11 @@ public class UISlider : UIObject {
                     };
 
                     PreviewLabel.text = $"{valStr} {symbol} <color=#00000000>{val}</color>";
+                    SetStateVisuals(MathVisuals.GetStateColor(state), true, result);
                 } else {
                     PreviewLabel.text = "";
+                    SetStateVisuals(MathVisuals.GetStateColor(state), true);
                 }
-
-                SetStateVisuals(MathVisuals.GetStateColor(state), true);
             },
             (val) => {
                 if(LastValidValue == null) {
@@ -179,6 +179,7 @@ public class UISlider : UIObject {
     }
 
     public float Normalize() => Mathf.InverseLerp(Min, Max, Value);
+    public float Normalize(float value) => Mathf.InverseLerp(Min, Max, value);
 
     public void SetNormalized(float t, bool invoke = true) => Set(Mathf.Lerp(Min, Max, t), invoke);
 
@@ -228,10 +229,10 @@ public class UISlider : UIObject {
     }
 
     public void OnDrag(float normalizedValue) => SetNormalized(normalizedValue, true);
-    private void SetStateVisuals(Color targetColor, bool isCalculating) {
+    private void SetStateVisuals(Color targetColor, bool isCalculating, float? value = null) {
         stateSeq?.Kill();
 
-        float targetAlpha = isCalculating ? 0f : 1f;
+        float targetFillAlpha = !isCalculating ? 1f : (value.HasValue ? 0.3f : 0f);
 
         Color startOutline = OutlineImage.color;
         Color startFill = FillImage.color;
@@ -241,12 +242,22 @@ public class UISlider : UIObject {
         stateSeq = GTweenSequenceBuilder.New()
             .Join(GTweenExtensions.Tween(() => 0f, x => {
                 OutlineImage.color = Color.Lerp(startOutline, targetColor, x);
-                FillImage.color = Color.Lerp(startFill, new(targetColor.r, targetColor.g, targetColor.b, targetAlpha), x);
+                FillImage.color = Color.Lerp(startFill, new(targetColor.r, targetColor.g, targetColor.b, targetFillAlpha), x);
                 ChangedImage.color = Color.Lerp(startChanged, new(targetColor.r, targetColor.g, targetColor.b, ChangedImage.color.a), x);
                 InputCore.InputField.caretColor = Color.Lerp(startCaret, new(targetColor.r, targetColor.g, targetColor.b, InputCore.InputField.caretColor.a), x);
             }, 1f, 0.2f).SetEasing(Easing.OutSine)).Build();
-
         MainCore.TC.Play(stateSeq);
+
+        if(value.HasValue && isCalculating) {
+            fillSeq?.Kill();
+            fillSeq = GTweenSequenceBuilder.New()
+                .Join(GTweenExtensions.Tween(() => FillRect.anchorMax.x, x => {
+                    Vector2 anchor = FillRect.anchorMax;
+                    anchor.x = x;
+                    FillRect.anchorMax = anchor;
+                }, Normalize(value.Value), 0.4f).SetEasing(Easing.OutExpo)).Build();
+            MainCore.TC.Play(fillSeq);
+        }
     }
 
     public override void Dispose() {
