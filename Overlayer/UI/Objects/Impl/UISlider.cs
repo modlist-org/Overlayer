@@ -80,17 +80,24 @@ public class UISlider : UIObject {
                 LastValidValue = state != EvalState.Error ? result : null;
 
                 bool isCalc = state != EvalState.Error;
-
                 if(isCalc) {
-                    string valStr = (Filter?.Invoke(result) ?? result).ToString();
-                    string symbol = state switch {
-                        EvalState.OverRange => "<",
-                        EvalState.UnderRange => ">",
-                        _ => "="
-                    };
+                    bool isSameValue = float.TryParse(val, out float parsedVal) &&
+                        Mathf.Abs(parsedVal - result) < 0.0001f;
 
-                    PreviewLabel.text = $"{valStr} {symbol} <color=#00000000>{val}</color>";
-                    SetStateVisuals(MathVisuals.GetStateColor(state), true, result);
+                    if(isSameValue) {
+                        PreviewLabel.text = "";
+                        SetStateVisuals(MathVisuals.GetStateColor(state), true, result);
+                    } else {
+                        string valStr = (Filter?.Invoke(result) ?? result).ToString();
+                        string symbol = state switch {
+                            EvalState.OverRange => "<",
+                            EvalState.UnderRange => ">",
+                            _ => "="
+                        };
+
+                        PreviewLabel.text = $"{valStr} {symbol} <color=#00000000>{val}</color>";
+                        SetStateVisuals(MathVisuals.GetStateColor(state), true, result);
+                    }
                 } else {
                     PreviewLabel.text = "";
                     SetStateVisuals(MathVisuals.GetStateColor(state), true);
@@ -100,7 +107,7 @@ public class UISlider : UIObject {
                 if(LastValidValue == null) {
                     InputCore.SetValue(Value.ToString(Format), false);
                 } else {
-                    Set(LastValidValue.Value, true);
+                    Set(LastValidValue.Value, true, true);
                     OnComplete?.Invoke(Value);
                 }
 
@@ -139,12 +146,14 @@ public class UISlider : UIObject {
 
     public override void Tick() => InputCore.OnTick();
 
-    public void Set(float value, bool invoke = true) {
+    public void Set(float value, bool invoke = true, bool noFilter = false) {
         if(float.IsNaN(value)) {
             return;
         }
 
-        value = ApplyFilter(value);
+        if(!noFilter) {
+            value = ApplyFilter(value);
+        }
         Value = ClampSafe(value, Min, Max);
 
         if(invoke) {
@@ -232,7 +241,7 @@ public class UISlider : UIObject {
     private void SetStateVisuals(Color targetColor, bool isCalculating, float? value = null) {
         stateSeq?.Kill();
 
-        float targetFillAlpha = !isCalculating ? 1f : (value.HasValue ? 0.3f : 0f);
+        float targetFillAlpha = isCalculating ? (value.HasValue ? 0.3f : 0f) : 1f;
 
         Color startOutline = OutlineImage.color;
         Color startFill = FillImage.color;
@@ -241,7 +250,7 @@ public class UISlider : UIObject {
 
         stateSeq = GTweenSequenceBuilder.New()
             .Join(GTweenExtensions.Tween(() => 0f, x => {
-                OutlineImage.color = Color.Lerp(startOutline, targetColor, x);
+                OutlineImage.color = Color.Lerp(startOutline, new(targetColor.r, targetColor.g, targetColor.b, isCalculating ? targetColor.a : 0f), x);
                 FillImage.color = Color.Lerp(startFill, new(targetColor.r, targetColor.g, targetColor.b, targetFillAlpha), x);
                 ChangedImage.color = Color.Lerp(startChanged, new(targetColor.r, targetColor.g, targetColor.b, ChangedImage.color.a), x);
                 InputCore.InputField.caretColor = Color.Lerp(startCaret, new(targetColor.r, targetColor.g, targetColor.b, InputCore.InputField.caretColor.a), x);
