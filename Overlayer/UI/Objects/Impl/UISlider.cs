@@ -71,10 +71,15 @@ public class UISlider : UIObject {
                     return;
                 }
 
-                var (result, state) = Evaluator<float>.Evaluate(val, LastValidValue ?? Value, Min, Max);
+                var (result, state) = useInputClamp
+                    ? Evaluator<float>.Evaluate(val, Value, Min, Max)
+                    : Evaluator<float>.Evaluate(val, Value);
+
+                MainCore.Log.Msg($"State: {state}, Color: {MathVisuals.GetStateColor(state)}");
+
                 LastValidValue = state != EvalState.Error ? result : null;
 
-                bool isCalc = state is EvalState.OK or EvalState.OverRange or EvalState.UnderRange or EvalState.Same;
+                bool isCalc = state != EvalState.Error;
 
                 if(isCalc) {
                     string valStr = (Filter?.Invoke(result) ?? result).ToString();
@@ -89,7 +94,7 @@ public class UISlider : UIObject {
                     PreviewLabel.text = "";
                 }
 
-                SetStateVisuals(MathVisuals.GetStateColor(state), state is not EvalState.OK and not EvalState.Same);
+                SetStateVisuals(MathVisuals.GetStateColor(state), true);
             },
             (val) => {
                 if(LastValidValue == null) {
@@ -231,16 +236,14 @@ public class UISlider : UIObject {
         Color startOutline = OutlineImage.color;
         Color startFill = FillImage.color;
         Color startChanged = ChangedImage.color;
-        Color startChangedUp = ChangedUpImage.color;
         Color startCaret = InputCore.InputField.caretColor;
 
         stateSeq = GTweenSequenceBuilder.New()
             .Join(GTweenExtensions.Tween(() => 0f, x => {
                 OutlineImage.color = Color.Lerp(startOutline, targetColor, x);
                 FillImage.color = Color.Lerp(startFill, new(targetColor.r, targetColor.g, targetColor.b, targetAlpha), x);
-                ChangedImage.color = Color.Lerp(startChanged, new(targetColor.r, targetColor.g, targetColor.b, startChanged.a), x);
-                ChangedUpImage.color = Color.Lerp(startChangedUp, new(targetColor.r, targetColor.g, targetColor.b, startChangedUp.a), x);
-                InputCore.InputField.caretColor = Color.Lerp(startCaret, new(targetColor.r, targetColor.g, targetColor.b, startCaret.a), x);
+                ChangedImage.color = Color.Lerp(startChanged, new(targetColor.r, targetColor.g, targetColor.b, ChangedImage.color.a), x);
+                InputCore.InputField.caretColor = Color.Lerp(startCaret, new(targetColor.r, targetColor.g, targetColor.b, InputCore.InputField.caretColor.a), x);
             }, 1f, 0.2f).SetEasing(Easing.OutSine)).Build();
 
         MainCore.TC.Play(stateSeq);
