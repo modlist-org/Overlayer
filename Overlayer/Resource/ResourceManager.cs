@@ -128,7 +128,7 @@ public sealed class ResourceManager(Assembly assembly, string resourcePath) : ID
                 TMP_FontAsset suitFont = LoadFont(suitPath, suitTempPath);
 
                 if(suitFont != null) {
-                    asset.fallbackFontAssetTable ??= new();
+                    asset.fallbackFontAssetTable ??= [];
                     if(!asset.fallbackFontAssetTable.Contains(suitFont)) {
                         asset.fallbackFontAssetTable.Add(suitFont);
                     }

@@ -32,8 +32,8 @@ public class UIInputCore {
         OnEndEdit = onEndEdit;
 
         SetupInputField();
-        
-        if (InputField.text != (value ?? string.Empty)) {
+
+        if(InputField.text != (value ?? string.Empty)) {
             InputField.text = value ?? string.Empty;
         }
 

@@ -36,9 +36,7 @@ public class OventHandler
         );
     }
 
-    void OnDisable() {
-        _isHovered = false;
-    }
+    void OnDisable() => _isHovered = false;
 
     void Update() {
         if(!_isHovered) {

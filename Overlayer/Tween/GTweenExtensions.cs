@@ -6,7 +6,7 @@ namespace Overlayer.Tween;
 
 public static class GTweenExtensions {
     public static GTween GTAlpha(this CanvasGroup target, float to, float duration)
-        => GTweens.Extensions.GTweenExtensions.Tween(() => target ? target.alpha : 0f, x => { if(target) target.alpha = x; }, to, duration);
+        => GTweens.Extensions.GTweenExtensions.Tween(() => target ? target.alpha : 0f, x => { if(target) { target.alpha = x; } }, to, duration);
 
     extension(Graphic target) {
         public GTween GTAlpha(float to, float duration) {

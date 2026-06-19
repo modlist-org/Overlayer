@@ -39,7 +39,7 @@ public class UIDropDown<T> : UIObject {
 
     private GTween triangleSeq, changeSeq;
     public GTween LayoutSeq { get; set; }
-    private readonly List<GTween> itemHoverTweens = new();
+    private readonly List<GTween> itemHoverTweens = [];
 
     public UIDropDown(
         string id,
