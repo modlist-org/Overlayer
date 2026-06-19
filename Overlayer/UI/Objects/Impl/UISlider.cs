@@ -103,7 +103,7 @@ public class UISlider : UIObject {
                 SetStateVisuals(UIColors.ObjectActive, false);
             }
         );
-        valueInputField.onValueChanged.AddListener(
+        valueInputField.onSelect.AddListener(
 #if ML && IL2CPP
             DelegateSupport.ConvertDelegate<UnityEngine.Events.UnityAction<string>>(new Action<string>(
 #endif
