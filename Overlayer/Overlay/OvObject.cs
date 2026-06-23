@@ -232,9 +232,7 @@ public sealed class OvObject : ISettingsFile {
         public TextMeshProUGUI Tmp;
         public TextEngineCore Engine;
 
-        public void Awake() {
-            AllUpdaters.Add(new WeakReference<TextEngineUpdater>(this));
-        }
+        public void Awake() => AllUpdaters.Add(new WeakReference<TextEngineUpdater>(this));
 
         public void Init(TextMeshProUGUI tmp) {
             Tmp = tmp;
