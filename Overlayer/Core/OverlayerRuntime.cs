@@ -13,6 +13,7 @@ using Overlayer.Tag.Core;
 using System.Reflection;
 using UnityEngine;
 using Object = UnityEngine.Object;
+using Overlayer.Tag.Runtime;
 
 namespace Overlayer.Core;
 
@@ -100,6 +101,7 @@ public sealed class OverlayerRuntime {
 
         ticks.Add(uiService);
         ticks.Add(tweenService);
+        ticks.Add(TagCache.Instance);
 
         services.Initialize();
 

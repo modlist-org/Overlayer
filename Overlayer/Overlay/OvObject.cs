@@ -238,5 +238,9 @@ public sealed class OvObject : ISettingsFile {
         public void SetText(string text) => Engine.Text = text;
 
         public void Update() => Tmp.text = Engine.Get();
+
+        public void OnDestroy() {
+            Engine?.Dispose();
+        }
     }
 }

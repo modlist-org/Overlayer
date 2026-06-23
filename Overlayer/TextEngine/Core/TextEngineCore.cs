@@ -51,6 +51,12 @@ public sealed class TextEngineCore {
 
     private void CompileInternal() {
         try {
+            if(segments != null) {
+                foreach(var seg in segments) {
+                    seg.Replacer.Dispose();
+                }
+            }
+
             if(string.IsNullOrEmpty(Text)) {
                 segments = [];
                 state = TextEngineState.Ready;
@@ -116,6 +122,17 @@ public sealed class TextEngineCore {
     private char GetSpinner() {
         char[] frames = ['|', '/', '-', '\\'];
         return frames[spinner++ % frames.Length];
+    }
+
+    public void Dispose() {
+        lock(_lock) {
+            if(segments != null) {
+                foreach(var seg in segments) {
+                    seg.Replacer.Dispose();
+                }
+                segments = null;
+            }
+        }
     }
 }
 
