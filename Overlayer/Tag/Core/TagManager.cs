@@ -45,6 +45,8 @@ public static class TagManager {
             }
 
             MainCore.Log.Msg($"[{nameof(TagManager)}] Registration completed for '{asm.GetName().Name}'. Total tags: {_tags.Count}");
+            MainCore.V8.GenerateImplJs();
+            MainCore.V8.LoadImplJs();
             MainThread.Enqueue(TextEngineUpdater.RecompileAll);
         } catch(Exception ex) {
             MainCore.Log.Msg($"[{nameof(TagManager)}] Registration failed for '{asm.GetName().Name}': {ex}");
@@ -57,6 +59,12 @@ public static class TagManager {
 
     public static bool TryGet(string name, out TagCore tag)
         => _tags.TryGetValue(name, out tag);
+
+    public static List<TagCore> GetAllTags() {
+        lock(_lock) {
+            return [.. _tags.Values];
+        }
+    }
 
     public static void Set(TagCore tag) {
         lock(_lock) {

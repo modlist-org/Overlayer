@@ -1,4 +1,5 @@
-﻿using Overlayer.Core;
+﻿using Microsoft.ClearScript.V8;
+using Overlayer.Core;
 using Overlayer.Tag.Core;
 using Overlayer.Tag.Diagnostics;
 using Overlayer.TextEngine.Parse;
@@ -35,7 +36,7 @@ public static class JavaScirpt {
 
     [Tag(
         TagType = TagType.Advanced,
-        Desc = "Evaluates JavaScript expressions using the V8 engine.\nCan be used for writing simple scripts."
+        Desc = "Evaluates JavaScript expressions using the V8 engine.\nOptimized with pre-compiled script execution."
     )]
     public static Func<string> JSExpr(ParsedTag parsed, DiagnosticContext ctx, List<CompileDiagnostic> diags) {
         if(parsed.Args == null || parsed.Args.Length == 0) {
@@ -50,7 +51,8 @@ public static class JavaScirpt {
 
         string restoredJsCode = string.Join(", ", parsed.Args);
 
-        if(MainCore.V8 == null) {
+        var v8Manager = MainCore.V8;
+        if(v8Manager?.Engine == null) {
             diags.Add(new CompileDiagnostic(
                 DiagnosticId.AdvancedTagException,
                 CompileSeverity.Error,
@@ -60,8 +62,9 @@ public static class JavaScirpt {
             return () => parsed.Raw;
         }
 
+        V8Script compiledScript;
         try {
-            _ = MainCore.V8.Evaluate(restoredJsCode);
+            compiledScript = v8Manager.Engine.Compile(restoredJsCode);
         } catch(Exception ex) {
             diags.Add(new CompileDiagnostic(
                 DiagnosticId.AdvancedTagException,
@@ -69,16 +72,29 @@ public static class JavaScirpt {
                 ctx,
                 [new JSDiagnosticData(JSErrorId.SyntaxError, ex)]
             ));
-
             return () => parsed.Raw;
         }
 
+        string lastLoggedError = null;
+        bool isDuplicateLogged = false;
+
         return () => {
             try {
-                var result = MainCore.V8.Evaluate(restoredJsCode);
+                var result = v8Manager.Engine.Evaluate(compiledScript);
                 return result?.ToString() ?? string.Empty;
             } catch(Exception runtimeEx) {
-                MainCore.Log.Wrn($"[{nameof(JSExpr)}] Runtime exception: {runtimeEx.Message}");
+                string errorMessage = $"[{nameof(JavaScirpt)}] Runtime error, Tag '{parsed.Raw}': {runtimeEx.Message}";
+
+                if(errorMessage == lastLoggedError) {
+                    if(!isDuplicateLogged) {
+                        MainCore.Log.Wrn($"[{nameof(JavaScirpt)}] (Duplicated Log)");
+                        isDuplicateLogged = true;
+                    }
+                } else {
+                    lastLoggedError = errorMessage;
+                    isDuplicateLogged = false;
+                    MainCore.Log.Wrn(errorMessage);
+                }
                 return parsed.Raw;
             }
         };

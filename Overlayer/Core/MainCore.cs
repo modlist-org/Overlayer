@@ -6,6 +6,7 @@ using Overlayer.Core.Service;
 using Overlayer.IO;
 using Overlayer.Localization;
 using Overlayer.Resource;
+using Overlayer.V8;
 using System.Reflection;
 
 namespace Overlayer.Core;
@@ -31,7 +32,7 @@ public static class MainCore {
     public static IOverlayerHost Host => Runtime.Host;
     public static UnityEngine.GameObject Root => Runtime.RootObject;
     public static GTweensContext TC => Runtime.TweensContext;
-    public static V8ScriptEngine V8 => Runtime.V8Engine;
+    public static V8Manager V8 => Runtime.V8Manager;
     public static ModuleService ModuleService => Runtime.ModuleService;
     public static bool IsModEnabled => Runtime.State.IsEnabled;
 

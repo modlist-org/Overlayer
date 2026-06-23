@@ -1,5 +1,4 @@
 using GTweens.Contexts;
-using Microsoft.ClearScript.V8;
 using Overlayer.Async;
 using Overlayer.Compat;
 using Overlayer.Compat.Interface;
@@ -11,6 +10,7 @@ using Overlayer.Patch.Safe;
 using Overlayer.Resource;
 using Overlayer.Tag.Core;
 using Overlayer.Tag.Runtime;
+using Overlayer.V8;
 using System.Reflection;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -41,7 +41,7 @@ public sealed class OverlayerRuntime {
 
     public GTweensContext TweensContext { get; }
 
-    public V8ScriptEngine V8Engine { get; private set; }
+    public V8Manager V8Manager { get; private set; }
 
     public ModuleService ModuleService { get; private set; }
 
@@ -75,6 +75,7 @@ public sealed class OverlayerRuntime {
             "Overlayer.Resource.Embedded."
         );
         Sprite = new SpriteManager(Resource);
+        V8Manager = new V8Manager();
         services = new RuntimeServices();
         ticks = new RuntimeTicks();
         TweensContext = new GTweensContext();
@@ -98,14 +99,13 @@ public sealed class OverlayerRuntime {
         services.Add(Localization);
         services.Add(uiService);
         services.Add(tweenService);
+        services.Add(V8Manager);
 
         ticks.Add(uiService);
         ticks.Add(tweenService);
         ticks.Add(TagCache.Instance);
 
         services.Initialize();
-
-        V8Engine = new();
 
         SetModEnabled(Config.Data.Active, false);
 

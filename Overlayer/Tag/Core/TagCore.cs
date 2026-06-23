@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using System.Linq.Expressions;
+using System.Reflection;
 
 namespace Overlayer.Tag.Core;
 
@@ -24,6 +25,8 @@ public class TagCore {
     public ParameterInfo[] Parameters { get; }
     public int RequiredParameterCount { get; }
     public Type ReturnType { get; }
+
+    private Delegate _compiledDelegate;
 
     public readonly bool IsMethod;
     public readonly bool IsProperty;
@@ -64,5 +67,25 @@ public class TagCore {
                 RequiredParameterCount++;
             }
         }
+    }
+
+    public object Invoke(params object[] args) {
+        if(_compiledDelegate == null) {
+            var method = (MethodInfo)Member;
+            var paramExpressions = new Expression[Parameters.Length];
+            var argsParam = Expression.Parameter(typeof(object[]), "args");
+
+            for(int i = 0; i < Parameters.Length; i++) {
+                var index = Expression.Constant(i);
+                var accessor = Expression.ArrayIndex(argsParam, index);
+                paramExpressions[i] = Expression.Convert(accessor, Parameters[i].ParameterType);
+            }
+
+            var call = Expression.Call(null, method, paramExpressions);
+            var castResult = Expression.Convert(call, typeof(object));
+
+            _compiledDelegate = Expression.Lambda<Func<object[], object>>(castResult, argsParam).Compile();
+        }
+        return _compiledDelegate.DynamicInvoke((object)args);
     }
 }

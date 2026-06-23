@@ -17,66 +17,53 @@ public sealed class TagCache : IRuntimeTick {
     }
 
     private readonly Dictionary<string, CacheEntry> cache = [];
+    private readonly object lockObject = new();
 
     private long lastCleanupTicks = DateTimeOffset.Now.Ticks;
     private static readonly long OneSecondTicks = TimeSpan.FromSeconds(1).Ticks;
 
     public CompiledPlaceholder GetOrCompile(ParsedTag parsed) {
         if(!TagManager.TryGet(parsed.Name, out var tag)) {
-            return new CompiledPlaceholder(
-                () => parsed.Raw, [
-                    new CompileDiagnostic(
-                        DiagnosticId.TagNotFound,
-                        CompileSeverity.Error,
-                        new(parsed.Name, parsed.Index, parsed.Length),
-                        [parsed.Name]
-                    )
-                ]
-            );
+            return new CompiledPlaceholder(() => parsed.Raw, [
+                new CompileDiagnostic(DiagnosticId.TagNotFound, CompileSeverity.Error, new(parsed.Name, parsed.Index, parsed.Length), [parsed.Name])
+            ]);
         }
 
         string key = MakeKey(parsed);
-
-        if(cache.TryGetValue(key, out var entry)) {
-            return entry.Compiled;
+        lock(lockObject) {
+            if(cache.TryGetValue(key, out var entry)) {
+                return entry.Compiled;
+            }
         }
 
-        CompiledPlaceholder compiled;
-        if((tag.TagType & TagType.Advanced) != 0) {
-            compiled = AdvancedCompiler.Compile(tag, parsed);
-        } else {
-            compiled = Compiler.Compile(tag, parsed);
-        }
+        CompiledPlaceholder compiled = (tag.TagType & TagType.Advanced) != 0
+            ? AdvancedCompiler.Compile(tag, parsed)
+            : Compiler.Compile(tag, parsed);
 
         if(compiled.IsValid) {
-            cache[key] = new CacheEntry(compiled);
+            lock(lockObject) {
+                cache[key] = new CacheEntry(compiled);
+            }
         }
-
         return compiled;
     }
 
-    public void IncrementRef(string key) {
-        if(cache.TryGetValue(key, out var entry)) {
-            entry.RefCount++;
-        }
-    }
+    public void IncrementRef(string key) { lock(lockObject) { if(cache.TryGetValue(key, out var entry)) entry.RefCount++; } }
 
     public void DecrementRef(string key) {
-        if(cache.TryGetValue(key, out var entry)) {
-            entry.RefCount--;
-            if(entry.RefCount <= 0) {
-                entry.LastReferencedTicks = DateTimeOffset.Now.Ticks;
+        lock(lockObject) {
+            if(cache.TryGetValue(key, out var entry)) {
+                entry.RefCount--;
+                if(entry.RefCount <= 0) {
+                    entry.LastReferencedTicks = DateTimeOffset.Now.Ticks;
+                }
             }
         }
     }
 
-    public void Clear() => cache.Clear();
+    public void Clear() { lock(lockObject) { cache.Clear(); } }
 
     public void Tick() {
-        if(cache.Count == 0) {
-            return;
-        }
-
         long nowTicks = DateTimeOffset.Now.Ticks;
         if(nowTicks - lastCleanupTicks < OneSecondTicks) {
             return;
@@ -90,28 +77,23 @@ public sealed class TagCache : IRuntimeTick {
         }
 
         long expirationTicks = TimeSpan.FromSeconds(configSeconds).Ticks;
-        List<string> toRemove = null;
+        List<string> toRemove = [];
 
-        foreach(var pair in cache) {
-            if(pair.Value.RefCount <= 0 && (nowTicks - pair.Value.LastReferencedTicks > expirationTicks)) {
-                toRemove ??= [];
-                toRemove.Add(pair.Key);
+        lock(lockObject) {
+            foreach(var pair in cache) {
+                if(pair.Value.RefCount <= 0 && (nowTicks - pair.Value.LastReferencedTicks > expirationTicks)) {
+                    toRemove.Add(pair.Key);
+                }
             }
-        }
 
-        if(toRemove != null) {
-            for(int i = 0; i < toRemove.Count; i++) {
-                cache.Remove(toRemove[i]);
+            foreach(var key in toRemove) {
+                cache.Remove(key);
             }
         }
     }
 
     public string GetKey(ParsedTag parsed) => MakeKey(parsed);
 
-    private static string MakeKey(ParsedTag p) {
-        if(p.Args == null || p.Args.Length == 0) {
-            return p.Name;
-        }
-        return string.Concat(p.Name, ":", string.Join(",", p.Args));
-    }
+    private static string MakeKey(ParsedTag p) =>
+        (p.Args == null || p.Args.Length == 0) ? p.Name : string.Concat(p.Name, ":", string.Join(",", p.Args));
 }
