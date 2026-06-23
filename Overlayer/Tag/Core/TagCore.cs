@@ -12,6 +12,8 @@ public enum TagType {
     ProcessFormat = 1 << 8,
 
     Hide = 1 << 16,
+
+    Advanced = 1 << 24,
 }
 
 public class TagCore {

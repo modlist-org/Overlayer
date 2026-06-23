@@ -28,7 +28,11 @@ public static class TagCache {
             return compiled;
         }
 
-        compiled = Compiler.Compile(tag, parsed);
+        if((tag.TagType & TagType.Advanced) != 0) {
+            compiled = AdvancedCompiler.Compile(tag, parsed);
+        } else {
+            compiled = Compiler.Compile(tag, parsed);
+        }
 
         if(compiled.IsValid) {
             Cache[key] = compiled;

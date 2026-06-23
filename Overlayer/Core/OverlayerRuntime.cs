@@ -1,4 +1,4 @@
-//using Microsoft.ClearScript.V8;
+using Microsoft.ClearScript.V8;
 using GTweens.Contexts;
 using Overlayer.Async;
 using Overlayer.Compat;
@@ -40,7 +40,7 @@ public sealed class OverlayerRuntime {
 
     public GTweensContext TweensContext { get; }
 
-    //public V8ScriptEngine V8Engine { get; private set; }
+    public V8ScriptEngine V8Engine { get; private set; }
 
     public ModuleService ModuleService { get; private set; }
 
@@ -103,7 +103,7 @@ public sealed class OverlayerRuntime {
 
         services.Initialize();
 
-        //V8Engine = new();
+        V8Engine = new();
 
         SetModEnabled(Config.Data.Active, false);
 
