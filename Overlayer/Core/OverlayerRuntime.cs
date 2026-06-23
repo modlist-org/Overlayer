@@ -176,7 +176,14 @@ public sealed class OverlayerRuntime {
         }
     }
 
+    private bool isLateEnabled;
     public void SetModEnabledLate(bool enabled, bool isDispose) {
+        if(isLateEnabled == enabled) {
+            return;
+        }
+
+        isLateEnabled = enabled;
+
         if(enabled) {
             _ = TagManager.RegisterAsync(Assembly);
 

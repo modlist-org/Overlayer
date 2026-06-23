@@ -56,5 +56,13 @@ public static class MainCore {
         Runtime = null;
     }
 
-    public static void SetModEnabled(bool enabled) => Runtime.SetModEnabled(enabled, false);
+    public static void SetModEnabled(bool enabled) {
+        if(enabled) {
+            Runtime.SetModEnabled(enabled, false);
+            Runtime.SetModEnabledLate(enabled, false);
+        } else {
+            Runtime.SetModEnabledLate(enabled, false);
+            Runtime.SetModEnabled(enabled, false);
+        }
+    }
 }
