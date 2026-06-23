@@ -40,7 +40,9 @@ public class V8Manager : IRuntimeService {
         sb.AppendLine("    });");
         sb.AppendLine("}");
 
-        foreach(var tag in tags) {
+        var sortedTags = tags.OrderBy(t => t.Name);
+
+        foreach(var tag in sortedTags) {
             var paramNames = tag.Parameters.Select(p => p.Name).ToArray();
             string paramList = string.Join(", ", paramNames);
 
