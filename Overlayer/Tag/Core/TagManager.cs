@@ -30,8 +30,9 @@ public static class TagManager {
             var list = TagLoader.LoadAsync(asm).GetAwaiter().GetResult();
             MainCore.Log.Msg($"[{nameof(TagManager)}] Found tags in '{asm.GetName().Name}': {list.Count}");
 
-            if(list.Count == 0)
+            if(list.Count == 0) {
                 return;
+            }
 
             lock(_lock) {
                 var newDict = new Dictionary<string, TagCore>(_tags);

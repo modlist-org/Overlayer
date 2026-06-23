@@ -6,7 +6,7 @@ public static class TagLoader {
     public static Task<List<TagCore>> LoadAsync(Assembly asm) {
         return Task.Run(() => {
             List<TagCore> tags = [];
-            
+
             var flags = BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy;
 
             foreach(Type type in asm.GetTypes()) {
@@ -16,13 +16,12 @@ public static class TagLoader {
                         continue;
                     }
 
-                    if (member is PropertyInfo pi) {
+                    if(member is PropertyInfo pi) {
                         var method = pi.GetGetMethod();
                         if(method != null) {
                             tags.Add(new TagCore(attr.Name ?? pi.Name, method, attr.TagType, attr.Desc));
                         }
-                    }
-                    else if (member is MethodInfo mi) {
+                    } else if(member is MethodInfo mi) {
                         tags.Add(new TagCore(attr.Name ?? mi.Name, mi, attr.TagType, attr.Desc));
                     }
                 }
