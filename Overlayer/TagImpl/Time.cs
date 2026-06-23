@@ -1,5 +1,7 @@
 ﻿using Overlayer.Tag.Core;
 
+namespace Overlayer.TagImpl;
+
 public static class Time {
     [Tag(Desc = "Current system time in ticks (100-nanosecond intervals).")]
     public static long Ticks => DateTimeOffset.Now.Ticks;

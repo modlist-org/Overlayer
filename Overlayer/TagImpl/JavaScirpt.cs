@@ -3,6 +3,8 @@ using Overlayer.Tag.Core;
 using Overlayer.Tag.Diagnostics;
 using Overlayer.TextEngine.Parse;
 
+namespace Overlayer.TagImpl;
+
 public static class JavaScirpt {
     /// <summary>
     /// Specifies the internal error types for the JavaScript advanced tag execution pipeline.
