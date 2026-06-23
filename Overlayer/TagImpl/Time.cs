@@ -22,13 +22,13 @@ public static class Time {
     [Tag(Desc = "Current hour in 12-hour format (1-12).")]
     public static int Hour12 => DateTime.Now.Hour % 12 == 0 ? 12 : DateTime.Now.Hour % 12;
 
-    [Tag(Desc = "Current designator for morning or afternoon (AM or PM).")]
+    [Tag(Desc = "Returns 'AM' or 'PM' based on the current time.")]
     public static string AmPm => DateTime.Now.ToString("tt", System.Globalization.CultureInfo.InvariantCulture);
 
-    [Tag(Desc = "Returns true if the current system time is before noon (AM).")]
+    [Tag(Desc = "Returns true if it is currently AM.")]
     public static bool IsAm => DateTime.Now.Hour < 12;
 
-    [Tag(Desc = "Returns true if the current system time is afternoon or night (PM).")]
+    [Tag(Desc = "Returns true if it is currently PM.")]
     public static bool IsPm => DateTime.Now.Hour >= 12;
 
     [Tag(Desc = "Current day of the month (1-31).")]
