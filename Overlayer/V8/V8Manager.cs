@@ -51,13 +51,18 @@ public class V8Manager : IRuntimeService {
             string returnType = MapToJsType(tag.ReturnType);
 
             sb.AppendLine("/**");
+            if(!string.IsNullOrEmpty(tag.Description)) {
+                string desc = tag.Description.Replace("\n", "\n * ");
+                sb.AppendLine($" * {desc}");
+            }
+
             if(!string.IsNullOrEmpty(jsDocParamsStr)) {
                 sb.AppendLine($" * @param {{{jsDocParamsStr}}}");
             }
             sb.AppendLine($" * @returns {{{returnType}}}");
             sb.AppendLine(" */");
+
             sb.AppendLine($"function {tag.Name}({paramList}) {{ return Tag.{tag.Name}({paramList}); }}");
-            sb.AppendLine("");
         }
 
         try {
