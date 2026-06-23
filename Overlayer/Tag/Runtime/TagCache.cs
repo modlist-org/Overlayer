@@ -1,4 +1,5 @@
 ﻿using Overlayer.Compat.Interface;
+using Overlayer.Core;
 using Overlayer.Tag.Compile;
 using Overlayer.Tag.Core;
 using Overlayer.Tag.Diagnostics;
@@ -83,7 +84,7 @@ public sealed class TagCache : IRuntimeTick {
 
         lastCleanupTicks = nowTicks;
 
-        int configSeconds = 5;
+        int configSeconds = MainCore.Conf.TagCacheExpirationSeconds;
         if(configSeconds <= 0) {
             return;
         }
