@@ -1,5 +1,7 @@
-﻿using Overlayer.Core;
+﻿using Overlayer.Async;
+using Overlayer.Core;
 using System.Reflection;
+using static Overlayer.Overlay.OvObject;
 
 namespace Overlayer.Tag.Core;
 
@@ -43,6 +45,7 @@ public static class TagManager {
             }
 
             MainCore.Log.Msg($"[{nameof(TagManager)}] Registration completed for '{asm.GetName().Name}'. Total tags: {_tags.Count}");
+            MainThread.Enqueue(TextEngineUpdater.RecompileAll);
         } catch(Exception ex) {
             MainCore.Log.Msg($"[{nameof(TagManager)}] Registration failed for '{asm.GetName().Name}': {ex}");
             lock(_lock) {

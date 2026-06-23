@@ -227,8 +227,14 @@ public sealed class OvObject : ISettingsFile {
         : MonoBehaviour
 #endif
     {
+        private static readonly List<WeakReference<TextEngineUpdater>> AllUpdaters = [];
+
         public TextMeshProUGUI Tmp;
         public TextEngineCore Engine;
+
+        public void Awake() {
+            AllUpdaters.Add(new WeakReference<TextEngineUpdater>(this));
+        }
 
         public void Init(TextMeshProUGUI tmp) {
             Tmp = tmp;
@@ -239,6 +245,17 @@ public sealed class OvObject : ISettingsFile {
 
         public void Update() => Tmp.text = Engine.Get();
 
-        public void OnDestroy() => Engine?.Dispose();
+        public void OnDestroy() {
+            Engine?.Dispose();
+            AllUpdaters.RemoveAll(wr => !wr.TryGetTarget(out var u) || u == this);
+        }
+
+        public static void RecompileAll() {
+            foreach(var wr in AllUpdaters) {
+                if(wr.TryGetTarget(out var updater)) {
+                    updater.Engine?.ForceRecompile();
+                }
+            }
+        }
     }
 }

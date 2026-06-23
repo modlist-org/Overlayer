@@ -27,6 +27,8 @@ public sealed class TextEngineCore {
         }
     }
 
+    public void ForceRecompile() => StartCompile();
+
     public CompiledSegment[] Segments => segments;
 
     public TextEngineState State => state;
