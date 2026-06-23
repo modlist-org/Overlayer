@@ -8,6 +8,8 @@ public sealed class ModuleService(OverlayerLogger logger) : IDisposable {
     private readonly OverlayerLogger _logger = logger;
     private readonly List<OverlayerModule> _loadedModules = [];
 
+    public IReadOnlyList<OverlayerModule> LoadedModules => _loadedModules;
+
     public void DiscoverAndRegisterModules() {
         var assemblies = AppDomain.CurrentDomain.GetAssemblies()
                 .Where(a => !a.FullName.StartsWith("UnityEngine") && !a.FullName.StartsWith("Unity") && !a.FullName.StartsWith("System"));

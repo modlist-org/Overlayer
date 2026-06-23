@@ -111,11 +111,14 @@ public sealed class OverlayerRuntime {
 
         ModuleService.DiscoverAndRegisterModules();
         ModuleService.InitializeAllModules();
+
+        SetModEnabledLate(Config.Data.Active, false);
     }
 
     public void Tick() => ticks.Tick();
 
     public void Dispose() {
+        SetModEnabledLate(false, true);
         SetModEnabled(false, true);
 
         Config.Save();
@@ -151,10 +154,6 @@ public sealed class OverlayerRuntime {
         if(enabled) {
             UserResourceManager.Initialize();
 
-            Task.Run(() => {
-                _ = TagManager.InitializeAsync(Assembly);
-            });
-
             SafePatchController.ApplyAll();
 
             OverlayCore.Initialize(RootObject);
@@ -171,11 +170,26 @@ public sealed class OverlayerRuntime {
 
             SafePatchController.UnloadAll();
 
-            TagManager.Dispose();
-
             UserResourceManager.Dispose();
 
             Logger.Msg("Mod Disabled");
+        }
+    }
+
+    public void SetModEnabledLate(bool enabled, bool isDispose) {
+        if(enabled) {
+            _ = TagManager.RegisterAsync(Assembly);
+
+            if(ModuleService != null) {
+                foreach(var module in ModuleService.LoadedModules) {
+                    if(module != null) {
+                        var moduleAsm = module.GetType().Assembly;
+                        _ = TagManager.RegisterAsync(moduleAsm);
+                    }
+                }
+            }
+        } else {
+            TagManager.Dispose();
         }
     }
 

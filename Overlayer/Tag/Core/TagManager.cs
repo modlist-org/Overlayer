@@ -6,51 +6,47 @@ namespace Overlayer.Tag.Core;
 public static class TagManager {
     private static readonly object _lock = new();
 
+    private static readonly HashSet<Assembly> _registeredAssemblies = [];
     private static Dictionary<string, TagCore> _tags = [];
+
     public static int Count => _tags.Count;
 
-    private static Task _initTask;
-
-    public static Task InitializeAsync(Assembly asm) {
-        bool isFirstInit;
-        Task task;
-
+    public static Task RegisterAsync(Assembly asm) {
         lock(_lock) {
-            if(_initTask != null) {
-                isFirstInit = false;
-            } else {
-                isFirstInit = true;
-
-                _initTask = Task.Run(() => InitializeInternal(asm));
+            if(_registeredAssemblies.Contains(asm)) {
+                MainCore.Log.Msg($"[{nameof(TagManager)}] Assembly '{asm.GetName().Name}' is already registered.");
+                return Task.CompletedTask;
             }
-
-            task = _initTask;
+            _registeredAssemblies.Add(asm);
         }
 
-        MainCore.Log.Msg(isFirstInit
-            ? $"[{nameof(TagManager)}] Initialization started"
-            : $"[{nameof(TagManager)}] Already initialized / returning existing task");
+        MainCore.Log.Msg($"[{nameof(TagManager)}] Registration started for: {asm.GetName().Name}");
 
-        return task;
+        return Task.Run(() => RegisterInternal(asm));
     }
 
-    private static void InitializeInternal(Assembly asm) {
+    private static void RegisterInternal(Assembly asm) {
         try {
             var list = TagLoader.LoadAsync(asm).GetAwaiter().GetResult();
+            MainCore.Log.Msg($"[{nameof(TagManager)}] Found tags in '{asm.GetName().Name}': {list.Count}");
 
-            MainCore.Log.Msg($"[{nameof(TagManager)}] Loaded tags: {list.Count}");
+            if(list.Count == 0)
+                return;
 
-            var dict = new Dictionary<string, TagCore>(list.Count);
-
-            foreach(var tag in list) {
-                dict[tag.Name] = tag;
+            lock(_lock) {
+                var newDict = new Dictionary<string, TagCore>(_tags);
+                foreach(var tag in list) {
+                    newDict[tag.Name] = tag;
+                }
+                _tags = newDict;
             }
 
-            _tags = dict;
-
-            MainCore.Log.Msg($"[{nameof(TagManager)}] Initialization completed. Total: {_tags.Count}");
+            MainCore.Log.Msg($"[{nameof(TagManager)}] Registration completed for '{asm.GetName().Name}'. Total tags: {_tags.Count}");
         } catch(Exception ex) {
-            MainCore.Log.Msg($"[{nameof(TagManager)}] Initialization failed: {ex}");
+            MainCore.Log.Msg($"[{nameof(TagManager)}] Registration failed for '{asm.GetName().Name}': {ex}");
+            lock(_lock) {
+                _registeredAssemblies.Remove(asm);
+            }
             throw;
         }
     }
@@ -63,7 +59,6 @@ public static class TagManager {
             Dictionary<string, TagCore> newMap = new(_tags) {
                 [tag.Name] = tag
             };
-
             _tags = newMap;
         }
         MainCore.Log.Msg($"[{nameof(TagManager)}] Tag updated: {tag.Name}");
@@ -72,10 +67,8 @@ public static class TagManager {
     public static void Dispose() {
         lock(_lock) {
             _tags.Clear();
+            _registeredAssemblies.Clear();
         }
-
-        _initTask = null;
-
         MainCore.Log.Msg($"[{nameof(TagManager)}] Disposed");
     }
 }

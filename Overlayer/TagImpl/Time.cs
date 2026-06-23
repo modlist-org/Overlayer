@@ -1,6 +1,6 @@
 ﻿using Overlayer.Tag.Core;
 
-namespace Overlayer.Tag.Impl;
+namespace Overlayer.Impl;
 
 public static class Time {
     [Tag]
