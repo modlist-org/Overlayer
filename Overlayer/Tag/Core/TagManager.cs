@@ -57,6 +57,36 @@ public static class TagManager {
         }
     }
 
+    public static bool Register(TagCore[] tags) {
+        if(tags == null || tags.Length == 0) {
+            return false;
+        }
+
+        int registeredCount = 0;
+        lock(_lock) {
+            var newDict = new Dictionary<string, TagCore>(_tags);
+            foreach(var tag in tags) {
+                if(tag != null && !newDict.ContainsKey(tag.Name)) {
+                    newDict[tag.Name] = tag;
+                    registeredCount++;
+                }
+            }
+
+            if(registeredCount == 0) {
+                return false;
+            }
+
+            _tags = newDict;
+            MainCore.Log.Msg($"[{nameof(TagManager)}] {registeredCount} tags registered. Total tags: {_tags.Count}");
+        }
+
+        MainCore.V8.GenerateImplJs();
+        MainCore.V8.LoadImplJs();
+        MainThread.Enqueue(TextEngineUpdater.RecompileAll);
+
+        return true;
+    }
+
     public static bool Unregister(string[] tagNames) {
         if(tagNames == null || tagNames.Length == 0) {
             return false;
