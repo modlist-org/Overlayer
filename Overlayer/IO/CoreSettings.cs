@@ -12,7 +12,6 @@ public sealed class CoreSettings : ISettingsFile {
     public bool MiddleClickToDefault = true;
     public float UIScale = 1.0f;
     public float SliderSensitivity = 1.0f;
-    public int TagCacheExpirationSeconds = 60;
 
     public JToken Serialize() {
         return new JObject {
@@ -23,8 +22,7 @@ public sealed class CoreSettings : ISettingsFile {
             [nameof(Tooltip)] = Tooltip,
             [nameof(MiddleClickToDefault)] = MiddleClickToDefault,
             [nameof(UIScale)] = UIScale,
-            [nameof(SliderSensitivity)] = SliderSensitivity,
-            [nameof(TagCacheExpirationSeconds)] = TagCacheExpirationSeconds
+            [nameof(SliderSensitivity)] = SliderSensitivity
         };
     }
 
@@ -37,6 +35,5 @@ public sealed class CoreSettings : ISettingsFile {
         MiddleClickToDefault = IOUtils.Read(token, nameof(MiddleClickToDefault), MiddleClickToDefault);
         UIScale = IOUtils.Read(token, nameof(UIScale), UIScale);
         SliderSensitivity = IOUtils.Read(token, nameof(SliderSensitivity), SliderSensitivity);
-        TagCacheExpirationSeconds = IOUtils.Read(token, nameof(TagCacheExpirationSeconds), TagCacheExpirationSeconds);
     }
 }

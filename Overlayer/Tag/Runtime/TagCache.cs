@@ -7,20 +7,16 @@ using Overlayer.TextEngine.Parse;
 
 namespace Overlayer.Tag.Runtime;
 
-public sealed class TagCache : IRuntimeTick {
+public sealed class TagCache {
     public static TagCache Instance { get; } = new();
 
     private class CacheEntry(CompiledPlaceholder compiled) {
         public readonly CompiledPlaceholder Compiled = compiled;
         public int RefCount = 0;
-        public long LastReferencedTicks = DateTimeOffset.Now.Ticks;
     }
 
     private readonly Dictionary<string, CacheEntry> cache = [];
     private readonly object lockObject = new();
-
-    private long lastCleanupTicks = DateTimeOffset.Now.Ticks;
-    private static readonly long OneSecondTicks = TimeSpan.FromSeconds(1).Ticks;
 
     public CompiledPlaceholder GetOrCompile(ParsedTag parsed) {
         if(!TagManager.TryGet(parsed.Name, out var tag)) {
@@ -42,58 +38,44 @@ public sealed class TagCache : IRuntimeTick {
 
         if(compiled.IsValid) {
             lock(lockObject) {
-                cache[key] = new CacheEntry(compiled);
+                if(!cache.TryGetValue(key, out var entry)) {
+                    cache[key] = new CacheEntry(compiled);
+                }
+                return cache[key].Compiled;
             }
         }
         return compiled;
     }
 
-    public void IncrementRef(string key) { lock(lockObject) { if(cache.TryGetValue(key, out var entry)) entry.RefCount++; } }
+    public void IncrementRef(string key) {
+        lock(lockObject) {
+            if(cache.TryGetValue(key, out var entry)) {
+                entry.RefCount++;
+            }
+        }
+    }
 
     public void DecrementRef(string key) {
         lock(lockObject) {
             if(cache.TryGetValue(key, out var entry)) {
                 entry.RefCount--;
                 if(entry.RefCount <= 0) {
-                    entry.LastReferencedTicks = DateTimeOffset.Now.Ticks;
+                    cache.Remove(key);
                 }
             }
         }
     }
 
-    public void Clear() { lock(lockObject) { cache.Clear(); } }
-
-    public void Tick() {
-        long nowTicks = DateTimeOffset.Now.Ticks;
-        if(nowTicks - lastCleanupTicks < OneSecondTicks) {
-            return;
-        }
-
-        lastCleanupTicks = nowTicks;
-
-        int configSeconds = MainCore.Conf.TagCacheExpirationSeconds;
-        if(configSeconds <= 0) {
-            return;
-        }
-
-        long expirationTicks = TimeSpan.FromSeconds(configSeconds).Ticks;
-        List<string> toRemove = [];
-
+    public void Clear() {
         lock(lockObject) {
-            foreach(var pair in cache) {
-                if(pair.Value.RefCount <= 0 && (nowTicks - pair.Value.LastReferencedTicks > expirationTicks)) {
-                    toRemove.Add(pair.Key);
-                }
-            }
-
-            foreach(var key in toRemove) {
-                cache.Remove(key);
-            }
+            cache.Clear();
         }
     }
 
     public string GetKey(ParsedTag parsed) => MakeKey(parsed);
 
     private static string MakeKey(ParsedTag p) =>
-        (p.Args == null || p.Args.Length == 0) ? p.Name : string.Concat(p.Name, ":", string.Join(",", p.Args));
+        (p.Args == null || p.Args.Length == 0)
+        ? p.Name
+        : string.Concat(p.Name, ":", string.Join(",", p.Args));
 }

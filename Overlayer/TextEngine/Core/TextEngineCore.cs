@@ -53,32 +53,12 @@ public sealed class TextEngineCore {
 
     private void CompileInternal() {
         try {
-            if(segments != null) {
-                foreach(var seg in segments) {
-                    seg.Replacer.Dispose();
-                }
-            }
-
-            if(string.IsNullOrEmpty(Text)) {
-                segments = [];
-                state = TextEngineState.Ready;
-                return;
-            }
-
             var tags = Parser.Parse(Text);
-
-            if(tags.Count == 0) {
-                segments = [];
-                state = TextEngineState.Ready;
-                return;
-            }
-
-            var result = new CompiledSegment[tags.Count];
+            var newSegments = tags.Count > 0 ? new CompiledSegment[tags.Count] : [];
 
             for(int i = 0; i < tags.Count; i++) {
                 var t = tags[i];
-
-                result[i] = new CompiledSegment(
+                newSegments[i] = new CompiledSegment(
                     t.Index,
                     t.Length,
                     new Tag.Runtime.Replacer {
@@ -87,8 +67,18 @@ public sealed class TextEngineCore {
                 );
             }
 
-            segments = result;
-            state = TextEngineState.Ready;
+            CompiledSegment[] oldSegments;
+            lock(_lock) {
+                oldSegments = segments;
+                segments = newSegments;
+                state = TextEngineState.Ready;
+            }
+
+            if(oldSegments != null) {
+                foreach(var seg in oldSegments) {
+                    seg.Replacer.Dispose();
+                }
+            }
         } catch {
             state = TextEngineState.Ready;
             throw;

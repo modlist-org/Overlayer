@@ -103,7 +103,6 @@ public sealed class OverlayerRuntime {
 
         ticks.Add(uiService);
         ticks.Add(tweenService);
-        ticks.Add(TagCache.Instance);
 
         services.Initialize();
 
