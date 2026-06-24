@@ -57,6 +57,33 @@ public static class TagManager {
         }
     }
 
+    public static bool Unregister(string[] tagNames) {
+        if(tagNames == null || tagNames.Length == 0) {
+            return false;
+        }
+
+        lock(_lock) {
+            var newDict = new Dictionary<string, TagCore>(_tags);
+            int removedCount = 0;
+
+            foreach(var name in tagNames) {
+                if(newDict.Remove(name)) {
+                    removedCount++;
+                }
+            }
+
+            if(removedCount == 0) {
+                return false;
+            }
+
+            _tags = newDict;
+        }
+
+        MainThread.Enqueue(TextEngineUpdater.RecompileAll);
+
+        return true;
+    }
+
     public static bool TryGet(string name, out TagCore tag)
         => _tags.TryGetValue(name, out tag);
 
