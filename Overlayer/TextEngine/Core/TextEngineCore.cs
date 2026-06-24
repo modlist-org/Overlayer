@@ -1,5 +1,6 @@
 ﻿using Overlayer.Core;
 using Overlayer.Tag.Diagnostics;
+using Overlayer.Tag.Runtime;
 using Overlayer.TextEngine.Parse;
 using Overlayer.TextEngine.Runtime;
 using System.Text;
@@ -12,6 +13,7 @@ public sealed class TextEngineCore {
 
     private volatile CompiledSegment[] segments = [];
     private volatile TextEngineState state;
+    private CompileDiagnostic? engineDiagnostic;
 
     public string Text {
         get;
@@ -32,17 +34,20 @@ public sealed class TextEngineCore {
     public TextEngineState State => state;
 
     public CompileDiagnostic[] GetDiagnostics() {
-        var segs = segments;
-        if(segs == null) {
-            return [];
-        }
+        lock(_lock) {
+            if(state == TextEngineState.Error) {
+                return engineDiagnostic.HasValue ? [engineDiagnostic.Value] : [];
+            }
 
-        return [.. segs.SelectMany(s => s.Replacer.Compiled.Diagnostics)];
+            var segs = segments;
+            return segs == null ? [] : [.. segs.SelectMany(s => s.Replacer.Compiled.Diagnostics)];
+        }
     }
 
     private void StartCompile() {
         lock(_lock) {
             state = TextEngineState.Compiling;
+            engineDiagnostic = null;
 
             _compileTask = Task.Run(CompileInternal);
         }
@@ -50,7 +55,6 @@ public sealed class TextEngineCore {
 
     private async void CompileInternal() {
         try {
-            await Task.Delay(500);
             var tags = Parser.Parse(Text);
             var newSegments = tags.Count > 0 ? new CompiledSegment[tags.Count] : [];
 
@@ -59,7 +63,7 @@ public sealed class TextEngineCore {
                 newSegments[i] = new CompiledSegment(
                     t.Index,
                     t.Length,
-                    new Tag.Runtime.Replacer {
+                    new Replacer {
                         Parsed = t
                     }
                 );
@@ -77,9 +81,19 @@ public sealed class TextEngineCore {
                     seg.Replacer.Dispose();
                 }
             }
-        } catch {
-            state = TextEngineState.Ready;
-            throw;
+        } catch(Exception e) {
+            lock(_lock) {
+                state = TextEngineState.Error;
+
+                var context = new DiagnosticContext(null, 0, Text.Length);
+                engineDiagnostic = new CompileDiagnostic(
+                    DiagnosticId.InternalError,
+                    CompileSeverity.Error,
+                    context,
+                    [e]
+                );
+                segments = [];
+            }
         }
     }
 
@@ -128,5 +142,6 @@ public sealed class TextEngineCore {
 public enum TextEngineState {
     Idle,
     Compiling,
-    Ready
+    Ready,
+    Error
 }

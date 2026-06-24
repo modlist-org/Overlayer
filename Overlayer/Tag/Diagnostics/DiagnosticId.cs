@@ -7,6 +7,13 @@ public enum DiagnosticId {
     None = 0,
 
     /// <summary>
+    /// An unexpected internal system error that occurred during the compilation process.
+    /// <para><strong>Data:</strong></para>
+    /// <c>[0]</c> (Exception) : The actual exception object caught during compilation.
+    /// </summary>
+    InternalError,
+
+    /// <summary>
     /// Triggered when the requested tag or component is not registered in the system.
     /// <para><strong>Data:</strong></para>
     /// <c>[0]</c> (string) : The unrecognized tag name that triggered the error.
