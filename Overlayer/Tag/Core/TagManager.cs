@@ -62,10 +62,9 @@ public static class TagManager {
             return false;
         }
 
+        int removedCount = 0;
         lock(_lock) {
             var newDict = new Dictionary<string, TagCore>(_tags);
-            int removedCount = 0;
-
             foreach(var name in tagNames) {
                 if(newDict.Remove(name)) {
                     removedCount++;
@@ -77,6 +76,7 @@ public static class TagManager {
             }
 
             _tags = newDict;
+            MainCore.Log.Msg($"[{nameof(TagManager)}] {removedCount} tags unregistered. Total tags: {_tags.Count}");
         }
 
         MainThread.Enqueue(TextEngineUpdater.RecompileAll);
