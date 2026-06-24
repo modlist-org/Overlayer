@@ -13,8 +13,6 @@ public sealed class TextEngineCore {
     private volatile CompiledSegment[] segments;
     private volatile TextEngineState state;
 
-    private int spinner;
-
     public string Text {
         get;
         set {
@@ -45,14 +43,14 @@ public sealed class TextEngineCore {
     private void StartCompile() {
         lock(_lock) {
             state = TextEngineState.Compiling;
-            spinner = 0;
 
             _compileTask = Task.Run(CompileInternal);
         }
     }
 
-    private void CompileInternal() {
+    private async void CompileInternal() {
         try {
+            await Task.Delay(500);
             var tags = Parser.Parse(Text);
             var newSegments = tags.Count > 0 ? new CompiledSegment[tags.Count] : [];
 
@@ -87,7 +85,7 @@ public sealed class TextEngineCore {
 
     public string Get() {
         if(state == TextEngineState.Compiling) {
-            return $"[ {MainCore.Tr.Get("COMPILING", "Compiling")} {GetSpinner()} ]";
+            return $"[ {MainCore.Tr.Get("COMPILING", "Compiling")}{GetLoadingText()} ]";
         }
 
         var segs = segments;
@@ -111,9 +109,13 @@ public sealed class TextEngineCore {
         return sb.ToString();
     }
 
-    private char GetSpinner() {
-        char[] frames = ['|', '/', '-', '\\'];
-        return frames[spinner++ % frames.Length];
+    private static readonly long FrameIntervalTicks = TimeSpan.FromMilliseconds(80).Ticks;
+    private static readonly string[] LoadingFrames = [".", "..", "..."];
+
+    private string GetLoadingText() {
+        int index = (int)(DateTime.Now.Ticks / FrameIntervalTicks % LoadingFrames.Length);
+
+        return LoadingFrames[index];
     }
 
     public void Dispose() {
