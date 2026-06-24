@@ -10,7 +10,7 @@ public sealed class TextEngineCore {
     private readonly object _lock = new();
     private Task _compileTask;
 
-    private volatile CompiledSegment[] segments;
+    private volatile CompiledSegment[] segments = [];
     private volatile TextEngineState state;
 
     public string Text {
@@ -90,17 +90,12 @@ public sealed class TextEngineCore {
 
         var segs = segments;
 
-        if(segs == null || segs.Length == 0) {
-            return Text ?? string.Empty;
-        }
-
         var sb = new StringBuilder(Text.Length);
         int last = 0;
 
         foreach(var s in segs) {
             sb.Append(Text, last, s.Index - last);
             sb.Append(s.Replacer.Get());
-
             last = s.Index + s.Length;
         }
 
