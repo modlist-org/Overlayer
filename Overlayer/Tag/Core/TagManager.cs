@@ -48,12 +48,12 @@ public static class TagManager {
             MainCore.V8.GenerateImplJs();
             MainCore.V8.LoadImplJs();
             MainThread.Enqueue(TextEngineUpdater.RecompileAll);
-        } catch(Exception ex) {
-            MainCore.Log.Msg($"[{nameof(TagManager)}] Registration failed for '{asm.GetName().Name}': {ex}");
+        } catch(Exception e) {
+            MainCore.Log.Msg($"[{nameof(TagManager)}] Registration failed for '{asm.GetName().Name}': {e}");
+
             lock(_lock) {
                 _registeredAssemblies.Remove(asm);
             }
-            throw;
         }
     }
 
