@@ -7,23 +7,22 @@ using System.Text;
 namespace Overlayer.V8;
 
 public class V8Manager : IRuntimeService {
-    private V8ScriptEngine _engine;
-    public V8ScriptEngine Engine => _engine;
+    public V8ScriptEngine Engine { get; private set; }
 
     public const string ImplFileName = "impl.js";
     public string ImplFilePath { get; private set; }
 
     public void Initialize() {
-        _engine = new V8ScriptEngine();
-        _engine.AddHostObject("TagAccessHelper", new TagAccessHelper());
+        Engine = new V8ScriptEngine();
+        Engine.AddHostObject("TagAccessHelper", new TagAccessHelper());
         ImplFilePath = Path.Combine(MainCore.Paths.JSPath, ImplFileName);
         LoadImplJs();
     }
 
     public void Reset() {
-        _engine?.Dispose();
-        _engine = new V8ScriptEngine();
-        _engine.AddHostObject("TagAccessHelper", new TagAccessHelper());
+        Engine?.Dispose();
+        Engine = new V8ScriptEngine();
+        Engine.AddHostObject("TagAccessHelper", new TagAccessHelper());
         LoadImplJs();
     }
 
@@ -95,14 +94,12 @@ public class V8Manager : IRuntimeService {
         string path = ImplFilePath;
         if(File.Exists(path)) {
             try {
-                _engine.Execute(File.ReadAllText(path));
+                Engine.Execute(File.ReadAllText(path));
             } catch(Exception ex) {
                 MainCore.Log.Wrn($"[{nameof(V8Manager)}] Failed to load {ImplFileName}: {ex.Message}");
             }
         }
     }
 
-    public void Dispose() {
-        _engine?.Dispose();
-    }
+    public void Dispose() => Engine?.Dispose();
 }
