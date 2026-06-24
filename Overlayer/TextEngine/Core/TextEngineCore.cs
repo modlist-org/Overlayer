@@ -87,7 +87,7 @@ public sealed class TextEngineCore {
 
     public string Get() {
         if(state == TextEngineState.Compiling) {
-            return $"{MainCore.Tr.Get("COMPILING", "Compiling")} {GetSpinner()}";
+            return $"[ {MainCore.Tr.Get("COMPILING", "Compiling")} {GetSpinner()} ]";
         }
 
         var segs = segments;
