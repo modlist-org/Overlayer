@@ -22,7 +22,7 @@ public static class Evaluator<T> where T : struct, IComparable, IConvertible {
         }
 
         try {
-            var e = new Expression(exprStr, EvaluateOptions.IgnoreCase);
+            var e = new Expression(exprStr, ExpressionOptions.IgnoreCaseAtBuiltInFunctions);
             foreach(var constant in Constants) {
                 e.Parameters[constant.Key] = constant.Value;
             }
