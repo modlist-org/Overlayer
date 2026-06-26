@@ -22,13 +22,18 @@ public static class Compiler {
         );
 
         var sig = SignatureResolver.Resolve(tag, placeholder, diagnostics, context);
+        Func<string> compiledFunc;
 
-        var expr = ExpressionBuilder.Build(tag, sig, diagnostics);
-
-        var lambda = Expression.Lambda<Func<string>>(expr);
+        if(sig == null || !sig.IsExecutable) {
+            compiledFunc = () => parsed.Raw;
+        } else {
+            var expr = ExpressionBuilder.Build(tag, sig, diagnostics);
+            var lambda = Expression.Lambda<Func<string>>(expr);
+            compiledFunc = lambda.Compile();
+        }
 
         return new CompiledPlaceholder(
-            lambda.Compile(),
+            compiledFunc,
             [.. diagnostics]
         );
     }
