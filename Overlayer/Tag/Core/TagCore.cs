@@ -1,4 +1,5 @@
-﻿using System.Linq.Expressions;
+﻿using Microsoft.ClearScript;
+using System.Linq.Expressions;
 using System.Reflection;
 
 namespace Overlayer.Tag.Core;
@@ -22,6 +23,7 @@ public class TagCore {
     public string Description { get; } = null;
     public TagType TagType { get; }
     public MemberInfo Member { get; }
+    public ScriptObject JSFunction { get; }
     public ParameterInfo[] Parameters { get; }
     public int RequiredParameterCount { get; }
     public Type ReturnType { get; }
@@ -31,12 +33,14 @@ public class TagCore {
     public readonly bool IsMethod;
     public readonly bool IsProperty;
     public readonly bool IsField;
+    public readonly bool IsJS;
 
     public TagCore(string name, MemberInfo member, TagType tagType, string description = null) {
         Name = name;
         Description = description;
         TagType = tagType;
         Member = member;
+        IsJS = false;
 
         IsMethod = member is MethodInfo;
         IsProperty = member is PropertyInfo;
@@ -69,7 +73,45 @@ public class TagCore {
         }
     }
 
+    public class JSParameterInfo : ParameterInfo {
+        public JSParameterInfo(string name, Type type) {
+            NameImpl = name;
+            ClassImpl = type;
+            AttrsImpl = ParameterAttributes.None;
+        }
+    }
+
+    public TagCore(string name, ScriptObject jsInvoker, int argCount, TagType tagType, string description = null) {
+        Name = name;
+        Description = description;
+        TagType = tagType & ~TagType.Advanced;
+        Member = null;
+        IsJS = true;
+        JSFunction = jsInvoker;
+
+        IsMethod = false;
+        IsProperty = false;
+        IsField = false;
+
+        ReturnType = typeof(object);
+        Parameters = new ParameterInfo[argCount];
+        for(int i = 0; i < argCount; i++) {
+            Parameters[i] = new JSParameterInfo($"arg{i}", typeof(object));
+        }
+
+        RequiredParameterCount = 0;
+        foreach(var p in Parameters) {
+            if(p != null && !p.HasDefaultValue) {
+                RequiredParameterCount++;
+            }
+        }
+    }
+
     public object Invoke(params object[] args) {
+        if(IsJS) {
+            return JSFunction.Invoke(false, (object)args);
+        }
+
         if(_compiledDelegate == null) {
             var method = (MethodInfo)Member;
             var paramExpressions = new Expression[Parameters.Length];
@@ -87,5 +129,18 @@ public class TagCore {
             _compiledDelegate = Expression.Lambda<Func<object[], object>>(castResult, argsParam).Compile();
         }
         return _compiledDelegate.DynamicInvoke((object)args);
+    }
+
+    public override string ToString() {
+        var paramList = Parameters.Length > 0
+            ? string.Join(", ", Parameters.Select(p => p != null ? $"{p.ParameterType.Name} {p.Name}" : "object arg"))
+            : "None";
+
+        return $"Name: {Name} | " +
+               $"Type: {TagType} | " +
+               $"Return: {ReturnType.Name} | " +
+               $"Params: ({paramList}) | " +
+               $"IsJS: {IsJS} | " +
+               $"Compiled: {(_compiledDelegate != null || IsJS ? "Yes" : "No")}";
     }
 }

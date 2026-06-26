@@ -1,4 +1,5 @@
-﻿using Overlayer.Tag.Core;
+﻿using Microsoft.ClearScript;
+using Overlayer.Tag.Core;
 using Overlayer.Tag.Diagnostics;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -33,7 +34,11 @@ public static class ExpressionBuilder {
 
                 value = Expression.Convert(value, typeof(object));
             } else {
-                value = Expression.Constant(parameters[i].DefaultValue, typeof(object));
+                object defaultValue = DBNull.Value;
+                try {
+                    defaultValue = parameters[i].DefaultValue;
+                } catch { }
+                value = Expression.Constant(defaultValue, typeof(object));
             }
 
             body.Add(
@@ -45,7 +50,26 @@ public static class ExpressionBuilder {
         }
 
         Expression call;
-        if(tag.Member is MethodInfo mi) {
+
+        if(tag.IsJS) {
+            var jsFunctionProp = typeof(TagCore).GetProperty(nameof(TagCore.JSFunction));
+            var jsFunctionExpr = Expression.Property(Expression.Constant(tag), jsFunctionProp!);
+
+            var scriptObjectInvokeMethod = typeof(ScriptObject).GetMethod(
+                nameof(ScriptObject.Invoke),
+                BindingFlags.Public | BindingFlags.Instance,
+                null,
+                [typeof(bool), typeof(object[])],
+                null
+            );
+
+            call = Expression.Call(
+                jsFunctionExpr,
+                scriptObjectInvokeMethod,
+                Expression.Constant(false),
+                converted
+            );
+        } else if(tag.Member is MethodInfo mi) {
             call = Expression.Call(mi, BuildCallArgs(tag.Parameters, converted));
         } else if(tag.Member is PropertyInfo pi) {
             call = Expression.Property(null, pi);
@@ -97,7 +121,6 @@ public static class ExpressionBuilder {
 
         for(int i = 0; i < parameters.Length; i++) {
             var index = Expression.Constant(i);
-
             var access = Expression.ArrayIndex(converted, index);
 
             list[i] = Expression.Convert(

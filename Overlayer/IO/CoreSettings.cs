@@ -12,6 +12,7 @@ public sealed class CoreSettings : ISettingsFile {
     public bool MiddleClickToDefault = true;
     public float UIScale = 1.0f;
     public float SliderSensitivity = 1.0f;
+    public bool EnableJSScriptWatcher = true;
 
     public JToken Serialize() {
         return new JObject {
@@ -22,7 +23,8 @@ public sealed class CoreSettings : ISettingsFile {
             [nameof(Tooltip)] = Tooltip,
             [nameof(MiddleClickToDefault)] = MiddleClickToDefault,
             [nameof(UIScale)] = UIScale,
-            [nameof(SliderSensitivity)] = SliderSensitivity
+            [nameof(SliderSensitivity)] = SliderSensitivity,
+            [nameof(EnableJSScriptWatcher)] = EnableJSScriptWatcher
         };
     }
 
@@ -35,5 +37,6 @@ public sealed class CoreSettings : ISettingsFile {
         MiddleClickToDefault = IOUtils.Read(token, nameof(MiddleClickToDefault), MiddleClickToDefault);
         UIScale = IOUtils.Read(token, nameof(UIScale), UIScale);
         SliderSensitivity = IOUtils.Read(token, nameof(SliderSensitivity), SliderSensitivity);
+        EnableJSScriptWatcher = IOUtils.Read(token, nameof(EnableJSScriptWatcher), EnableJSScriptWatcher);
     }
 }

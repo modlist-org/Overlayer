@@ -49,7 +49,9 @@ public static class SignatureResolver {
         }
 
         if(format != null) {
-            if(!FormatValidator.TryValidate(tag.ReturnType, format, out var e)) {
+            Type checkType = tag.IsJS ? typeof(string) : tag.ReturnType;
+
+            if(!FormatValidator.TryValidate(checkType, format, out var e)) {
                 diag.Add(new(
                     DiagnosticId.FormatFail,
                     CompileSeverity.Error,

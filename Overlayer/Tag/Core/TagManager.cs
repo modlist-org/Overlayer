@@ -77,8 +77,9 @@ public static class TagManager {
             }
 
             _tags = newDict;
-            MainCore.Log.Msg($"[{nameof(TagManager)}] {registeredCount} tags registered. Total tags: {_tags.Count}");
         }
+
+        MainCore.Log.Msg($"[{nameof(TagManager)}] {registeredCount} tags registered. Total tags: {_tags.Count}");
 
         MainCore.V8.GenerateImplJs();
         MainCore.V8.LoadImplJs();
