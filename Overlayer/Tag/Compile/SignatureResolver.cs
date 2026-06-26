@@ -5,6 +5,16 @@ namespace Overlayer.Tag.Compile;
 
 public static class SignatureResolver {
     public static ResolvedSignature Resolve(TagCore tag, Placeholder placeholder, List<CompileDiagnostic> diag, DiagnosticContext context) {
+        if(tag.MemberType == TagMemberType.Unknown) {
+            diag.Add(new CompileDiagnostic(
+                DiagnosticId.InternalError,
+                CompileSeverity.Error,
+                context,
+                []
+            ));
+            return ResolvedSignature.Invalid;
+        }
+
         string[] rawArgs = placeholder.Args ?? [];
         var parameters = tag.Parameters;
 

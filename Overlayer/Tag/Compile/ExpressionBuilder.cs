@@ -49,35 +49,25 @@ public static class ExpressionBuilder {
             );
         }
 
-        Expression call;
+        Expression call = tag.MemberType switch {
+            TagMemberType.Method => Expression.Call(
+                (MethodInfo)tag.Member,
+                BuildCallArgs(tag.Parameters, converted)
+            ),
 
-        if(tag.IsJS) {
-            var jsFunctionProp = typeof(TagCore).GetProperty(nameof(TagCore.JSFunction));
-            var jsFunctionExpr = Expression.Property(Expression.Constant(tag), jsFunctionProp!);
+            TagMemberType.Property => Expression.Property(null, (PropertyInfo)tag.Member),
 
-            var scriptObjectInvokeMethod = typeof(ScriptObject).GetMethod(
-                nameof(ScriptObject.Invoke),
-                BindingFlags.Public | BindingFlags.Instance,
-                null,
-                [typeof(bool), typeof(object[])],
-                null
-            );
+            TagMemberType.Field => Expression.Field(null, (FieldInfo)tag.Member),
 
-            call = Expression.Call(
-                jsFunctionExpr,
-                scriptObjectInvokeMethod,
+            TagMemberType.JS => Expression.Call(
+                Expression.Property(Expression.Constant(tag), nameof(TagCore.JSFunction)),
+                typeof(ScriptObject).GetMethod(nameof(ScriptObject.Invoke), [typeof(bool), typeof(object[])])!,
                 Expression.Constant(false),
                 converted
-            );
-        } else if(tag.Member is MethodInfo mi) {
-            call = Expression.Call(mi, BuildCallArgs(tag.Parameters, converted));
-        } else if(tag.Member is PropertyInfo pi) {
-            call = Expression.Property(null, pi);
-        } else if(tag.Member is FieldInfo fi) {
-            call = Expression.Field(null, fi);
-        } else {
-            throw new NotSupportedException("Unsupported member type");
-        }
+            ),
+
+            _ => throw new NotSupportedException($"Unsupported member type: {tag.MemberType}")
+        };
 
         Expression result;
 

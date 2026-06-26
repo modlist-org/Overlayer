@@ -18,11 +18,20 @@ public enum TagType {
     Advanced = 1 << 24,
 }
 
+public enum TagMemberType {
+    Unknown = 0,
+    Method,
+    Property,
+    Field,
+    JS,
+}
+
 public class TagCore {
     public string Name { get; }
     public string Description { get; } = null;
     public TagType TagType { get; }
     public MemberInfo Member { get; }
+    public TagMemberType MemberType { get; }
     public ScriptObject JSFunction { get; }
     public ParameterInfo[] Parameters { get; }
     public int RequiredParameterCount { get; }
@@ -30,21 +39,24 @@ public class TagCore {
 
     private Delegate _compiledDelegate;
 
-    public readonly bool IsMethod;
-    public readonly bool IsProperty;
-    public readonly bool IsField;
-    public readonly bool IsJS;
+    public bool IsMethod => MemberType == TagMemberType.Method;
+    public bool IsProperty => MemberType == TagMemberType.Property;
+    public bool IsField => MemberType == TagMemberType.Field;
+    public bool IsJS => MemberType == TagMemberType.JS;
 
     public TagCore(string name, MemberInfo member, TagType tagType, string description = null) {
         Name = name;
         Description = description;
         TagType = tagType;
         Member = member;
-        IsJS = false;
 
-        IsMethod = member is MethodInfo;
-        IsProperty = member is PropertyInfo;
-        IsField = member is FieldInfo;
+        if(member is MethodInfo) {
+            MemberType = TagMemberType.Method;
+        } else if(member is PropertyInfo) {
+            MemberType = TagMemberType.Property;
+        } else if(member is FieldInfo) {
+            MemberType = TagMemberType.Field;
+        }
 
         switch(member) {
             case MethodInfo method:
@@ -86,12 +98,9 @@ public class TagCore {
         Description = description;
         TagType = tagType & ~TagType.Advanced;
         Member = null;
-        IsJS = true;
+        MemberType = TagMemberType.JS;
         JSFunction = jsInvoker;
 
-        IsMethod = false;
-        IsProperty = false;
-        IsField = false;
 
         ReturnType = typeof(object);
         Parameters = new ParameterInfo[argCount];
@@ -99,12 +108,9 @@ public class TagCore {
             Parameters[i] = new JSParameterInfo($"arg{i}", typeof(object));
         }
 
-        RequiredParameterCount = 0;
-        foreach(var p in Parameters) {
-            if(p != null && !p.HasDefaultValue) {
-                RequiredParameterCount++;
-            }
-        }
+    public object Invoke(params object[] args) {
+        if(MemberType == TagMemberType.Unknown || Member == null) {
+            return null;
     }
 
     public object Invoke(params object[] args) {
@@ -113,14 +119,32 @@ public class TagCore {
         }
 
         if(_compiledDelegate == null) {
+            var argsParam = Expression.Parameter(typeof(object[]), "args");
+            Expression call;
+
+            switch(MemberType) {
+                case TagMemberType.Method:
             var method = (MethodInfo)Member;
             var paramExpressions = new Expression[Parameters.Length];
             var argsParam = Expression.Parameter(typeof(object[]), "args");
 
             for(int i = 0; i < Parameters.Length; i++) {
-                var index = Expression.Constant(i);
-                var accessor = Expression.ArrayIndex(argsParam, index);
+                        var accessor = Expression.ArrayIndex(argsParam, Expression.Constant(i));
                 paramExpressions[i] = Expression.Convert(accessor, Parameters[i].ParameterType);
+            }
+                    call = Expression.Call(null, method, paramExpressions);
+                    break;
+
+                case TagMemberType.Property:
+                    call = Expression.Property(null, (PropertyInfo)Member);
+                    break;
+
+                case TagMemberType.Field:
+                    call = Expression.Field(null, (FieldInfo)Member);
+                    break;
+
+                default:
+                    throw new NotSupportedException($"Unsupported MemberType: {MemberType}");
             }
 
             var call = Expression.Call(null, method, paramExpressions);
@@ -128,6 +152,7 @@ public class TagCore {
 
             _compiledDelegate = Expression.Lambda<Func<object[], object>>(castResult, argsParam).Compile();
         }
+
         return _compiledDelegate.DynamicInvoke((object)args);
     }
 
