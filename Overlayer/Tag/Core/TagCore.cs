@@ -86,34 +86,50 @@ public class TagCore {
     }
 
     public class JSParameterInfo : ParameterInfo {
-        public JSParameterInfo(string name, Type type) {
+        private readonly string _name;
+        private readonly Type _type;
+        private readonly bool _hasDefault;
+
+        public JSParameterInfo(string name, Type type, bool hasDefault = false) {
+            _name = name;
+            _type = type;
+            _hasDefault = hasDefault;
             NameImpl = name;
             ClassImpl = type;
-            AttrsImpl = ParameterAttributes.None;
+            PositionImpl = 0;
+            AttrsImpl = hasDefault ? ParameterAttributes.HasDefault : ParameterAttributes.None;
         }
+
+        public override string Name => _name ?? NameImpl;
+        public override Type ParameterType => _type ?? ClassImpl;
+
+        public override bool HasDefaultValue => _hasDefault;
+        public override object DefaultValue => Undefined.Value;
+        public override object RawDefaultValue => Undefined.Value;
     }
 
-    public TagCore(string name, ScriptObject jsInvoker, int argCount, TagType tagType, string description = null) {
+    public TagCore(string name, ScriptObject jsInvoker, string[] paramNames, TagType tagType, string description = null) {
         Name = name;
         Description = description;
         TagType = tagType & ~TagType.Advanced;
         Member = null;
         MemberType = TagMemberType.JS;
         JSFunction = jsInvoker;
-
-
         ReturnType = typeof(object);
-        Parameters = new ParameterInfo[argCount];
-        for(int i = 0; i < argCount; i++) {
-            Parameters[i] = new JSParameterInfo($"arg{i}", typeof(object));
+
+        Parameters = new ParameterInfo[paramNames.Length];
+        for(int i = 0; i < paramNames.Length; i++) {
+            Parameters[i] = new JSParameterInfo(paramNames[i], typeof(object));
         }
+
+        RequiredParameterCount = Parameters.Length;
+    }
 
     public object Invoke(params object[] args) {
         if(MemberType == TagMemberType.Unknown || Member == null) {
             return null;
-    }
+        }
 
-    public object Invoke(params object[] args) {
         if(IsJS) {
             return JSFunction.Invoke(false, (object)args);
         }
@@ -124,14 +140,12 @@ public class TagCore {
 
             switch(MemberType) {
                 case TagMemberType.Method:
-            var method = (MethodInfo)Member;
-            var paramExpressions = new Expression[Parameters.Length];
-            var argsParam = Expression.Parameter(typeof(object[]), "args");
-
-            for(int i = 0; i < Parameters.Length; i++) {
+                    var method = (MethodInfo)Member;
+                    var paramExpressions = new Expression[Parameters.Length];
+                    for(int i = 0; i < Parameters.Length; i++) {
                         var accessor = Expression.ArrayIndex(argsParam, Expression.Constant(i));
-                paramExpressions[i] = Expression.Convert(accessor, Parameters[i].ParameterType);
-            }
+                        paramExpressions[i] = Expression.Convert(accessor, Parameters[i].ParameterType);
+                    }
                     call = Expression.Call(null, method, paramExpressions);
                     break;
 
@@ -147,9 +161,7 @@ public class TagCore {
                     throw new NotSupportedException($"Unsupported MemberType: {MemberType}");
             }
 
-            var call = Expression.Call(null, method, paramExpressions);
             var castResult = Expression.Convert(call, typeof(object));
-
             _compiledDelegate = Expression.Lambda<Func<object[], object>>(castResult, argsParam).Compile();
         }
 

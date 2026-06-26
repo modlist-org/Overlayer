@@ -34,5 +34,12 @@ public enum JSTagDiagnosticId {
     /// <c>[0]</c> (string) : The property name that failed validation.<br/>
     /// <c>[1]</c> (string) : The expected type or format description.
     /// </summary>
-    InvalidFormat
+    InvalidFormat,
+
+    /// <summary>
+    /// Triggered when the required 'Params' array option is missing or invalid in RegisterTag options.
+    /// <para><strong>Data:</strong></para>
+    /// <c>[0]</c> (string) : The tag name that caused the failure.
+    /// </summary>
+    MissingParams
 }
