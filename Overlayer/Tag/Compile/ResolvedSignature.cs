@@ -16,4 +16,11 @@ public sealed class ResolvedSignature {
     };
 
     public bool IsExecutable => State != CompileState.Error;
+
+    public override string ToString() {
+        string argsStr = Args != null ? string.Join(", ", Args.Select(a => $"\"{a}\"")) : "null";
+        string formatStr = Format != null ? $"\"{Format}\"" : "null";
+
+        return $"[ResolvedSignature] State: {State} | Args: [{argsStr}] | HasFormat: {HasFormat} (Format: {formatStr}) | IsExecutable: {IsExecutable}";
+    }
 }
