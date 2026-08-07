@@ -18,7 +18,7 @@ using TMPro;
 namespace Overlayer.UI.Objects.Impl;
 
 public class UISlider : UIObject {
-    public float DefaultValue { get; }
+    public float DefaultValue { get; private set; }
     public float Min;
     public float Max;
     public float Value { get; private set; }
@@ -169,6 +169,12 @@ public class UISlider : UIObject {
         isUpdatingFromCode = false;
 
         UpdateVisual();
+    }
+
+    public void SetDefaultValue(float value, bool noAnimate = false) {
+        if(IsDisposed || float.IsNaN(value)) return;
+        DefaultValue = ClampSafe(ApplyFilter(value), Min, Max);
+        UpdateVisual(noAnimate);
     }
 
     private float ClampSafe(float value, float min, float max) {

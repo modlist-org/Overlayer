@@ -22,7 +22,7 @@ using TMPro;
 
 namespace Overlayer.UI.Generator;
 
-public static class GenerateUI {
+public static partial class GenerateUI {
     public static RectTransform Row(Transform parent, float height = 50f) {
         GameObject obj = new("Row");
         obj.transform.SetParent(parent, false);
@@ -247,7 +247,7 @@ public static class GenerateUI {
                     if(!MainCore.Conf.MiddleClickToDefault) {
                         break;
                     }
-                    slider.Set(Apply(defaultValue));
+                    slider.Set(Apply(slider.DefaultValue));
                     slider.OnComplete?.Invoke(slider.Value);
                     break;
             }

@@ -1073,10 +1073,12 @@ internal sealed class OvInspectorBuilder(
     }
 
     private void ColorSliders(Transform parent, string label, Color defaults, Func<Color> get, Action<Color> set, string id) {
-        Slider(parent, $"{label} R", defaults.r, 0f, 1f, get().r, value => { var color = get(); color.r = value; set(color); }, id + "_r");
-        Slider(parent, $"{label} G", defaults.g, 0f, 1f, get().g, value => { var color = get(); color.g = value; set(color); }, id + "_g");
-        Slider(parent, $"{label} B", defaults.b, 0f, 1f, get().b, value => { var color = get(); color.b = value; set(color); }, id + "_b");
-        Slider(parent, $"{label} A", defaults.a, 0f, 1f, get().a, value => { var color = get(); color.a = value; set(color); }, id + "_a");
+        RectTransform row = GenerateUI.Row(parent, 50f);
+        UIColorPicker picker = GenerateUI.ColorPicker(row, defaults, get(), value => {
+            set(value);
+            apply();
+        }, _ => save(), id);
+        Track(picker);
     }
 
     private void Label(Transform parent, string text) {
