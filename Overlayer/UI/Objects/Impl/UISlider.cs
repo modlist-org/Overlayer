@@ -24,6 +24,7 @@ public class UISlider : UIObject {
     public float Value { get; private set; }
     public string Format { get; set; }
     public bool UseInputClamp { get; set; }
+    public bool ShowFill { get; set; } = true;
 
     public Action<float> OnChanged;
     public Action<float> OnComplete;
@@ -202,30 +203,36 @@ public class UISlider : UIObject {
         fillSeq?.Kill();
         changeSeq?.Kill();
 
-        float t = Normalize();
         float changeAlpha = Math.Abs(DefaultValue - Value) > 0.001f ? 1f : 0f;
 
         if(noAnimate) {
-            Vector2 fra = FillRect.anchorMax;
-            fra.x = t;
-            FillRect.anchorMax = fra;
+            if(ShowFill) {
+                Vector2 fra = FillRect.anchorMax;
+                fra.x = Normalize();
+                FillRect.anchorMax = fra;
+            }
 
             Color ci = ChangedImage.color;
             ci.a = changeAlpha;
             ChangedImage.color = ci;
-            Color cui = ChangedUpImage.color;
-            cui.a = changeAlpha;
-            ChangedUpImage.color = cui;
+            if(ShowFill) {
+                Color cui = ChangedUpImage.color;
+                cui.a = changeAlpha;
+                ChangedUpImage.color = cui;
+            }
             return;
         }
 
-        fillSeq = GTweenSequenceBuilder.New()
-            .Join(FillRect.GTAnchorMaxX(t, 0.6f).SetEasing(Easing.OutExpo)).Build();
-        MainCore.TC.Play(fillSeq);
+        if(ShowFill) {
+            fillSeq = GTweenSequenceBuilder.New()
+                .Join(FillRect.GTAnchorMaxX(Normalize(), 0.6f).SetEasing(Easing.OutExpo)).Build();
+            MainCore.TC.Play(fillSeq);
+        }
 
-        changeSeq = GTweenSequenceBuilder.New()
-            .Join(ChangedImage.GTAlpha(changeAlpha, 0.2f).SetEasing(Easing.OutSine))
-            .Join(ChangedUpImage.GTAlpha(changeAlpha, 0.2f).SetEasing(Easing.OutSine)).Build();
+        var changeBuilder = GTweenSequenceBuilder.New()
+            .Join(ChangedImage.GTAlpha(changeAlpha, 0.2f).SetEasing(Easing.OutSine));
+        if(ShowFill) changeBuilder.Join(ChangedUpImage.GTAlpha(changeAlpha, 0.2f).SetEasing(Easing.OutSine));
+        changeSeq = changeBuilder.Build();
         MainCore.TC.Play(changeSeq);
     }
 
@@ -250,7 +257,7 @@ public class UISlider : UIObject {
             }, 1f, 0.2f).SetEasing(Easing.OutSine)).Build();
         MainCore.TC.Play(stateSeq);
 
-        if(value.HasValue && isCalculating) {
+        if(ShowFill && value.HasValue && isCalculating) {
             fillSeq?.Kill();
             fillSeq = GTweenSequenceBuilder.New()
                 .Join(FillRect.GTAnchorMaxX(Normalize(value.Value), 0.4f).SetEasing(Easing.OutExpo)).Build();

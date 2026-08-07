@@ -134,14 +134,21 @@ public class OvCanvas : ISettingsFile {
                 var obj = new OvObject();
                 obj.Deserialize(item);
 
+                Attach(obj);
                 obj.ApplyComponent();
                 obj.ApplyConfig();
-
-                Attach(obj);
             }
         }
 
         ApplyConfig();
+    }
+
+    internal void RefreshLayouts() {
+        ApplyConfig();
+        foreach(var obj in OvObjects) obj.RefreshLayout();
+        Canvas.ForceUpdateCanvases();
+        foreach(var obj in OvObjects) obj.RebuildLayout();
+        Canvas.ForceUpdateCanvases();
     }
 
     public void Dispose() {

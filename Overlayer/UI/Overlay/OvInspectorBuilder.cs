@@ -448,7 +448,7 @@ internal sealed class OvInspectorBuilder(
         }
     }
 
-    private (UIInput Input, TextMeshProUGUI Label, Func<float> Get) NumericField(
+    private (UISlider Field, Func<float> Get) NumericField(
         Transform parent,
         string label,
         float defaultValue,
@@ -457,115 +457,35 @@ internal sealed class OvInspectorBuilder(
         string id,
         string format
     ) {
-        GameObject fieldObject = new("NumericField");
-        fieldObject.transform.SetParent(parent, false);
-        RectTransform fieldRect = fieldObject.AddComponent<RectTransform>();
-        var fieldElement = fieldObject.AddComponent<LayoutElement>();
-        fieldElement.minWidth = 100f;
-        fieldElement.flexibleWidth = 1f;
-
-        var layout = fieldObject.AddComponent<HorizontalLayoutGroup>();
-        layout.spacing = 4f;
-        layout.childControlWidth = true;
-        layout.childControlHeight = true;
-        layout.childForceExpandWidth = false;
-        layout.childForceExpandHeight = true;
-
-        TextMeshProUGUI fieldLabel = FixedLabel(fieldRect, label, 42f);
-        UIInput input = null;
-        input = GenerateUI.Input(
-            fieldRect,
-            defaultValue.ToString(format),
-            get().ToString(format),
-            value => {
-                if(!float.TryParse(value, out float parsed)) return;
-                set(parsed);
-                apply();
-            },
-            string.Empty,
-            null,
-            id,
-            value => {
-                if(float.TryParse(value, out float parsed)) {
-                    set(parsed);
-                    apply();
-                }
-                input.Set(get().ToString(format), false);
-                save();
-            },
-            monospace: true
-        );
-        input.InputField.contentType = TMP_InputField.ContentType.DecimalNumber;
-        var inputElement = input.Rect.gameObject.AddComponent<LayoutElement>();
-        inputElement.minWidth = 54f;
-        inputElement.flexibleWidth = 1f;
-        AddNumericDrag(fieldLabel, input, get, set, format);
-        Track(input);
-        return (input, fieldLabel, get);
-    }
-
-    private void AddNumericDrag(TextMeshProUGUI label, UIInput input, Func<float> get, Action<float> set, string format) {
-        var trigger = label.gameObject.AddComponent<UnityEngine.EventSystems.EventTrigger>();
-        bool dragging = false;
-        float value = 0f;
-        Vector2Int resetPosition = Vector2Int.zero;
-        Vector2 previousMousePosition = Vector2.zero;
-        bool warped = false;
         int decimals = 0;
         if(format.Length > 1 && (format[0] == 'F' || format[0] == 'f')) {
             int.TryParse(format[1..], out decimals);
         }
-        float step = Mathf.Pow(10f, -decimals);
-
-        UnityUtils.AddEvents(trigger,
-            (UnityEngine.EventSystems.EventTriggerType.BeginDrag, _ => {
-                if(!OVC_Input.GetMouseButton(0)) return;
-                CanvasGroup inputGroup = input.Rect.GetComponent<CanvasGroup>();
-                if(inputGroup != null && !inputGroup.interactable) return;
-                dragging = true;
-                value = get();
-                resetPosition = Vector2Int.RoundToInt(OVC_Input.OSMousePosition);
-                previousMousePosition = OVC_Input.MousePosition;
-                warped = false;
-            }),
-            (UnityEngine.EventSystems.EventTriggerType.Drag, _ => {
-                if(!dragging || !OVC_Input.GetMouseButton(0)) return;
-                Vector2 currentMousePosition = OVC_Input.MousePosition;
-                float delta = currentMousePosition.x - previousMousePosition.x;
-                previousMousePosition = currentMousePosition;
-                if(warped) {
-                    delta = 0f;
-                    warped = false;
-                }
-
-                bool precision = OVC_Input.GetKey(KeyCode.LeftShift) || OVC_Input.GetKey(KeyCode.RightShift);
-                value += delta * step * MainCore.Conf.SliderSensitivity * (precision ? 0.1f : 1f);
+        var field = GenerateUI.Slider(
+            parent,
+            defaultValue,
+            -1f,
+            1f,
+            get(),
+            format,
+            false,
+            null,
+            value => {
                 set(value);
                 apply();
-                input.Set(value.ToString(format), false);
-                Cursor.visible = false;
-
-                Vector2Int osPosition = OVC_Input.OSMousePosition;
-                int screenWidth = Screen.currentResolution.width;
-                const int padding = 5;
-                if(osPosition.x <= padding) {
-                    OVC_Input.OSMousePosition = new Vector2Int(screenWidth - padding - 1, osPosition.y);
-                    previousMousePosition = new Vector2(Screen.width - padding - 1, currentMousePosition.y);
-                    warped = true;
-                } else if(osPosition.x >= screenWidth - padding) {
-                    OVC_Input.OSMousePosition = new Vector2Int(padding + 1, osPosition.y);
-                    previousMousePosition = new Vector2(padding + 1, currentMousePosition.y);
-                    warped = true;
-                }
-            }),
-            (UnityEngine.EventSystems.EventTriggerType.EndDrag, _ => {
-                if(!dragging) return;
-                dragging = false;
-                OVC_Input.OSMousePosition = resetPosition;
-                Cursor.visible = true;
-                save();
-            })
+            },
+            _ => save(),
+            label,
+            id,
+            showFill: false,
+            dragStep: Mathf.Pow(10f, -decimals),
+            blockHoverWhileDragging: true
         );
+        var element = field.Rect.gameObject.AddComponent<LayoutElement>();
+        element.minWidth = 100f;
+        element.flexibleWidth = 1f;
+        Track(field);
+        return (field, get);
     }
 
     private static RectTransform CompactRow(Transform parent, float height, float spacing) {
@@ -645,22 +565,22 @@ internal sealed class OvInspectorBuilder(
         }, "transform_rect_y2", "F1");
 
         void RefreshValues() {
-            firstX.Label.text = StretchX() ? "Left" : "Pos X";
-            SetDisplayedValue(firstX.Input, firstX.Get(), "F1");
-            secondX.Label.text = StretchX() ? "Right" : "Width";
-            SetDisplayedValue(secondX.Input, secondX.Get(), "F1");
-            firstY.Label.text = StretchY() ? "Top" : "Pos Y";
-            SetDisplayedValue(firstY.Input, firstY.Get(), "F1");
-            secondY.Label.text = StretchY() ? "Bottom" : "Height";
-            SetDisplayedValue(secondY.Input, secondY.Get(), "F1");
+            firstX.Field.Label.text = StretchX() ? "Left" : "Pos X";
+            SetDisplayedValue(firstX.Field, firstX.Get());
+            secondX.Field.Label.text = StretchX() ? "Right" : "Width";
+            SetDisplayedValue(secondX.Field, secondX.Get());
+            firstY.Field.Label.text = StretchY() ? "Top" : "Pos Y";
+            SetDisplayedValue(firstY.Field, firstY.Get());
+            secondY.Field.Label.text = StretchY() ? "Bottom" : "Height";
+            SetDisplayedValue(secondY.Field, secondY.Get());
         }
 
         bool drivenX = DrivenX();
         bool drivenY = DrivenY();
-        firstX.Input.SetBlocked(drivenX && StretchX(), true);
-        secondX.Input.SetBlocked(drivenX, true);
-        firstY.Input.SetBlocked(drivenY && StretchY(), true);
-        secondY.Input.SetBlocked(drivenY, true);
+        firstX.Field.SetBlocked(drivenX && StretchX(), true);
+        secondX.Field.SetBlocked(drivenX, true);
+        firstY.Field.SetBlocked(drivenY && StretchY(), true);
+        secondY.Field.SetBlocked(drivenY, true);
         RefreshValues();
 
         if(drivenX || drivenY) {
@@ -669,9 +589,8 @@ internal sealed class OvInspectorBuilder(
         return RefreshValues;
     }
 
-    private static void SetDisplayedValue(UIInput input, float value, string format) {
-        string text = value.ToString(format);
-        if(input.Value != text) input.Set(text, false);
+    private static void SetDisplayedValue(UISlider field, float value) {
+        if(!Mathf.Approximately(field.Value, value)) field.Set(value, false);
     }
 
     private Action AnchorPresetControl(Transform parent, OvObject obj, Action positionFieldsChanged) {
@@ -787,7 +706,6 @@ internal sealed class OvInspectorBuilder(
                     apply();
                     Canvas.ForceUpdateCanvases();
                     LayoutRebuilder.ForceRebuildLayoutImmediate(obj.RectTransform);
-                    cfg.FromUnity(obj.GameObject);
                     positionFieldsChanged();
                     save();
                     RefreshSummary();

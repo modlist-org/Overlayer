@@ -12,6 +12,7 @@ public static class OverlayCore {
     public static readonly List<OvCanvas> Canvases = [];
 
     private static readonly string SaveDir = Path.Combine(MainCore.Paths.RootPath, "Canvases");
+    private static int pendingLayoutRefreshes;
 
     public static int GetCanvasIndex(OvCanvas canvas)
         => canvas == null ? -1 : Canvases.IndexOf(canvas);
@@ -55,11 +56,22 @@ public static class OverlayCore {
                 var canvas = wrapper.Data;
                 canvas.RectTransform.SetParent(Transform, false);
                 canvas.ApplyConfig();
+                canvas.RefreshLayouts();
                 Canvases.Add(canvas);
             } else {
                 wrapper.Dispose();
             }
         }
+    }
+
+    public static void RequestLayoutRefresh() {
+        pendingLayoutRefreshes = Math.Max(pendingLayoutRefreshes, 3);
+    }
+
+    public static void Tick() {
+        if(pendingLayoutRefreshes <= 0 || Core == null) return;
+        pendingLayoutRefreshes--;
+        foreach(var canvas in Canvases) canvas.RefreshLayouts();
     }
 
     public static void SaveAllCanvases() {
@@ -96,6 +108,7 @@ public static class OverlayCore {
         }
 
         Canvases.Clear();
+        pendingLayoutRefreshes = 0;
 
         Object.Destroy(Core);
         Core = null;

@@ -211,14 +211,25 @@ public sealed class OvObject : ISettingsFile {
                 var obj = new OvObject();
                 obj.Deserialize(item);
 
+                Attach(obj);
                 obj.ApplyComponent();
                 obj.ApplyConfig();
-
-                Attach(obj);
             }
         }
 
         ApplyConfig();
+    }
+
+    internal void RefreshLayout() {
+        ApplyComponent();
+        ApplyConfig();
+
+        foreach(var child in Children) child.RefreshLayout();
+    }
+
+    internal void RebuildLayout() {
+        foreach(var child in Children) child.RebuildLayout();
+        LayoutRebuilder.ForceRebuildLayoutImmediate(RectTransform);
     }
 
     public void Dispose() {

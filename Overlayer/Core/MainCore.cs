@@ -4,6 +4,7 @@ using Overlayer.Compat.Interface;
 using Overlayer.Core.Service;
 using Overlayer.IO;
 using Overlayer.Localization;
+using Overlayer.Overlay;
 using Overlayer.Resource;
 using Overlayer.V8;
 using System.Reflection;
@@ -45,7 +46,10 @@ public static class MainCore {
         Runtime.Initialize();
     }
 
-    public static void Tick() => Runtime?.Tick();
+    public static void Tick() {
+        Runtime?.Tick();
+        OverlayCore.Tick();
+    }
 
     public static void Dispose() {
         if(Runtime == null) {

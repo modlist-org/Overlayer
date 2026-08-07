@@ -152,7 +152,10 @@ public static class GenerateUI {
         Action<float> onChanged,
         Action<float> onComplete,
         string text,
-        string id
+        string id,
+        bool showFill = true,
+        float? dragStep = null,
+        bool blockHoverWhileDragging = false
     ) {
         RectTransform rect = BackGround();
         rect.SetParent(parent, false);
@@ -228,7 +231,14 @@ public static class GenerateUI {
             changeImg, changeUpImg, AddOutlineHover(rect.gameObject, trigger), defaultValue, min, max,
             value, format, useInputClamp, filter, onChanged, onComplete
         );
+        slider.ShowFill = showFill;
+        fill.SetActive(showFill);
         inputObj.SetActive(true);
+
+        RectTransform dragBlocker = blockHoverWhileDragging
+            ? CreateSliderDragBlocker(UICore.Canvas.transform)
+            : null;
+        if(dragBlocker) dragBlocker.gameObject.SetActive(false);
 
         AddButton(rect.gameObject, e => {
             switch(e) {
@@ -261,9 +271,14 @@ public static class GenerateUI {
                 isDragging = true;
                 cachedValue = slider.Value;
 
+                if(EventSystem.current) EventSystem.current.SetSelectedGameObject(null);
                 resetPos = Vector2Int.RoundToInt(OVC_Input.OSMousePosition);
                 previousMousePos = OVC_Input.MousePosition;
                 justWarped = false;
+                if(dragBlocker) {
+                    dragBlocker.gameObject.SetActive(true);
+                    dragBlocker.SetAsLastSibling();
+                }
             }
         ),
             (EventTriggerType.Drag, (e) => {
@@ -277,8 +292,12 @@ public static class GenerateUI {
                         justWarped = false;
                     }
 
-                    float finalPixelWidth = inputRect.rect.width * UICore.Canvas.scaleFactor;
-                    cachedValue += mousePixelDelta.x * (slider.Max - slider.Min) * MainCore.Conf.SliderSensitivity / finalPixelWidth;
+                    if(dragStep.HasValue) {
+                        cachedValue += mousePixelDelta.x * dragStep.Value * MainCore.Conf.SliderSensitivity;
+                    } else {
+                        float finalPixelWidth = inputRect.rect.width * UICore.Canvas.scaleFactor;
+                        cachedValue += mousePixelDelta.x * (slider.Max - slider.Min) * MainCore.Conf.SliderSensitivity / finalPixelWidth;
+                    }
                     if(useInputClamp) {
                         cachedValue = Math.Clamp(cachedValue, min, max);
                     }
@@ -313,7 +332,16 @@ public static class GenerateUI {
 
                     OVC_Input.OSMousePosition = resetPos;
                     Cursor.visible = true;
+                    if(dragBlocker) dragBlocker.gameObject.SetActive(false);
                 }
+            }),
+            (EventTriggerType.Cancel, (e) => {
+                if(!isDragging) return;
+                isDragging = false;
+                OVC_Input.OSMousePosition = resetPos;
+                Cursor.visible = true;
+                if(dragBlocker) dragBlocker.gameObject.SetActive(false);
+                slider.OnComplete?.Invoke(slider.Value);
             }
         ),
             (EventTriggerType.PointerUp, (e) => {
@@ -343,9 +371,31 @@ public static class GenerateUI {
         )
         );
 
+        slider.OnDisposed += () => {
+            if(isDragging) {
+                isDragging = false;
+                OVC_Input.OSMousePosition = resetPos;
+                Cursor.visible = true;
+            }
+            if(dragBlocker) UnityEngine.Object.Destroy(dragBlocker.gameObject);
+        };
+
         slider.Set(Apply(value), false);
 
         return slider;
+    }
+
+    private static RectTransform CreateSliderDragBlocker(Transform parent) {
+        GameObject blockerObject = new("NumericDragBlocker");
+        blockerObject.transform.SetParent(parent, false);
+        RectTransform blocker = blockerObject.AddComponent<RectTransform>();
+        blocker.anchorMin = Vector2.zero;
+        blocker.anchorMax = Vector2.one;
+        blocker.offsetMin = Vector2.zero;
+        blocker.offsetMax = Vector2.zero;
+        Image image = blockerObject.AddComponent<Image>();
+        image.color = Color.clear;
+        return blocker;
     }
 
     public static UIDropDown<T> DropDown<T>(
