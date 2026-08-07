@@ -178,6 +178,9 @@
 		<EnableDefaultCompileItems>true</EnableDefaultCompileItems>
 		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
 		<ClearScriptVersion>7.5.1</ClearScriptVersion>
+		<NCalcVersion>7.0.2</NCalcVersion>
+		<ParlotVersion>1.5.8</ParlotVersion>
+		<SystemCollectionsImmutableVersion>10.0.10</SystemCollectionsImmutableVersion>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_ML|AnyCPU'">
@@ -218,7 +221,7 @@
 	  <PackageReference Include="Microsoft.ClearScript.V8.Native.linux-x64" Version="$(ClearScriptVersion)" />
 	  <PackageReference Include="Microsoft.ClearScript.V8.Native.win-x64" Version="$(ClearScriptVersion)" />
 	  <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
-	  <PackageReference Include="ncalc" Version="7.0.2" />
+	  <PackageReference Include="ncalc" Version="$(NCalcVersion)" />
 	</ItemGroup>
 
 	<Target Name="PostBuild" AfterTargets="Build">
@@ -230,6 +233,15 @@
 				Condition="'%(ReferenceCopyLocalPaths.NuGetPackageId)' != '' And !Exists('$(GamePath)/$(GameData)/Managed/%(ReferenceCopyLocalPaths.Filename)%(ReferenceCopyLocalPaths.Extension)')" />
 			<NuGetUserLibs Include="@(RuntimeTargetsCopyLocalItems)"
 				Condition="'%(RuntimeTargetsCopyLocalItems.NuGetPackageId)' != '' And '%(RuntimeTargetsCopyLocalItems.AssetType)' == 'native' And !Exists('$(GamePath)/$(GameData)/Managed/%(RuntimeTargetsCopyLocalItems.Filename)%(RuntimeTargetsCopyLocalItems.Extension)')" />
+
+			<NuGetUserLibs Remove="@(NuGetUserLibs)"
+				Condition="'%(Filename)' == 'NCalc' Or '%(Filename)' == 'NCalc.Core' Or '%(Filename)' == 'NCalc.Domain' Or '%(Filename)' == 'NCalc.Parser' Or '%(Filename)' == 'Parlot' Or '%(Filename)' == 'System.Collections.Immutable'" />
+			<NuGetUserLibs Include="$(NuGetPackageRoot)ncalc/$(NCalcVersion)/lib/netstandard2.0/NCalc.dll" />
+			<NuGetUserLibs Include="$(NuGetPackageRoot)ncalc.core/$(NCalcVersion)/lib/netstandard2.0/NCalc.Core.dll" />
+			<NuGetUserLibs Include="$(NuGetPackageRoot)ncalc.domain/$(NCalcVersion)/lib/netstandard2.0/NCalc.Domain.dll" />
+			<NuGetUserLibs Include="$(NuGetPackageRoot)ncalc.parser/$(NCalcVersion)/lib/netstandard2.0/NCalc.Parser.dll" />
+			<NuGetUserLibs Include="$(NuGetPackageRoot)parlot/$(ParlotVersion)/lib/netstandard2.0/Parlot.dll" />
+			<NuGetUserLibs Include="$(NuGetPackageRoot)system.collections.immutable/$(SystemCollectionsImmutableVersion)/lib/netstandard2.0/System.Collections.Immutable.dll" />
 		</ItemGroup>
 		<Copy SourceFiles="@(NuGetUserLibs)" DestinationFolder="$(TargetDir)" SkipUnchangedFiles="true" />
 		<MakeDir Directories="$(GamePath)/UserLibs" Condition="'@(NuGetUserLibs)' != ''" />
