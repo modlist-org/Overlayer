@@ -31,6 +31,7 @@ public enum OriginalMenuState {
     Settings,
     Docs,
     Credits,
+    Resources,
 }
 
 public static class UICore {

@@ -37,21 +37,73 @@ public class UserTexture2D : UserResourceBase<(Texture2D texture, Texture2DSetti
                 return Result.InvalidArgument;
             }
 
-            var data = File.ReadAllBytes(path);
-
-            var tex = new Texture2D(2, 2, TextureFormat.RGBA32, mipChain, linear);
-            OVC_Texture2D.LoadImage(tex, data);
-
-            Cache[key] = (
-                path,
-                (tex, new())
-            );
-
-            return Result.Success;
+            return LoadData(key, path, File.ReadAllBytes(path), mipChain, linear);
         } catch(Exception e) {
             MainCore.Log.Err($"[{nameof(UserTexture2D)}] Texture load failed: {e}");
             return Result.Failed;
         }
+    }
+
+    public Result LoadData(string key, string path, byte[] data, bool mipChain, bool linear) {
+        if(string.IsNullOrWhiteSpace(key) || data == null || data.Length == 0) {
+            return Result.InvalidArgument;
+        }
+        if(Cache.ContainsKey(key)) {
+            return Result.KeyAlreadyExists;
+        }
+
+        Texture2D texture = null;
+        try {
+            texture = new Texture2D(2, 2, TextureFormat.RGBA32, mipChain, linear);
+            if(!OVC_Texture2D.LoadImage(texture, data)) {
+                UnityEngine.Object.Destroy(texture);
+                return Result.Failed;
+            }
+            Cache[key] = (path, (texture, new Texture2DSettings {
+                MipChain = mipChain,
+                Linear = linear
+            }));
+            return Result.Success;
+        } catch(Exception e) {
+            if(texture) UnityEngine.Object.Destroy(texture);
+            MainCore.Log.Err($"[{nameof(UserTexture2D)}] Texture load failed: {e}");
+            return Result.Failed;
+        }
+    }
+
+    public Result ReplaceData(string key, byte[] data, bool mipChain, bool linear) {
+        if(!Cache.TryGetValue(key, out var current)) {
+            return Result.NotFound;
+        }
+        if(data == null || data.Length == 0) {
+            return Result.InvalidArgument;
+        }
+
+        Texture2D replacement = null;
+        try {
+            replacement = new Texture2D(2, 2, TextureFormat.RGBA32, mipChain, linear);
+            if(!OVC_Texture2D.LoadImage(replacement, data)) {
+                UnityEngine.Object.Destroy(replacement);
+                return Result.Failed;
+            }
+
+            Cache[key] = (current.path, (replacement, new Texture2DSettings {
+                MipChain = mipChain,
+                Linear = linear
+            }));
+            if(current.value.texture) UnityEngine.Object.Destroy(current.value.texture);
+            return Result.Success;
+        } catch(Exception e) {
+            if(replacement) UnityEngine.Object.Destroy(replacement);
+            MainCore.Log.Err($"[{nameof(UserTexture2D)}] Texture replace failed: {e}");
+            return Result.Failed;
+        }
+    }
+
+    public bool Remove(string key) {
+        if(!Cache.Remove(key, out var entry)) return false;
+        if(entry.value.texture) UnityEngine.Object.Destroy(entry.value.texture);
+        return true;
     }
 
     public JToken Serialize() {

@@ -70,6 +70,66 @@ public class UserSprite : UserResourceBase<(Sprite sprite, string textureKey, Sp
         return obj;
     }
 
+    public bool Remove(string key) {
+        if(!Cache.Remove(key, out var entry)) return false;
+        if(entry.value.sprite) UnityEngine.Object.Destroy(entry.value.sprite);
+        return true;
+    }
+
+    public bool RenameTextureKey(string oldKey, string newKey) {
+        bool changed = false;
+
+        foreach(var (key, entry) in Cache.ToArray()) {
+            if(!string.Equals(entry.value.textureKey, oldKey, StringComparison.Ordinal)) {
+                continue;
+            }
+
+            Cache[key] = (
+                entry.path,
+                (entry.value.sprite, newKey, entry.value.settings)
+            );
+            changed = true;
+        }
+
+        return changed;
+    }
+
+    public bool RebuildTexture(string textureKey, Texture2D texture) {
+        if(string.IsNullOrWhiteSpace(textureKey) || !texture) return false;
+
+        var replacements = new List<(string key, Sprite oldSprite, Sprite newSprite)>();
+        try {
+            foreach(var (key, entry) in Cache) {
+                if(!string.Equals(entry.value.textureKey, textureKey, StringComparison.Ordinal)) {
+                    continue;
+                }
+
+                replacements.Add((
+                    key,
+                    entry.value.sprite,
+                    entry.value.settings.ToUnity(texture)
+                ));
+            }
+
+            foreach(var replacement in replacements) {
+                var entry = Cache[replacement.key];
+                Cache[replacement.key] = (
+                    entry.path,
+                    (replacement.newSprite, entry.value.textureKey, entry.value.settings)
+                );
+                if(replacement.oldSprite) UnityEngine.Object.Destroy(replacement.oldSprite);
+            }
+
+            return replacements.Count > 0;
+        } catch(Exception e) {
+            foreach(var replacement in replacements) {
+                if(replacement.newSprite) UnityEngine.Object.Destroy(replacement.newSprite);
+            }
+            MainCore.Log.Err($"[{nameof(UserSprite)}] Sprite rebuild failed: {e}");
+            return false;
+        }
+    }
+
     public void Deserialize(JToken token) {
         if(token is not JObject obj) {
             MainCore.Log.Wrn(

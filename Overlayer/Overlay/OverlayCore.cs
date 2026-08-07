@@ -110,7 +110,8 @@ public static class OverlayCore {
         Canvases.Clear();
         pendingLayoutRefreshes = 0;
 
-        Object.Destroy(Core);
+        GameObject core = Core;
         Core = null;
+        Object.Destroy(core);
     }
 }

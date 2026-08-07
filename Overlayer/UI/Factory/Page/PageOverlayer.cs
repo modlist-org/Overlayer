@@ -1,4 +1,5 @@
 using Overlayer.Core;
+using Overlayer.Async;
 using Overlayer.Localization;
 using Overlayer.Overlay;
 using Overlayer.Resource;
@@ -98,6 +99,13 @@ internal static class PageOverlayer {
         MainCore.OnModEnabledChanged += (isEnabled, isDispose) => {
             if(!isDispose) {
                 ToggleUIStateByMod(grid.transform, isEnabled);
+                if(isEnabled) {
+                    MainThread.Enqueue(() => {
+                        if(MainCore.IsModEnabled) {
+                            BuildAllTiles(grid.transform);
+                        }
+                    });
+                }
             }
         };
 

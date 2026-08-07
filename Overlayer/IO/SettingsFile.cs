@@ -15,6 +15,8 @@ public sealed class SettingsFile<T>(string path) where T : class, ISettingsFile,
 
     private bool saveScheduled;
 
+    private Task saveTask;
+
     public bool Load() {
         try {
             if(!File.Exists(Path)) {
@@ -73,7 +75,7 @@ public sealed class SettingsFile<T>(string path) where T : class, ISettingsFile,
 
         saveScheduled = true;
 
-        _ = Task.Run(async () => {
+        saveTask = Task.Run(async () => {
             try {
                 await Task.Delay(delay, token);
 
@@ -94,6 +96,15 @@ public sealed class SettingsFile<T>(string path) where T : class, ISettingsFile,
     }
 
     public void Dispose() {
+        saveCts?.Cancel();
+        try {
+            saveTask?.Wait();
+        } catch(AggregateException) {
+        }
+        saveTask = null;
+        saveCts = null;
+        saveScheduled = false;
+
         if(Data is IDisposable disposable) {
             disposable.Dispose();
         }
