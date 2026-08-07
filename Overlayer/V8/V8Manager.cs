@@ -64,7 +64,10 @@ public class V8Manager : IRuntimeService {
                 try {
                     var host = new JSTagRegistrationHost(_scriptLoader, file);
                     _engine.AddHostObject("RegisterTag", (Action<string, object, object>)host.RegisterTag);
-                    _engine.Execute(File.ReadAllText(file));
+                    string source = JSScriptPreprocessor.RemoveImplImports(
+                        File.ReadAllText(file)
+                    );
+                    _engine.Execute(source);
                 } catch(Exception e) {
                     MainCore.Log.Err($"[{nameof(V8Manager)}] Script execution error in '{Path.GetFileName(file)}': {e}");
                 }

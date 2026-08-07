@@ -56,7 +56,10 @@ public class JSScriptLoader {
         engine.AddHostObject(nameof(JSTagRegistrationHost.RegisterTag), (Action<string, object, object>)host.RegisterTag);
 
         try {
-            engine.Execute(File.ReadAllText(filePath));
+            string source = JSScriptPreprocessor.RemoveImplImports(
+                File.ReadAllText(filePath)
+            );
+            engine.Execute(source);
             _fileHashes[filePath] = hash;
         } catch(Exception e) {
             Diagnostics.Add(new JSDiagnostic(JSTagDiagnosticId.ScriptError, JSSeverity.Error, filePath, e));
