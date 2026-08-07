@@ -61,11 +61,16 @@ public sealed class OvObject : ISettingsFile {
         Config.MaskConfig?.ToUnity(GameObject);
         Config.ShadowConfig?.ToUnity(GameObject);
         Config.OutlineConfig?.ToUnity(GameObject);
+        Config.ContentSizeFitterConfig?.ToUnity(GameObject);
     }
 
     public void ApplyComponent() {
         if(GameObject == null) {
             return;
+        }
+
+        if(Config.TextConfig != null && Config.ImageConfig != null) {
+            Config.ImageConfig = null;
         }
 
         bool tc = Config.TextConfig != null;
@@ -84,6 +89,7 @@ public sealed class OvObject : ISettingsFile {
             }
         }
         EnsureComponent<Image>(Config.ImageConfig != null);
+        EnsureComponent<ContentSizeFitter>(Config.ContentSizeFitterConfig != null);
         EnsureComponent<Mask>(Config.MaskConfig != null);
         EnsureComponent<Shadow>(Config.ShadowConfig != null);
         EnsureComponent<RectMask2D>(Config.HasRectMask2D);

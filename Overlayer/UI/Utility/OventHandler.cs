@@ -20,6 +20,8 @@ public class OventHandler
 {
     private RectTransform _rectTransform;
     public Action<PointerEventData.InputButton> OnClick;
+    public Action OnHoverUpdate;
+    public Action OnDisabled;
     private bool _isHovered;
 
     void Awake() => _rectTransform = GetComponent<RectTransform>();
@@ -36,12 +38,17 @@ public class OventHandler
         );
     }
 
-    void OnDisable() => _isHovered = false;
+    void OnDisable() {
+        _isHovered = false;
+        OnDisabled?.Invoke();
+    }
 
     void Update() {
         if(!_isHovered) {
             return;
         }
+
+        OnHoverUpdate?.Invoke();
 
         for(int i = 0; i < 3; i++) {
             if(OVC_Input.GetMouseButtonDown(i)) {

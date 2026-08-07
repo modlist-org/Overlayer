@@ -1,8 +1,14 @@
 using Overlayer.IO.UnityComponent.Impl;
 using Overlayer.IO.Overlay;
+using Overlayer.IO.User;
 using Overlayer.Overlay;
+using Overlayer.Compat.OVC;
+using Overlayer.Core;
+using Overlayer.Resource;
 using Overlayer.UI.Generator;
 using Overlayer.UI.Objects;
+using Overlayer.UI.Objects.Impl;
+using Overlayer.UI.Utility;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -22,6 +28,8 @@ internal sealed class OvInspectorBuilder(
     Action rebuild,
     Action hierarchyChanged
 ) {
+    private enum AnchorMode { Custom = -1, Min, Middle, Max, Stretch }
+
     private readonly RectTransform content = content;
     private readonly List<UIObject> controls = controls;
     private readonly Action apply = apply;
@@ -71,13 +79,16 @@ internal sealed class OvInspectorBuilder(
         Toggle(identity, "Interactable", false, group.Interactable, value => group.Interactable = value, "obj_interactable");
         Toggle(identity, "Blocks Raycasts", false, group.BlocksRaycasts, value => group.BlocksRaycasts = value, "obj_raycast");
 
-        BuildTransform(obj.Config.RectTransformConfig);
+        BuildTransform(obj);
 
         if(obj.Config.TextConfig != null) {
             BuildText(obj, obj.Config.TextConfig);
         }
         if(obj.Config.ImageConfig != null) {
             BuildImage(obj, obj.Config.ImageConfig);
+        }
+        if(obj.Config.ContentSizeFitterConfig != null) {
+            BuildContentSizeFitter(obj, obj.Config.ContentSizeFitterConfig);
         }
         if(obj.Config.ShadowConfig != null) {
             BuildShadow(obj, obj.Config.ShadowConfig);
@@ -99,17 +110,41 @@ internal sealed class OvInspectorBuilder(
         BuildAddComponent(obj);
     }
 
-    private void BuildTransform(RectTransformSettings cfg) {
-        var (_, basic) = Card("Transform", false);
-        Vector2Sliders(basic, "Position", Vector2.zero, -10000f, 10000f, () => cfg.AnchoredPosition, value => cfg.AnchoredPosition = value, "transform_position", "F1");
-        Vector2Sliders(basic, "Size", new Vector2(200, 200), -10000f, 10000f, () => cfg.SizeDelta, value => cfg.SizeDelta = value, "transform_size", "F1");
-        Vector2Sliders(basic, "Pivot", new Vector2(0.5f, 0.5f), 0f, 1f, () => cfg.Pivot, value => cfg.Pivot = value, "transform_pivot");
+    private void BuildTransform(OvObject obj) {
+        RectTransformSettings cfg = obj.Config.RectTransformConfig;
+        var (_, basic) = Card("Rect Transform", false);
+        Action refreshPositionFields = null;
+        RectTransform rectLayout = CompactRow(basic, 92f, 6f);
+        Action refreshAnchor = AnchorPresetControl(rectLayout, obj, () => refreshPositionFields?.Invoke());
+        refreshPositionFields = BuildRectPositionFields(rectLayout, obj);
 
-        var (_, anchors) = Card("Anchors & Offsets", false);
-        Vector2Sliders(anchors, "Anchor Min", Vector2.zero, 0f, 1f, () => cfg.AnchorMin, value => cfg.AnchorMin = value, "transform_anchor_min");
-        Vector2Sliders(anchors, "Anchor Max", Vector2.one, 0f, 1f, () => cfg.AnchorMax, value => cfg.AnchorMax = value, "transform_anchor_max");
-        Vector2Sliders(anchors, "Offset Min", Vector2.zero, -10000f, 10000f, () => cfg.OffsetMin, value => cfg.OffsetMin = value, "transform_offset_min", "F1");
-        Vector2Sliders(anchors, "Offset Max", Vector2.zero, -10000f, 10000f, () => cfg.OffsetMax, value => cfg.OffsetMax = value, "transform_offset_max", "F1");
+        NumericPropertyRow(basic, "Position", new[] {
+            ("Z", 0f, (Func<float>)(() => cfg.AnchoredPositionZ), (Action<float>)(value => cfg.AnchoredPositionZ = value), "rect_position_z")
+        }, "F1");
+        NumericPropertyRow(basic, "Rotation", new[] {
+            ("X", 0f, (Func<float>)(() => cfg.RotationXY.x), (Action<float>)(value => cfg.RotationXY.x = value), "rect_rotation_x"),
+            ("Y", 0f, (Func<float>)(() => cfg.RotationXY.y), (Action<float>)(value => cfg.RotationXY.y = value), "rect_rotation_y"),
+            ("Z", 0f, (Func<float>)(() => cfg.Rotation), (Action<float>)(value => cfg.Rotation = value), "rect_rotation_z")
+        }, "F1");
+        NumericPropertyRow(basic, "Scale", new[] {
+            ("X", 1f, (Func<float>)(() => cfg.Scale.x), (Action<float>)(value => cfg.Scale.x = value), "rect_scale_x"),
+            ("Y", 1f, (Func<float>)(() => cfg.Scale.y), (Action<float>)(value => cfg.Scale.y = value), "rect_scale_y"),
+            ("Z", 1f, (Func<float>)(() => cfg.Scale.z), (Action<float>)(value => cfg.Scale.z = value), "rect_scale_z")
+        }, "F2");
+        NumericPropertyRow(basic, "Pivot", new[] {
+            ("X", 0.5f, (Func<float>)(() => cfg.Pivot.x), (Action<float>)(value => cfg.Pivot.x = value), "rect_pivot_x"),
+            ("Y", 0.5f, (Func<float>)(() => cfg.Pivot.y), (Action<float>)(value => cfg.Pivot.y = value), "rect_pivot_y")
+        }, "F2");
+
+        var (_, anchors) = Card("Anchors", false);
+        NumericPropertyRow(anchors, "Min", new[] {
+            ("X", 0f, (Func<float>)(() => cfg.AnchorMin.x), (Action<float>)(value => { cfg.AnchorMin.x = value; refreshAnchor(); refreshPositionFields(); }), "transform_anchor_min_x"),
+            ("Y", 0f, (Func<float>)(() => cfg.AnchorMin.y), (Action<float>)(value => { cfg.AnchorMin.y = value; refreshAnchor(); refreshPositionFields(); }), "transform_anchor_min_y")
+        }, "F2");
+        NumericPropertyRow(anchors, "Max", new[] {
+            ("X", 1f, (Func<float>)(() => cfg.AnchorMax.x), (Action<float>)(value => { cfg.AnchorMax.x = value; refreshAnchor(); refreshPositionFields(); }), "transform_anchor_max_x"),
+            ("Y", 1f, (Func<float>)(() => cfg.AnchorMax.y), (Action<float>)(value => { cfg.AnchorMax.y = value; refreshAnchor(); refreshPositionFields(); }), "transform_anchor_max_y")
+        }, "F2");
     }
 
     private void BuildText(OvObject obj, TextMeshProUGUISettings cfg) {
@@ -158,15 +193,27 @@ internal sealed class OvInspectorBuilder(
             RefreshComponents(obj);
         });
 
-        Input(card, "Sprite Key", "User resource key", cfg.SpriteKey, value => {
-            cfg.SpriteKey = string.IsNullOrWhiteSpace(value) ? null : value;
-            apply();
-        }, "image_sprite");
+        SpriteDropDown(card, cfg);
         ColorSliders(card, "Color", Color.white, () => cfg.Color, value => cfg.Color = value, "image_color");
+        Toggle(card, "Raycast Target", true, cfg.RaycastTarget, value => cfg.RaycastTarget = value, "image_raycast");
         Toggle(card, "Preserve Aspect", false, cfg.PreserveAspect, value => cfg.PreserveAspect = value, "image_aspect");
+        Toggle(card, "Use Sprite Mesh", false, cfg.UseSpriteMesh, value => cfg.UseSpriteMesh = value, "image_sprite_mesh");
         EnumDropDown(card, "Image Type", Image.Type.Simple, cfg.Type, value => cfg.Type = value, "image_type");
+        Toggle(card, "Fill Center", true, cfg.FillCenter, value => cfg.FillCenter = value, "image_fill_center");
+        Slider(card, "Pixels Per Unit", 1f, 0.01f, 10f, cfg.PixelsPerUnitMultiplier, value => cfg.PixelsPerUnitMultiplier = value, "image_pixels_per_unit");
         EnumDropDown(card, "Fill Method", Image.FillMethod.Horizontal, cfg.FillMethod, value => cfg.FillMethod = value, "image_fill_method");
         Slider(card, "Fill Amount", 1f, 0f, 1f, cfg.FillAmount, value => cfg.FillAmount = value, "image_fill_amount");
+        Slider(card, "Fill Origin", 0f, 0f, 3f, cfg.FillOrigin, value => cfg.FillOrigin = Mathf.RoundToInt(value), "image_fill_origin", "F0");
+        Toggle(card, "Fill Clockwise", true, cfg.FillClockwise, value => cfg.FillClockwise = value, "image_fill_clockwise");
+    }
+
+    private void BuildContentSizeFitter(OvObject obj, ContentSizeFitterSettings cfg) {
+        var (_, card) = Card("Content Size Fitter", true, () => {
+            obj.Config.ContentSizeFitterConfig = null;
+            RefreshComponents(obj);
+        });
+        EnumDropDown(card, "Horizontal Fit", ContentSizeFitter.FitMode.PreferredSize, cfg.HorizontalFit, value => cfg.HorizontalFit = value, "content_size_horizontal", () => RefreshDrivenLayout(obj));
+        EnumDropDown(card, "Vertical Fit", ContentSizeFitter.FitMode.PreferredSize, cfg.VerticalFit, value => cfg.VerticalFit = value, "content_size_vertical", () => RefreshDrivenLayout(obj));
     }
 
     private void BuildShadow(OvObject obj, ShadowSettings cfg) {
@@ -202,11 +249,14 @@ internal sealed class OvInspectorBuilder(
 
     private void BuildAddComponent(OvObject obj) {
         var options = new List<string> { "Add Component..." };
-        if(obj.Config.TextConfig == null) options.Add("Text");
-        if(obj.Config.ImageConfig == null) options.Add("Image");
+        if(obj.Config.TextConfig == null && obj.Config.ImageConfig == null) {
+            options.Add("Text");
+            options.Add("Image");
+        }
         if(obj.Config.ShadowConfig == null) options.Add("Shadow");
         if(obj.Config.OutlineConfig == null) options.Add("Outline");
         if(obj.Config.MaskConfig == null) options.Add("Mask");
+        if(obj.Config.ContentSizeFitterConfig == null) options.Add("Content Size Fitter");
         if(!obj.Config.HasRectMask2D) options.Add("Rect Mask 2D");
         if(options.Count == 1) return;
 
@@ -221,6 +271,7 @@ internal sealed class OvInspectorBuilder(
                 case "Shadow": obj.Config.ShadowConfig = new ShadowSettings(); break;
                 case "Outline": obj.Config.OutlineConfig = new OutlineSettings(); break;
                 case "Mask": obj.Config.MaskConfig = new MaskSettings(); break;
+                case "Content Size Fitter": obj.Config.ContentSizeFitterConfig = new ContentSizeFitterSettings(); break;
                 case "Rect Mask 2D": obj.Config.HasRectMask2D = true; break;
                 default: return;
             }
@@ -346,12 +397,17 @@ internal sealed class OvInspectorBuilder(
     }
 
     private void Slider(Transform parent, string label, float defaultValue, float min, float max, float value, Action<float> changed, string id, string format = "F2") {
+        Slider(parent, label, defaultValue, min, max, value, changed, id, format, true);
+    }
+
+    private UISlider Slider(Transform parent, string label, float defaultValue, float min, float max, float value, Action<float> changed, string id, string format, bool clamp) {
         var row = GenerateUI.Row(parent, 50f);
-        var slider = GenerateUI.Slider(row, defaultValue, min, max, value, format, false, null, newValue => {
+        var slider = GenerateUI.Slider(row, defaultValue, min, max, value, format, clamp, null, newValue => {
             changed(newValue);
             apply();
         }, _ => save(), label, id);
         Track(slider);
+        return slider;
     }
 
     private void Toggle(Transform parent, string label, bool defaultValue, bool value, Action<bool> changed, string id) {
@@ -363,12 +419,13 @@ internal sealed class OvInspectorBuilder(
         Track(toggle);
     }
 
-    private void EnumDropDown<T>(Transform parent, string label, T defaultValue, T value, Action<T> changed, string id) where T : struct, Enum {
+    private void EnumDropDown<T>(Transform parent, string label, T defaultValue, T value, Action<T> changed, string id, Action completed = null) where T : struct, Enum {
         var values = Enum.GetValues(typeof(T)).Cast<T>().ToArray();
         var row = GenerateUI.Row(parent, 50f);
         var dropdown = GenerateUI.DropDown(row, defaultValue, value, values, option => $"{label}: {option}", newValue => {
             changed(newValue);
-            ApplyAndSave();
+            if(completed == null) ApplyAndSave();
+            else completed();
         }, id);
         Track(dropdown);
     }
@@ -376,6 +433,707 @@ internal sealed class OvInspectorBuilder(
     private void Vector2Sliders(Transform parent, string label, Vector2 defaults, float min, float max, Func<Vector2> get, Action<Vector2> set, string id, string format = "F2") {
         Slider(parent, $"{label} X", defaults.x, min, max, get().x, value => set(new Vector2(value, get().y)), id + "_x", format);
         Slider(parent, $"{label} Y", defaults.y, min, max, get().y, value => set(new Vector2(get().x, value)), id + "_y", format);
+    }
+
+    private void NumericPropertyRow(
+        Transform parent,
+        string label,
+        (string Label, float Default, Func<float> Get, Action<float> Set, string Id)[] fields,
+        string format
+    ) {
+        RectTransform row = CompactRow(parent, 44f, 6f);
+        FixedLabel(row, label, 66f);
+        foreach(var field in fields) {
+            NumericField(row, field.Label, field.Default, field.Get, field.Set, field.Id, format);
+        }
+    }
+
+    private (UIInput Input, TextMeshProUGUI Label, Func<float> Get) NumericField(
+        Transform parent,
+        string label,
+        float defaultValue,
+        Func<float> get,
+        Action<float> set,
+        string id,
+        string format
+    ) {
+        GameObject fieldObject = new("NumericField");
+        fieldObject.transform.SetParent(parent, false);
+        RectTransform fieldRect = fieldObject.AddComponent<RectTransform>();
+        var fieldElement = fieldObject.AddComponent<LayoutElement>();
+        fieldElement.minWidth = 100f;
+        fieldElement.flexibleWidth = 1f;
+
+        var layout = fieldObject.AddComponent<HorizontalLayoutGroup>();
+        layout.spacing = 4f;
+        layout.childControlWidth = true;
+        layout.childControlHeight = true;
+        layout.childForceExpandWidth = false;
+        layout.childForceExpandHeight = true;
+
+        TextMeshProUGUI fieldLabel = FixedLabel(fieldRect, label, 42f);
+        UIInput input = null;
+        input = GenerateUI.Input(
+            fieldRect,
+            defaultValue.ToString(format),
+            get().ToString(format),
+            value => {
+                if(!float.TryParse(value, out float parsed)) return;
+                set(parsed);
+                apply();
+            },
+            string.Empty,
+            null,
+            id,
+            value => {
+                if(float.TryParse(value, out float parsed)) {
+                    set(parsed);
+                    apply();
+                }
+                input.Set(get().ToString(format), false);
+                save();
+            },
+            monospace: true
+        );
+        input.InputField.contentType = TMP_InputField.ContentType.DecimalNumber;
+        var inputElement = input.Rect.gameObject.AddComponent<LayoutElement>();
+        inputElement.minWidth = 54f;
+        inputElement.flexibleWidth = 1f;
+        AddNumericDrag(fieldLabel, input, get, set, format);
+        Track(input);
+        return (input, fieldLabel, get);
+    }
+
+    private void AddNumericDrag(TextMeshProUGUI label, UIInput input, Func<float> get, Action<float> set, string format) {
+        var trigger = label.gameObject.AddComponent<UnityEngine.EventSystems.EventTrigger>();
+        bool dragging = false;
+        float value = 0f;
+        Vector2Int resetPosition = Vector2Int.zero;
+        Vector2 previousMousePosition = Vector2.zero;
+        bool warped = false;
+        int decimals = 0;
+        if(format.Length > 1 && (format[0] == 'F' || format[0] == 'f')) {
+            int.TryParse(format[1..], out decimals);
+        }
+        float step = Mathf.Pow(10f, -decimals);
+
+        UnityUtils.AddEvents(trigger,
+            (UnityEngine.EventSystems.EventTriggerType.BeginDrag, _ => {
+                if(!OVC_Input.GetMouseButton(0)) return;
+                CanvasGroup inputGroup = input.Rect.GetComponent<CanvasGroup>();
+                if(inputGroup != null && !inputGroup.interactable) return;
+                dragging = true;
+                value = get();
+                resetPosition = Vector2Int.RoundToInt(OVC_Input.OSMousePosition);
+                previousMousePosition = OVC_Input.MousePosition;
+                warped = false;
+            }),
+            (UnityEngine.EventSystems.EventTriggerType.Drag, _ => {
+                if(!dragging || !OVC_Input.GetMouseButton(0)) return;
+                Vector2 currentMousePosition = OVC_Input.MousePosition;
+                float delta = currentMousePosition.x - previousMousePosition.x;
+                previousMousePosition = currentMousePosition;
+                if(warped) {
+                    delta = 0f;
+                    warped = false;
+                }
+
+                bool precision = OVC_Input.GetKey(KeyCode.LeftShift) || OVC_Input.GetKey(KeyCode.RightShift);
+                value += delta * step * MainCore.Conf.SliderSensitivity * (precision ? 0.1f : 1f);
+                set(value);
+                apply();
+                input.Set(value.ToString(format), false);
+                Cursor.visible = false;
+
+                Vector2Int osPosition = OVC_Input.OSMousePosition;
+                int screenWidth = Screen.currentResolution.width;
+                const int padding = 5;
+                if(osPosition.x <= padding) {
+                    OVC_Input.OSMousePosition = new Vector2Int(screenWidth - padding - 1, osPosition.y);
+                    previousMousePosition = new Vector2(Screen.width - padding - 1, currentMousePosition.y);
+                    warped = true;
+                } else if(osPosition.x >= screenWidth - padding) {
+                    OVC_Input.OSMousePosition = new Vector2Int(padding + 1, osPosition.y);
+                    previousMousePosition = new Vector2(padding + 1, currentMousePosition.y);
+                    warped = true;
+                }
+            }),
+            (UnityEngine.EventSystems.EventTriggerType.EndDrag, _ => {
+                if(!dragging) return;
+                dragging = false;
+                OVC_Input.OSMousePosition = resetPosition;
+                Cursor.visible = true;
+                save();
+            })
+        );
+    }
+
+    private static RectTransform CompactRow(Transform parent, float height, float spacing) {
+        RectTransform row = GenerateUI.Row(parent, height);
+        var layout = row.gameObject.AddComponent<HorizontalLayoutGroup>();
+        layout.spacing = spacing;
+        layout.childControlWidth = true;
+        layout.childControlHeight = true;
+        layout.childForceExpandWidth = false;
+        layout.childForceExpandHeight = true;
+        return row;
+    }
+
+    private static RectTransform VerticalGroup(Transform parent, float spacing) {
+        GameObject groupObject = new("VerticalGroup");
+        groupObject.transform.SetParent(parent, false);
+        RectTransform rect = groupObject.AddComponent<RectTransform>();
+        var element = groupObject.AddComponent<LayoutElement>();
+        element.minWidth = 220f;
+        element.flexibleWidth = 1f;
+        var layout = groupObject.AddComponent<VerticalLayoutGroup>();
+        layout.spacing = spacing;
+        layout.childControlWidth = true;
+        layout.childControlHeight = true;
+        layout.childForceExpandWidth = true;
+        layout.childForceExpandHeight = false;
+        return rect;
+    }
+
+    private static TextMeshProUGUI FixedLabel(Transform parent, string text, float width) {
+        TextMeshProUGUI label = GenerateUI.AddText(parent, true);
+        label.text = text;
+        label.fontSize = 14f;
+        label.alignment = TextAlignmentOptions.MidlineLeft;
+        var element = label.gameObject.AddComponent<LayoutElement>();
+        element.minWidth = width;
+        element.preferredWidth = width;
+        element.flexibleWidth = 0f;
+        return label;
+    }
+
+    private Action BuildRectPositionFields(Transform parent, OvObject obj) {
+        RectTransformSettings cfg = obj.Config.RectTransformConfig;
+        bool StretchX() => !Mathf.Approximately(cfg.AnchorMin.x, cfg.AnchorMax.x);
+        bool StretchY() => !Mathf.Approximately(cfg.AnchorMin.y, cfg.AnchorMax.y);
+        bool DrivenX() => obj.Config.ContentSizeFitterConfig?.HorizontalFit != null
+            && obj.Config.ContentSizeFitterConfig.HorizontalFit != ContentSizeFitter.FitMode.Unconstrained;
+        bool DrivenY() => obj.Config.ContentSizeFitterConfig?.VerticalFit != null
+            && obj.Config.ContentSizeFitterConfig.VerticalFit != ContentSizeFitter.FitMode.Unconstrained;
+        float PositionX() => DrivenX() ? obj.RectTransform.anchoredPosition.x : cfg.AnchoredPosition.x;
+        float PositionY() => DrivenY() ? obj.RectTransform.anchoredPosition.y : cfg.AnchoredPosition.y;
+        float SizeX() => DrivenX() ? obj.RectTransform.sizeDelta.x : cfg.SizeDelta.x;
+        float SizeY() => DrivenY() ? obj.RectTransform.sizeDelta.y : cfg.SizeDelta.y;
+        float Left() => DrivenX() ? obj.RectTransform.offsetMin.x : cfg.GetOffsetMin(0);
+        float Right() => DrivenX() ? -obj.RectTransform.offsetMax.x : -cfg.GetOffsetMax(0);
+        float Top() => DrivenY() ? -obj.RectTransform.offsetMax.y : -cfg.GetOffsetMax(1);
+        float Bottom() => DrivenY() ? obj.RectTransform.offsetMin.y : cfg.GetOffsetMin(1);
+
+        RectTransform fields = VerticalGroup(parent, 2f);
+        var firstRow = CompactRow(fields, 44f, 6f);
+        var secondRow = CompactRow(fields, 44f, 6f);
+        var firstX = NumericField(firstRow, "", 0f, () => StretchX() ? Left() : PositionX(), value => {
+            if(StretchX()) cfg.SetOffsetMin(0, value);
+            else cfg.AnchoredPosition.x = value;
+        }, "transform_rect_x1", "F1");
+        var firstY = NumericField(firstRow, "", 0f, () => StretchY() ? Top() : PositionY(), value => {
+            if(StretchY()) cfg.SetOffsetMax(1, -value);
+            else cfg.AnchoredPosition.y = value;
+        }, "transform_rect_y1", "F1");
+        var secondX = NumericField(secondRow, "", 200f, () => StretchX() ? Right() : SizeX(), value => {
+            if(StretchX()) cfg.SetOffsetMax(0, -value);
+            else cfg.SizeDelta.x = value;
+        }, "transform_rect_x2", "F1");
+        var secondY = NumericField(secondRow, "", 200f, () => StretchY() ? Bottom() : SizeY(), value => {
+            if(StretchY()) cfg.SetOffsetMin(1, value);
+            else cfg.SizeDelta.y = value;
+        }, "transform_rect_y2", "F1");
+
+        void RefreshValues() {
+            firstX.Label.text = StretchX() ? "Left" : "Pos X";
+            SetDisplayedValue(firstX.Input, firstX.Get(), "F1");
+            secondX.Label.text = StretchX() ? "Right" : "Width";
+            SetDisplayedValue(secondX.Input, secondX.Get(), "F1");
+            firstY.Label.text = StretchY() ? "Top" : "Pos Y";
+            SetDisplayedValue(firstY.Input, firstY.Get(), "F1");
+            secondY.Label.text = StretchY() ? "Bottom" : "Height";
+            SetDisplayedValue(secondY.Input, secondY.Get(), "F1");
+        }
+
+        bool drivenX = DrivenX();
+        bool drivenY = DrivenY();
+        firstX.Input.SetBlocked(drivenX && StretchX(), true);
+        secondX.Input.SetBlocked(drivenX, true);
+        firstY.Input.SetBlocked(drivenY && StretchY(), true);
+        secondY.Input.SetBlocked(drivenY, true);
+        RefreshValues();
+
+        if(drivenX || drivenY) {
+            controls.Add(new UIWatcher("rect_transform_driven", fields, RefreshValues));
+        }
+        return RefreshValues;
+    }
+
+    private static void SetDisplayedValue(UIInput input, float value, string format) {
+        string text = value.ToString(format);
+        if(input.Value != text) input.Set(text, false);
+    }
+
+    private Action AnchorPresetControl(Transform parent, OvObject obj, Action positionFieldsChanged) {
+        RectTransformSettings cfg = obj.Config.RectTransformConfig;
+        RectTransform buttonRow = GenerateUI.Row(parent, 58f);
+        var buttonLayout = buttonRow.GetComponent<LayoutElement>();
+        buttonLayout.minWidth = 58f;
+        buttonLayout.preferredWidth = 58f;
+        buttonLayout.flexibleWidth = 0f;
+        var summary = GenerateUI.Button(buttonRow, null, string.Empty, "transform_anchor_presets");
+        summary.Label.gameObject.SetActive(false);
+        summary.Rect.anchorMin = new Vector2(0f, 0.5f);
+        summary.Rect.anchorMax = new Vector2(0f, 0.5f);
+        summary.Rect.pivot = new Vector2(0f, 0.5f);
+        summary.Rect.anchoredPosition = Vector2.zero;
+        summary.Rect.sizeDelta = new Vector2(58f, 52f);
+        controls.Add(summary);
+
+        GameObject summaryGraphic = AddAnchorGraphic(summary.Rect, ModeForAxis(cfg, 0), ModeForAxis(cfg, 1), false, false, 42f);
+        TextMeshProUGUI horizontalLabel = AddAnchorHeader(summary.Rect, true, ModeName(ModeForAxis(cfg, 0), false));
+        TextMeshProUGUI verticalLabel = AddAnchorHeader(summary.Rect, false, ModeName(ModeForAxis(cfg, 1), true));
+
+        RectTransform popup = CreateAnchorPopup(UICore.Canvas.transform);
+        RectTransform blocker = CreatePopupBlocker(UICore.Canvas.transform);
+        blocker.gameObject.SetActive(false);
+        summary.OnDisposed += () => {
+            if(popup != null) UnityEngine.Object.Destroy(popup.gameObject);
+            if(blocker != null) UnityEngine.Object.Destroy(blocker.gameObject);
+        };
+        popup.gameObject.SetActive(false);
+        bool open = false;
+        float lastClickTime = -1f;
+
+        void ClosePopup() {
+            open = false;
+            if(popup != null) popup.gameObject.SetActive(false);
+            if(blocker != null) blocker.gameObject.SetActive(false);
+        }
+
+        GenerateUI.AddButton(blocker.gameObject, button => {
+            if(button == UnityEngine.EventSystems.PointerEventData.InputButton.Left) ClosePopup();
+        });
+
+        var selections = new List<(AnchorMode H, AnchorMode V, Image Image)>();
+        var presetGraphics = new List<(RectTransform Parent, AnchorMode H, AnchorMode V, bool Header, GameObject Graphic)>();
+        Transform table = popup.Find("Table");
+        TextMeshProUGUI modifierHelp = popup.Find("ModifierHelp").GetComponent<TextMeshProUGUI>();
+        AnchorMode[] horizontalModes = { AnchorMode.Custom, AnchorMode.Min, AnchorMode.Middle, AnchorMode.Max, AnchorMode.Stretch };
+        AnchorMode[] verticalModes = { AnchorMode.Custom, AnchorMode.Max, AnchorMode.Middle, AnchorMode.Min, AnchorMode.Stretch };
+        bool lastShift = false;
+        bool lastAlt = false;
+
+        void RefreshSummary() {
+            UnityEngine.Object.Destroy(summaryGraphic);
+            summaryGraphic = AddAnchorGraphic(summary.Rect, ModeForAxis(cfg, 0), ModeForAxis(cfg, 1), false, false, 42f);
+            horizontalLabel.text = ModeName(ModeForAxis(cfg, 0), false);
+            verticalLabel.text = ModeName(ModeForAxis(cfg, 1), true);
+            foreach(var cell in selections) {
+                bool selected = (cell.H == AnchorMode.Custom || cell.H == ModeForAxis(cfg, 0))
+                    && (cell.V == AnchorMode.Custom || cell.V == ModeForAxis(cfg, 1));
+                Color color = Color.white;
+                color.a = selected ? (cell.H == AnchorMode.Custom || cell.V == AnchorMode.Custom ? 0.55f : 1f) : 0f;
+                cell.Image.color = color;
+            }
+        }
+
+        void RefreshModifierGraphics(bool force = false) {
+            bool shift = OVC_Input.GetKey(KeyCode.LeftShift) || OVC_Input.GetKey(KeyCode.RightShift);
+            bool alt = OVC_Input.GetKey(KeyCode.LeftAlt) || OVC_Input.GetKey(KeyCode.RightAlt);
+            if(!force && shift == lastShift && alt == lastAlt) return;
+            lastShift = shift;
+            lastAlt = alt;
+
+            for(int i = 0; i < presetGraphics.Count; i++) {
+                var item = presetGraphics[i];
+                UnityEngine.Object.Destroy(item.Graphic);
+                GameObject graphic = AddAnchorGraphic(item.Parent, item.H, item.V, shift, alt, item.Header ? 34f : 40f);
+                PositionAnchorGraphic(graphic, item.H, item.V);
+                presetGraphics[i] = (item.Parent, item.H, item.V, item.Header, graphic);
+            }
+
+            modifierHelp.text = $"{(shift ? "<color=#FFCC44>" : "")}Shift: Also set pivot{(shift ? "</color>" : "")}     {(alt ? "<color=#FFCC44>" : "")}Alt: Also set position{(alt ? "</color>" : "")}";
+        }
+
+        for(int y = 0; y < verticalModes.Length; y++) {
+            for(int x = 0; x < horizontalModes.Length; x++) {
+                AnchorMode horizontal = horizontalModes[x];
+                AnchorMode vertical = verticalModes[y];
+                if(x == 0 && y == 0) {
+                    CreateAnchorTableBlank(table);
+                    continue;
+                }
+
+                var cell = GenerateUI.Button(table, null, string.Empty, $"transform_anchor_{x}_{y}");
+                cell.Label.gameObject.SetActive(false);
+                Track(cell);
+                bool header = x == 0 || y == 0;
+                cell.NormalColor = header
+                    ? new Color(0.13f, 0.13f, 0.17f, 1f)
+                    : new Color(0.09f, 0.09f, 0.12f, 1f);
+                cell.Background.color = cell.NormalColor;
+                Image selection = AddSelection(cell.Rect);
+                selections.Add((horizontal, vertical, selection));
+                GameObject graphic = AddAnchorGraphic(cell.Rect, horizontal, vertical, false, false, header ? 34f : 40f);
+                PositionAnchorGraphic(graphic, horizontal, vertical);
+                presetGraphics.Add((cell.Rect, horizontal, vertical, header, graphic));
+                if(header) AddTableHeader(cell.Rect, x == 0, x == 0 ? ModeName(vertical, true) : ModeName(horizontal, false));
+                cell.Rect.AddToolTip(AnchorCellName(horizontal, vertical));
+                cell.OnClick = () => {
+                    bool setPivot = OVC_Input.GetKey(KeyCode.LeftShift) || OVC_Input.GetKey(KeyCode.RightShift);
+                    bool setPosition = OVC_Input.GetKey(KeyCode.LeftAlt) || OVC_Input.GetKey(KeyCode.RightAlt);
+                    ApplyAnchorModes(obj, horizontal, vertical, setPivot, setPosition);
+                    apply();
+                    Canvas.ForceUpdateCanvases();
+                    LayoutRebuilder.ForceRebuildLayoutImmediate(obj.RectTransform);
+                    cfg.FromUnity(obj.GameObject);
+                    positionFieldsChanged();
+                    save();
+                    RefreshSummary();
+
+                    float now = Time.unscaledTime;
+                    if(now - lastClickTime < 0.35f) {
+                        ClosePopup();
+                    }
+                    lastClickTime = now;
+                };
+            }
+        }
+
+        summary.OnClick = () => {
+            open = !open;
+            if(open) {
+                RectTransform canvasRect = UICore.Canvas.GetComponent<RectTransform>();
+                Vector3 corner = summary.Rect.TransformPoint(new Vector3(summary.Rect.rect.xMin, summary.Rect.rect.yMin, 0f));
+                popup.anchoredPosition = canvasRect.InverseTransformPoint(corner);
+                blocker.gameObject.SetActive(true);
+                blocker.SetAsLastSibling();
+                popup.SetAsLastSibling();
+            } else {
+                blocker.gameObject.SetActive(false);
+            }
+            popup.gameObject.SetActive(open);
+            RefreshSummary();
+            if(open) RefreshModifierGraphics(true);
+        };
+        summary.Rect.GetComponent<OventHandler>().OnDisabled = () => {
+            ClosePopup();
+        };
+        popup.gameObject.GetComponent<OventHandler>().OnHoverUpdate = () => RefreshModifierGraphics();
+        RefreshSummary();
+        return RefreshSummary;
+    }
+
+    private static RectTransform CreatePopupBlocker(Transform parent) {
+        GameObject blockerObject = new("AnchorPopupBlocker");
+        blockerObject.transform.SetParent(parent, false);
+        RectTransform blocker = blockerObject.AddComponent<RectTransform>();
+        blocker.anchorMin = Vector2.zero;
+        blocker.anchorMax = Vector2.one;
+        blocker.offsetMin = Vector2.zero;
+        blocker.offsetMax = Vector2.zero;
+        Image image = blockerObject.AddComponent<Image>();
+        image.color = Color.clear;
+        return blocker;
+    }
+
+    private static RectTransform CreateAnchorPopup(Transform parent) {
+        GameObject popupObject = new("AnchorPresetPopup");
+        popupObject.transform.SetParent(parent, false);
+        RectTransform popup = popupObject.AddComponent<RectTransform>();
+        popup.anchorMin = new Vector2(0.5f, 0.5f);
+        popup.anchorMax = new Vector2(0.5f, 0.5f);
+        popup.pivot = new Vector2(0f, 1f);
+        popup.anchoredPosition = Vector2.zero;
+        popup.sizeDelta = new Vector2(320f, 352f);
+        popupObject.AddComponent<OventHandler>();
+        Image background = popup.gameObject.AddComponent<Image>();
+        background.color = new Color(0.08f, 0.08f, 0.08f, 0.98f);
+
+        var vertical = popup.gameObject.AddComponent<VerticalLayoutGroup>();
+        vertical.padding = new RectOffset(10, 10, 8, 8);
+        vertical.spacing = 3f;
+        vertical.childControlWidth = true;
+        vertical.childControlHeight = true;
+        vertical.childForceExpandWidth = true;
+        vertical.childForceExpandHeight = false;
+
+        TextMeshProUGUI title = GenerateUI.AddText(popup, true);
+        title.text = "Anchor Presets";
+        title.fontSize = 18f;
+        title.fontStyle = FontStyles.Bold;
+        title.gameObject.AddComponent<LayoutElement>().preferredHeight = 23f;
+
+        TextMeshProUGUI help = GenerateUI.AddText(popup, true);
+        help.name = "ModifierHelp";
+        help.text = "Shift: Also set pivot     Alt: Also set position";
+        help.fontSize = 12f;
+        help.color = new Color(1f, 1f, 1f, 0.55f);
+        help.gameObject.AddComponent<LayoutElement>().preferredHeight = 20f;
+
+        GameObject separator = new("Separator");
+        separator.transform.SetParent(popup, false);
+        separator.AddComponent<RectTransform>();
+        separator.AddComponent<Image>().color = new Color(1f, 1f, 1f, 0.18f);
+        separator.AddComponent<LayoutElement>().preferredHeight = 1f;
+
+        GameObject table = new("Table");
+        table.transform.SetParent(popup, false);
+        table.AddComponent<RectTransform>();
+        var grid = table.AddComponent<GridLayoutGroup>();
+        grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+        grid.constraintCount = 5;
+        grid.cellSize = new Vector2(50f, 50f);
+        grid.spacing = new Vector2(5f, 5f);
+        grid.childAlignment = TextAnchor.UpperCenter;
+        table.AddComponent<LayoutElement>().preferredHeight = 270f;
+
+        return popup;
+    }
+
+    private static void CreateAnchorTableBlank(Transform parent) {
+        GameObject blank = new("CurrentModeCorner");
+        blank.transform.SetParent(parent, false);
+        blank.AddComponent<RectTransform>();
+        blank.AddComponent<LayoutElement>();
+    }
+
+    private static Image AddSelection(RectTransform parent) {
+        GameObject selectionObject = new("Selection");
+        selectionObject.transform.SetParent(parent, false);
+        RectTransform rect = selectionObject.AddComponent<RectTransform>();
+        rect.anchorMin = Vector2.zero;
+        rect.anchorMax = Vector2.one;
+        rect.offsetMin = new Vector2(2f, 2f);
+        rect.offsetMax = new Vector2(-2f, -2f);
+        Image image = selectionObject.AddComponent<Image>();
+        image.sprite = MainCore.Spr.Get(UISliceSprite.CircleOutline256O64P2048);
+        image.type = Image.Type.Sliced;
+        image.raycastTarget = false;
+        return image;
+    }
+
+    private static void PositionAnchorGraphic(GameObject graphic, AnchorMode horizontal, AnchorMode vertical) {
+        RectTransform rect = graphic.GetComponent<RectTransform>();
+        rect.anchoredPosition = new Vector2(
+            horizontal == AnchorMode.Custom ? 7f : 0f,
+            vertical == AnchorMode.Custom ? -6f : 0f
+        );
+    }
+
+    private static GameObject AddAnchorGraphic(RectTransform parent, AnchorMode horizontal, AnchorMode vertical, bool showPivot, bool alignPosition, float size) {
+        GameObject root = new("AnchorGraphic");
+        root.transform.SetParent(parent, false);
+        RectTransform frame = root.AddComponent<RectTransform>();
+        frame.anchorMin = new Vector2(0.5f, 0.5f);
+        frame.anchorMax = new Vector2(0.5f, 0.5f);
+        frame.sizeDelta = new Vector2(size, size);
+
+        Color parentColor = new(1f, 1f, 1f, 0.7f);
+        float edge = size * 0.5f;
+        AddGraphicLine(frame, "Top", new Vector2(0f, edge), new Vector2(size, 1f), parentColor);
+        AddGraphicLine(frame, "Bottom", new Vector2(0f, -edge), new Vector2(size, 1f), parentColor);
+        AddGraphicLine(frame, "Left", new Vector2(-edge, 0f), new Vector2(1f, size), parentColor);
+        AddGraphicLine(frame, "Right", new Vector2(edge, 0f), new Vector2(1f, size), parentColor);
+
+        if(horizontal == AnchorMode.Custom && vertical == AnchorMode.Custom) return root;
+
+        float innerSize = size * 0.5f;
+        Vector2 objectSize = new(horizontal == AnchorMode.Stretch ? size - 4f : innerSize, vertical == AnchorMode.Stretch ? size - 4f : innerSize);
+        Vector2 objectPosition = new(ModePosition(horizontal, size), ModePosition(vertical, size));
+        if(!alignPosition) objectPosition = Vector2.zero;
+
+        GameObject objectGraphic = new("Self");
+        objectGraphic.transform.SetParent(frame, false);
+        RectTransform objectRect = objectGraphic.AddComponent<RectTransform>();
+        objectRect.anchorMin = new Vector2(0.5f, 0.5f);
+        objectRect.anchorMax = new Vector2(0.5f, 0.5f);
+        objectRect.anchoredPosition = objectPosition;
+        objectRect.sizeDelta = objectSize;
+        Color selfColor = new(0.9f, 0.9f, 0.9f, 0.95f);
+        AddGraphicOutline(objectRect, selfColor);
+
+        Color simpleColor = new(1f, 0.22f, 0.22f, 1f);
+        Color stretchColor = new(0.1f, 0.85f, 1f, 1f);
+        if(horizontal != AnchorMode.Custom) {
+            float x = ModePosition(horizontal, size, true);
+            if(horizontal == AnchorMode.Stretch) AddStretchArrow(frame, true, stretchColor, size);
+            else AddGraphicLine(frame, "HorizontalAnchor", new Vector2(x, 0f), new Vector2(1f, size - 2f), simpleColor);
+        }
+        if(vertical != AnchorMode.Custom) {
+            float y = ModePosition(vertical, size, true);
+            if(vertical == AnchorMode.Stretch) AddStretchArrow(frame, false, stretchColor, size);
+            else AddGraphicLine(frame, "VerticalAnchor", new Vector2(0f, y), new Vector2(size - 2f, 1f), simpleColor);
+        }
+
+        Color cornerColor = new(1f, 0.72f, 0.05f, 1f);
+        if(horizontal != AnchorMode.Custom && vertical != AnchorMode.Custom) {
+            foreach(float x in AnchorPositions(horizontal, size)) {
+                foreach(float y in AnchorPositions(vertical, size)) {
+                    AddGraphicLine(frame, "AnchorCorner", new Vector2(x, y), new Vector2(3f, 3f), cornerColor);
+                }
+            }
+        }
+
+        if(showPivot && horizontal != AnchorMode.Custom && vertical != AnchorMode.Custom) {
+            Vector2 pivotPosition = objectPosition + new Vector2(
+                PivotOffset(horizontal, objectSize.x),
+                PivotOffset(vertical, objectSize.y)
+            );
+            AddGraphicLine(frame, "Pivot", pivotPosition, new Vector2(5f, 2f), stretchColor);
+            AddGraphicLine(frame, "Pivot", pivotPosition, new Vector2(2f, 5f), stretchColor);
+        }
+        return root;
+    }
+
+    private static TextMeshProUGUI AddAnchorHeader(RectTransform parent, bool horizontal, string value) {
+        TextMeshProUGUI label = GenerateUI.AddText(parent, true);
+        label.text = value;
+        label.fontSize = 11f;
+        label.color = new Color(1f, 1f, 1f, 0.55f);
+        label.alignment = horizontal ? TextAlignmentOptions.Bottom : TextAlignmentOptions.MidlineLeft;
+        if(horizontal) label.rectTransform.offsetMin = new Vector2(0f, 2f);
+        else label.rectTransform.offsetMin = new Vector2(6f, 0f);
+        label.raycastTarget = false;
+        return label;
+    }
+
+    private static void AddTableHeader(RectTransform parent, bool vertical, string value) {
+        TextMeshProUGUI label = GenerateUI.AddText(parent, true);
+        label.text = vertical ? value[0].ToString().ToUpperInvariant() : value;
+        label.fontSize = 10f;
+        label.color = new Color(1f, 1f, 1f, 0.85f);
+        label.alignment = vertical ? TextAlignmentOptions.MidlineLeft : TextAlignmentOptions.Top;
+        label.rectTransform.offsetMin = new Vector2(3f, 3f);
+        label.rectTransform.offsetMax = new Vector2(-3f, -3f);
+        label.raycastTarget = false;
+    }
+
+    private static void AddGraphicOutline(RectTransform frame, Color color) {
+        Vector2 size = frame.sizeDelta;
+        AddGraphicLine(frame, "Top", new Vector2(0f, size.y * 0.5f), new Vector2(size.x, 1f), color);
+        AddGraphicLine(frame, "Bottom", new Vector2(0f, size.y * -0.5f), new Vector2(size.x, 1f), color);
+        AddGraphicLine(frame, "Left", new Vector2(size.x * -0.5f, 0f), new Vector2(1f, size.y), color);
+        AddGraphicLine(frame, "Right", new Vector2(size.x * 0.5f, 0f), new Vector2(1f, size.y), color);
+    }
+
+    private static void AddStretchArrow(RectTransform parent, bool horizontal, Color color, float size) {
+        Vector2 lineSize = horizontal ? new Vector2(size * 0.45f, 1f) : new Vector2(1f, size * 0.45f);
+        AddGraphicLine(parent, "Stretch", Vector2.zero, lineSize, color);
+        float end = size * 0.225f;
+        if(horizontal) {
+            AddGraphicLine(parent, "Arrow", new Vector2(-end, 0f), new Vector2(2f, 5f), color);
+            AddGraphicLine(parent, "Arrow", new Vector2(end, 0f), new Vector2(2f, 5f), color);
+        } else {
+            AddGraphicLine(parent, "Arrow", new Vector2(0f, -end), new Vector2(5f, 2f), color);
+            AddGraphicLine(parent, "Arrow", new Vector2(0f, end), new Vector2(5f, 2f), color);
+        }
+    }
+
+    private static IEnumerable<float> AnchorPositions(AnchorMode mode, float size) {
+        if(mode == AnchorMode.Stretch) return new[] { size * -0.5f, size * 0.5f };
+        return new[] { ModePosition(mode, size, true) };
+    }
+
+    private static float ModePosition(AnchorMode mode, float size, bool edge = false) {
+        float range = edge ? size * 0.5f : size * 0.25f;
+        return mode switch { AnchorMode.Min => -range, AnchorMode.Max => range, _ => 0f };
+    }
+
+    private static float PivotOffset(AnchorMode mode, float size) {
+        return mode switch { AnchorMode.Min => size * -0.5f, AnchorMode.Max => size * 0.5f, _ => 0f };
+    }
+
+    private static AnchorMode ModeForAxis(RectTransformSettings cfg, int axis) {
+        float min = cfg.AnchorMin[axis];
+        float max = cfg.AnchorMax[axis];
+        if(Mathf.Approximately(min, 0f) && Mathf.Approximately(max, 0f)) return AnchorMode.Min;
+        if(Mathf.Approximately(min, 0.5f) && Mathf.Approximately(max, 0.5f)) return AnchorMode.Middle;
+        if(Mathf.Approximately(min, 1f) && Mathf.Approximately(max, 1f)) return AnchorMode.Max;
+        if(Mathf.Approximately(min, 0f) && Mathf.Approximately(max, 1f)) return AnchorMode.Stretch;
+        return AnchorMode.Custom;
+    }
+
+    private static string ModeName(AnchorMode mode, bool vertical) => mode switch {
+        AnchorMode.Min => vertical ? "bottom" : "left",
+        AnchorMode.Middle => vertical ? "middle" : "center",
+        AnchorMode.Max => vertical ? "top" : "right",
+        AnchorMode.Stretch => "stretch",
+        _ => "custom"
+    };
+
+    private static string AnchorCellName(AnchorMode horizontal, AnchorMode vertical) {
+        if(horizontal == AnchorMode.Custom) return $"Vertical: {ModeName(vertical, true)}";
+        if(vertical == AnchorMode.Custom) return $"Horizontal: {ModeName(horizontal, false)}";
+        return $"{ModeName(horizontal, false)} / {ModeName(vertical, true)}";
+    }
+
+    private static void ApplyAnchorModes(OvObject obj, AnchorMode horizontal, AnchorMode vertical, bool setPivot, bool setPosition) {
+        RectTransformSettings cfg = obj.Config.RectTransformConfig;
+        Vector2 parentSize = (obj.RectTransform.parent as RectTransform)?.rect.size ?? new Vector2(1920f, 1080f);
+        Vector2 visibleSize = obj.RectTransform.rect.size;
+        ApplyAnchorModeForAxis(cfg, 0, horizontal, parentSize.x, visibleSize.x, setPivot, setPosition);
+        ApplyAnchorModeForAxis(cfg, 1, vertical, parentSize.y, visibleSize.y, setPivot, setPosition);
+    }
+
+    private static void ApplyAnchorModeForAxis(RectTransformSettings cfg, int axis, AnchorMode mode, float parentSize, float visibleSize, bool setPivot, bool setPosition) {
+        if(mode == AnchorMode.Custom) return;
+
+        float oldMin = cfg.AnchorMin[axis];
+        float oldMax = cfg.AnchorMax[axis];
+        float oldPivot = cfg.Pivot[axis];
+        float newMin = mode == AnchorMode.Stretch ? 0f : mode switch { AnchorMode.Min => 0f, AnchorMode.Middle => 0.5f, _ => 1f };
+        float newMax = mode == AnchorMode.Stretch ? 1f : newMin;
+        float oldReference = Mathf.Lerp(oldMin, oldMax, oldPivot);
+        float newReference = Mathf.Lerp(newMin, newMax, oldPivot);
+
+        cfg.AnchoredPosition[axis] += (oldReference - newReference) * parentSize;
+        cfg.SizeDelta[axis] += ((oldMax - oldMin) - (newMax - newMin)) * parentSize;
+        cfg.AnchorMin[axis] = newMin;
+        cfg.AnchorMax[axis] = newMax;
+
+        if(setPivot) {
+            float newPivot = mode switch { AnchorMode.Min => 0f, AnchorMode.Max => 1f, _ => 0.5f };
+            float rectSize = parentSize * (newMax - newMin) + cfg.SizeDelta[axis];
+            cfg.AnchoredPosition[axis] += (newPivot - oldPivot) * rectSize;
+            cfg.Pivot[axis] = newPivot;
+        }
+
+        if(setPosition) {
+            cfg.AnchoredPosition[axis] = 0f;
+            cfg.SizeDelta[axis] = mode == AnchorMode.Stretch ? 0f : visibleSize;
+        }
+    }
+
+    private static void AddGraphicLine(RectTransform parent, string name, Vector2 position, Vector2 size, Color color) {
+        GameObject lineObject = new(name);
+        lineObject.transform.SetParent(parent, false);
+        RectTransform rect = lineObject.AddComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0.5f, 0.5f);
+        rect.anchorMax = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = position;
+        rect.sizeDelta = size;
+        Image image = lineObject.AddComponent<Image>();
+        image.color = color;
+        image.raycastTarget = false;
+    }
+
+    private void SpriteDropDown(Transform parent, ImageSettings cfg) {
+        const string none = "None";
+        var options = UserResourceManager.Spr.Keys.OrderBy(key => key).ToList();
+        if(!string.IsNullOrEmpty(cfg.SpriteKey) && !options.Contains(cfg.SpriteKey)) {
+            options.Insert(0, cfg.SpriteKey);
+        }
+        options.Insert(0, none);
+
+        string current = string.IsNullOrEmpty(cfg.SpriteKey) ? none : cfg.SpriteKey;
+        var row = GenerateUI.Row(parent, 50f);
+        var dropdown = GenerateUI.DropDown(row, none, current, options, option => $"Sprite: {option}", selected => {
+            cfg.SpriteKey = selected == none ? null : selected;
+            ApplyAndSave();
+        }, "image_sprite");
+        Track(dropdown);
     }
 
     private void ColorSliders(Transform parent, string label, Color defaults, Func<Color> get, Action<Color> set, string id) {
@@ -401,6 +1159,15 @@ internal sealed class OvInspectorBuilder(
     private void ApplyAndSave() {
         apply();
         save();
+    }
+
+    private void RefreshDrivenLayout(OvObject obj) {
+        obj.ApplyConfig();
+        Canvas.ForceUpdateCanvases();
+        LayoutRebuilder.ForceRebuildLayoutImmediate(obj.RectTransform);
+        Canvas.ForceUpdateCanvases();
+        save();
+        rebuild();
     }
 
     private void RefreshComponents(OvObject obj) {

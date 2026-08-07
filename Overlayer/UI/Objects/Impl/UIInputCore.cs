@@ -23,6 +23,7 @@ public class UIInputCore {
 
     private GTween caretTween, placeholderTween;
     private bool caretLooping, hasFocused;
+    private bool suppressChanged;
 
     public UIInputCore(TMP_InputField inputField, TextMeshProUGUI placeholder, string value, Action<string> onChanged, Action<string> onEndEdit, bool multiline = false) {
         InputField = inputField;
@@ -74,7 +75,9 @@ public class UIInputCore {
     public void SetValue(string value, bool invoke = true) {
         Value = value ?? string.Empty;
         if(InputField.text != Value) {
+            suppressChanged = true;
             InputField.text = Value;
+            suppressChanged = false;
         }
 
         if(invoke) {
@@ -98,7 +101,9 @@ public class UIInputCore {
     private void OnValueChanged(string value) {
         Value = value;
         UpdateCaretAnimation(InputField.isFocused);
-        OnChanged?.Invoke(value);
+        if(!suppressChanged) {
+            OnChanged?.Invoke(value);
+        }
     }
 
     private void OnValueEndEdit(string value) {

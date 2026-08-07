@@ -34,6 +34,13 @@ public static class OverlayCore {
         return canvas;
     }
 
+    public static bool DeleteOvCanvas(OvCanvas canvas) {
+        if(canvas == null || !Canvases.Remove(canvas)) return false;
+        canvas.Dispose();
+        SaveAllCanvases();
+        return true;
+    }
+
     private static void LoadAllCanvases() {
         if(!Directory.Exists(SaveDir)) {
             return;

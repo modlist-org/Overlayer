@@ -100,6 +100,21 @@ public static class GTweenExtensions {
             );
         }
 
+        public GTween GTAnchorMaxX(float to, float duration) {
+            return GTweens.Extensions.GTweenExtensions.Tween(
+                () => target ? target.anchorMax.x : 0f,
+                x => {
+                    if(target) {
+                        var anchor = target.anchorMax;
+                        anchor.x = x;
+                        target.anchorMax = anchor;
+                    }
+                },
+                to,
+                duration
+            );
+        }
+
         public GTween GTSizeDelta(Vector2 to, float duration) {
             var from = target ? target.sizeDelta : Vector2.zero;
             return GTweens.Extensions.GTweenExtensions.Tween(

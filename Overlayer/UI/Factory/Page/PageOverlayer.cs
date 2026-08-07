@@ -92,6 +92,7 @@ internal static class PageOverlayer {
         settingPage = new OvCanvasSettingPage(parent, () => {
             settingPage.Close();
             FadeCanvasGroup(viewportCanvasGroup, 1f, true);
+            BuildAllTiles(grid.transform);
         });
 
         MainCore.OnModEnabledChanged += (isEnabled, isDispose) => {

@@ -244,7 +244,7 @@ public static class GenerateUI {
 
         float Apply(float v) {
             v = filter != null ? filter(v) : v;
-            return Math.Clamp(v, min, max);
+            return useInputClamp ? Math.Clamp(v, min, max) : v;
         }
 
         bool isDragging = false;
@@ -279,7 +279,9 @@ public static class GenerateUI {
 
                     float finalPixelWidth = inputRect.rect.width * UICore.Canvas.scaleFactor;
                     cachedValue += mousePixelDelta.x * (slider.Max - slider.Min) * MainCore.Conf.SliderSensitivity / finalPixelWidth;
-                    cachedValue = Math.Clamp(cachedValue, min, max);
+                    if(useInputClamp) {
+                        cachedValue = Math.Clamp(cachedValue, min, max);
+                    }
                     slider.Set(Apply(cachedValue));
 
                     Cursor.visible = false;
@@ -440,6 +442,10 @@ public static class GenerateUI {
 
         LayoutElement parentLayout = parent.GetComponent<LayoutElement>();
         void UpdateHeight() {
+            if(dropdown.IsDisposed) {
+                return;
+            }
+
             float rowHeight = 50f;
             float spacing = layout.spacing;
 
@@ -453,10 +459,10 @@ public static class GenerateUI {
             dropdown.LayoutSeq = GTweenSequenceBuilder.New()
                 .Join(
                     GTweenExtensions.Tween(
-                        () => parentLayout.preferredHeight,
+                        () => parentLayout ? parentLayout.preferredHeight : targetHeight,
                         x => {
-                            parentLayout.preferredHeight = x;
-                            LayoutRebuilder.ForceRebuildLayoutImmediate(rootRect);
+                            if(parentLayout) parentLayout.preferredHeight = x;
+                            if(rootRect) LayoutRebuilder.ForceRebuildLayoutImmediate(rootRect);
                         },
                         targetHeight,
                         0.14f
@@ -464,8 +470,8 @@ public static class GenerateUI {
                 )
                 .Join(
                     GTweenExtensions.Tween(
-                        () => listCg.alpha,
-                        x => listCg.alpha = x,
+                        () => listCg ? listCg.alpha : targetAlpha,
+                        x => { if(listCg) listCg.alpha = x; },
                         targetAlpha,
                         0.16f
                     ).SetEasing(Easing.OutSine)
@@ -631,6 +637,7 @@ public static class GenerateUI {
                         input.Value != input.DefaultValue
                     ) {
                         input.Reset();
+                        onEndEdit?.Invoke(input.Value);
                     }
 
                     break;

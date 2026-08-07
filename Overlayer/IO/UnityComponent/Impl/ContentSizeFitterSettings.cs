@@ -1,35 +1,30 @@
-﻿using Newtonsoft.Json.Linq;
+using Newtonsoft.Json.Linq;
 using Overlayer.IO.Interface;
 using UnityEngine;
 using UnityEngine.UI;
 
 namespace Overlayer.IO.UnityComponent.Impl;
 
-public class ContentSizeFilterSettings : UnityComponentSettingsBase, ICopyable<ContentSizeFilterSettings> {
+public class ContentSizeFitterSettings : UnityComponentSettingsBase, ICopyable<ContentSizeFitterSettings> {
     public ContentSizeFitter.FitMode HorizontalFit = ContentSizeFitter.FitMode.PreferredSize;
     public ContentSizeFitter.FitMode VerticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
     public override bool ToUnity(GameObject target) {
-        var com = target.GetComponent<ContentSizeFitter>();
-        if(com == null) {
-            return false;
-        }
+        var component = target.GetComponent<ContentSizeFitter>();
+        if(component == null) return false;
 
-        com.horizontalFit = HorizontalFit;
-        com.verticalFit = VerticalFit;
-
+        component.horizontalFit = HorizontalFit;
+        component.verticalFit = VerticalFit;
+        LayoutRebuilder.MarkLayoutForRebuild(target.GetComponent<RectTransform>());
         return true;
     }
 
     public override bool FromUnity(GameObject source) {
-        var com = source.GetComponent<ContentSizeFitter>();
-        if(com == null) {
-            return false;
-        }
+        var component = source.GetComponent<ContentSizeFitter>();
+        if(component == null) return false;
 
-        HorizontalFit = com.horizontalFit;
-        VerticalFit = com.verticalFit;
-
+        HorizontalFit = component.horizontalFit;
+        VerticalFit = component.verticalFit;
         return true;
     }
 
@@ -41,16 +36,13 @@ public class ContentSizeFilterSettings : UnityComponentSettingsBase, ICopyable<C
     }
 
     public override void Deserialize(JToken token) {
-        if(token == null) {
-            return;
-        }
-
+        if(token == null) return;
         HorizontalFit = IOUtils.ReadEnum(token, nameof(HorizontalFit), HorizontalFit);
         VerticalFit = IOUtils.ReadEnum(token, nameof(VerticalFit), VerticalFit);
     }
 
-    public ContentSizeFilterSettings Copy() {
-        return new ContentSizeFilterSettings {
+    public ContentSizeFitterSettings Copy() {
+        return new ContentSizeFitterSettings {
             HorizontalFit = HorizontalFit,
             VerticalFit = VerticalFit
         };

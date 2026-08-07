@@ -172,7 +172,6 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
         EnableOutline = IOUtils.Read(token, nameof(EnableOutline), EnableOutline);
         OutlineColor = IOUtils.Read(token, nameof(OutlineColor), OutlineColor);
         OutlineWidth = IOUtils.Read(token, nameof(OutlineWidth), OutlineWidth);
-        // 0.2 was the old default and is excessively thick for TMP SDF fonts.
         if(Mathf.Approximately(OutlineWidth, 0.2f)) {
             OutlineWidth = 0.05f;
         }

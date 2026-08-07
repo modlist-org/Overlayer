@@ -2,6 +2,7 @@
 
 public abstract class UserResourceBase<T> {
     protected Dictionary<string, (string path, T value)> Cache { get; } = [];
+    public IReadOnlyCollection<string> Keys => Cache.Keys;
 
     public bool TryGet(string key, out T value) {
         if(key == null) {

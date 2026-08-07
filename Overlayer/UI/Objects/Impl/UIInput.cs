@@ -5,6 +5,7 @@ using GTweens.Extensions;
 using GTweens.Easings;
 using GTweens.Builders;
 using Overlayer.Core;
+using Overlayer.Tween;
 
 #if ML && IL2CPP
 using Il2CppInterop.Runtime;
@@ -54,7 +55,8 @@ public sealed class UIInput : UIObject {
     }
 
     public void Set(string value, bool invoke = true) {
-        Core.SetValue(value);
+        if(IsDisposed) return;
+        Core.SetValue(value, false);
         if(invoke) {
             Core.OnChanged?.Invoke(value);
         }
@@ -69,6 +71,7 @@ public sealed class UIInput : UIObject {
     }
 
     public void UpdateVisual(bool noAnimate = false) {
+        if(IsDisposed) return;
         changeTween?.Kill();
         float target = (DefaultValue != null && DefaultValue != Core.Value) ? 1f : 0f;
         if(noAnimate) {
@@ -77,39 +80,33 @@ public sealed class UIInput : UIObject {
             ChangedImage.color = c;
             return;
         }
-        changeTween = GTweenExtensions.Tween(() => ChangedImage.color.a, x => { Color c = ChangedImage.color; c.a = x; ChangedImage.color = c; }, target, 0.2f).SetEasing(Easing.OutSine);
+        changeTween = ChangedImage.GTAlpha(target, 0.2f).SetEasing(Easing.OutSine);
         MainCore.TC.Play(changeTween);
     }
 
     private void UpdateIconImage(bool focused) {
-        if(IconImage == null || !IconImage.enabled || IconImage.sprite == null) {
+        if(IsDisposed || IconImage == null || !IconImage.enabled || IconImage.sprite == null) {
             return;
         }
         iconTween?.Kill();
-        iconTween = GTweenSequenceBuilder.New()
-            .Append(GTweenExtensions.Tween(
-                () => IconImage.color.a,
-                x => {
-                    Color c = IconImage.color;
-                    c.a = x;
-                    IconImage.color = c;
-                },
-                focused ? 0f : 0.2f,
-                focused ? 0.2f : 0.3f
-            )
-            .SetEasing(Easing.OutQuad)).Build();
+        iconTween = IconImage.GTAlpha(focused ? 0f : 0.2f, focused ? 0.2f : 0.3f)
+            .SetEasing(Easing.OutQuad);
         MainCore.TC.Play(iconTween);
     }
 
     public override void Tick() {
+        if(IsDisposed) return;
         Core.OnTick();
         UpdateIconImage(InputField.isFocused);
     }
 
     public override void Dispose() {
-        base.Dispose();
+        if(IsDisposed) return;
         Core.Dispose();
         changeTween?.Kill();
         iconTween?.Kill();
+        changeTween = null;
+        iconTween = null;
+        base.Dispose();
     }
 }

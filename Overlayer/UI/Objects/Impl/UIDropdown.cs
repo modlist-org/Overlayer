@@ -84,6 +84,10 @@ public class UIDropDown<T> : UIObject {
     }
 
     public void Set(T value, bool invoke = true) {
+        if(IsDisposed) {
+            return;
+        }
+
         Value = value;
 
         Label.text = Display(Value);
@@ -98,6 +102,10 @@ public class UIDropDown<T> : UIObject {
     }
 
     public void SetValues(IReadOnlyList<T> values) {
+        if(IsDisposed) {
+            return;
+        }
+
         Values = values;
 
         RebuildList();
@@ -112,6 +120,10 @@ public class UIDropDown<T> : UIObject {
     public void Reset() => Set(DefaultValue);
 
     public void SetExpanded(bool expanded) {
+        if(IsDisposed) {
+            return;
+        }
+
         Expanded = expanded;
         if(ListObject != null) {
             ListObject.SetActive(expanded);
@@ -126,6 +138,10 @@ public class UIDropDown<T> : UIObject {
     public void ToggleExpanded() => SetExpanded(!Expanded);
 
     public void UpdateVisual(bool noAnimate = false) {
+        if(IsDisposed) {
+            return;
+        }
+
         triangleSeq?.Kill();
         changeSeq?.Kill();
 
@@ -152,21 +168,17 @@ public class UIDropDown<T> : UIObject {
                     .SetEasing(Easing.OutSine)
             ).Build();
         MainCore.TC.Play(triangleSeq);
-        changeSeq = GTweenSequenceBuilder.New()
-            .Append(GTweenExtensions.Tween(
-                () => ChangedImage.color.a,
-                x => {
-                    Color c = ChangedImage.color;
-                    c.a = x;
-                    ChangedImage.color = c;
-                },
-                isDefault ? 0f : 1f,
-                0.2f
-            ).SetEasing(Easing.OutSine)).Build();
+        changeSeq = ChangedImage
+            .GTAlpha(isDefault ? 0f : 1f, 0.2f)
+            .SetEasing(Easing.OutSine);
         MainCore.TC.Play(changeSeq);
     }
 
     public void RebuildList() {
+        if(IsDisposed) {
+            return;
+        }
+
         if(ListObject == null) {
             return;
         }
@@ -251,13 +263,21 @@ public class UIDropDown<T> : UIObject {
     }
 
     public override void Dispose() {
-        base.Dispose();
+        if(IsDisposed) {
+            return;
+        }
+
         triangleSeq?.Kill();
         changeSeq?.Kill();
         LayoutSeq?.Kill();
+        triangleSeq = null;
+        changeSeq = null;
+        LayoutSeq = null;
+        OnLayoutChanged = null;
         foreach(var tween in itemHoverTweens) {
             tween?.Kill();
         }
         itemHoverTweens.Clear();
+        base.Dispose();
     }
 }

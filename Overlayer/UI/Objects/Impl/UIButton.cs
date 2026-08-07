@@ -17,6 +17,7 @@ public class UIButton : UIObject {
     public Action OnClick { get; set; }
     public TextMeshProUGUI Label { get; }
     public Image Background { get; }
+    public Color NormalColor { get; set; } = UIColors.ObjectButton;
 
     private GTween hoverTween;
 
@@ -35,6 +36,7 @@ public class UIButton : UIObject {
     }
 
     public void OnHoverEnter() {
+        if(IsDisposed) return;
         hoverTween?.Kill();
 
         hoverTween = Background
@@ -44,15 +46,17 @@ public class UIButton : UIObject {
     }
 
     public void OnHoverExit() {
+        if(IsDisposed) return;
         hoverTween?.Kill();
 
         hoverTween = Background
-            .GTColor(UIColors.ObjectButton, 0.12f)
+            .GTColor(NormalColor, 0.12f)
             .SetEasing(Easing.OutSine);
         MainCore.TC.Play(hoverTween);
     }
 
     public void Click(bool invoke = true) {
+        if(IsDisposed) return;
         if(invoke) {
             OnClick?.Invoke();
         }
@@ -61,21 +65,25 @@ public class UIButton : UIObject {
     }
 
     public void UpdateVisual(bool noAnimate = false) {
+        if(IsDisposed) return;
         hoverTween?.Kill();
 
         if(noAnimate) {
-            Background.color = UIColors.ObjectButton;
+            Background.color = NormalColor;
             return;
         }
 
         hoverTween = Background
-            .GTColor(UIColors.ObjectButton, 0.2f)
+            .GTColor(NormalColor, 0.2f)
             .SetEasing(Easing.OutSine);
         MainCore.TC.Play(hoverTween);
     }
 
     public override void Dispose() {
-        base.Dispose();
+        if(IsDisposed) return;
         hoverTween?.Kill();
+        hoverTween = null;
+        OnClick = null;
+        base.Dispose();
     }
 }

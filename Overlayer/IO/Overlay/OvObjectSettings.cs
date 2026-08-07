@@ -9,6 +9,7 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
 
     public RectTransformSettings RectTransformConfig = new();
     public CanvasGroupSettings CanvasGroupConfig = new();
+    public ContentSizeFitterSettings ContentSizeFitterConfig = null;
 
     public TextMeshProUGUISettings TextConfig = null;
     public OvTextSettings TextEngineConfig = null;
@@ -33,6 +34,9 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
         }
         if(ImageConfig != null) {
             obj[nameof(ImageConfig)] = ImageConfig.Serialize();
+        }
+        if(ContentSizeFitterConfig != null) {
+            obj[nameof(ContentSizeFitterConfig)] = ContentSizeFitterConfig.Serialize();
         }
         if(MaskConfig != null) {
             obj[nameof(MaskConfig)] = MaskConfig.Serialize();
@@ -66,6 +70,14 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
             CanvasGroupConfig ??= new CanvasGroupSettings();
             CanvasGroupConfig.Deserialize(canvasGroup);
         }
+        var contentSizeFitterProperty = obj.Property(nameof(ContentSizeFitterConfig));
+        var contentSizeFitter = contentSizeFitterProperty?.Value;
+        if(contentSizeFitterProperty == null || contentSizeFitter?.Type == JTokenType.Null) {
+            ContentSizeFitterConfig = null;
+        } else {
+            ContentSizeFitterConfig ??= new ContentSizeFitterSettings();
+            ContentSizeFitterConfig.Deserialize(contentSizeFitter);
+        }
         TextConfig = ReadConfig<TextMeshProUGUISettings>(obj, nameof(TextConfig));
         TextEngineConfig = ReadConfig<OvTextSettings>(obj, nameof(TextEngineConfig));
         if(TextConfig != null) {
@@ -86,6 +98,7 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
             Enabled = Enabled,
             RectTransformConfig = RectTransformConfig?.Copy(),
             CanvasGroupConfig = CanvasGroupConfig?.Copy(),
+            ContentSizeFitterConfig = ContentSizeFitterConfig?.Copy(),
             TextConfig = TextConfig?.Copy(),
             TextEngineConfig = TextEngineConfig?.Copy(),
             ImageConfig = ImageConfig?.Copy(),

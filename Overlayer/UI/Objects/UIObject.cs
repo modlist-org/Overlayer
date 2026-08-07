@@ -12,6 +12,8 @@ public abstract class UIObject {
 
     public string Id { get; }
     public RectTransform Rect { get; }
+    public Action OnDisposed;
+    public bool IsDisposed { get; private set; }
 
     public bool OnlyModOn {
         get;
@@ -44,7 +46,7 @@ public abstract class UIObject {
     }
 
     private void ApplyStateForAction(bool enabled, bool isDispose) {
-        if(!OnlyModOn || isDispose) {
+        if(IsDisposed || !OnlyModOn || isDispose) {
             return;
         }
 
@@ -52,6 +54,10 @@ public abstract class UIObject {
     }
 
     public virtual void SetBlocked(bool blocked, bool noAnimate = false) {
+        if(IsDisposed) {
+            return;
+        }
+
         blockSeq?.Kill();
 
         float targetAlpha = blocked ? 0.4f : 1f;
@@ -76,7 +82,21 @@ public abstract class UIObject {
         MainCore.TC.Play(blockSeq);
     }
 
-    public virtual void Dispose() => UnregisterTick();
+    public virtual void Dispose() {
+        if(IsDisposed) {
+            return;
+        }
+
+        IsDisposed = true;
+        blockSeq?.Kill();
+        blockSeq = null;
+        if(OnlyModOn) {
+            MainCore.OnModEnabledChanged -= ApplyStateForAction;
+        }
+        UnregisterTick();
+        OnDisposed?.Invoke();
+        OnDisposed = null;
+    }
 
     protected void RegisterTick() => _tickables.Add(this);
 

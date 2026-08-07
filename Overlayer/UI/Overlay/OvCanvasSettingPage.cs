@@ -329,6 +329,15 @@ public class OvCanvasSettingPage : IDisposable {
 
         var btnDel = GenerateUI.Button(hierCtrlToolbar.transform, () => {
             if(selectedObject == null) {
+                if(currentCanvas == null) {
+                    return;
+                }
+
+                var canvasToDelete = currentCanvas;
+                currentCanvas = null;
+                if(OverlayCore.DeleteOvCanvas(canvasToDelete)) {
+                    onBackAction?.Invoke();
+                }
                 return;
             }
 
@@ -553,7 +562,6 @@ public class OvCanvasSettingPage : IDisposable {
     private void RenderHierarchyItem(OvObject obj, int depth) {
         var row = GenerateUI.Row(hierarchyContent, 36f);
 
-        // Add Horizontal Layout to Row to organize indent & button
         var hLayout = row.gameObject.AddComponent<HorizontalLayoutGroup>();
         hLayout.childControlWidth = true;
         hLayout.childControlHeight = true;
@@ -567,7 +575,6 @@ public class OvCanvasSettingPage : IDisposable {
             bottom = 0
         };
 
-        // depth starts at 0, but since we have CanvasRoot, we indent by depth + 1
         GameObject indent = new("Indent");
         indent.transform.SetParent(row, false);
         var indentLE = indent.AddComponent<LayoutElement>();

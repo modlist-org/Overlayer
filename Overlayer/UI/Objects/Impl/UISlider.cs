@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using GTweens.Tweens;
 using Overlayer.Core;
+using Overlayer.Tween;
 using GTweens.Builders;
 using GTweens.Easings;
 using Overlayer.Utility.Math;
@@ -136,15 +137,19 @@ public class UISlider : UIObject {
         UseInputClamp = useInputClamp;
         Filter = filter;
         Value = ApplyFilter(value);
-        Value = Math.Clamp(Value, Min, Max);
+        Value = ClampSafe(Value, Min, Max);
 
         RegisterTick();
         UpdateVisual(true);
     }
 
-    public override void Tick() => InputCore.OnTick();
+    public override void Tick() {
+        if(IsDisposed) return;
+        InputCore.OnTick();
+    }
 
     public void Set(float value, bool invoke = true, bool noFilter = false) {
+        if(IsDisposed) return;
         if(float.IsNaN(value)) {
             return;
         }
@@ -193,6 +198,7 @@ public class UISlider : UIObject {
     private float ApplyFilter(float v) => Filter?.Invoke(v) ?? v;
 
     public void UpdateVisual(bool noAnimate = false) {
+        if(IsDisposed) return;
         fillSeq?.Kill();
         changeSeq?.Kill();
 
@@ -214,29 +220,18 @@ public class UISlider : UIObject {
         }
 
         fillSeq = GTweenSequenceBuilder.New()
-            .Join(GTweenExtensions.Tween(() => FillRect.anchorMax.x, x => {
-                Vector2 anchor = FillRect.anchorMax;
-                anchor.x = x;
-                FillRect.anchorMax = anchor;
-            }, t, 0.6f).SetEasing(Easing.OutExpo)).Build();
+            .Join(FillRect.GTAnchorMaxX(t, 0.6f).SetEasing(Easing.OutExpo)).Build();
         MainCore.TC.Play(fillSeq);
 
         changeSeq = GTweenSequenceBuilder.New()
-            .Join(GTweenExtensions.Tween(() => ChangedImage.color.a, x => {
-                Color c = ChangedImage.color;
-                c.a = x;
-                ChangedImage.color = c;
-            }, changeAlpha, 0.2f).SetEasing(Easing.OutSine))
-            .Join(GTweenExtensions.Tween(() => ChangedUpImage.color.a, x => {
-                Color c = ChangedUpImage.color;
-                c.a = x;
-                ChangedUpImage.color = c;
-            }, changeAlpha, 0.2f).SetEasing(Easing.OutSine)).Build();
+            .Join(ChangedImage.GTAlpha(changeAlpha, 0.2f).SetEasing(Easing.OutSine))
+            .Join(ChangedUpImage.GTAlpha(changeAlpha, 0.2f).SetEasing(Easing.OutSine)).Build();
         MainCore.TC.Play(changeSeq);
     }
 
     public void OnDrag(float normalizedValue) => SetNormalized(normalizedValue, true);
     private void SetStateVisuals(Color targetColor, bool isCalculating, float? value = null) {
+        if(IsDisposed) return;
         stateSeq?.Kill();
 
         float targetFillAlpha = isCalculating ? (value.HasValue ? 0.3f : 0f) : 1f;
@@ -248,29 +243,30 @@ public class UISlider : UIObject {
 
         stateSeq = GTweenSequenceBuilder.New()
             .Join(GTweenExtensions.Tween(() => 0f, x => {
-                OutlineImage.color = Color.Lerp(startOutline, new(targetColor.r, targetColor.g, targetColor.b, isCalculating ? targetColor.a : 0f), x);
-                FillImage.color = Color.Lerp(startFill, new(targetColor.r, targetColor.g, targetColor.b, targetFillAlpha), x);
-                ChangedImage.color = Color.Lerp(startChanged, new(targetColor.r, targetColor.g, targetColor.b, ChangedImage.color.a), x);
-                InputCore.InputField.caretColor = Color.Lerp(startCaret, new(targetColor.r, targetColor.g, targetColor.b, InputCore.InputField.caretColor.a), x);
+                if(OutlineImage) OutlineImage.color = Color.Lerp(startOutline, new(targetColor.r, targetColor.g, targetColor.b, isCalculating ? targetColor.a : 0f), x);
+                if(FillImage) FillImage.color = Color.Lerp(startFill, new(targetColor.r, targetColor.g, targetColor.b, targetFillAlpha), x);
+                if(ChangedImage) ChangedImage.color = Color.Lerp(startChanged, new(targetColor.r, targetColor.g, targetColor.b, ChangedImage.color.a), x);
+                if(InputCore.InputField) InputCore.InputField.caretColor = Color.Lerp(startCaret, new(targetColor.r, targetColor.g, targetColor.b, InputCore.InputField.caretColor.a), x);
             }, 1f, 0.2f).SetEasing(Easing.OutSine)).Build();
         MainCore.TC.Play(stateSeq);
 
         if(value.HasValue && isCalculating) {
             fillSeq?.Kill();
             fillSeq = GTweenSequenceBuilder.New()
-                .Join(GTweenExtensions.Tween(() => FillRect.anchorMax.x, x => {
-                    Vector2 anchor = FillRect.anchorMax;
-                    anchor.x = x;
-                    FillRect.anchorMax = anchor;
-                }, Normalize(value.Value), 0.4f).SetEasing(Easing.OutExpo)).Build();
+                .Join(FillRect.GTAnchorMaxX(Normalize(value.Value), 0.4f).SetEasing(Easing.OutExpo)).Build();
             MainCore.TC.Play(fillSeq);
         }
     }
 
     public override void Dispose() {
-        base.Dispose();
-        InputCore.Dispose();
+        if(IsDisposed) return;
         fillSeq?.Kill();
         changeSeq?.Kill();
+        stateSeq?.Kill();
+        fillSeq = null;
+        changeSeq = null;
+        stateSeq = null;
+        InputCore.Dispose();
+        base.Dispose();
     }
 }

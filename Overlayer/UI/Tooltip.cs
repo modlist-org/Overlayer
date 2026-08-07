@@ -109,6 +109,7 @@ public class Tooltip {
         seq?.Kill();
 
         obj.SetActive(true);
+        obj.transform.SetAsLastSibling();
         text.text = tip;
 
         Vector2 size = text.GetPreferredValues(tip);
