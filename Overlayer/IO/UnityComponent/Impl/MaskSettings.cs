@@ -14,6 +14,7 @@ public class MaskSettings : UnityComponentSettingsBase, ICopyable<MaskSettings> 
         }
 
         com.showMaskGraphic = ShowMaskGraphic;
+        ToUnity(com);
 
         return true;
     }
@@ -25,20 +26,25 @@ public class MaskSettings : UnityComponentSettingsBase, ICopyable<MaskSettings> 
         }
 
         ShowMaskGraphic = com.showMaskGraphic;
+        FromUnity(com);
 
         return true;
     }
 
     public override JToken Serialize() {
-        return new JObject {
+        return SerializeComponent(new JObject {
             [nameof(ShowMaskGraphic)] = ShowMaskGraphic,
-        };
+        });
     }
 
-    public override void Deserialize(JToken token) => ShowMaskGraphic = IOUtils.Read(token, nameof(ShowMaskGraphic), ShowMaskGraphic);
+    public override void Deserialize(JToken token) {
+        DeserializeComponent(token);
+        ShowMaskGraphic = IOUtils.Read(token, nameof(ShowMaskGraphic), ShowMaskGraphic);
+    }
 
     public MaskSettings Copy() {
         return new MaskSettings {
+            ComponentEnabled = ComponentEnabled,
             ShowMaskGraphic = ShowMaskGraphic,
         };
     }

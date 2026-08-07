@@ -18,6 +18,7 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
     public ShadowSettings ShadowConfig = null;
     public OutlineSettings OutlineConfig = null;
     public bool HasRectMask2D = false;
+    public bool RectMask2DEnabled = true;
 
     public JToken Serialize() {
         var obj = new JObject {
@@ -49,6 +50,9 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
         }
         if(HasRectMask2D) {
             obj[nameof(HasRectMask2D)] = true;
+            if(!RectMask2DEnabled) {
+                obj[nameof(RectMask2DEnabled)] = false;
+            }
         }
         return obj;
     }
@@ -90,6 +94,7 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
         ShadowConfig = ReadConfig<ShadowSettings>(obj, nameof(ShadowConfig));
         OutlineConfig = ReadConfig<OutlineSettings>(obj, nameof(OutlineConfig));
         HasRectMask2D = IOUtils.Read(obj, nameof(HasRectMask2D), HasRectMask2D);
+        RectMask2DEnabled = IOUtils.Read(obj, nameof(RectMask2DEnabled), RectMask2DEnabled);
     }
 
     public OvObjectSettings Copy() {
@@ -105,7 +110,8 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
             MaskConfig = MaskConfig?.Copy(),
             ShadowConfig = ShadowConfig?.Copy(),
             OutlineConfig = OutlineConfig?.Copy(),
-            HasRectMask2D = HasRectMask2D
+            HasRectMask2D = HasRectMask2D,
+            RectMask2DEnabled = RectMask2DEnabled
         };
     }
 

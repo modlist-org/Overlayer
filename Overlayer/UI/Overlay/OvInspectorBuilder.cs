@@ -1,4 +1,5 @@
 using Overlayer.IO.UnityComponent.Impl;
+using Overlayer.IO.UnityComponent;
 using Overlayer.IO.Overlay;
 using Overlayer.IO.User;
 using Overlayer.Overlay;
@@ -100,8 +101,12 @@ internal sealed class OvInspectorBuilder(
             BuildMask(obj, obj.Config.MaskConfig);
         }
         if(obj.Config.HasRectMask2D) {
-            var (_, rectMask) = Card("Rect Mask 2D", true, () => {
+            var (_, rectMask) = GenerateUI.ComponentCard(content, "Rect Mask 2D", obj.Config.RectMask2DEnabled, value => {
+                obj.Config.RectMask2DEnabled = value;
+                ApplyAndSave();
+            }, () => {
                 obj.Config.HasRectMask2D = false;
+                obj.Config.RectMask2DEnabled = true;
                 RefreshComponents(obj);
             });
             Label(rectMask, "Clips child graphics to this object's rectangle.");
@@ -149,7 +154,7 @@ internal sealed class OvInspectorBuilder(
 
     private void BuildText(OvObject obj, TextMeshProUGUISettings cfg) {
         OvTextSettings textCfg = obj.Config.TextEngineConfig ??= OvTextSettings.FromLegacy(cfg.Text);
-        var (_, card) = Card("Text", true, () => {
+        var (_, card) = ComponentCard("Text", cfg, () => {
             obj.Config.TextConfig = null;
             obj.Config.TextEngineConfig = null;
             RefreshComponents(obj);
@@ -188,7 +193,7 @@ internal sealed class OvInspectorBuilder(
     }
 
     private void BuildImage(OvObject obj, ImageSettings cfg) {
-        var (_, card) = Card("Image", true, () => {
+        var (_, card) = ComponentCard("Image", cfg, () => {
             obj.Config.ImageConfig = null;
             RefreshComponents(obj);
         });
@@ -208,16 +213,16 @@ internal sealed class OvInspectorBuilder(
     }
 
     private void BuildContentSizeFitter(OvObject obj, ContentSizeFitterSettings cfg) {
-        var (_, card) = Card("Content Size Fitter", true, () => {
+        var (_, card) = ComponentCard("Content Size Fitter", cfg, () => {
             obj.Config.ContentSizeFitterConfig = null;
             RefreshComponents(obj);
-        });
+        }, () => RefreshDrivenLayout(obj));
         EnumDropDown(card, "Horizontal Fit", ContentSizeFitter.FitMode.PreferredSize, cfg.HorizontalFit, value => cfg.HorizontalFit = value, "content_size_horizontal", () => RefreshDrivenLayout(obj));
         EnumDropDown(card, "Vertical Fit", ContentSizeFitter.FitMode.PreferredSize, cfg.VerticalFit, value => cfg.VerticalFit = value, "content_size_vertical", () => RefreshDrivenLayout(obj));
     }
 
     private void BuildShadow(OvObject obj, ShadowSettings cfg) {
-        var (_, card) = Card("Shadow", true, () => {
+        var (_, card) = ComponentCard("Shadow", cfg, () => {
             obj.Config.ShadowConfig = null;
             RefreshComponents(obj);
         });
@@ -227,10 +232,7 @@ internal sealed class OvInspectorBuilder(
     }
 
     private void BuildOutline(OvObject obj, OutlineSettings cfg) {
-        var (_, card) = GenerateUI.ComponentCard(content, "Outline", cfg.Enabled, value => {
-            cfg.Enabled = value;
-            ApplyAndSave();
-        }, () => {
+        var (_, card) = ComponentCard("Outline", cfg, () => {
             obj.Config.OutlineConfig = null;
             RefreshComponents(obj);
         });
@@ -240,7 +242,7 @@ internal sealed class OvInspectorBuilder(
     }
 
     private void BuildMask(OvObject obj, MaskSettings cfg) {
-        var (_, card) = Card("Mask", true, () => {
+        var (_, card) = ComponentCard("Mask", cfg, () => {
             obj.Config.MaskConfig = null;
             RefreshComponents(obj);
         });
@@ -272,7 +274,10 @@ internal sealed class OvInspectorBuilder(
                 case "Outline": obj.Config.OutlineConfig = new OutlineSettings(); break;
                 case "Mask": obj.Config.MaskConfig = new MaskSettings(); break;
                 case "Content Size Fitter": obj.Config.ContentSizeFitterConfig = new ContentSizeFitterSettings(); break;
-                case "Rect Mask 2D": obj.Config.HasRectMask2D = true; break;
+                case "Rect Mask 2D":
+                    obj.Config.HasRectMask2D = true;
+                    obj.Config.RectMask2DEnabled = true;
+                    break;
                 default: return;
             }
             RefreshComponents(obj);
@@ -282,6 +287,19 @@ internal sealed class OvInspectorBuilder(
 
     private (RectTransform Card, RectTransform Content) Card(string title, bool removable, Action remove = null) {
         return GenerateUI.ComponentCard(content, title, true, null, remove, removable, showActiveToggle: false);
+    }
+
+    private (RectTransform Card, RectTransform Content) ComponentCard(
+        string title,
+        UnityComponentSettingsBase settings,
+        Action remove,
+        Action enabledChanged = null
+    ) {
+        return GenerateUI.ComponentCard(content, title, settings.ComponentEnabled, value => {
+            settings.ComponentEnabled = value;
+            if(enabledChanged == null) ApplyAndSave();
+            else enabledChanged();
+        }, remove);
     }
 
     private void Input(Transform parent, string label, string defaultValue, string value, Action<string> changed, string id, Action finished = null) {
@@ -531,9 +549,9 @@ internal sealed class OvInspectorBuilder(
         RectTransformSettings cfg = obj.Config.RectTransformConfig;
         bool StretchX() => !Mathf.Approximately(cfg.AnchorMin.x, cfg.AnchorMax.x);
         bool StretchY() => !Mathf.Approximately(cfg.AnchorMin.y, cfg.AnchorMax.y);
-        bool DrivenX() => obj.Config.ContentSizeFitterConfig?.HorizontalFit != null
+        bool DrivenX() => obj.Config.ContentSizeFitterConfig?.ComponentEnabled == true
             && obj.Config.ContentSizeFitterConfig.HorizontalFit != ContentSizeFitter.FitMode.Unconstrained;
-        bool DrivenY() => obj.Config.ContentSizeFitterConfig?.VerticalFit != null
+        bool DrivenY() => obj.Config.ContentSizeFitterConfig?.ComponentEnabled == true
             && obj.Config.ContentSizeFitterConfig.VerticalFit != ContentSizeFitter.FitMode.Unconstrained;
         float PositionX() => DrivenX() ? obj.RectTransform.anchoredPosition.x : cfg.AnchoredPosition.x;
         float PositionY() => DrivenY() ? obj.RectTransform.anchoredPosition.y : cfg.AnchoredPosition.y;

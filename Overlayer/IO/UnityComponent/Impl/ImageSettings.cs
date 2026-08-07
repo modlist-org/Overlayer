@@ -38,6 +38,7 @@ public class ImageSettings : UnityComponentSettingsBase, ICopyable<ImageSettings
         com.fillAmount = FillAmount;
         com.fillOrigin = FillOrigin;
         com.fillClockwise = FillClockwise;
+        ToUnity(com);
 
         return true;
     }
@@ -67,12 +68,13 @@ public class ImageSettings : UnityComponentSettingsBase, ICopyable<ImageSettings
         FillAmount = com.fillAmount;
         FillOrigin = com.fillOrigin;
         FillClockwise = com.fillClockwise;
+        FromUnity(com);
 
         return true;
     }
 
     public override JToken Serialize() {
-        return new JObject {
+        return SerializeComponent(new JObject {
             [nameof(Color)] = IOUtils.Write(Color),
             [nameof(SpriteKey)] = SpriteKey,
             [nameof(PreserveAspect)] = PreserveAspect,
@@ -85,10 +87,11 @@ public class ImageSettings : UnityComponentSettingsBase, ICopyable<ImageSettings
             [nameof(FillAmount)] = FillAmount,
             [nameof(FillOrigin)] = FillOrigin,
             [nameof(FillClockwise)] = FillClockwise
-        };
+        });
     }
 
     public override void Deserialize(JToken token) {
+        DeserializeComponent(token);
         Color = IOUtils.Read(token, nameof(Color), Color);
         SpriteKey = IOUtils.Read(token, nameof(SpriteKey), SpriteKey);
         PreserveAspect = IOUtils.Read(token, nameof(PreserveAspect), PreserveAspect);
@@ -105,6 +108,7 @@ public class ImageSettings : UnityComponentSettingsBase, ICopyable<ImageSettings
 
     public ImageSettings Copy() {
         return new ImageSettings {
+            ComponentEnabled = ComponentEnabled,
             Color = Color,
             SpriteKey = SpriteKey,
             PreserveAspect = PreserveAspect,

@@ -3,6 +3,7 @@ using Overlayer.Localization;
 using Overlayer.Resource;
 using Overlayer.UI.Objects.Impl;
 using Overlayer.UI.Utility;
+using Overlayer.Tween;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -875,8 +876,8 @@ public static class GenerateUI {
         RectTransform headerRect = headerGo.AddComponent<RectTransform>();
 
         var headerLayout = headerGo.AddComponent<LayoutElement>();
-        headerLayout.preferredHeight = 40f;
-        headerLayout.minHeight = 40f;
+        headerLayout.preferredHeight = 38f;
+        headerLayout.minHeight = 38f;
 
         var headerImg = headerGo.AddComponent<Image>();
         headerImg.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P2048);
@@ -900,21 +901,54 @@ public static class GenerateUI {
         GameObject checkboxGo = new("Checkbox");
         checkboxGo.transform.SetParent(headerGo.transform, false);
         RectTransform checkboxRect = checkboxGo.AddComponent<RectTransform>();
-        checkboxRect.sizeDelta = new Vector2(20f, 20f);
+        checkboxRect.sizeDelta = new Vector2(30f, 30f);
         var checkboxLE = checkboxGo.AddComponent<LayoutElement>();
-        checkboxLE.preferredWidth = 20f;
-        checkboxLE.preferredHeight = 20f;
+        checkboxLE.preferredWidth = 30f;
+        checkboxLE.preferredHeight = 30f;
 
-        var checkboxImg = checkboxGo.AddComponent<Image>();
-        checkboxImg.sprite = MainCore.Spr.Get(UISprite.Circle256);
-        checkboxImg.color = activeValue ? UIColors.ObjectActive : new Color(0.2f, 0.2f, 0.2f, 0.8f);
+        checkboxGo.AddComponent<EmptyGraphic>().raycastTarget = true;
         checkboxGo.SetActive(showActiveToggle);
 
+        GameObject toggleVisualGo = new("ToggleCircle");
+        toggleVisualGo.transform.SetParent(checkboxGo.transform, false);
+        RectTransform toggleVisualRect = toggleVisualGo.AddComponent<RectTransform>();
+        toggleVisualRect.anchorMin = new Vector2(0.5f, 0.5f);
+        toggleVisualRect.anchorMax = new Vector2(0.5f, 0.5f);
+        toggleVisualRect.pivot = new Vector2(0.5f, 0.5f);
+        toggleVisualRect.sizeDelta = new Vector2(26f, 26f);
+        var toggleVisualImage = toggleVisualGo.AddComponent<Image>();
+        toggleVisualImage.raycastTarget = false;
+        var toggleTween = toggleVisualGo.AddComponent<TweenDestroyer>();
+
         bool isCurrentActive = activeValue;
+        CanvasGroup contentCanvasGroup = null;
+        void UpdateComponentToggle(bool animate) {
+            toggleVisualImage.sprite = MainCore.Spr.Get(isCurrentActive ? UISprite.Circle256 : UISprite.ToggleCircle128);
+            if(!animate) {
+                toggleVisualRect.sizeDelta = new Vector2(26f, 26f);
+                toggleVisualImage.color = isCurrentActive ? UIColors.ObjectActive : UIColors.ObjectInactive;
+                return;
+            }
+
+            toggleVisualRect.sizeDelta = new Vector2(30f, 30f);
+            var sequence = GTweenSequenceBuilder.New()
+                .Join(toggleVisualRect.GTSizeDelta(new Vector2(26f, 26f), 0.3f).SetEasing(Easing.OutQuad))
+                .Join(toggleVisualImage.GTColor(isCurrentActive ? UIColors.ObjectActive : UIColors.ObjectInactive, 0.15f).SetEasing(Easing.OutQuad))
+                .Build();
+            toggleTween.Set(sequence);
+            MainCore.TC.Play(sequence);
+        }
+        UpdateComponentToggle(false);
+
         AddButton(checkboxGo, btn => {
             if(btn == InputButton.Left) {
                 isCurrentActive = !isCurrentActive;
-                checkboxImg.color = isCurrentActive ? UIColors.ObjectActive : new Color(0.2f, 0.2f, 0.2f, 0.8f);
+                UpdateComponentToggle(true);
+                if(contentCanvasGroup != null) {
+                    contentCanvasGroup.alpha = isCurrentActive ? 1f : 0.42f;
+                    contentCanvasGroup.interactable = isCurrentActive;
+                    contentCanvasGroup.blocksRaycasts = isCurrentActive;
+                }
                 onActiveChanged?.Invoke(isCurrentActive);
             }
         });
@@ -922,26 +956,47 @@ public static class GenerateUI {
         GameObject titleTriggerGo = new("TitleTrigger");
         titleTriggerGo.transform.SetParent(headerGo.transform, false);
         RectTransform titleTriggerRect = titleTriggerGo.AddComponent<RectTransform>();
+        titleTriggerGo.AddComponent<EmptyGraphic>().raycastTarget = true;
         var titleTriggerLE = titleTriggerGo.AddComponent<LayoutElement>();
         titleTriggerLE.flexibleWidth = 1f;
 
         var triggerHLayout = titleTriggerGo.AddComponent<HorizontalLayoutGroup>();
-        triggerHLayout.padding = new RectOffset();
+        triggerHLayout.padding = new RectOffset { right = 38 };
         triggerHLayout.childControlWidth = true;
         triggerHLayout.childControlHeight = true;
-        triggerHLayout.childForceExpandWidth = true;
+        triggerHLayout.childForceExpandWidth = false;
         triggerHLayout.childForceExpandHeight = true;
+        triggerHLayout.childAlignment = TextAnchor.MiddleLeft;
+
+        GameObject foldoutGo = new("Triangle");
+        foldoutGo.transform.SetParent(titleTriggerGo.transform, false);
+        var foldoutRect = foldoutGo.AddComponent<RectTransform>();
+        foldoutRect.anchorMin = new Vector2(1f, 0.5f);
+        foldoutRect.anchorMax = new Vector2(1f, 0.5f);
+        foldoutRect.pivot = new Vector2(0.5f, 0.5f);
+        foldoutRect.anchoredPosition = new Vector2(-23f, 0f);
+        foldoutRect.sizeDelta = new Vector2(26f, 26f);
+        foldoutRect.localRotation = Quaternion.Euler(0f, 0f, 180f);
+        var foldoutImage = foldoutGo.AddComponent<Image>();
+        foldoutImage.sprite = MainCore.Spr.Get(UISprite.Triangle128);
+        foldoutImage.color = UIColors.ObjectActive;
+        foldoutImage.raycastTarget = false;
+        foldoutGo.AddComponent<LayoutElement>().ignoreLayout = true;
+        var foldoutTween = foldoutGo.AddComponent<TweenDestroyer>();
 
         GameObject titleGo = new("TitleText");
         titleGo.transform.SetParent(titleTriggerGo.transform, false);
         var titleText = titleGo.AddComponent<TextMeshProUGUI>();
         titleText.font = MainCore.Res.Get<TMP_FontAsset>(Asset.SUIT_Medium);
-        titleText.fontSize = 20f;
+        titleText.fontSize = 18f;
         titleText.text = title;
         titleText.color = Color.white;
         titleText.alignment = TextAlignmentOptions.Left;
         titleText.verticalAlignment = VerticalAlignmentOptions.Middle;
         titleText.characterSpacing = -3f;
+        titleText.raycastTarget = false;
+        var titleLayout = titleGo.AddComponent<LayoutElement>();
+        titleLayout.flexibleWidth = 1f;
 
         if(showDeleteButton) {
             GameObject deleteGo = new("DeleteBtn");
@@ -967,6 +1022,10 @@ public static class GenerateUI {
         GameObject contentGo = new("Content");
         contentGo.transform.SetParent(cardGo.transform, false);
         RectTransform contentRect = contentGo.AddComponent<RectTransform>();
+        var contentElement = contentGo.AddComponent<LayoutElement>();
+        contentElement.minHeight = 0f;
+        contentElement.flexibleHeight = 0f;
+        contentElement.enabled = false;
 
         var contentLayout = contentGo.AddComponent<VerticalLayoutGroup>();
         contentLayout.padding = new RectOffset {
@@ -985,22 +1044,67 @@ public static class GenerateUI {
         contentImg.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P2048);
         contentImg.type = Image.Type.Sliced;
         contentImg.color = UIColors.ObjectBG;
+        contentGo.AddComponent<RectMask2D>();
+
+        contentCanvasGroup = contentGo.AddComponent<CanvasGroup>();
+        contentCanvasGroup.alpha = activeValue ? 1f : 0.42f;
+        contentCanvasGroup.interactable = activeValue;
+        contentCanvasGroup.blocksRaycasts = activeValue;
 
         bool isExpanded = true;
+        float expandedContentHeight = -1f;
+
+        void RebuildCardLayout() {
+            LayoutRebuilder.ForceRebuildLayoutImmediate(contentRect);
+            LayoutRebuilder.ForceRebuildLayoutImmediate(cardRect);
+            Transform parentTransform = cardGo.transform.parent;
+            while(parentTransform != null) {
+                var parentRect = parentTransform.GetComponent<RectTransform>();
+                if(parentRect != null) LayoutRebuilder.ForceRebuildLayoutImmediate(parentRect);
+                parentTransform = parentTransform.parent;
+            }
+        }
+
         AddButton(titleTriggerGo, btn => {
             if(btn == InputButton.Left) {
-                isExpanded = !isExpanded;
-                contentGo.SetActive(isExpanded);
-                LayoutRebuilder.ForceRebuildLayoutImmediate(cardRect);
-
-                Transform p = cardGo.transform.parent;
-                while(p != null) {
-                    var pRect = p.GetComponent<RectTransform>();
-                    if(pRect != null) {
-                        LayoutRebuilder.ForceRebuildLayoutImmediate(pRect);
-                    }
-                    p = p.parent;
+                if(isExpanded) {
+                    RebuildCardLayout();
+                    Canvas.ForceUpdateCanvases();
+                    expandedContentHeight = Mathf.Max(0f, contentRect.rect.height);
                 }
+
+                isExpanded = !isExpanded;
+                float currentHeight = contentElement.enabled
+                    ? contentElement.preferredHeight
+                    : (isExpanded ? 0f : expandedContentHeight);
+                float targetHeight = isExpanded ? expandedContentHeight : 0f;
+                contentElement.enabled = true;
+                contentElement.preferredHeight = currentHeight;
+                if(isExpanded) contentGo.SetActive(true);
+                contentCanvasGroup.alpha = isCurrentActive ? 1f : 0.42f;
+                if(isExpanded) LayoutRebuilder.ForceRebuildLayoutImmediate(contentRect);
+
+                var layoutTween = GTweenExtensions.Tween(
+                    () => contentElement ? contentElement.preferredHeight : targetHeight,
+                    height => {
+                        if(contentElement) contentElement.preferredHeight = Mathf.Max(0f, height);
+                        RebuildCardLayout();
+                    },
+                    targetHeight,
+                    0.18f
+                ).SetEasing(Easing.OutCubic).OnComplete(() => {
+                    if(isExpanded && contentElement) contentElement.enabled = false;
+                    else if(!isExpanded && contentGo) contentGo.SetActive(false);
+                    RebuildCardLayout();
+                });
+
+                var sequence = GTweenSequenceBuilder.New()
+                    .Join(foldoutRect.GTRotate(isExpanded ? new Vector3(0f, 0f, 180f) : Vector3.zero, 0.4f).SetEasing(Easing.OutBack))
+                    .Join(foldoutImage.GTColor(isExpanded ? UIColors.ObjectActive : UIColors.ObjectInactive, 0.2f).SetEasing(Easing.OutSine))
+                    .Join(layoutTween)
+                    .Build();
+                foldoutTween.Set(sequence);
+                MainCore.TC.Play(sequence);
             }
         });
 

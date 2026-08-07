@@ -36,7 +36,19 @@ public class OvCanvasSettingPage : IDisposable {
     private RectTransform hierarchyContent;
     private RectTransform inspectorContent;
 
+    private OvObject draggedObject;
+    private OvObject hierarchyDropTarget;
+    private RectTransform hierarchyDropRect;
+    private Image hierarchyDropImage;
+    private Color hierarchyDropBaseColor;
+    private GameObject hierarchyDropLine;
+    private bool hierarchyDropOnCanvas;
+    private HierarchyDropZone hierarchyDropZone;
+    private bool hierarchyDropVisualActive;
+
     private GTween canvasFadeTween;
+
+    private enum HierarchyDropZone { Before, Inside, After }
 
 #pragma warning disable IDE0001
     private readonly System.Collections.Generic.List<UIObject> hierarchyUiObjects = [];
@@ -491,6 +503,9 @@ public class OvCanvasSettingPage : IDisposable {
     private void SaveConfig() => OverlayCore.SaveAllCanvases();
 
     private void RebuildHierarchy() {
+        draggedObject = null;
+        ClearHierarchyDropState();
+
         foreach(var obj in hierarchyUiObjects) {
             obj.Dispose();
         }
@@ -549,13 +564,17 @@ public class OvCanvasSettingPage : IDisposable {
         tmp.color = Color.white;
         tmp.alignment = TextAlignmentOptions.Left;
         tmp.verticalAlignment = VerticalAlignmentOptions.Middle;
+        tmp.raycastTarget = false;
 
-        GenerateUI.AddOutlineHover(itemBtn, itemBtn.AddComponent<EventTrigger>());
-        var triggerBtn = GenerateUI.AddButton(itemBtn, btn => {
-            if(btn == InputButton.Left) {
-                SelectObject(null);
-            }
-        });
+        var trigger = itemBtn.AddComponent<EventTrigger>();
+        GenerateUI.AddOutlineHover(itemBtn, trigger);
+        UnityUtils.AddEvents(trigger,
+            (EventTriggerType.PointerClick, eventData => {
+                if(((PointerEventData)eventData).button == InputButton.Left && draggedObject == null) SelectObject(null);
+            }),
+            (EventTriggerType.PointerEnter, _ => SetHierarchyDropTarget(null, itemBtnRect, btnImg, true)),
+            (EventTriggerType.PointerExit, _ => ClearHierarchyDropTarget(itemBtnRect))
+        );
         itemBtnRect.offsetMax = Vector2.zero;
     }
 
@@ -592,23 +611,195 @@ public class OvCanvasSettingPage : IDisposable {
         btnImg.type = Image.Type.Sliced;
         btnImg.color = (selectedObject == obj) ? UIColors.ObjectActive : UIColors.ObjectBG;
 
+        AddHierarchyDragHandle(itemBtn.transform);
+
         var tmp = GenerateUI.AddText(itemBtn.transform, true);
         tmp.text = obj.Config.Name;
         tmp.fontSize = 18f;
         tmp.color = Color.white;
         tmp.alignment = TextAlignmentOptions.Left;
         tmp.verticalAlignment = VerticalAlignmentOptions.Middle;
+        tmp.raycastTarget = false;
+        tmp.rectTransform.offsetMin = new Vector2(28f, 0f);
 
-        GenerateUI.AddOutlineHover(itemBtn, itemBtn.AddComponent<EventTrigger>());
-        var triggerBtn = GenerateUI.AddButton(itemBtn, btn => {
-            if(btn == InputButton.Left) {
-                SelectObject(obj);
-            }
-        });
+        var trigger = itemBtn.AddComponent<EventTrigger>();
+        GenerateUI.AddOutlineHover(itemBtn, trigger);
+        CanvasGroup dragCanvasGroup = itemBtn.AddComponent<CanvasGroup>();
+        UnityUtils.AddEvents(trigger,
+            (EventTriggerType.PointerClick, eventData => {
+                if(((PointerEventData)eventData).button == InputButton.Left && draggedObject == null) SelectObject(obj);
+            }),
+            (EventTriggerType.BeginDrag, eventData => {
+                if(((PointerEventData)eventData).button != InputButton.Left) return;
+                draggedObject = obj;
+                selectedObject = obj;
+                dragCanvasGroup.alpha = 0.45f;
+                dragCanvasGroup.blocksRaycasts = false;
+            }),
+            (EventTriggerType.Drag, UpdateHierarchyDropPreview),
+            (EventTriggerType.EndDrag, _ => {
+                dragCanvasGroup.alpha = 1f;
+                dragCanvasGroup.blocksRaycasts = true;
+                CompleteHierarchyDrag();
+            }),
+            (EventTriggerType.PointerEnter, _ => SetHierarchyDropTarget(obj, itemBtnRect, btnImg, false)),
+            (EventTriggerType.PointerExit, _ => ClearHierarchyDropTarget(itemBtnRect))
+        );
         itemBtnRect.offsetMax = Vector2.zero;
 
         for(int i = 0; i < obj.Children.Count; i++) {
             RenderHierarchyItem(obj.Children[i], depth + 1);
+        }
+    }
+
+    private static void AddHierarchyDragHandle(Transform parent) {
+        GameObject handle = new("DragHandle");
+        handle.transform.SetParent(parent, false);
+        RectTransform handleRect = handle.AddComponent<RectTransform>();
+        handleRect.anchorMin = new Vector2(0f, 0.5f);
+        handleRect.anchorMax = new Vector2(0f, 0.5f);
+        handleRect.pivot = new Vector2(0.5f, 0.5f);
+        handleRect.anchoredPosition = new Vector2(14f, 0f);
+        handleRect.sizeDelta = new Vector2(10f, 12f);
+
+        for(int i = 0; i < 3; i++) {
+            GameObject bar = new($"Bar{i}");
+            bar.transform.SetParent(handle.transform, false);
+            RectTransform barRect = bar.AddComponent<RectTransform>();
+            barRect.anchorMin = new Vector2(0.5f, 0.5f);
+            barRect.anchorMax = new Vector2(0.5f, 0.5f);
+            barRect.pivot = new Vector2(0.5f, 0.5f);
+            barRect.anchoredPosition = new Vector2(0f, 3f - i * 3f);
+            barRect.sizeDelta = new Vector2(8f, 1.2f);
+            Image barImage = bar.AddComponent<Image>();
+            barImage.color = new Color(1f, 1f, 1f, 0.58f);
+            barImage.raycastTarget = false;
+        }
+    }
+
+    private void SetHierarchyDropTarget(OvObject target, RectTransform rect, Image image, bool canvas) {
+        if(draggedObject == null || target == draggedObject || IsDescendantOf(target, draggedObject)) return;
+        ResetHierarchyDropVisual();
+        hierarchyDropTarget = target;
+        hierarchyDropRect = rect;
+        hierarchyDropImage = image;
+        hierarchyDropBaseColor = image.color;
+        hierarchyDropOnCanvas = canvas;
+        UpdateHierarchyDropPreview(null);
+    }
+
+    private void ClearHierarchyDropTarget(RectTransform rect) {
+        if(hierarchyDropRect != rect) return;
+        ResetHierarchyDropVisual();
+        hierarchyDropTarget = null;
+        hierarchyDropRect = null;
+        hierarchyDropImage = null;
+        hierarchyDropOnCanvas = false;
+    }
+
+    private void UpdateHierarchyDropPreview(BaseEventData _) {
+        if(draggedObject == null || hierarchyDropRect == null || hierarchyDropImage == null) return;
+
+        HierarchyDropZone zone = HierarchyDropZone.Inside;
+        if(!hierarchyDropOnCanvas) {
+            if(!RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                hierarchyDropRect,
+                Overlayer.Compat.OVC.OVC_Input.MousePosition,
+                null,
+                out Vector2 point
+            )) return;
+            float edge = hierarchyDropRect.rect.height * 0.27f;
+            if(point.y > hierarchyDropRect.rect.yMax - edge) zone = HierarchyDropZone.Before;
+            else if(point.y < hierarchyDropRect.rect.yMin + edge) zone = HierarchyDropZone.After;
+        }
+
+        if(hierarchyDropVisualActive && zone == hierarchyDropZone) return;
+        ResetHierarchyDropVisual();
+        hierarchyDropZone = zone;
+        hierarchyDropVisualActive = true;
+        if(zone == HierarchyDropZone.Inside) {
+            hierarchyDropImage.color = UIColors.ObjectButton;
+            return;
+        }
+
+        hierarchyDropLine = new GameObject("HierarchyDropLine");
+        hierarchyDropLine.transform.SetParent(hierarchyDropRect, false);
+        var lineRect = hierarchyDropLine.AddComponent<RectTransform>();
+        lineRect.anchorMin = zone == HierarchyDropZone.Before ? new Vector2(0f, 1f) : Vector2.zero;
+        lineRect.anchorMax = zone == HierarchyDropZone.Before ? Vector2.one : new Vector2(1f, 0f);
+        lineRect.pivot = zone == HierarchyDropZone.Before ? new Vector2(0.5f, 1f) : new Vector2(0.5f, 0f);
+        lineRect.sizeDelta = new Vector2(0f, 3f);
+        lineRect.anchoredPosition = Vector2.zero;
+        var line = hierarchyDropLine.AddComponent<Image>();
+        line.color = UIColors.ObjectActiveBright;
+        line.raycastTarget = false;
+    }
+
+    private void ResetHierarchyDropVisual() {
+        if(hierarchyDropImage != null) hierarchyDropImage.color = hierarchyDropBaseColor;
+        if(hierarchyDropLine != null) UnityEngine.Object.Destroy(hierarchyDropLine);
+        hierarchyDropLine = null;
+        hierarchyDropVisualActive = false;
+    }
+
+    private void CompleteHierarchyDrag() {
+        OvObject moving = draggedObject;
+        draggedObject = null;
+        if(moving == null || hierarchyDropRect == null) {
+            ClearHierarchyDropState();
+            return;
+        }
+
+        OvObject target = hierarchyDropTarget;
+        HierarchyDropZone zone = hierarchyDropZone;
+        bool canvas = hierarchyDropOnCanvas;
+        ClearHierarchyDropState();
+
+        if(!canvas && (target == null || target == moving || IsDescendantOf(target, moving))) return;
+
+        if(moving.Parent != null) moving.Detach();
+        else currentCanvas.Detach(moving);
+
+        if(canvas) {
+            currentCanvas.Attach(moving);
+        } else if(zone == HierarchyDropZone.Inside) {
+            target.Attach(moving);
+        } else if(target.Parent != null) {
+            OvObject parent = target.Parent;
+            parent.Attach(moving);
+            int index = parent.Children.IndexOf(target) + (zone == HierarchyDropZone.After ? 1 : 0);
+            parent.SetChildIndex(moving, index);
+        } else {
+            currentCanvas.Attach(moving);
+            currentCanvas.OvObjects.Remove(moving);
+            int index = currentCanvas.OvObjects.IndexOf(target) + (zone == HierarchyDropZone.After ? 1 : 0);
+            currentCanvas.OvObjects.Insert(Math.Clamp(index, 0, currentCanvas.OvObjects.Count), moving);
+            SyncRootSiblingOrder();
+        }
+
+        RebuildHierarchy();
+        RebuildInspector();
+        SaveConfig();
+    }
+
+    private void ClearHierarchyDropState() {
+        ResetHierarchyDropVisual();
+        hierarchyDropTarget = null;
+        hierarchyDropRect = null;
+        hierarchyDropImage = null;
+        hierarchyDropOnCanvas = false;
+    }
+
+    private static bool IsDescendantOf(OvObject candidate, OvObject ancestor) {
+        for(OvObject current = candidate; current != null; current = current.Parent) {
+            if(current == ancestor) return true;
+        }
+        return false;
+    }
+
+    private void SyncRootSiblingOrder() {
+        for(int i = 0; i < currentCanvas.OvObjects.Count; i++) {
+            currentCanvas.OvObjects[i].GameObject.transform.SetSiblingIndex(i);
         }
     }
 

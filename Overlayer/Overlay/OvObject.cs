@@ -92,7 +92,10 @@ public sealed class OvObject : ISettingsFile {
         EnsureComponent<ContentSizeFitter>(Config.ContentSizeFitterConfig != null);
         EnsureComponent<Mask>(Config.MaskConfig != null);
         EnsureComponent<Shadow>(Config.ShadowConfig != null);
-        EnsureComponent<RectMask2D>(Config.HasRectMask2D);
+        var rectMask = EnsureComponent<RectMask2D>(Config.HasRectMask2D);
+        if(rectMask != null) {
+            rectMask.enabled = Config.RectMask2DEnabled;
+        }
         EnsureComponent<Outline>(Config.OutlineConfig != null);
     }
 

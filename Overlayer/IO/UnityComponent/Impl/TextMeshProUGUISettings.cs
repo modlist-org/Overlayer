@@ -85,6 +85,7 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
         com.fontSizeMin = Mathf.Min(FontSizeRange.x, FontSizeRange.y);
         com.fontSizeMax = Mathf.Max(FontSizeRange.x, FontSizeRange.y);
         com.enableVertexGradient = true;
+        ToUnity(com);
         com.UpdateMeshPadding();
         com.SetMaterialDirty();
         com.SetVerticesDirty();
@@ -125,12 +126,13 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
         EnableOutline = OutlineWidth > 0f && mat.IsKeywordEnabled(ShaderUtilities.Keyword_Outline);
         AutoSize = com.enableAutoSizing;
         FontSizeRange = new Vector2(com.fontSizeMin, com.fontSizeMax);
+        FromUnity(com);
 
         return true;
     }
 
     public override JToken Serialize() {
-        return new JObject {
+        return SerializeComponent(new JObject {
             [nameof(Text)] = Text,
             [nameof(Color)] = IOUtils.Write(Color),
             [nameof(FontSize)] = FontSize,
@@ -153,10 +155,11 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
             [nameof(OutlineSoftness)] = OutlineSoftness,
             [nameof(AutoSize)] = AutoSize,
             [nameof(FontSizeRange)] = IOUtils.Write(FontSizeRange)
-        };
+        });
     }
 
     public override void Deserialize(JToken token) {
+        DeserializeComponent(token);
         Text = IOUtils.Read(token, nameof(Text), Text);
         Color = IOUtils.Read(token, nameof(Color), Color);
         FontSize = IOUtils.Read(token, nameof(FontSize), FontSize);
@@ -195,6 +198,7 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
 
     public TextMeshProUGUISettings Copy() {
         return new TextMeshProUGUISettings {
+            ComponentEnabled = ComponentEnabled,
             Text = Text,
             Color = Color,
             FontSize = FontSize,

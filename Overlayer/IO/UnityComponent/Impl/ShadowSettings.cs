@@ -19,6 +19,7 @@ public class ShadowSettings : UnityComponentSettingsBase, ICopyable<ShadowSettin
         com.effectDistance = EffectDistance;
         com.effectColor = EffectColor;
         com.useGraphicAlpha = UseGraphicAlpha;
+        ToUnity(com);
 
         return true;
     }
@@ -32,19 +33,21 @@ public class ShadowSettings : UnityComponentSettingsBase, ICopyable<ShadowSettin
         EffectDistance = com.effectDistance;
         EffectColor = com.effectColor;
         UseGraphicAlpha = com.useGraphicAlpha;
+        FromUnity(com);
 
         return true;
     }
 
     public override JToken Serialize() {
-        return new JObject {
+        return SerializeComponent(new JObject {
             [nameof(EffectDistance)] = IOUtils.Write(EffectDistance),
             [nameof(EffectColor)] = IOUtils.Write(EffectColor),
             [nameof(UseGraphicAlpha)] = UseGraphicAlpha
-        };
+        });
     }
 
     public override void Deserialize(JToken token) {
+        DeserializeComponent(token);
         EffectDistance = IOUtils.Read(token, nameof(EffectDistance), EffectDistance);
         EffectColor = IOUtils.Read(token, nameof(EffectColor), EffectColor);
         UseGraphicAlpha = IOUtils.Read(token, nameof(UseGraphicAlpha), UseGraphicAlpha);
@@ -52,6 +55,7 @@ public class ShadowSettings : UnityComponentSettingsBase, ICopyable<ShadowSettin
 
     public ShadowSettings Copy() {
         return new ShadowSettings {
+            ComponentEnabled = ComponentEnabled,
             EffectDistance = EffectDistance,
             EffectColor = EffectColor,
             UseGraphicAlpha = UseGraphicAlpha
