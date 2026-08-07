@@ -176,6 +176,7 @@ public static class GenerateUI {
 
         GameObject inputObj = new("ValueInput");
         inputObj.transform.SetParent(rect, false);
+        inputObj.SetActive(false);
 
         CanvasGroup inputCanvasGroup = inputObj.AddComponent<CanvasGroup>();
         inputCanvasGroup.blocksRaycasts = false;
@@ -227,6 +228,7 @@ public static class GenerateUI {
             changeImg, changeUpImg, AddOutlineHover(rect.gameObject, trigger), defaultValue, min, max,
             value, format, useInputClamp, filter, onChanged, onComplete
         );
+        inputObj.SetActive(true);
 
         AddButton(rect.gameObject, e => {
             switch(e) {
@@ -510,7 +512,10 @@ public static class GenerateUI {
         Action<string> onChanged,
         string placeholder,
         Sprite icon,
-        string id
+        string id,
+        Action<string> onEndEdit = null,
+        bool multiline = false,
+        bool monospace = false
     ) {
         RectTransform rect = BackGround();
         rect.SetParent(parent, false);
@@ -538,21 +543,37 @@ public static class GenerateUI {
 
         GameObject inputObj = new("Input");
         inputObj.transform.SetParent(rect, false);
+        inputObj.SetActive(false);
 
         RectTransform inputRect = inputObj.AddComponent<RectTransform>();
         inputRect.anchorMin = Vector2.zero;
         inputRect.anchorMax = Vector2.one;
-        inputRect.offsetMin = new(16f, 4f);
-        inputRect.offsetMax = new(-12f, -4f);
-        inputObj.AddComponent<RectMask2D>();
+        inputRect.offsetMin = Vector2.zero;
+        inputRect.offsetMax = Vector2.zero;
+
+        Image inputTarget = inputObj.AddComponent<Image>();
+        inputTarget.color = Color.clear;
+        inputTarget.raycastTarget = true;
 
         TMP_InputField inputField = inputObj.AddComponent<TMP_InputField>();
+        inputField.targetGraphic = inputTarget;
 
-        var text = AddText(inputObj.transform);
-        text.font = MainCore.Res.Get<TMP_FontAsset>(Asset.SUIT_Medium);
+        GameObject viewportObj = new("TextViewport");
+        viewportObj.transform.SetParent(inputObj.transform, false);
+        RectTransform viewportRect = viewportObj.AddComponent<RectTransform>();
+        viewportRect.anchorMin = Vector2.zero;
+        viewportRect.anchorMax = Vector2.one;
+        viewportRect.offsetMin = multiline ? new(16f, 12f) : new(16f, 4f);
+        viewportRect.offsetMax = multiline ? new(-12f, -12f) : new(-12f, -4f);
+        viewportObj.AddComponent<RectMask2D>();
+
+        var text = AddText(viewportObj.transform);
+        text.font = MainCore.Res.Get<TMP_FontAsset>(monospace ? Asset.JetBrainsMonoNL_Medium : Asset.SUIT_Medium);
         text.text = value ?? string.Empty;
-        text.alignment = TextAlignmentOptions.Left;
-        text.textWrappingMode = TextWrappingModes.NoWrap;
+        text.alignment = multiline ? TextAlignmentOptions.TopLeft : TextAlignmentOptions.Left;
+        text.textWrappingMode = multiline ? TextWrappingModes.Normal : TextWrappingModes.NoWrap;
+        text.extraPadding = true;
+        text.raycastTarget = false;
 
         RectTransform textRect = text.rectTransform;
         textRect.anchorMin = Vector2.zero;
@@ -560,12 +581,14 @@ public static class GenerateUI {
         textRect.offsetMin = Vector2.zero;
         textRect.offsetMax = Vector2.zero;
 
-        var placeholderText = AddText(inputObj.transform);
-        placeholderText.font = MainCore.Res.Get<TMP_FontAsset>(Asset.SUIT_Medium);
+        var placeholderText = AddText(viewportObj.transform);
+        placeholderText.font = MainCore.Res.Get<TMP_FontAsset>(monospace ? Asset.JetBrainsMonoNL_Medium : Asset.SUIT_Medium);
         placeholderText.text = placeholder;
-        placeholderText.alignment = TextAlignmentOptions.Left;
-        placeholderText.textWrappingMode = TextWrappingModes.NoWrap;
+        placeholderText.alignment = multiline ? TextAlignmentOptions.TopLeft : TextAlignmentOptions.Left;
+        placeholderText.textWrappingMode = multiline ? TextWrappingModes.Normal : TextWrappingModes.NoWrap;
         placeholderText.color = new Color(1, 1, 1, 0.2f);
+        placeholderText.extraPadding = true;
+        placeholderText.raycastTarget = false;
 
         RectTransform placeholderRect = placeholderText.rectTransform;
         placeholderRect.anchorMin = Vector2.zero;
@@ -573,11 +596,13 @@ public static class GenerateUI {
         placeholderRect.offsetMin = Vector2.zero;
         placeholderRect.offsetMax = Vector2.zero;
 
-        inputField.textViewport = inputRect;
+        inputField.textViewport = viewportRect;
         inputField.textComponent = text;
         inputField.placeholder = placeholderText;
+        inputField.fontAsset = text.font;
 
         inputField.lineType = TMP_InputField.LineType.SingleLine;
+        inputField.characterValidation = TMP_InputField.CharacterValidation.None;
         inputField.richText = false;
 
         var input = new UIInput(
@@ -589,35 +614,14 @@ public static class GenerateUI {
             changeImg,
             defaultValue,
             value,
-            onChanged
+            onChanged,
+            onEndEdit,
+            multiline
         );
+        inputObj.SetActive(true);
 
         var trigger = rect.gameObject.AddComponent<EventTrigger>();
         AddOutlineHover(rect.gameObject, trigger);
-
-        UnityUtils.AddEvents(trigger,
-            (EventTriggerType.PointerUp, (e) => {
-#pragma warning disable IDE0019
-                var ped =
-#pragma warning restore IDE0019
-#if ML && IL2CPP                
-                e.TryCast<PointerEventData>();
-#else
-                e as PointerEventData;
-#endif
-                if(ped != null && ped.button != InputButton.Left) {
-                    return;
-                }
-
-                if(EventSystem.current) {
-                    EventSystem.current.SetSelectedGameObject(null);
-                }
-
-                inputField.Select();
-                inputField.ActivateInputField();
-            }
-        )
-        );
 
         AddButton(rect.gameObject, btn => {
             switch(btn) {
@@ -790,7 +794,8 @@ public static class GenerateUI {
         bool activeValue,
         Action<bool> onActiveChanged,
         Action onDeleteClick,
-        bool showDeleteButton = true
+        bool showDeleteButton = true,
+        bool showActiveToggle = true
     ) {
         GameObject cardGo = new("ComponentCard_" + title);
         cardGo.transform.SetParent(parent, false);
@@ -846,6 +851,7 @@ public static class GenerateUI {
         var checkboxImg = checkboxGo.AddComponent<Image>();
         checkboxImg.sprite = MainCore.Spr.Get(UISprite.Circle256);
         checkboxImg.color = activeValue ? UIColors.ObjectActive : new Color(0.2f, 0.2f, 0.2f, 0.8f);
+        checkboxGo.SetActive(showActiveToggle);
 
         bool isCurrentActive = activeValue;
         AddButton(checkboxGo, btn => {

@@ -24,14 +24,14 @@ public class UIInputCore {
     private GTween caretTween, placeholderTween;
     private bool caretLooping, hasFocused;
 
-    public UIInputCore(TMP_InputField inputField, TextMeshProUGUI placeholder, string value, Action<string> onChanged, Action<string> onEndEdit) {
+    public UIInputCore(TMP_InputField inputField, TextMeshProUGUI placeholder, string value, Action<string> onChanged, Action<string> onEndEdit, bool multiline = false) {
         InputField = inputField;
         Placeholder = placeholder;
         Value = value;
         OnChanged = onChanged;
         OnEndEdit = onEndEdit;
 
-        SetupInputField();
+        SetupInputField(multiline);
 
         if(InputField.text != (value ?? string.Empty)) {
             InputField.text = value ?? string.Empty;
@@ -65,6 +65,7 @@ public class UIInputCore {
         }
 
         hasFocused = focused;
+        UIInputBlocker.SetFocused(focused, focused ? InputField.gameObject : null);
 
         UpdateCaretAnimation(focused);
         UpdatePlaceholder(focused);
@@ -81,11 +82,14 @@ public class UIInputCore {
         }
     }
 
-    private void SetupInputField() {
-        InputField.lineType = TMP_InputField.LineType.SingleLine;
+    private void SetupInputField(bool multiline) {
+        InputField.lineType = multiline
+            ? TMP_InputField.LineType.MultiLineNewline
+            : TMP_InputField.LineType.SingleLine;
+        InputField.lineLimit = 0;
         InputField.richText = false;
         InputField.customCaretColor = true;
-        InputField.caretColor = Color.clear;
+        InputField.caretColor = UIColors.ObjectActive;
         InputField.caretBlinkRate = 0f;
         InputField.caretWidth = 2;
         InputField.selectionColor = UIColors.MenuHover;
@@ -98,58 +102,26 @@ public class UIInputCore {
     }
 
     private void OnValueEndEdit(string value) {
-        OnChanged?.Invoke(value);
         OnEndEdit?.Invoke(value);
     }
 
     private void UpdateCaretAnimation(bool focused) {
         if(focused) {
-            caretTween?.Kill();
             if(caretLooping) {
-                caretTween = CreateCaretLoop();
-                MainCore.TC.Play(caretTween);
                 return;
             }
 
             caretLooping = true;
-            caretTween = GTweenSequenceBuilder.New()
-                .Append(GTweenExtensions.Tween(
-                    () => InputField.caretColor.a,
-                    x => {
-                        var c = UIColors.ObjectActive;
-                        c.a = x;
-                        InputField.caretColor = c;
-                    },
-                    1f,
-                    0.2f
-                ).SetEasing(Easing.OutSine))
-                .AppendCallback(() => {
-                    caretTween?.Kill();
-                    caretTween = CreateCaretLoop();
-                    MainCore.TC.Play(caretTween);
-                }).Build();
+            caretTween?.Kill();
+            InputField.caretColor = UIColors.ObjectActive;
+            caretTween = CreateCaretLoop();
             MainCore.TC.Play(caretTween);
             return;
         }
 
-        if(!caretLooping) {
-            return;
-        }
-
         caretLooping = false;
-
         caretTween?.Kill();
-        caretTween = GTweenExtensions.Tween(
-            () => InputField.caretColor.a,
-            x => {
-                var c = UIColors.ObjectActive;
-                c.a = x;
-                InputField.caretColor = c;
-            },
-            0f,
-            0.3f
-        ).SetEasing(Easing.OutSine);
-        MainCore.TC.Play(caretTween);
+        InputField.caretColor = UIColors.ObjectActive;
     }
 
     private GTween CreateCaretLoop() {
@@ -157,22 +129,22 @@ public class UIInputCore {
             .Append(GTweenExtensions.Tween(
                 () => InputField.caretColor.a,
                 x => {
-                    var c = InputField.caretColor;
-                    c.a = x;
-                    InputField.caretColor = c;
+                    var color = UIColors.ObjectActive;
+                    color.a = x;
+                    InputField.caretColor = color;
                 },
-                1f,
-                0.02f
-            ).SetEasing(Easing.OutSine))
+                0.35f,
+                0.55f
+            ).SetEasing(Easing.InOutSine))
             .Append(GTweenExtensions.Tween(
                 () => InputField.caretColor.a,
                 x => {
-                    var c = InputField.caretColor;
-                    c.a = x;
-                    InputField.caretColor = c;
+                    var color = UIColors.ObjectActive;
+                    color.a = x;
+                    InputField.caretColor = color;
                 },
-                0.4f,
-                0.62f
+                1f,
+                0.12f
             ).SetEasing(Easing.OutSine))
             .Build().SetMaxLoops();
     }
@@ -203,6 +175,10 @@ public class UIInputCore {
     }
 
     public void Dispose() {
+        if(hasFocused) {
+            hasFocused = false;
+            UIInputBlocker.SetFocused(false);
+        }
         caretTween?.Kill();
         placeholderTween?.Kill();
     }

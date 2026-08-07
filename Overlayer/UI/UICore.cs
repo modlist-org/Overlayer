@@ -570,26 +570,30 @@ public static class UICore {
             return;
         }
 
-        bool pressed = IsToggleModifierPressed() && OVC_Input.GetKey(ToggleKey);
+        if(!UIInputBlocker.IsEditing) {
+            bool pressed = IsToggleModifierPressed() && OVC_Input.GetKey(ToggleKey);
 
-        // key down
-        if(IsToggleModifierPressed() && OVC_Input.GetKeyDown(ToggleKey)) {
-            Toggle();
+            // key down
+            if(IsToggleModifierPressed() && OVC_Input.GetKeyDown(ToggleKey)) {
+                Toggle();
 
-            holdStartTime = Time.unscaledTime;
-            holdingToggle = true;
-        }
+                holdStartTime = Time.unscaledTime;
+                holdingToggle = true;
+            }
 
-        // hold reset
-        if(holdingToggle && pressed) {
-            if(Time.unscaledTime - holdStartTime >= 0.4f) {
-                ResetScalePosition(!isOpen);
+            // hold reset
+            if(holdingToggle && pressed) {
+                if(Time.unscaledTime - holdStartTime >= 0.4f) {
+                    ResetScalePosition(!isOpen);
+                    holdingToggle = false;
+                }
+            }
+
+            // key up
+            if(OVC_Input.GetKeyUp(ToggleKey)) {
                 holdingToggle = false;
             }
-        }
-
-        // key up
-        if(OVC_Input.GetKeyUp(ToggleKey)) {
+        } else {
             holdingToggle = false;
         }
 

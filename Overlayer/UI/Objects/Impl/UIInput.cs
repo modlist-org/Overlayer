@@ -36,7 +36,9 @@ public sealed class UIInput : UIObject {
         Image changedImage,
         string defaultValue,
         string value,
-        Action<string> onChanged
+        Action<string> onChanged,
+        Action<string> onEndEdit = null,
+        bool multiline = false
     ) : base(id, rect) {
         DefaultValue = defaultValue;
         ChangedImage = changedImage;
@@ -45,7 +47,7 @@ public sealed class UIInput : UIObject {
         Core = new UIInputCore(inputField, placeholder, value, val => {
             UpdateVisual();
             onChanged?.Invoke(val);
-        }, null);
+        }, onEndEdit, multiline);
 
         RegisterTick();
         UpdateVisual(true);

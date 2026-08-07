@@ -317,6 +317,7 @@ public class OvCanvasSettingPage : IDisposable {
             }
 
             selectedObject.Detach();
+            currentCanvas.Attach(selectedObject);
             RebuildHierarchy();
             RebuildInspector();
             SaveConfig();
@@ -355,7 +356,7 @@ public class OvCanvasSettingPage : IDisposable {
         inspBG.color = UIColors.PanelBG;
 
         var inspVLayout = inspectorCol.AddComponent<VerticalLayoutGroup>();
-        hierVLayout.padding = new RectOffset {
+        inspVLayout.padding = new RectOffset {
             left = 10,
             right = 10,
             top = 10,
@@ -612,372 +613,29 @@ public class OvCanvasSettingPage : IDisposable {
             UnityEngine.Object.Destroy(child.gameObject);
         }
 
-        if(selectedObject == null) {
-            if(currentCanvas == null) {
-                return;
-            }
-
-            // Render Canvas Own Settings
-            var canvasNameRow = GenerateUI.Row(inspectorContent, 50f);
-            var canvasNameInput = GenerateUI.Input(canvasNameRow, "", currentCanvas.Config.Name, val => {
-                currentCanvas.Config.Name = val;
-                titleText.text = val;
-                currentCanvas.ApplyConfig();
-                RebuildHierarchy(); // Sync Canvas root name instantly
-                SaveConfig();
-            }, "Canvas Name", null, "canvas_name");
-            canvasNameInput.Rect.offsetMax = Vector2.zero; // Stretch to fill width
-            inspectorUiObjects.Add(canvasNameInput);
-
-            var raycastRow = GenerateUI.Row(inspectorContent, 50f);
-            var raycastToggle = GenerateUI.Toggle(raycastRow, true, currentCanvas.Config.CanvasGroupConfig.BlocksRaycasts, val => {
-                currentCanvas.Config.CanvasGroupConfig.BlocksRaycasts = val;
-                currentCanvas.ApplyConfig();
-                SaveConfig();
-            }, "Blocks Raycasts", "blocks_raycasts");
-            raycastToggle.Rect.offsetMax = Vector2.zero; // Stretch to fill width
-            inspectorUiObjects.Add(raycastToggle);
-
-            LayoutRebuilder.ForceRebuildLayoutImmediate(inspectorContent);
+        if(currentCanvas == null) {
             return;
         }
 
-        var obj = selectedObject;
+        Action apply = selectedObject != null
+            ? selectedObject.ApplyConfig
+            : currentCanvas.ApplyConfig;
 
-        // Name & Active Header
-        var basicRow = GenerateUI.Row(inspectorContent, 50f);
-        var activeToggle = GenerateUI.Toggle(basicRow, true, obj.Config.CanvasGroupConfig.Alpha > 0f, val => {
-            obj.Config.CanvasGroupConfig.Alpha = val ? 1f : 0f;
-            obj.ApplyConfig();
-            SaveConfig();
-        }, "Active", "obj_active");
-        activeToggle.Rect.offsetMax = Vector2.zero;
-        inspectorUiObjects.Add(activeToggle);
+        var builder = new OvInspectorBuilder(
+            inspectorContent,
+            inspectorUiObjects,
+            apply,
+            SaveConfig,
+            RebuildInspector,
+            RebuildHierarchy
+        );
 
-        var nameRow = GenerateUI.Row(inspectorContent, 50f);
-        var nameInput = GenerateUI.Input(nameRow, "OvObject", obj.Config.Name, val => {
-            obj.Config.Name = val;
-            obj.ApplyConfig();
-            RebuildHierarchy();
-            SaveConfig();
-        }, "Object Name", null, "obj_name");
-        nameInput.Rect.offsetMax = Vector2.zero;
-        inspectorUiObjects.Add(nameInput);
-
-        // 1. RectTransform Card
-        var rectCfg = obj.Config.RectTransformConfig;
-        var (transCard, transContent) = GenerateUI.ComponentCard(inspectorContent, "RectTransform", true, active => {
-            // RectTransform cannot be disabled
-        }, null, showDeleteButton: false);
-
-        var posRowX = GenerateUI.Row(transContent, 50f);
-        var sliderPosX = GenerateUI.Slider(posRowX, 0f, -1000f, 1000f, rectCfg.AnchoredPosition.x, "F0", false, null, val => {
-            rectCfg.AnchoredPosition = new Vector2(val, rectCfg.AnchoredPosition.y);
-            obj.ApplyConfig();
-            SaveConfig();
-        }, null, "Pos X", "pos_x");
-        sliderPosX.Rect.offsetMax = Vector2.zero;
-        inspectorUiObjects.Add(sliderPosX);
-
-        var posRowY = GenerateUI.Row(transContent, 50f);
-        var sliderPosY = GenerateUI.Slider(posRowY, 0f, -1000f, 1000f, rectCfg.AnchoredPosition.y, "F0", false, null, val => {
-            rectCfg.AnchoredPosition = new Vector2(rectCfg.AnchoredPosition.x, val);
-            obj.ApplyConfig();
-            SaveConfig();
-        }, null, "Pos Y", "pos_y");
-        sliderPosY.Rect.offsetMax = Vector2.zero;
-        inspectorUiObjects.Add(sliderPosY);
-
-        var sizeRowW = GenerateUI.Row(transContent, 50f);
-        var sliderSizeW = GenerateUI.Slider(sizeRowW, 100f, 10f, 2000f, rectCfg.SizeDelta.x, "F0", false, null, val => {
-            rectCfg.SizeDelta = new Vector2(val, rectCfg.SizeDelta.y);
-            obj.ApplyConfig();
-            SaveConfig();
-        }, null, "Width", "size_w");
-        sliderSizeW.Rect.offsetMax = Vector2.zero;
-        inspectorUiObjects.Add(sliderSizeW);
-
-        var sizeRowH = GenerateUI.Row(transContent, 50f);
-        var sliderSizeH = GenerateUI.Slider(sizeRowH, 100f, 10f, 2000f, rectCfg.SizeDelta.y, "F0", false, null, val => {
-            rectCfg.SizeDelta = new Vector2(rectCfg.SizeDelta.x, val);
-            obj.ApplyConfig();
-            SaveConfig();
-        }, null, "Height", "size_h");
-        sliderSizeH.Rect.offsetMax = Vector2.zero;
-        inspectorUiObjects.Add(sliderSizeH);
-
-        var pivRowX = GenerateUI.Row(transContent, 50f);
-        var sliderPivX = GenerateUI.Slider(pivRowX, 0.5f, 0f, 1f, rectCfg.Pivot.x, "F2", false, null, val => {
-            rectCfg.Pivot = new Vector2(val, rectCfg.Pivot.y);
-            obj.ApplyConfig();
-            SaveConfig();
-        }, null, "Pivot X", "piv_x");
-        sliderPivX.Rect.offsetMax = Vector2.zero;
-        inspectorUiObjects.Add(sliderPivX);
-
-        var pivRowY = GenerateUI.Row(transContent, 50f);
-        var sliderPivY = GenerateUI.Slider(pivRowY, 0.5f, 0f, 1f, rectCfg.Pivot.y, "F2", false, null, val => {
-            rectCfg.Pivot = new Vector2(rectCfg.Pivot.x, val);
-            obj.ApplyConfig();
-            SaveConfig();
-        }, null, "Pivot Y", "piv_y");
-        sliderPivY.Rect.offsetMax = Vector2.zero;
-        inspectorUiObjects.Add(sliderPivY);
-
-        // 2. Text Component Card
-        if(obj.Config.TextConfig != null) {
-            var textCfg = obj.Config.TextConfig;
-            var (card, cardContent) = GenerateUI.ComponentCard(inspectorContent, "Text (TextMeshPro)", true, active => {
-                var tmpComp = obj.GameObject.GetComponent<TextMeshProUGUI>();
-                tmpComp?.enabled = active;
-                SaveConfig();
-            }, () => {
-                obj.Config.TextConfig = null;
-                obj.ApplyComponent();
-                obj.ApplyConfig();
-                RebuildHierarchy();
-                RebuildInspector();
-                SaveConfig();
+        if(selectedObject == null) {
+            builder.BuildCanvas(currentCanvas, value => {
+                titleText.text = string.IsNullOrWhiteSpace(value) ? "(Empty)" : value;
             });
-
-            var txtValRow = GenerateUI.Row(cardContent, 50f);
-            var txtInput = GenerateUI.Input(txtValRow, "", textCfg.Text, val => {
-                textCfg.Text = val;
-                obj.ApplyConfig();
-                SaveConfig();
-            }, "Text Content", null, "txt_content");
-            txtInput.Rect.offsetMax = Vector2.zero;
-            inspectorUiObjects.Add(txtInput);
-
-            var txtSizeRow = GenerateUI.Row(cardContent, 50f);
-            var txtSizeSlider = GenerateUI.Slider(txtSizeRow, 24f, 8f, 120f, textCfg.FontSize, "F0", false, null, val => {
-                textCfg.FontSize = val;
-                obj.ApplyConfig();
-                SaveConfig();
-            }, null, "Font Size", "txt_size");
-            txtSizeSlider.Rect.offsetMax = Vector2.zero;
-            inspectorUiObjects.Add(txtSizeSlider);
-
-            var rRow = GenerateUI.Row(cardContent, 50f);
-            Color curColR = textCfg.Color;
-            var txtColRSlider = GenerateUI.Slider(rRow, 1f, 0f, 1f, curColR.r, "F2", false, null, val => {
-                Color c = textCfg.Color;
-                c.r = val;
-                textCfg.Color = c;
-                obj.ApplyConfig();
-                SaveConfig();
-            }, null, "Color R", "txt_col_r");
-            txtColRSlider.Rect.offsetMax = Vector2.zero;
-            inspectorUiObjects.Add(txtColRSlider);
-
-            var gRow = GenerateUI.Row(cardContent, 50f);
-            Color curColG = textCfg.Color;
-            var txtColGSlider = GenerateUI.Slider(gRow, 1f, 0f, 1f, curColG.g, "F2", false, null, val => {
-                Color c = textCfg.Color;
-                c.g = val;
-                textCfg.Color = c;
-                obj.ApplyConfig();
-                SaveConfig();
-            }, null, "Color G", "txt_col_g");
-            txtColGSlider.Rect.offsetMax = Vector2.zero;
-            inspectorUiObjects.Add(txtColGSlider);
-
-            var bRow = GenerateUI.Row(cardContent, 50f);
-            Color curColB = textCfg.Color;
-            var txtColBSlider = GenerateUI.Slider(bRow, 1f, 0f, 1f, curColB.b, "F2", false, null, val => {
-                Color c = textCfg.Color;
-                c.b = val;
-                textCfg.Color = c;
-                obj.ApplyConfig();
-                SaveConfig();
-            }, null, "Color B", "txt_col_b");
-            txtColBSlider.Rect.offsetMax = Vector2.zero;
-            inspectorUiObjects.Add(txtColBSlider);
-
-            var aRow = GenerateUI.Row(cardContent, 50f);
-            Color curColA = textCfg.Color;
-            var txtColASlider = GenerateUI.Slider(aRow, 1f, 0f, 1f, curColA.a, "F2", false, null, val => {
-                Color c = textCfg.Color;
-                c.a = val;
-                textCfg.Color = c;
-                obj.ApplyConfig();
-                SaveConfig();
-            }, null, "Color A", "txt_col_a");
-            txtColASlider.Rect.offsetMax = Vector2.zero;
-            inspectorUiObjects.Add(txtColASlider);
-        }
-
-        // 3. Image Component Card
-        if(obj.Config.ImageConfig != null) {
-            var imgCfg = obj.Config.ImageConfig;
-            var (card, cardContent) = GenerateUI.ComponentCard(inspectorContent, "Image", true, active => {
-                var imgComp = obj.GameObject.GetComponent<Image>();
-                imgComp?.enabled = active;
-                SaveConfig();
-            }, () => {
-                obj.Config.ImageConfig = null;
-                obj.ApplyComponent();
-                obj.ApplyConfig();
-                RebuildHierarchy();
-                RebuildInspector();
-                SaveConfig();
-            });
-
-            var rRow = GenerateUI.Row(cardContent, 50f);
-            var imgColRSlider = GenerateUI.Slider(rRow, 1f, 0f, 1f, imgCfg.Color.r, "F2", false, null, val => {
-                imgCfg.Color = new Color(val, imgCfg.Color.g, imgCfg.Color.b, imgCfg.Color.a);
-                obj.ApplyConfig();
-                SaveConfig();
-            }, null, "Color R", "img_col_r");
-            imgColRSlider.Rect.offsetMax = Vector2.zero;
-            inspectorUiObjects.Add(imgColRSlider);
-
-            var gRow = GenerateUI.Row(cardContent, 50f);
-            var imgColGSlider = GenerateUI.Slider(gRow, 1f, 0f, 1f, imgCfg.Color.g, "F2", false, null, val => {
-                imgCfg.Color = new Color(imgCfg.Color.r, val, imgCfg.Color.b, imgCfg.Color.a);
-                obj.ApplyConfig();
-                SaveConfig();
-            }, null, "Color G", "img_col_g");
-            imgColGSlider.Rect.offsetMax = Vector2.zero;
-            inspectorUiObjects.Add(imgColGSlider);
-
-            var bRow = GenerateUI.Row(cardContent, 50f);
-            var imgColBSlider = GenerateUI.Slider(bRow, 1f, 0f, 1f, imgCfg.Color.b, "F2", false, null, val => {
-                imgCfg.Color = new Color(imgCfg.Color.r, imgCfg.Color.g, val, imgCfg.Color.a);
-                obj.ApplyConfig();
-                SaveConfig();
-            }, null, "Color B", "img_col_b");
-            imgColBSlider.Rect.offsetMax = Vector2.zero;
-            inspectorUiObjects.Add(imgColBSlider);
-
-            var aRow = GenerateUI.Row(cardContent, 50f);
-            var imgColASlider = GenerateUI.Slider(aRow, 1f, 0f, 1f, imgCfg.Color.a, "F2", false, null, val => {
-                imgCfg.Color = new Color(imgCfg.Color.r, imgCfg.Color.g, imgCfg.Color.b, val);
-                obj.ApplyConfig();
-                SaveConfig();
-            }, null, "Color A", "img_col_a");
-            imgColASlider.Rect.offsetMax = Vector2.zero;
-            inspectorUiObjects.Add(imgColASlider);
-        }
-
-        // 4. Shadow Component Card
-        if(obj.Config.ShadowConfig != null) {
-            var shadCfg = obj.Config.ShadowConfig;
-            var (card, cardContent) = GenerateUI.ComponentCard(inspectorContent, "Shadow", true, active => {
-                var shadComp = obj.GameObject.GetComponent<Shadow>();
-                shadComp?.enabled = active;
-                SaveConfig();
-            }, () => {
-                obj.Config.ShadowConfig = null;
-                obj.ApplyComponent();
-                obj.ApplyConfig();
-                RebuildInspector();
-                SaveConfig();
-            });
-
-            var distRowX = GenerateUI.Row(cardContent, 50f);
-            var shadDistXSlider = GenerateUI.Slider(distRowX, 2f, -50f, 50f, shadCfg.EffectDistance.x, "F0", false, null, val => {
-                shadCfg.EffectDistance = new Vector2(val, shadCfg.EffectDistance.y);
-                obj.ApplyConfig();
-                SaveConfig();
-            }, null, "Distance X", "shad_dist_x");
-            shadDistXSlider.Rect.offsetMax = Vector2.zero;
-            inspectorUiObjects.Add(shadDistXSlider);
-
-            var distRowY = GenerateUI.Row(cardContent, 50f);
-            var shadDistYSlider = GenerateUI.Slider(distRowY, -2f, -50f, 50f, shadCfg.EffectDistance.y, "F0", false, null, val => {
-                shadCfg.EffectDistance = new Vector2(shadCfg.EffectDistance.x, val);
-                obj.ApplyConfig();
-                SaveConfig();
-            }, null, "Distance Y", "shad_dist_y");
-            shadDistYSlider.Rect.offsetMax = Vector2.zero;
-            inspectorUiObjects.Add(shadDistYSlider);
-        }
-
-        // 5. Outline Component Card
-        if(obj.Config.OutlineConfig != null) {
-            var outCfg = obj.Config.OutlineConfig;
-            var (card, cardContent) = GenerateUI.ComponentCard(inspectorContent, "Outline", true, active => {
-                var outComp = obj.GameObject.GetComponent<Outline>();
-                outComp?.enabled = active;
-                SaveConfig();
-            }, () => {
-                obj.Config.OutlineConfig = null;
-                obj.ApplyComponent();
-                obj.ApplyConfig();
-                RebuildInspector();
-                SaveConfig();
-            });
-
-            var distRowX = GenerateUI.Row(cardContent, 50f);
-            var outDistXSlider = GenerateUI.Slider(distRowX, 2f, -50f, 50f, outCfg.EffectDistance.x, "F0", false, null, val => {
-                outCfg.EffectDistance = new Vector2(val, outCfg.EffectDistance.y);
-                obj.ApplyConfig();
-                SaveConfig();
-            }, null, "Distance X", "out_dist_x");
-            outDistXSlider.Rect.offsetMax = Vector2.zero;
-            inspectorUiObjects.Add(outDistXSlider);
-
-            var distRowY = GenerateUI.Row(cardContent, 50f);
-            var outDistYSlider = GenerateUI.Slider(distRowY, -2f, -50f, 50f, outCfg.EffectDistance.y, "F0", false, null, val => {
-                outCfg.EffectDistance = new Vector2(outCfg.EffectDistance.x, val);
-                obj.ApplyConfig();
-                SaveConfig();
-            }, null, "Distance Y", "out_dist_y");
-            outDistYSlider.Rect.offsetMax = Vector2.zero;
-            inspectorUiObjects.Add(outDistYSlider);
-        }
-
-        // 6. Add Component Dropdown
-#pragma warning disable IDE0001
-        System.Collections.Generic.List<string> addableList = ["Add Component..."];
-#pragma warning restore IDE0001
-        if(obj.Config.TextConfig == null) {
-            addableList.Add("Text (TextMeshPro)");
-        }
-
-        if(obj.Config.ImageConfig == null) {
-            addableList.Add("Image");
-        }
-
-        if(obj.Config.ShadowConfig == null) {
-            addableList.Add("Shadow");
-        }
-
-        if(obj.Config.OutlineConfig == null) {
-            addableList.Add("Outline");
-        }
-
-        if(addableList.Count > 1) {
-            var addRow = GenerateUI.Row(inspectorContent, 50f);
-            var addDropdown = GenerateUI.DropDown(
-                addRow,
-                "Add Component...",
-                "Add Component...",
-                addableList,
-                val => val,
-                selected => {
-                    if(selected == "Text (TextMeshPro)") {
-                        obj.Config.TextConfig = new TextMeshProUGUISettings();
-                    } else if(selected == "Image") {
-                        obj.Config.ImageConfig = new ImageSettings();
-                    } else if(selected == "Shadow") {
-                        obj.Config.ShadowConfig = new ShadowSettings();
-                    } else if(selected == "Outline") {
-                        obj.Config.OutlineConfig = new OutlineSettings();
-                    }
-
-                    obj.ApplyComponent();
-                    obj.ApplyConfig();
-
-                    RebuildHierarchy();
-                    RebuildInspector();
-                    SaveConfig();
-                },
-                "add_component_dd"
-            );
-            addDropdown.Rect.offsetMax = Vector2.zero;
-            inspectorUiObjects.Add(addDropdown);
+        } else {
+            builder.BuildObject(selectedObject);
         }
 
         LayoutRebuilder.ForceRebuildLayoutImmediate(inspectorContent);

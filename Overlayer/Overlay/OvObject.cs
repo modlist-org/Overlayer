@@ -35,13 +35,13 @@ public sealed class OvObject : ISettingsFile {
 
     public OvObject CreateOvObject() {
         var obj = new OvObject();
-        obj.GameObject.transform.SetParent(RectTransform, false);
-        Children.Add(obj);
+        Attach(obj);
         return obj;
     }
 
     public void ApplyConfig() {
         GameObject.name = Config.Name;
+        GameObject.SetActive(Config.Enabled);
         Config.RectTransformConfig.ToUnity(GameObject);
         Config.CanvasGroupConfig.ToUnity(GameObject);
         if(Config.TextConfig != null) {

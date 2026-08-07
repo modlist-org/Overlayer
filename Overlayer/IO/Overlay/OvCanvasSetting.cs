@@ -25,6 +25,7 @@ public sealed class OvCanvasSettings : ISettingsFile, ICopyable<OvCanvasSettings
         return new JObject {
             [nameof(Name)] = Name,
             [nameof(RectTransformConfig)] = RectTransformConfig.Serialize(),
+            [nameof(CanvasGroupConfig)] = CanvasGroupConfig.Serialize(),
             [nameof(CanvasConfig)] = CanvasConfig.Serialize(),
             [nameof(CanvasScalerConfig)] = CanvasScalerConfig.Serialize(),
             [nameof(GraphicRaycasterConfig)] = GraphicRaycasterConfig.Serialize(),
@@ -38,6 +39,9 @@ public sealed class OvCanvasSettings : ISettingsFile, ICopyable<OvCanvasSettings
 
         Name = IOUtils.Read(obj, nameof(Name), Name);
         RectTransformConfig.Deserialize(obj[nameof(RectTransformConfig)]);
+        if(obj[nameof(CanvasGroupConfig)] != null) {
+            CanvasGroupConfig.Deserialize(obj[nameof(CanvasGroupConfig)]);
+        }
         CanvasConfig.Deserialize(obj[nameof(CanvasConfig)]);
         CanvasScalerConfig.Deserialize(obj[nameof(CanvasScalerConfig)]);
         GraphicRaycasterConfig.Deserialize(obj[nameof(GraphicRaycasterConfig)]);
@@ -47,6 +51,7 @@ public sealed class OvCanvasSettings : ISettingsFile, ICopyable<OvCanvasSettings
         return new OvCanvasSettings {
             Name = Name,
             RectTransformConfig = RectTransformConfig?.Copy(),
+            CanvasGroupConfig = CanvasGroupConfig?.Copy(),
             CanvasConfig = CanvasConfig?.Copy(),
             CanvasScalerConfig = CanvasScalerConfig?.Copy(),
             GraphicRaycasterConfig = GraphicRaycasterConfig?.Copy()

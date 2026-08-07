@@ -49,6 +49,8 @@ public static class OverlayCore {
                 canvas.RectTransform.SetParent(Transform, false);
                 canvas.ApplyConfig();
                 Canvases.Add(canvas);
+            } else {
+                wrapper.Dispose();
             }
         }
     }
@@ -61,13 +63,14 @@ public static class OverlayCore {
 
             for(int i = 0; i < Canvases.Count; i++) {
                 string filePath = Path.Combine(SaveDir, $"Canvas{i}.json");
-                var wrapper = new SettingsFile<OvCanvas>(filePath);
+                File.WriteAllText(filePath, Canvases[i].Serialize().ToString());
+            }
 
-                wrapper.Data.Config = Canvases[i].Config.Copy();
-                wrapper.Data.OvObjects.Clear();
-                wrapper.Data.OvObjects.AddRange(Canvases[i].OvObjects);
-
-                wrapper.Save();
+            foreach(string staleFile in Directory.GetFiles(SaveDir, "Canvas*.json")) {
+                string fileName = Path.GetFileNameWithoutExtension(staleFile);
+                if(int.TryParse(fileName["Canvas".Length..], out int index) && index >= Canvases.Count) {
+                    File.Delete(staleFile);
+                }
             }
         } catch(Exception e) {
             MainCore.Log.Err($"[{nameof(OverlayCore)}] Failed to save all canvases: {e}");

@@ -5,6 +5,7 @@ namespace Overlayer.IO.Overlay;
 
 public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings> {
     public string Name = "OvObject";
+    public bool Enabled = true;
 
     public RectTransformSettings RectTransformConfig = new();
     public CanvasGroupSettings CanvasGroupConfig = new();
@@ -20,7 +21,11 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
         var obj = new JObject {
             [nameof(Name)] = Name,
             [nameof(RectTransformConfig)] = RectTransformConfig?.Serialize(),
+            [nameof(CanvasGroupConfig)] = CanvasGroupConfig?.Serialize(),
         };
+        if(!Enabled) {
+            obj[nameof(Enabled)] = false;
+        }
         if(TextConfig != null) {
             obj[nameof(TextConfig)] = TextConfig.Serialize();
         }
@@ -48,10 +53,16 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
         }
 
         Name = IOUtils.Read(obj, nameof(Name), Name);
+        Enabled = IOUtils.Read(obj, nameof(Enabled), Enabled);
         var rect = obj[nameof(RectTransformConfig)];
         if(rect != null) {
             RectTransformConfig ??= new RectTransformSettings();
             RectTransformConfig.Deserialize(rect);
+        }
+        var canvasGroup = obj[nameof(CanvasGroupConfig)];
+        if(canvasGroup != null) {
+            CanvasGroupConfig ??= new CanvasGroupSettings();
+            CanvasGroupConfig.Deserialize(canvasGroup);
         }
         TextConfig = ReadConfig<TextMeshProUGUISettings>(obj, nameof(TextConfig));
         ImageConfig = ReadConfig<ImageSettings>(obj, nameof(ImageConfig));
@@ -64,7 +75,9 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
     public OvObjectSettings Copy() {
         return new OvObjectSettings {
             Name = Name,
+            Enabled = Enabled,
             RectTransformConfig = RectTransformConfig?.Copy(),
+            CanvasGroupConfig = CanvasGroupConfig?.Copy(),
             TextConfig = TextConfig?.Copy(),
             ImageConfig = ImageConfig?.Copy(),
             MaskConfig = MaskConfig?.Copy(),
