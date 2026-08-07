@@ -26,7 +26,7 @@ public sealed class TagCache {
         string key = MakeKey(parsed);
         lock(lockObject) {
             if(cache.TryGetValue(key, out var entry)) {
-                return entry.Compiled;
+                return WithContext(entry.Compiled, parsed);
             }
         }
 
@@ -76,4 +76,15 @@ public sealed class TagCache {
         (p.Args == null || p.Args.Length == 0)
         ? p.Name
         : string.Concat(p.Name, ":", string.Join(",", p.Args));
+
+    private static CompiledPlaceholder WithContext(CompiledPlaceholder compiled, ParsedTag parsed) {
+        if(compiled.Diagnostics.Length == 0) {
+            return compiled;
+        }
+
+        var context = new DiagnosticContext(parsed.Name, parsed.Index, parsed.Length);
+        return new CompiledPlaceholder(compiled.Delegate, [.. compiled.Diagnostics.Select(d =>
+            new CompileDiagnostic(d.Id, d.Severity, context, d.Data)
+        )]);
+    }
 }

@@ -6,6 +6,9 @@ using Overlayer.Overlay;
 using Overlayer.Compat.OVC;
 using Overlayer.Core;
 using Overlayer.Resource;
+using Overlayer.Tag.Diagnostics;
+using Overlayer.TextEngine.Core;
+using Overlayer.TextEngine.Highlight;
 using Overlayer.UI.Generator;
 using Overlayer.UI.Objects;
 using Overlayer.UI.Objects.Impl;
@@ -164,11 +167,11 @@ internal sealed class OvInspectorBuilder(
             textCfg.PlayingText = value;
             cfg.Text = value;
             apply();
-        });
+        }, () => obj.GameObject.GetComponent<OvObject.TextEngineUpdater>()?.PlayingEngine);
         CodeEditor(card, "Not Playing Text", "text_not_playing", textCfg.NotPlayingText, value => {
             textCfg.NotPlayingText = value;
             apply();
-        });
+        }, () => obj.GameObject.GetComponent<OvObject.TextEngineUpdater>()?.NotPlayingEngine);
         Slider(card, "Font Size", 48f, 1f, 512f, cfg.FontSize, value => cfg.FontSize = value, "text_size", "F1");
         Toggle(card, "Rich Text", true, cfg.RichText, value => cfg.RichText = value, "text_rich");
         Toggle(card, "Auto Size", false, cfg.AutoSize, value => cfg.AutoSize = value, "text_auto_size");
@@ -311,12 +314,32 @@ internal sealed class OvInspectorBuilder(
         Track(input);
     }
 
-    private void CodeEditor(Transform parent, string label, string id, string value, Action<string> changed) {
-        var row = GenerateUI.Row(parent, 132f);
+    private void CodeEditor(
+        Transform parent,
+        string label,
+        string id,
+        string value,
+        Action<string> changed,
+        Func<TextEngineCore> getEngine
+    ) {
+        const float editorHeight = 132f;
+        const float diagnosticsLineHeight = 20f;
+        var row = GenerateUI.Row(parent, editorHeight + 28f);
+        var rowLayout = row.GetComponent<LayoutElement>();
         TextMeshProUGUI lineNumbers = null;
+        string displayedText = value ?? string.Empty;
+        string diagnosticsKey = null;
+        int? hoverGeometryKey = null;
+        bool? hoverComposing = null;
+        CompileDiagnostic[] displayedDiagnostics = [];
+        bool diagnosticsCompiling = false;
+        TagSyntaxSpan[] syntaxSpans = TagSyntaxHighlighter.GetSpans(displayedText);
 
         void OnTextChanged(string text) {
-            UpdateLineNumbers(lineNumbers, text);
+            displayedText = text ?? string.Empty;
+            syntaxSpans = TagSyntaxHighlighter.GetSpans(displayedText);
+            diagnosticsKey = null;
+            UpdateLineNumbers(lineNumbers, displayedText);
             changed(text);
         }
 
@@ -330,8 +353,10 @@ internal sealed class OvInspectorBuilder(
             id,
             _ => save(),
             multiline: true,
-            monospace: true
+            monospace: true,
+            codeEditor: true
         );
+        var codeInput = (UICodeInputField)input.InputField;
 
         const float gutterWidth = 44f;
         var text = input.InputField.textComponent;
@@ -347,7 +372,35 @@ internal sealed class OvInspectorBuilder(
         RectTransform viewport = input.InputField.textViewport;
         Vector2 viewportMin = viewport.offsetMin;
         Vector2 viewportMax = viewport.offsetMax;
+        float diagnosticsHeight = 28f;
+        Vector2 baseViewportMin = viewportMin;
+        viewportMin.y += diagnosticsHeight;
         viewport.offsetMin = new Vector2(viewportMin.x + gutterWidth + 10f, viewportMin.y);
+
+        var diagnosticsObj = new GameObject("Diagnostics");
+        diagnosticsObj.transform.SetParent(input.InputField.transform, false);
+        var diagnosticsRect = diagnosticsObj.AddComponent<RectTransform>();
+        diagnosticsRect.anchorMin = Vector2.zero;
+        diagnosticsRect.anchorMax = new Vector2(1f, 0f);
+        diagnosticsRect.pivot = new Vector2(0.5f, 0f);
+        diagnosticsRect.offsetMin = new Vector2(12f, 8f);
+        diagnosticsRect.offsetMax = new Vector2(-12f, 8f + diagnosticsHeight);
+        var diagnosticsBg = diagnosticsObj.AddComponent<Image>();
+        diagnosticsBg.color = new Color(0f, 0f, 0f, 0.14f);
+        diagnosticsBg.raycastTarget = false;
+
+        var diagnosticsText = GenerateUI.AddText(diagnosticsObj.transform, true);
+        diagnosticsText.font = text.font;
+        diagnosticsText.fontSize = 13f;
+        diagnosticsText.characterSpacing = 0f;
+        diagnosticsText.alignment = TextAlignmentOptions.TopLeft;
+        diagnosticsText.verticalAlignment = VerticalAlignmentOptions.Top;
+        diagnosticsText.textWrappingMode = TextWrappingModes.NoWrap;
+        diagnosticsText.overflowMode = TextOverflowModes.Overflow;
+        diagnosticsText.color = new Color(1f, 1f, 1f, 0.42f);
+        diagnosticsText.raycastTarget = false;
+        diagnosticsText.rectTransform.offsetMin = new Vector2(8f, 0f);
+        diagnosticsText.rectTransform.offsetMax = new Vector2(-8f, 0f);
 
         var gutterObj = new GameObject("LineNumberGutter");
         gutterObj.transform.SetParent(input.InputField.transform, false);
@@ -396,23 +449,319 @@ internal sealed class OvInspectorBuilder(
         follower.Source = text.rectTransform;
         follower.LineNumbers = numbersRect;
 
-        UpdateLineNumbers(lineNumbers, value);
+        var diagnosticHoverRoot = new GameObject("DiagnosticHoverTargets");
+        diagnosticHoverRoot.transform.SetParent(text.transform, false);
+        var diagnosticHoverRect = diagnosticHoverRoot.AddComponent<RectTransform>();
+        diagnosticHoverRect.anchorMin = Vector2.zero;
+        diagnosticHoverRect.anchorMax = Vector2.one;
+        diagnosticHoverRect.pivot = text.rectTransform.pivot;
+        diagnosticHoverRect.offsetMin = Vector2.zero;
+        diagnosticHoverRect.offsetMax = Vector2.zero;
+
+        codeInput.AfterLabelUpdate = (sourceText, composing) => {
+            int geometryKey = BuildTextGeometryKey(sourceText);
+            if(hoverGeometryKey != geometryKey || hoverComposing != composing) {
+                hoverGeometryKey = geometryKey;
+                hoverComposing = composing;
+                RebuildDiagnosticHoverTargets(
+                    diagnosticHoverRect,
+                    sourceText,
+                    displayedText,
+                    composing || diagnosticsCompiling ? [] : displayedDiagnostics
+                );
+            }
+            ApplySyntaxHighlighting(sourceText, composing ? null : displayedText, composing ? [] : syntaxSpans);
+        };
+
+        void SetDiagnosticsHeight(int diagnosticCount) {
+            int lines = Math.Max(1, diagnosticCount);
+            diagnosticsHeight = lines * diagnosticsLineHeight + 8f;
+            float rowHeight = editorHeight + diagnosticsHeight;
+            rowLayout.minHeight = rowHeight;
+            rowLayout.preferredHeight = rowHeight;
+
+            diagnosticsRect.offsetMax = new Vector2(-12f, 8f + diagnosticsHeight);
+            viewportMin = baseViewportMin;
+            viewportMin.y += diagnosticsHeight;
+            viewport.offsetMin = new Vector2(viewportMin.x + gutterWidth + 10f, viewportMin.y);
+            gutterRect.offsetMin = new Vector2(viewportMin.x, viewportMin.y);
+        }
+
+        void RefreshDiagnostics() {
+            var engine = getEngine?.Invoke();
+            var state = engine?.State ?? TextEngineState.Idle;
+            if(state == TextEngineState.Compiling) {
+                if(!diagnosticsCompiling) {
+                    diagnosticsCompiling = true;
+                    hoverGeometryKey = null;
+                }
+                return;
+            }
+
+            diagnosticsCompiling = false;
+            var diagnostics = state == TextEngineState.Ready || state == TextEngineState.Error
+                ? engine.GetDiagnostics()
+                : [];
+            string key = BuildDiagnosticsKey(state, diagnostics, displayedText);
+            bool diagnosticsChanged = key != diagnosticsKey;
+
+            if(diagnosticsChanged) {
+                diagnosticsKey = key;
+                displayedDiagnostics = diagnostics;
+                syntaxSpans = TagSyntaxHighlighter.GetSpans(displayedText);
+                hoverGeometryKey = null;
+                SetDiagnosticsHeight(diagnostics.Length);
+                UpdateLineNumbers(lineNumbers, displayedText, diagnostics);
+                UpdateDiagnosticsBar(diagnosticsText, state, diagnostics, displayedText);
+            }
+        }
+
+        RefreshDiagnostics();
+        controls.Add(new UIWatcher(id + "_diagnostics", diagnosticsRect, RefreshDiagnostics));
         Track(input);
     }
 
-    private static void UpdateLineNumbers(TextMeshProUGUI lineNumbers, string value) {
+    private static void UpdateLineNumbers(
+        TextMeshProUGUI lineNumbers,
+        string value,
+        CompileDiagnostic[] diagnostics = null
+    ) {
         if(lineNumbers == null) {
             return;
         }
 
+        value ??= string.Empty;
         int count = 1;
-        foreach(char c in value ?? string.Empty) {
+        foreach(char c in value) {
             if(c == '\n') {
                 count++;
             }
         }
-        lineNumbers.text = string.Join("\n", Enumerable.Range(1, count));
+
+        var severities = new CompileSeverity?[count];
+        foreach(var diagnostic in diagnostics ?? []) {
+            int line = GetLine(value, diagnostic.Context.Index);
+            if(line < 0 || line >= count) {
+                continue;
+            }
+
+            if(!severities[line].HasValue || diagnostic.Severity > severities[line].Value) {
+                severities[line] = diagnostic.Severity;
+            }
+        }
+
+        lineNumbers.text = string.Join("\n", Enumerable.Range(0, count).Select(i =>
+            severities[i] switch {
+                CompileSeverity.Error => $"<color=#E2676D>{i + 1}</color>",
+                CompileSeverity.Warning => $"<color=#FFE591>{i + 1}</color>",
+                CompileSeverity.Info => $"<color=#96B7FF>{i + 1}</color>",
+                _ => (i + 1).ToString()
+            }
+        ));
     }
+
+    private static void UpdateDiagnosticsBar(
+        TextMeshProUGUI label,
+        TextEngineState state,
+        CompileDiagnostic[] diagnostics,
+        string source
+    ) {
+        if(state == TextEngineState.Compiling) {
+            label.text = "Checking...";
+            label.color = new Color(1f, 1f, 1f, 0.42f);
+            return;
+        }
+
+        if(diagnostics.Length == 0) {
+            label.text = "No problems";
+            label.color = new Color(0.588f, 1f, 0.569f, 0.62f);
+            return;
+        }
+
+        label.text = string.Join("\n", diagnostics
+            .OrderBy(d => d.Context.Index)
+            .ThenByDescending(d => d.Severity)
+            .Select(d => $"<color={SeverityColor(d.Severity)}>L{GetLine(source, d.Context.Index) + 1}  [{d.Severity}]  {FormatDiagnostic(d)}</color>"));
+        label.color = Color.white;
+    }
+
+    private static void RebuildDiagnosticHoverTargets(
+        RectTransform root,
+        TMP_Text sourceText,
+        string source,
+        CompileDiagnostic[] diagnostics
+    ) {
+        if(root.childCount > 0) {
+            Tooltip.Hide();
+        }
+        for(int i = root.childCount - 1; i >= 0; i--) {
+            UnityEngine.Object.Destroy(root.GetChild(i).gameObject);
+        }
+
+        if(diagnostics == null || diagnostics.Length == 0) {
+            return;
+        }
+
+        sourceText.ForceMeshUpdate();
+        var groups = diagnostics
+            .GroupBy(d => (d.Context.Index, d.Context.Length))
+            .ToArray();
+
+        foreach(var group in groups) {
+            int start = Math.Clamp(group.Key.Index, 0, source.Length);
+            int end = Math.Clamp(start + Math.Max(1, group.Key.Length), start, source.Length);
+            string tooltip = string.Join("\n", group
+                .OrderByDescending(d => d.Severity)
+                .Select(d => $"Line {GetLine(source, d.Context.Index) + 1} [{d.Severity}] {FormatDiagnostic(d)}"));
+            Color underlineColor = SeverityUnityColor(group.Max(d => d.Severity));
+            var characters = sourceText.textInfo.characterInfo
+                .Take(sourceText.textInfo.characterCount)
+                .Where(c => c.index >= start && c.index < end && c.isVisible)
+                .GroupBy(c => c.lineNumber);
+
+            foreach(var line in characters) {
+                float left = line.Min(c => c.bottomLeft.x) - 2f;
+                float right = line.Max(c => c.topRight.x) + 2f;
+                float bottom = line.Min(c => c.descender) - 3f;
+                float top = line.Max(c => c.ascender) + 2f;
+
+                var target = new GameObject("DiagnosticHover");
+                target.transform.SetParent(root, false);
+                var rect = target.AddComponent<RectTransform>();
+                rect.anchorMin = root.pivot;
+                rect.anchorMax = root.pivot;
+                rect.pivot = Vector2.zero;
+                rect.anchoredPosition = new Vector2(left, bottom);
+                rect.sizeDelta = new Vector2(right - left, top - bottom);
+                var image = target.AddComponent<Image>();
+                image.color = Color.clear;
+                image.raycastTarget = true;
+
+                var underline = new GameObject("Underline");
+                underline.transform.SetParent(target.transform, false);
+                var underlineRect = underline.AddComponent<RectTransform>();
+                underlineRect.anchorMin = new Vector2(0f, 0f);
+                underlineRect.anchorMax = new Vector2(1f, 0f);
+                underlineRect.pivot = new Vector2(0.5f, 0.5f);
+                underlineRect.anchoredPosition = new Vector2(0f, 3f);
+                underlineRect.sizeDelta = new Vector2(0f, 2f);
+                var underlineImage = underline.AddComponent<Image>();
+                underlineImage.color = underlineColor;
+                underlineImage.raycastTarget = false;
+                target.transform.AddToolTip(tooltip);
+            }
+        }
+    }
+
+    private static int BuildTextGeometryKey(TMP_Text text) {
+        text.ForceMeshUpdate();
+        unchecked {
+            int hash = 17;
+            Rect rect = text.rectTransform.rect;
+            hash = hash * 31 + rect.width.GetHashCode();
+            hash = hash * 31 + rect.height.GetHashCode();
+            hash = hash * 31 + text.textInfo.characterCount;
+            for(int i = 0; i < text.textInfo.characterCount; i++) {
+                var character = text.textInfo.characterInfo[i];
+                if(!character.isVisible) continue;
+                hash = hash * 31 + character.bottomLeft.GetHashCode();
+                hash = hash * 31 + character.topRight.GetHashCode();
+            }
+            return hash;
+        }
+    }
+
+    private static void ApplySyntaxHighlighting(
+        TMP_Text text,
+        string source,
+        TagSyntaxSpan[] spans
+    ) {
+        TagSyntaxKind?[] kinds = source == null ? [] : new TagSyntaxKind?[source.Length];
+        if(source != null) {
+            foreach(var span in spans) {
+                int start = Math.Clamp(span.Index, 0, kinds.Length);
+                int end = Math.Clamp(start + span.Length, start, kinds.Length);
+                for(int i = start; i < end; i++) kinds[i] = span.Kind;
+            }
+        }
+
+        Color32 plain = text.color;
+        var textInfo = text.textInfo;
+        for(int i = 0; i < textInfo.characterCount; i++) {
+            var character = textInfo.characterInfo[i];
+            if(!character.isVisible) continue;
+
+            Color32 color = character.index >= 0 && character.index < kinds.Length && kinds[character.index].HasValue
+                ? SyntaxColor(kinds[character.index].Value)
+                : plain;
+            int material = character.materialReferenceIndex;
+            int vertex = character.vertexIndex;
+            var colors = textInfo.meshInfo[material].colors32;
+            colors[vertex] = color;
+            colors[vertex + 1] = color;
+            colors[vertex + 2] = color;
+            colors[vertex + 3] = color;
+        }
+        text.UpdateVertexData(TMP_VertexDataUpdateFlags.Colors32);
+    }
+
+    private static Color32 SyntaxColor(TagSyntaxKind kind) => kind switch {
+        TagSyntaxKind.Delimiter => new Color32(166, 172, 205, 255),
+        TagSyntaxKind.Tag => new Color32(150, 255, 145, 255),
+        TagSyntaxKind.UnknownTag => new Color32(226, 103, 109, 255),
+        TagSyntaxKind.Argument => new Color32(255, 213, 128, 255),
+        TagSyntaxKind.Format => new Color32(130, 210, 206, 255),
+        TagSyntaxKind.Separator => new Color32(137, 144, 179, 255),
+        _ => new Color32(255, 255, 255, 255)
+    };
+
+    private static string SeverityColor(CompileSeverity severity) => severity switch {
+        CompileSeverity.Error => "#E2676D",
+        CompileSeverity.Warning => "#FFE591",
+        _ => "#96B7FF"
+    };
+
+    private static Color SeverityUnityColor(CompileSeverity severity) => severity switch {
+        CompileSeverity.Error => new Color(0.886f, 0.404f, 0.427f, 1f),
+        CompileSeverity.Warning => new Color(1f, 0.898f, 0.569f, 1f),
+        _ => new Color(0.588f, 0.718f, 1f, 1f)
+    };
+
+    private static string FormatDiagnostic(CompileDiagnostic diagnostic) {
+        object[] data = diagnostic.Data ?? [];
+        string Data(int index, string fallback = "?")
+            => index < data.Length && data[index] != null ? data[index].ToString() : fallback;
+        string ArgumentNumber() => data.Length > 0 && data[0] is int index
+            ? (index + 1).ToString()
+            : Data(0);
+
+        return diagnostic.Id switch {
+            DiagnosticId.TagNotFound => $"Tag '{Data(0, diagnostic.Context.TagName)}' not found",
+            DiagnosticId.ArgConvertFail => $"Argument {ArgumentNumber()} ('{Data(1)}') cannot convert to {Data(2)}",
+            DiagnosticId.ArgTooFew => $"Expected at least {Data(0)} arguments; got {Data(1)}",
+            DiagnosticId.ArgTooMany => $"Expected at most {Data(0)} arguments; got {Data(1)}",
+            DiagnosticId.FormatFail => $"Invalid format '{Data(0)}'",
+            DiagnosticId.AdvancedTagException => Data(0, "Advanced tag failed"),
+            DiagnosticId.InternalError => "Internal compiler error",
+            _ => diagnostic.Id.ToString()
+        };
+    }
+
+    private static int GetLine(string source, int index) {
+        source ??= string.Empty;
+        int limit = Math.Clamp(index, 0, source.Length);
+        int line = 0;
+        for(int i = 0; i < limit; i++) {
+            if(source[i] == '\n') line++;
+        }
+        return line;
+    }
+
+    private static string BuildDiagnosticsKey(
+        TextEngineState state,
+        CompileDiagnostic[] diagnostics,
+        string source
+    ) => $"{state}|{source?.GetHashCode() ?? 0}|{string.Join("|", diagnostics.Select(d => d.ToString()))}";
 
     private void Slider(Transform parent, string label, float defaultValue, float min, float max, float value, Action<float> changed, string id, string format = "F2") {
         Slider(parent, label, defaultValue, min, max, value, changed, id, format, true);

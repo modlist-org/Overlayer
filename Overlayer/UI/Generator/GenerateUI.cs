@@ -572,7 +572,8 @@ public static partial class GenerateUI {
         string id,
         Action<string> onEndEdit = null,
         bool multiline = false,
-        bool monospace = false
+        bool monospace = false,
+        bool codeEditor = false
     ) {
         RectTransform rect = BackGround();
         rect.SetParent(parent, false);
@@ -612,7 +613,9 @@ public static partial class GenerateUI {
         inputTarget.color = Color.clear;
         inputTarget.raycastTarget = true;
 
-        TMP_InputField inputField = inputObj.AddComponent<TMP_InputField>();
+        TMP_InputField inputField = codeEditor
+            ? inputObj.AddComponent<UICodeInputField>()
+            : inputObj.AddComponent<TMP_InputField>();
         inputField.targetGraphic = inputTarget;
 
         GameObject viewportObj = new("TextViewport");
@@ -833,6 +836,9 @@ public static partial class GenerateUI {
 
     public static Transform AddToolTip(this Transform parent, string tip)
         => parent.AddToolTipInternal(() => tip);
+
+    public static Transform AddToolTip(this Transform parent, Func<string> getText)
+        => parent.AddToolTipInternal(getText);
 
     private static Transform AddToolTipInternal(this Transform parent, Func<string> getText) {
         EventTrigger trigger = parent.gameObject.GetComponent<EventTrigger>()
