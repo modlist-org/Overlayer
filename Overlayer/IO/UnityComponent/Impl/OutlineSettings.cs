@@ -8,6 +8,7 @@ public class OutlineSettings : UnityComponentSettingsBase, ICopyable<OutlineSett
     public bool Enabled = true;
     public Color EffectColor = Color.red;
     public Vector2 EffectDistance = new(1f, -1f);
+    public bool UseGraphicAlpha = true;
 
     public override bool ToUnity(GameObject target) {
         var com = target.GetComponent<Outline>();
@@ -17,6 +18,7 @@ public class OutlineSettings : UnityComponentSettingsBase, ICopyable<OutlineSett
 
         com.effectColor = EffectColor;
         com.effectDistance = EffectDistance;
+        com.useGraphicAlpha = UseGraphicAlpha;
         com.enabled = Enabled;
 
         return true;
@@ -30,6 +32,7 @@ public class OutlineSettings : UnityComponentSettingsBase, ICopyable<OutlineSett
 
         EffectColor = com.effectColor;
         EffectDistance = com.effectDistance;
+        UseGraphicAlpha = com.useGraphicAlpha;
         Enabled = com.enabled;
 
         return true;
@@ -39,6 +42,7 @@ public class OutlineSettings : UnityComponentSettingsBase, ICopyable<OutlineSett
         return new JObject {
             [nameof(EffectColor)] = IOUtils.Write(EffectColor),
             [nameof(EffectDistance)] = IOUtils.Write(EffectDistance),
+            [nameof(UseGraphicAlpha)] = UseGraphicAlpha,
             [nameof(Enabled)] = Enabled,
         };
     }
@@ -46,6 +50,7 @@ public class OutlineSettings : UnityComponentSettingsBase, ICopyable<OutlineSett
     public override void Deserialize(JToken token) {
         EffectColor = IOUtils.Read(token, nameof(EffectColor), EffectColor);
         EffectDistance = IOUtils.Read(token, nameof(EffectDistance), EffectDistance);
+        UseGraphicAlpha = IOUtils.Read(token, nameof(UseGraphicAlpha), UseGraphicAlpha);
         Enabled = IOUtils.Read(token, nameof(Enabled), Enabled);
     }
 
@@ -53,6 +58,7 @@ public class OutlineSettings : UnityComponentSettingsBase, ICopyable<OutlineSett
         return new OutlineSettings {
             EffectColor = EffectColor,
             EffectDistance = EffectDistance,
+            UseGraphicAlpha = UseGraphicAlpha,
             Enabled = Enabled
         };
     }

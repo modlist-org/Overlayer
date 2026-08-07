@@ -1,4 +1,5 @@
 using Overlayer.IO.UnityComponent.Impl;
+using Overlayer.IO.Overlay;
 using Overlayer.Overlay;
 using Overlayer.UI.Generator;
 using Overlayer.UI.Objects;
@@ -112,16 +113,23 @@ internal sealed class OvInspectorBuilder(
     }
 
     private void BuildText(OvObject obj, TextMeshProUGUISettings cfg) {
+        OvTextSettings textCfg = obj.Config.TextEngineConfig ??= OvTextSettings.FromLegacy(cfg.Text);
         var (_, card) = Card("Text", true, () => {
             obj.Config.TextConfig = null;
+            obj.Config.TextEngineConfig = null;
             RefreshComponents(obj);
         });
 
-        CodeEditor(card, cfg.Text, value => {
+        CodeEditor(card, "Playing Text", "text_playing", textCfg.PlayingText, value => {
+            textCfg.PlayingText = value;
             cfg.Text = value;
             apply();
         });
-        Slider(card, "Font Size", 42f, 1f, 512f, cfg.FontSize, value => cfg.FontSize = value, "text_size", "F1");
+        CodeEditor(card, "Not Playing Text", "text_not_playing", textCfg.NotPlayingText, value => {
+            textCfg.NotPlayingText = value;
+            apply();
+        });
+        Slider(card, "Font Size", 48f, 1f, 512f, cfg.FontSize, value => cfg.FontSize = value, "text_size", "F1");
         Toggle(card, "Rich Text", true, cfg.RichText, value => cfg.RichText = value, "text_rich");
         Toggle(card, "Auto Size", false, cfg.AutoSize, value => cfg.AutoSize = value, "text_auto_size");
         Vector2Sliders(card, "Font Range", new Vector2(16, 64), 1f, 512f, () => cfg.FontSizeRange, value => cfg.FontSizeRange = value, "text_font_range", "F1");
@@ -131,11 +139,17 @@ internal sealed class OvInspectorBuilder(
         Slider(card, "Line Spacing", 0f, -100f, 100f, cfg.LineSpacing, value => cfg.LineSpacing = value, "text_line_spacing", "F1");
         Slider(card, "Character Spacing", 0f, -100f, 100f, cfg.CharacterSpacing, value => cfg.CharacterSpacing = value, "text_char_spacing", "F1");
         Slider(card, "Word Spacing", 0f, -100f, 100f, cfg.WordSpacing, value => cfg.WordSpacing = value, "text_word_spacing", "F1");
-        ColorSliders(card, "Color", () => (Color)cfg.Color, value => cfg.Color = value, "text_color");
+        ColorSliders(card, "Color", Color.white, () => (Color)cfg.Color, value => cfg.Color = value, "text_color");
         Toggle(card, "Material Outline", false, cfg.EnableOutline, value => cfg.EnableOutline = value, "text_outline");
-        Slider(card, "Outline Width", 0.2f, 0f, 1f, cfg.OutlineWidth, value => cfg.OutlineWidth = value, "text_outline_width");
+        Slider(card, "Outline Width", 0.05f, 0f, 0.25f, cfg.OutlineWidth, value => cfg.OutlineWidth = value, "text_outline_width");
         Slider(card, "Outline Softness", 0f, 0f, 1f, cfg.OutlineSoftness, value => cfg.OutlineSoftness = value, "text_outline_softness");
-        ColorSliders(card, "Outline", () => cfg.OutlineColor, value => cfg.OutlineColor = value, "text_outline_color");
+        Slider(card, "Face Dilate", 0f, -1f, 1f, cfg.FaceDilate, value => cfg.FaceDilate = value, "text_face_dilate");
+        ColorSliders(card, "Outline", Color.black, () => cfg.OutlineColor, value => cfg.OutlineColor = value, "text_outline_color");
+        Toggle(card, "Material Shadow", true, cfg.EnableShadow, value => cfg.EnableShadow = value, "text_shadow");
+        Vector2Sliders(card, "Shadow Offset", new Vector2(0.75f, -0.75f), -1f, 1f, () => cfg.ShadowOffset, value => cfg.ShadowOffset = value, "text_shadow_offset", "F2");
+        Slider(card, "Shadow Dilate", 1f, 0f, 1f, cfg.ShadowDilate, value => cfg.ShadowDilate = value, "text_shadow_dilate");
+        Slider(card, "Shadow Softness", 0.5f, 0f, 1f, cfg.ShadowSoftness, value => cfg.ShadowSoftness = value, "text_shadow_softness");
+        ColorSliders(card, "Shadow", new Color(0f, 0f, 0f, 0.5f), () => cfg.ShadowColor, value => cfg.ShadowColor = value, "text_shadow_color");
     }
 
     private void BuildImage(OvObject obj, ImageSettings cfg) {
@@ -148,7 +162,7 @@ internal sealed class OvInspectorBuilder(
             cfg.SpriteKey = string.IsNullOrWhiteSpace(value) ? null : value;
             apply();
         }, "image_sprite");
-        ColorSliders(card, "Color", () => cfg.Color, value => cfg.Color = value, "image_color");
+        ColorSliders(card, "Color", Color.white, () => cfg.Color, value => cfg.Color = value, "image_color");
         Toggle(card, "Preserve Aspect", false, cfg.PreserveAspect, value => cfg.PreserveAspect = value, "image_aspect");
         EnumDropDown(card, "Image Type", Image.Type.Simple, cfg.Type, value => cfg.Type = value, "image_type");
         EnumDropDown(card, "Fill Method", Image.FillMethod.Horizontal, cfg.FillMethod, value => cfg.FillMethod = value, "image_fill_method");
@@ -161,7 +175,7 @@ internal sealed class OvInspectorBuilder(
             RefreshComponents(obj);
         });
         Vector2Sliders(card, "Distance", new Vector2(6, -6), -100f, 100f, () => cfg.EffectDistance, value => cfg.EffectDistance = value, "shadow_distance", "F1");
-        ColorSliders(card, "Color", () => cfg.EffectColor, value => cfg.EffectColor = value, "shadow_color");
+        ColorSliders(card, "Color", Color.black, () => cfg.EffectColor, value => cfg.EffectColor = value, "shadow_color");
         Toggle(card, "Use Graphic Alpha", true, cfg.UseGraphicAlpha, value => cfg.UseGraphicAlpha = value, "shadow_alpha");
     }
 
@@ -174,7 +188,8 @@ internal sealed class OvInspectorBuilder(
             RefreshComponents(obj);
         });
         Vector2Sliders(card, "Distance", new Vector2(1, -1), -100f, 100f, () => cfg.EffectDistance, value => cfg.EffectDistance = value, "outline_distance", "F1");
-        ColorSliders(card, "Color", () => cfg.EffectColor, value => cfg.EffectColor = value, "outline_color");
+        ColorSliders(card, "Color", Color.red, () => cfg.EffectColor, value => cfg.EffectColor = value, "outline_color");
+        Toggle(card, "Use Graphic Alpha", true, cfg.UseGraphicAlpha, value => cfg.UseGraphicAlpha = value, "outline_alpha");
     }
 
     private void BuildMask(OvObject obj, MaskSettings cfg) {
@@ -198,7 +213,10 @@ internal sealed class OvInspectorBuilder(
         var row = GenerateUI.Row(content, 50f);
         var dropdown = GenerateUI.DropDown(row, options[0], options[0], options, value => value, selected => {
             switch(selected) {
-                case "Text": obj.Config.TextConfig = new TextMeshProUGUISettings(); break;
+                case "Text":
+                    obj.Config.TextConfig = new TextMeshProUGUISettings();
+                    obj.Config.TextEngineConfig = new OvTextSettings();
+                    break;
                 case "Image": obj.Config.ImageConfig = new ImageSettings(); break;
                 case "Shadow": obj.Config.ShadowConfig = new ShadowSettings(); break;
                 case "Outline": obj.Config.OutlineConfig = new OutlineSettings(); break;
@@ -224,7 +242,7 @@ internal sealed class OvInspectorBuilder(
         Track(input);
     }
 
-    private void CodeEditor(Transform parent, string value, Action<string> changed) {
+    private void CodeEditor(Transform parent, string label, string id, string value, Action<string> changed) {
         var row = GenerateUI.Row(parent, 132f);
         TextMeshProUGUI lineNumbers = null;
 
@@ -238,9 +256,9 @@ internal sealed class OvInspectorBuilder(
             "Text",
             value,
             OnTextChanged,
-            "Text / tag expression",
+            $"{label} / tag expression",
             null,
-            "text_content",
+            id,
             _ => save(),
             multiline: true,
             monospace: true
@@ -360,11 +378,11 @@ internal sealed class OvInspectorBuilder(
         Slider(parent, $"{label} Y", defaults.y, min, max, get().y, value => set(new Vector2(get().x, value)), id + "_y", format);
     }
 
-    private void ColorSliders(Transform parent, string label, Func<Color> get, Action<Color> set, string id) {
-        Slider(parent, $"{label} R", 1f, 0f, 1f, get().r, value => { var color = get(); color.r = value; set(color); }, id + "_r");
-        Slider(parent, $"{label} G", 1f, 0f, 1f, get().g, value => { var color = get(); color.g = value; set(color); }, id + "_g");
-        Slider(parent, $"{label} B", 1f, 0f, 1f, get().b, value => { var color = get(); color.b = value; set(color); }, id + "_b");
-        Slider(parent, $"{label} A", 1f, 0f, 1f, get().a, value => { var color = get(); color.a = value; set(color); }, id + "_a");
+    private void ColorSliders(Transform parent, string label, Color defaults, Func<Color> get, Action<Color> set, string id) {
+        Slider(parent, $"{label} R", defaults.r, 0f, 1f, get().r, value => { var color = get(); color.r = value; set(color); }, id + "_r");
+        Slider(parent, $"{label} G", defaults.g, 0f, 1f, get().g, value => { var color = get(); color.g = value; set(color); }, id + "_g");
+        Slider(parent, $"{label} B", defaults.b, 0f, 1f, get().b, value => { var color = get(); color.b = value; set(color); }, id + "_b");
+        Slider(parent, $"{label} A", defaults.a, 0f, 1f, get().a, value => { var color = get(); color.a = value; set(color); }, id + "_a");
     }
 
     private void Label(Transform parent, string text) {

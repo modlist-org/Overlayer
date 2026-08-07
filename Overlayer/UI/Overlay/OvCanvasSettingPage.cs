@@ -12,6 +12,7 @@ using Overlayer.Tween;
 using GTweens.Easings;
 using UnityEngine.EventSystems;
 using Overlayer.IO.UnityComponent.Impl;
+using Overlayer.IO.Overlay;
 
 #if ML && IL2CPP
 using Il2CppTMPro;
@@ -229,6 +230,7 @@ public class OvCanvasSettingPage : IDisposable {
             OvObject newObj = selectedObject != null ? selectedObject.CreateOvObject() : currentCanvas.CreateOvObject();
             newObj.Config.Name = "TextObject";
             newObj.Config.TextConfig = new TextMeshProUGUISettings();
+            newObj.Config.TextEngineConfig = new OvTextSettings();
             newObj.ApplyComponent();
             newObj.ApplyConfig();
             selectedObject = newObj;

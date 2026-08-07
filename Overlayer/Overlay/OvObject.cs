@@ -1,6 +1,7 @@
 using Newtonsoft.Json.Linq;
 using Overlayer.IO.Interface;
 using Overlayer.IO.Overlay;
+using Overlayer.ModuleAPI;
 using Overlayer.TextEngine.Core;
 using UnityEngine;
 using UnityEngine.UI;
@@ -45,8 +46,16 @@ public sealed class OvObject : ISettingsFile {
         Config.RectTransformConfig.ToUnity(GameObject);
         Config.CanvasGroupConfig.ToUnity(GameObject);
         if(Config.TextConfig != null) {
+            TMP_FontAsset font = TextFontProvider.Current;
+            if(font != null) {
+                GameObject.GetComponent<TextMeshProUGUI>().font = font;
+            }
             Config.TextConfig.ToUnity(GameObject);
-            GameObject.GetComponent<TextEngineUpdater>()?.SetText(Config.TextConfig.Text);
+            Config.TextEngineConfig ??= OvTextSettings.FromLegacy(Config.TextConfig.Text);
+            GameObject.GetComponent<TextEngineUpdater>()?.SetText(
+                Config.TextEngineConfig.PlayingText,
+                Config.TextEngineConfig.NotPlayingText
+            );
         }
         Config.ImageConfig?.ToUnity(GameObject);
         Config.MaskConfig?.ToUnity(GameObject);
@@ -60,6 +69,11 @@ public sealed class OvObject : ISettingsFile {
         }
 
         bool tc = Config.TextConfig != null;
+        if(tc) {
+            Config.TextEngineConfig ??= OvTextSettings.FromLegacy(Config.TextConfig.Text);
+        } else {
+            Config.TextEngineConfig = null;
+        }
         EnsureComponent<TextMeshProUGUI>(tc);
         EnsureComponent<TextEngineUpdater>(tc);
         if(tc) {
@@ -230,28 +244,35 @@ public sealed class OvObject : ISettingsFile {
         private static readonly List<WeakReference<TextEngineUpdater>> AllUpdaters = [];
 
         public TextMeshProUGUI Tmp;
-        public TextEngineCore Engine;
+        public TextEngineCore PlayingEngine;
+        public TextEngineCore NotPlayingEngine;
 
         public void Awake() => AllUpdaters.Add(new WeakReference<TextEngineUpdater>(this));
 
         public void Init(TextMeshProUGUI tmp) {
             Tmp = tmp;
-            Engine = new();
+            PlayingEngine ??= new();
+            NotPlayingEngine ??= new();
         }
 
-        public void SetText(string text) => Engine.Text = text;
+        public void SetText(string playingText, string notPlayingText) {
+            PlayingEngine.Text = playingText ?? string.Empty;
+            NotPlayingEngine.Text = notPlayingText ?? string.Empty;
+        }
 
-        public void Update() => Tmp.text = Engine.Get();
+        public void Update() => Tmp.text = (PlaybackState.IsPlaying ? PlayingEngine : NotPlayingEngine).Get();
 
         public void OnDestroy() {
-            Engine?.Dispose();
+            PlayingEngine?.Dispose();
+            NotPlayingEngine?.Dispose();
             AllUpdaters.RemoveAll(wr => !wr.TryGetTarget(out var u) || u == this);
         }
 
         public static void RecompileAll() {
             foreach(var wr in AllUpdaters) {
                 if(wr.TryGetTarget(out var updater)) {
-                    updater.Engine?.ForceRecompile();
+                    updater.PlayingEngine?.ForceRecompile();
+                    updater.NotPlayingEngine?.ForceRecompile();
                 }
             }
         }

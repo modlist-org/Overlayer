@@ -11,6 +11,7 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
     public CanvasGroupSettings CanvasGroupConfig = new();
 
     public TextMeshProUGUISettings TextConfig = null;
+    public OvTextSettings TextEngineConfig = null;
     public ImageSettings ImageConfig = null;
     public MaskSettings MaskConfig = null;
     public ShadowSettings ShadowConfig = null;
@@ -28,6 +29,7 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
         }
         if(TextConfig != null) {
             obj[nameof(TextConfig)] = TextConfig.Serialize();
+            obj[nameof(TextEngineConfig)] = (TextEngineConfig ?? OvTextSettings.FromLegacy(TextConfig.Text)).Serialize();
         }
         if(ImageConfig != null) {
             obj[nameof(ImageConfig)] = ImageConfig.Serialize();
@@ -65,6 +67,12 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
             CanvasGroupConfig.Deserialize(canvasGroup);
         }
         TextConfig = ReadConfig<TextMeshProUGUISettings>(obj, nameof(TextConfig));
+        TextEngineConfig = ReadConfig<OvTextSettings>(obj, nameof(TextEngineConfig));
+        if(TextConfig != null) {
+            TextEngineConfig ??= OvTextSettings.FromLegacy(TextConfig.Text);
+        } else {
+            TextEngineConfig = null;
+        }
         ImageConfig = ReadConfig<ImageSettings>(obj, nameof(ImageConfig));
         MaskConfig = ReadConfig<MaskSettings>(obj, nameof(MaskConfig));
         ShadowConfig = ReadConfig<ShadowSettings>(obj, nameof(ShadowConfig));
@@ -79,6 +87,7 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
             RectTransformConfig = RectTransformConfig?.Copy(),
             CanvasGroupConfig = CanvasGroupConfig?.Copy(),
             TextConfig = TextConfig?.Copy(),
+            TextEngineConfig = TextEngineConfig?.Copy(),
             ImageConfig = ImageConfig?.Copy(),
             MaskConfig = MaskConfig?.Copy(),
             ShadowConfig = ShadowConfig?.Copy(),
