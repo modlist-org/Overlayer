@@ -158,7 +158,9 @@ public static class UICore {
                     .Build()
                     .SetMaxLoops();
 
-                const string fullText = "Press Alt + ` (BackQuote, left of 1 key)";
+                string fullText = Application.platform == RuntimePlatform.LinuxPlayer
+                    ? "Press Ctrl + ` (BackQuote, left of 1 key)"
+                    : "Press Alt + ` (BackQuote, left of 1 key)";
                 secondRunHelperTextSequence = GTweenSequenceBuilder.New()
                     .Append(GTweenExtensions.Tween(
                         () => 0,
@@ -553,18 +555,25 @@ public static class UICore {
         Math.Min(720f / MainCore.Conf.UIScale, Screen.height / MainCore.Conf.UIScale)
     );
 
+    private static bool IsToggleModifierPressed() {
+        if(Application.platform == RuntimePlatform.LinuxPlayer) {
+            return OVC_Input.GetKey(KeyCode.LeftControl);
+        }
+
+        return OVC_Input.GetKey(KeyCode.LeftAlt);
+    }
+
+    private const KeyCode ToggleKey = KeyCode.BackQuote;
+
     public static void HandleUpdate() {
         if(CanvasObj == null) {
             return;
         }
 
-        bool pressed =
-            OVC_Input.GetKey(KeyCode.LeftAlt)
-            && OVC_Input.GetKey(KeyCode.BackQuote);
+        bool pressed = IsToggleModifierPressed() && OVC_Input.GetKey(ToggleKey);
 
         // key down
-        if(OVC_Input.GetKey(KeyCode.LeftAlt)
-            && OVC_Input.GetKeyDown(KeyCode.BackQuote)) {
+        if(IsToggleModifierPressed() && OVC_Input.GetKeyDown(ToggleKey)) {
             Toggle();
 
             holdStartTime = Time.unscaledTime;
@@ -580,7 +589,7 @@ public static class UICore {
         }
 
         // key up
-        if(OVC_Input.GetKeyUp(KeyCode.BackQuote)) {
+        if(OVC_Input.GetKeyUp(ToggleKey)) {
             holdingToggle = false;
         }
 

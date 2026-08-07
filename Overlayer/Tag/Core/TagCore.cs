@@ -90,13 +90,13 @@ public class TagCore {
         private readonly Type _type;
         private readonly bool _hasDefault;
 
-        public JSParameterInfo(string name, Type type, bool hasDefault = false) {
+        public JSParameterInfo(string name, Type type, int position, bool hasDefault = false) {
             _name = name;
             _type = type;
             _hasDefault = hasDefault;
             NameImpl = name;
             ClassImpl = type;
-            PositionImpl = 0;
+            PositionImpl = position;
             AttrsImpl = hasDefault ? ParameterAttributes.HasDefault : ParameterAttributes.None;
         }
 
@@ -119,19 +119,25 @@ public class TagCore {
 
         Parameters = new ParameterInfo[paramNames.Length];
         for(int i = 0; i < paramNames.Length; i++) {
-            Parameters[i] = new JSParameterInfo(paramNames[i], typeof(object));
+            string paramName = paramNames[i];
+            bool isOptional = paramName.EndsWith('?');
+            if(isOptional) {
+                paramName = paramName[..^1];
+            }
+
+            Parameters[i] = new JSParameterInfo(paramName, typeof(object), i, isOptional);
         }
 
-        RequiredParameterCount = Parameters.Length;
+        RequiredParameterCount = Parameters.Count(p => !p.HasDefaultValue);
     }
 
     public object Invoke(params object[] args) {
-        if(MemberType == TagMemberType.Unknown || Member == null) {
-            return null;
+        if(IsJS) {
+            return JSFunction.Invoke(false, args);
         }
 
-        if(IsJS) {
-            return JSFunction.Invoke(false, (object)args);
+        if(MemberType == TagMemberType.Unknown || Member == null) {
+            return null;
         }
 
         if(_compiledDelegate == null) {
