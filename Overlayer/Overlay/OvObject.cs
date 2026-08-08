@@ -46,10 +46,14 @@ public sealed class OvObject : ISettingsFile {
         Config.RectTransformConfig.ToUnity(GameObject);
         Config.CanvasGroupConfig.ToUnity(GameObject);
         if(Config.TextConfig != null) {
-            TMP_FontAsset font = TextFontProvider.Current;
-            if(font != null) {
-                GameObject.GetComponent<TextMeshProUGUI>().font = font;
+            var tmp = GameObject.GetComponent<TextMeshProUGUI>();
+            if (tmp != null) {
+                TMP_FontAsset font = TextFontProvider.Current;
+                if (font != null) {
+                    tmp.font = font;
+                }
             }
+
             Config.TextConfig.ToUnity(GameObject);
             Config.TextEngineConfig ??= OvTextSettings.FromLegacy(Config.TextConfig.Text);
             GameObject.GetComponent<TextEngineUpdater>()?.SetText(

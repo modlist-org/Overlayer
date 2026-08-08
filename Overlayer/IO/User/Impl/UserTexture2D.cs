@@ -7,7 +7,7 @@ using UnityEngine;
 namespace Overlayer.IO.User.Impl;
 
 public class UserTexture2D : UserResourceBase<(Texture2D texture, Texture2DSettings settings)> {
-    public static readonly HashSet<string> Ext = [".png", ".jpg", ".jpeg", ".bmp", ".tga"];
+    public static readonly HashSet<string> Ext = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".png", ".jpg", ".jpeg", ".bmp", ".tga" };
 
     public enum Result {
         Success,

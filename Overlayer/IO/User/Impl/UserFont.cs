@@ -12,7 +12,7 @@ using TMPro;
 namespace Overlayer.IO.User.Impl;
 
 public class UserFont : UserResourceBase<TMP_FontAsset>, ISettingsFile {
-    public static readonly HashSet<string> Ext = [".ttf", ".otf"];
+    public static readonly HashSet<string> Ext = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".ttf", ".otf" };
 
     public enum Result {
         Success,
@@ -50,6 +50,12 @@ public class UserFont : UserResourceBase<TMP_FontAsset>, ISettingsFile {
             MainCore.Log.Err($"{nameof(UserResourceManager)} Font load failed: {e}");
             return Result.Failed;
         }
+    }
+
+    public bool Remove(string key) {
+        if(!Cache.Remove(key, out var entry)) return false;
+        if(entry.value) UnityEngine.Object.Destroy(entry.value);
+        return true;
     }
 
     public JToken Serialize() {

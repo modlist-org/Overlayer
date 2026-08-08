@@ -23,38 +23,50 @@ namespace Overlayer.UI.Factory.Page;
 internal static class PageResources {
     private static UIInput pathInput;
     private static UIInput keyInput;
+    private static UIButton modeButton;
     private static UIInput searchInput;
     private static UIToggle mipChainToggle;
     private static UIToggle linearToggle;
+    private static RectTransform imageSettingsRow;
     private static UIButton browseButton;
     private static UIButton addButton;
     private static TextMeshProUGUI statusLabel;
+    private static TextMeshProUGUI titleLabel;
     private static RectTransform listContent;
     private static RectTransform listViewport;
     private static string settingsEditKey;
     private static GameObject disabledPanel;
     private static bool busy;
 
+    private enum ResourceMode { Images, Fonts }
+    private static ResourceMode currentMode = ResourceMode.Images;
+
     public static void Create(RectTransform parent) {
         RectTransform root = CreateStretch(parent, "ResourcesRoot");
 
-        TextMeshProUGUI title = CreateText(root, "Image Resources", 30f, TextAlignmentOptions.Left);
-        title.rectTransform.anchorMin = new Vector2(0f, 1f);
-        title.rectTransform.anchorMax = new Vector2(1f, 1f);
-        title.rectTransform.offsetMin = new Vector2(24f, -62f);
-        title.rectTransform.offsetMax = new Vector2(-24f, -12f);
-        title.raycastTarget = true;
-        title.gameObject.AddComponent<TextLocalization>().Init("IMAGE_RESOURCES", "Image Resources");
-        title.transform.AddToolTip(
-            "IMAGE_RESOURCES_DESC",
-            "Add images once, then use them from Image components."
-        );
+        RectTransform titleRow = CreateContainer(root, "TitleRow");
+        titleRow.anchorMin = new Vector2(0f, 1f);
+        titleRow.anchorMax = new Vector2(1f, 1f);
+        titleRow.offsetMin = new Vector2(24f, -62f);
+        titleRow.offsetMax = new Vector2(-24f, -12f);
+
+        titleLabel = CreateText(titleRow, "Image Resources", 30f, TextAlignmentOptions.Left);
+        titleLabel.rectTransform.anchorMin = new Vector2(0f, 0f);
+        titleLabel.rectTransform.anchorMax = new Vector2(1f, 1f);
+        titleLabel.rectTransform.offsetMin = new Vector2(0f, 0f);
+        titleLabel.rectTransform.offsetMax = new Vector2(-190f, 0f);
+        titleLabel.raycastTarget = true;
+        titleLabel.gameObject.AddComponent<TextLocalization>().Init("IMAGE_RESOURCES", "Image Resources");
+
+        modeButton = GenerateUI.Button(titleRow, ToggleMode, "Images", "resource_mode");
+        PlaceRight(modeButton.Rect, 174f);
+        modeButton.Label.gameObject.AddComponent<TextLocalization>().Init("RESOURCE_MODE_IMAGES", "Images");
 
         RectTransform importCard = CreateContainer(root, "ImportRows");
         importCard.anchorMin = new Vector2(0f, 1f);
         importCard.anchorMax = new Vector2(1f, 1f);
-        importCard.offsetMin = new Vector2(18f, -260f);
-        importCard.offsetMax = new Vector2(-18f, -78f);
+        importCard.offsetMin = new Vector2(12f, -260f);
+        importCard.offsetMax = new Vector2(-12f, -78f);
 
         RectTransform pathRow = CreateRow(importCard, 8f);
         pathInput = GenerateUI.Input(
@@ -99,6 +111,7 @@ internal static class PageResources {
         addButton.Label.gameObject.AddComponent<TextLocalization>().Init("ADD_IMAGE", "Add Image");
 
         RectTransform settingsRow = CreateRow(importCard, 124f);
+        imageSettingsRow = settingsRow;
         mipChainToggle = GenerateUI.Toggle(
             settingsRow,
             false,
@@ -146,13 +159,13 @@ internal static class PageResources {
             string.Empty,
             string.Empty,
             _ => BuildList(),
-            "Search images",
+            "Search resources",
             MainCore.Spr.Get(UISprite.MagnifyingGlass128),
             "resource_search"
         );
-        searchInput.Placeholder.gameObject.AddComponent<TextLocalization>().Init("SEARCH_IMAGES", "Search images");
+        searchInput.Placeholder.gameObject.AddComponent<TextLocalization>().Init("SEARCH_RESOURCE", "Search resources");
         searchInput.Rect.AddToolTip(
-            "SEARCH_IMAGES_TOOLTIP",
+            "SEARCH_RESOURCE_TOOLTIP",
             "Filter resources by name."
         );
         searchInput.Rect.offsetMax = Vector2.zero;
@@ -207,74 +220,141 @@ internal static class PageResources {
         browseButton.Label.text = "...";
         SetStatus("Opening file picker...", UIColors.ObjectActive);
 
-        _ = NativeImageFilePicker.PickAsync().ContinueWith(task => {
-            MainThread.Enqueue(() => {
-                if(!MainCore.IsModEnabled) return;
-                browseButton.SetBlocked(false);
-                browseButton.Label.text = "Browse";
-                string path = task.Status == TaskStatus.RanToCompletion ? task.Result : null;
-                if(string.IsNullOrWhiteSpace(path)) {
-                    SetStatus("No image selected.", UIColors.ObjectActiveMathWarn);
-                    return;
-                }
+        if(currentMode == ResourceMode.Images) {
+            _ = NativeImageFilePicker.PickAsync().ContinueWith(task => {
+                MainThread.Enqueue(() => {
+                    if(!MainCore.IsModEnabled) return;
+                    browseButton.SetBlocked(false);
+                    browseButton.Label.text = "Browse";
+                    string path = task.Status == TaskStatus.RanToCompletion ? task.Result : null;
+                    if(string.IsNullOrWhiteSpace(path)) {
+                        SetStatus("No image selected.", UIColors.ObjectActiveMathWarn);
+                        return;
+                    }
 
-                pathInput.Set(path);
-                if(string.IsNullOrWhiteSpace(keyInput.Value)) {
-                    keyInput.Set(Path.GetFileNameWithoutExtension(path));
-                }
-                SetStatus("Image selected. Choose Add Image.", UIColors.ObjectActive);
+                    pathInput.Set(path);
+                    if(string.IsNullOrWhiteSpace(keyInput.Value)) {
+                        keyInput.Set(Path.GetFileNameWithoutExtension(path));
+                    }
+                    SetStatus("Image selected. Choose Add Image.", UIColors.ObjectActive);
+                });
             });
-        });
+        } else {
+            _ = NativeFontFilePicker.PickAsync().ContinueWith(task => {
+                MainThread.Enqueue(() => {
+                    if(!MainCore.IsModEnabled) return;
+                    browseButton.SetBlocked(false);
+                    browseButton.Label.text = "Browse";
+                    string path = task.Status == TaskStatus.RanToCompletion ? task.Result : null;
+                    if(string.IsNullOrWhiteSpace(path)) {
+                        SetStatus("No font selected.", UIColors.ObjectActiveMathWarn);
+                        return;
+                    }
+
+                    pathInput.Set(path);
+                    if(string.IsNullOrWhiteSpace(keyInput.Value)) {
+                        keyInput.Set(Path.GetFileNameWithoutExtension(path));
+                    }
+                    SetStatus("Font selected. Choose Add Font.", UIColors.ObjectActive);
+                });
+            });
+        }
     }
 
     private static void BeginImport() {
         if(busy) return;
-        if(!string.IsNullOrEmpty(settingsEditKey)) {
-            BeginSettingsApply();
-            return;
-        }
-        string source = UserResourceManager.FromUser(pathInput.Value?.Trim());
-        string key = SanitizeKey(keyInput.Value);
-
-        if(string.IsNullOrWhiteSpace(source)) {
-            SetStatus("Choose an image first.", UIColors.ObjectActiveMathErr);
-            return;
-        }
-        if(string.IsNullOrWhiteSpace(key)) {
-            SetStatus("Enter a resource name.", UIColors.ObjectActiveMathErr);
-            return;
-        }
-        if(UserResourceManager.T2D.Keys.Contains(key) || UserResourceManager.Spr.Keys.Contains(key)) {
-            SetStatus("Resource name already exists.", UIColors.ObjectActiveMathErr);
-            return;
-        }
-        if(!UserTexture2D.Ext.Contains(Path.GetExtension(source).ToLowerInvariant())) {
-            SetStatus("Unsupported image format.", UIColors.ObjectActiveMathErr);
-            return;
-        }
-
-        busy = true;
-        pathInput.SetBlocked(true);
-        keyInput.SetBlocked(true);
-        browseButton.SetBlocked(true);
-        addButton.SetBlocked(true);
-        addButton.Label.text = "Loading...";
-        SetStatus("Reading image...", UIColors.ObjectActive);
-
-        string extension = Path.GetExtension(source).ToLowerInvariant();
-        string target = Path.Combine(MainCore.Paths.UserImagePath, key + extension);
-        _ = Task.Run(() => {
-            try {
-                Directory.CreateDirectory(MainCore.Paths.UserImagePath);
-                byte[] bytes = File.ReadAllBytes(source);
-                File.WriteAllBytes(target, bytes);
-                return (Bytes: bytes, Path: target, Error: string.Empty);
-            } catch(Exception e) {
-                return (Bytes: (byte[])null, Path: target, Error: e.Message);
+        if(currentMode == ResourceMode.Images) {
+            if(!string.IsNullOrEmpty(settingsEditKey)) {
+                BeginSettingsApply();
+                return;
             }
-        }).ContinueWith(task => {
-            MainThread.Enqueue(() => FinishImport(task, key));
-        });
+            string source = UserResourceManager.FromUser(pathInput.Value?.Trim());
+            string key = SanitizeKey(keyInput.Value);
+
+            if(string.IsNullOrWhiteSpace(source)) {
+                SetStatus("Choose an image first.", UIColors.ObjectActiveMathErr);
+                return;
+            }
+            if(string.IsNullOrWhiteSpace(key)) {
+                SetStatus("Enter a resource name.", UIColors.ObjectActiveMathErr);
+                return;
+            }
+            if(UserResourceManager.T2D.Keys.Contains(key) || UserResourceManager.Spr.Keys.Contains(key)) {
+                SetStatus("Resource name already exists.", UIColors.ObjectActiveMathErr);
+                return;
+            }
+            if(!UserTexture2D.Ext.Contains(Path.GetExtension(source).ToLowerInvariant())) {
+                SetStatus("Unsupported image format.", UIColors.ObjectActiveMathErr);
+                return;
+            }
+
+            busy = true;
+            pathInput.SetBlocked(true);
+            keyInput.SetBlocked(true);
+            browseButton.SetBlocked(true);
+            addButton.SetBlocked(true);
+            addButton.Label.text = "Loading...";
+            SetStatus("Reading image...", UIColors.ObjectActive);
+
+            string extension = Path.GetExtension(source).ToLowerInvariant();
+            string target = Path.Combine(MainCore.Paths.UserImagePath, key + extension);
+            _ = Task.Run(() => {
+                try {
+                    Directory.CreateDirectory(MainCore.Paths.UserImagePath);
+                    byte[] bytes = File.ReadAllBytes(source);
+                    File.WriteAllBytes(target, bytes);
+                    return (Bytes: bytes, Path: target, Error: string.Empty);
+                } catch(Exception e) {
+                    return (Bytes: (byte[])null, Path: target, Error: e.Message);
+                }
+            }).ContinueWith(task => {
+                MainThread.Enqueue(() => FinishImport(task, key));
+            });
+        } else {
+            // Fonts
+            string source = UserResourceManager.FromUser(pathInput.Value?.Trim());
+            string key = SanitizeKey(keyInput.Value);
+
+            if(string.IsNullOrWhiteSpace(source)) {
+                SetStatus("Choose a font first.", UIColors.ObjectActiveMathErr);
+                return;
+            }
+            if(string.IsNullOrWhiteSpace(key)) {
+                SetStatus("Enter a resource name.", UIColors.ObjectActiveMathErr);
+                return;
+            }
+            if(UserResourceManager.Fnt.Keys.Contains(key)) {
+                SetStatus("Resource name already exists.", UIColors.ObjectActiveMathErr);
+                return;
+            }
+            if(!UserFont.Ext.Contains(Path.GetExtension(source).ToLowerInvariant())) {
+                SetStatus("Unsupported font format.", UIColors.ObjectActiveMathErr);
+                return;
+            }
+
+            busy = true;
+            pathInput.SetBlocked(true);
+            keyInput.SetBlocked(true);
+            browseButton.SetBlocked(true);
+            addButton.SetBlocked(true);
+            addButton.Label.text = "Loading...";
+            SetStatus("Reading font...", UIColors.ObjectActive);
+
+            string extension = Path.GetExtension(source).ToLowerInvariant();
+            string target = Path.Combine(MainCore.Paths.UserFontPath, key + extension);
+            _ = Task.Run(() => {
+                try {
+                    Directory.CreateDirectory(MainCore.Paths.UserFontPath);
+                    byte[] bytes = File.ReadAllBytes(source);
+                    File.WriteAllBytes(target, bytes);
+                    return (Path: target, Bytes: bytes, Error: string.Empty);
+                } catch(Exception e) {
+                    return (Path: string.Empty, Bytes: (byte[])null, Error: e.Message);
+                }
+            }).ContinueWith(task => {
+                MainThread.Enqueue(() => FinishFontImport(task, key));
+            });
+        }
     }
 
     private static void FinishImport(
@@ -284,7 +364,7 @@ internal static class PageResources {
         if(!MainCore.IsModEnabled) return;
         var result = task.Status == TaskStatus.RanToCompletion
             ? task.Result
-            : (null, string.Empty, "Image read task failed.");
+            : (Bytes: (byte[])null, Path: string.Empty, Error: "Image read task failed.");
         if(result.Bytes == null) {
             FinishBusy();
             SetStatus($"Import failed: {result.Error}", UIColors.ObjectActiveMathErr);
@@ -329,13 +409,42 @@ internal static class PageResources {
         SetStatus($"Added {key}.", UIColors.ObjectActiveMathOk);
     }
 
+    private static void FinishFontImport(
+        Task<(string Path, byte[] Bytes, string Error)> task,
+        string key
+    ) {
+        if(!MainCore.IsModEnabled) return;
+        var result = task.Status == TaskStatus.RanToCompletion
+            ? task.Result
+            : (Path: string.Empty, Bytes: (byte[])null, Error: "Font read task failed.");
+        if(result.Bytes == null) {
+            FinishBusy();
+            SetStatus($"Import failed: {result.Error}", UIColors.ObjectActiveMathErr);
+            return;
+        }
+
+        var fontResult = UserResourceManager.Fnt.Load(key, result.Path);
+        if(fontResult != UserFont.Result.Success || !UserResourceManager.Fnt.TryGet(key, out var fontValue)) {
+            FinishBusy();
+            SetStatus($"Font load failed: {fontResult}", UIColors.ObjectActiveMathErr);
+            return;
+        }
+
+        UserResourceManager.Config.RequestSave(50);
+        pathInput.Set(string.Empty);
+        keyInput.Set(string.Empty);
+        FinishBusy();
+        BuildList();
+        SetStatus($"Added {key}.", UIColors.ObjectActiveMathOk);
+    }
+
     private static void FinishBusy() {
         busy = false;
         pathInput.SetBlocked(false);
         keyInput.SetBlocked(false);
         browseButton.SetBlocked(false);
         addButton.SetBlocked(false);
-        addButton.Label.text = "Add Image";
+        addButton.Label.text = currentMode == ResourceMode.Images ? "Add Image" : "Add Font";
     }
 
     private static void BeginSettingsApply() {
@@ -387,7 +496,7 @@ internal static class PageResources {
         if(!MainCore.IsModEnabled) return;
         var result = task.Status == TaskStatus.RanToCompletion
             ? task.Result
-            : (null, "Image read task failed.");
+            : (Bytes: (byte[])null, Error: "Image read task failed.");
         if(result.Bytes == null) {
             FinishSettingsBusy();
             SetStatus($"Settings failed: {result.Error}", UIColors.ObjectActiveMathErr);
@@ -470,21 +579,68 @@ internal static class PageResources {
         }
 
         string query = searchInput?.Value?.Trim() ?? string.Empty;
-        string[] keys = UserResourceManager.Spr.Keys
-            .Where(key => string.IsNullOrEmpty(query) || key.Contains(query, StringComparison.OrdinalIgnoreCase))
-            .OrderBy(key => key, StringComparer.OrdinalIgnoreCase)
-            .ToArray();
+        string[] keys;
+        if(currentMode == ResourceMode.Images) {
+            keys = UserResourceManager.Spr.Keys
+                .Where(key => string.IsNullOrEmpty(query) || key.Contains(query, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(key => key, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+        } else {
+            keys = UserResourceManager.Fnt.Keys
+                .Where(key => string.IsNullOrEmpty(query) || key.Contains(query, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(key => key, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+        }
 
         if(keys.Length == 0) {
-            TextMeshProUGUI empty = CreateText(listContent, "No images yet. Add one above.", 18f, TextAlignmentOptions.Center);
+            string text = currentMode == ResourceMode.Images
+                ? "No images yet. Add one above."
+                : "No fonts yet. Add one above.";
+            TextMeshProUGUI empty = CreateText(listContent, text, 18f, TextAlignmentOptions.Center);
             empty.color = new Color(1f, 1f, 1f, 0.45f);
             LayoutElement element = empty.gameObject.AddComponent<LayoutElement>();
             element.minHeight = 100f;
             element.preferredHeight = 100f;
         } else {
-            foreach(string key in keys) CreateCard(listContent, key);
+            foreach(string key in keys) {
+                if(currentMode == ResourceMode.Images) CreateCard(listContent, key);
+                else CreateFontCard(listContent, key);
+            }
         }
         LayoutRebuilder.ForceRebuildLayoutImmediate(listContent);
+    }
+
+    private static void ToggleMode() {
+        currentMode = currentMode == ResourceMode.Images ? ResourceMode.Fonts : ResourceMode.Images;
+        titleLabel.text = currentMode == ResourceMode.Images ? "Image Resources" : "Font Resources";
+        titleLabel.GetComponent<TextLocalization>()?.Init(
+            currentMode == ResourceMode.Images ? "IMAGE_RESOURCES" : "FONT_RESOURCES",
+            currentMode == ResourceMode.Images ? "Image Resources" : "Font Resources"
+        );
+
+        if(currentMode == ResourceMode.Images) {
+            pathInput.Placeholder.GetComponent<TextLocalization>()?.Init("IMAGE_PATH", "Image path");
+            pathInput.Rect.AddToolTip("IMAGE_PATH_TOOLTIP", "Select image file to import.");
+            modeButton.Label.GetComponent<TextLocalization>()?.Init("RESOURCE_MODE_IMAGES", "Images");
+            modeButton.Label.text = "Images";
+        } else {
+            pathInput.Placeholder.GetComponent<TextLocalization>()?.Init("FONT_PATH", "Font path");
+            pathInput.Rect.AddToolTip("FONT_PATH_TOOLTIP", "Select font file to import.");
+            modeButton.Label.GetComponent<TextLocalization>()?.Init("RESOURCE_MODE_FONTS", "Fonts");
+            modeButton.Label.text = "Fonts";
+        }
+
+        addButton.Label.GetComponent<TextLocalization>()?.Init(
+            currentMode == ResourceMode.Images ? "ADD_IMAGE" : "ADD_FONT",
+            currentMode == ResourceMode.Images ? "Add Image" : "Add Font"
+        );
+        addButton.Label.text = currentMode == ResourceMode.Images ? "Add Image" : "Add Font";
+
+        if(imageSettingsRow != null) {
+            imageSettingsRow.gameObject.SetActive(currentMode == ResourceMode.Images);
+        }
+
+        BuildList();
     }
 
     private static void ToggleUIStateByMod(bool isEnabled) {
@@ -652,6 +808,149 @@ internal static class PageResources {
                 return;
             }
             Remove(key);
+        };
+
+        GenerateUI.AddOutlineHover(cardObject, cardObject.AddComponent<EventTrigger>());
+    }
+
+    private static void CreateFontCard(Transform parent, string key) {
+        if(!UserResourceManager.Fnt.TryGet(key, out var fontAsset)) return;
+
+        GameObject cardObject = new(key);
+        cardObject.transform.SetParent(parent, false);
+        RectTransform card = cardObject.AddComponent<RectTransform>();
+        LayoutElement cardElement = cardObject.AddComponent<LayoutElement>();
+        cardElement.minHeight = 112f;
+        cardElement.preferredHeight = 112f;
+        Image background = cardObject.AddComponent<Image>();
+        background.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P2048);
+        background.type = Image.Type.Sliced;
+        background.color = UIColors.ObjectBG;
+
+        TextMeshProUGUI sample = CreateText(card, "The quick brown fox jumps over the lazy dog", 20f, TextAlignmentOptions.Left);
+        sample.rectTransform.anchorMin = new Vector2(0f, 0.5f);
+        sample.rectTransform.anchorMax = new Vector2(1f, 1f);
+        sample.rectTransform.offsetMin = new Vector2(16f, -4f);
+        sample.rectTransform.offsetMax = new Vector2(-324f, -12f);
+        sample.font = fontAsset;
+
+        TextMeshProUGUI name = CreateText(card, key, 20f, TextAlignmentOptions.Left);
+        name.rectTransform.anchorMin = new Vector2(0f, 0.35f);
+        name.rectTransform.anchorMax = new Vector2(1f, 0.65f);
+        name.rectTransform.offsetMin = new Vector2(16f, 8f);
+        name.rectTransform.offsetMax = new Vector2(-324f, -8f);
+        name.font = MainCore.Res.Get<TMP_FontAsset>(Asset.SUIT_Medium);
+
+        UIInput renameInput = GenerateUI.Input(
+            card,
+            key,
+            key,
+            _ => { },
+            "Resource name",
+            null,
+            "rename_" + key
+        );
+        renameInput.Rect.anchorMin = new Vector2(0f, 0.35f);
+        renameInput.Rect.anchorMax = new Vector2(1f, 0.65f);
+        renameInput.Rect.offsetMin = new Vector2(16f, 8f);
+        renameInput.Rect.offsetMax = new Vector2(-324f, -8f);
+        renameInput.Rect.gameObject.SetActive(false);
+
+        string path = string.Empty;
+        UserResourceManager.Fnt.TryGetPath(key, out path);
+        TextMeshProUGUI details = CreateText(
+            card,
+            UserResourceManager.ToUser(path),
+            14f,
+            TextAlignmentOptions.Left
+        );
+        details.color = new Color(1f, 1f, 1f, 0.5f);
+        details.rectTransform.anchorMin = new Vector2(0f, 0f);
+        details.rectTransform.anchorMax = new Vector2(1f, 0.35f);
+        details.rectTransform.offsetMin = new Vector2(16f, 8f);
+        details.rectTransform.offsetMax = new Vector2(-324f, -4f);
+
+        UIButton rename = GenerateUI.Button(card, () => { }, "Rename", "rename_button_" + key);
+        PlaceRight(rename.Rect, 100f, 54f, 108f);
+        rename.Label.fontSize = 15f;
+
+        UIButton remove = GenerateUI.Button(card, () => { }, "Remove", "remove_" + key);
+        PlaceRight(remove.Rect, 100f, 54f);
+        remove.Label.fontSize = 15f;
+        bool confirm = false;
+        bool editing = false;
+        rename.OnClick = () => {
+            if(!editing) {
+                editing = true;
+                confirm = false;
+                name.gameObject.SetActive(false);
+                renameInput.Set(key, false);
+                renameInput.Rect.gameObject.SetActive(true);
+                rename.Label.text = "Save";
+                rename.NormalColor = UIColors.ObjectActive;
+                rename.UpdateVisual();
+                remove.Label.text = "Cancel";
+                remove.NormalColor = UIColors.ObjectButton;
+                remove.UpdateVisual();
+                renameInput.InputField.Select();
+                renameInput.InputField.ActivateInputField();
+                return;
+            }
+
+            string newKey = SanitizeKey(renameInput.Value);
+            if(string.IsNullOrWhiteSpace(newKey)) {
+                SetStatus("Enter a resource name.", UIColors.ObjectActiveMathErr);
+                return;
+            }
+            if(string.Equals(key, newKey, StringComparison.Ordinal)) {
+                SetStatus("Name unchanged.", UIColors.ObjectActive);
+                return;
+            }
+            if(UserResourceManager.Fnt.Keys.Contains(newKey)) {
+                SetStatus("Resource name already exists.", UIColors.ObjectActiveMathErr);
+                return;
+            }
+
+            if(!UserResourceManager.Fnt.TryRenameKey(key, newKey)) {
+                SetStatus("Resource rename failed.", UIColors.ObjectActiveMathErr);
+                return;
+            }
+
+            UserResourceManager.Config.RequestSave(50);
+            SetStatus($"Renamed {key} to {newKey}.", UIColors.ObjectActiveMathOk);
+            BuildList();
+        };
+        remove.OnClick = () => {
+            if(editing) {
+                editing = false;
+                renameInput.Rect.gameObject.SetActive(false);
+                name.gameObject.SetActive(true);
+                rename.Label.text = "Rename";
+                rename.NormalColor = UIColors.ObjectButton;
+                rename.UpdateVisual();
+                remove.Label.text = "Remove";
+                return;
+            }
+
+            if(!confirm) {
+                confirm = true;
+                remove.Label.text = "Confirm";
+                remove.NormalColor = UIColors.SoftRed;
+                remove.UpdateVisual();
+                return;
+            }
+
+            string filePath = path;
+            UserResourceManager.Fnt.Remove(key);
+            UserResourceManager.Config.RequestSave(50);
+            BuildList();
+            SetStatus($"Removed {key}.", UIColors.ObjectActiveMathOk);
+
+            if(!string.IsNullOrEmpty(filePath) && filePath.StartsWith(MainCore.Paths.UserFontPath, StringComparison.OrdinalIgnoreCase)) {
+                _ = Task.Run(() => {
+                    try { if(File.Exists(filePath)) File.Delete(filePath); } catch { }
+                });
+            }
         };
 
         GenerateUI.AddOutlineHover(cardObject, cardObject.AddComponent<EventTrigger>());

@@ -11,6 +11,7 @@ public sealed class PathService(string rootPath) {
 
     public string UserResourcePath => Path.Combine(RootPath, "UserResources.json");
     public string UserImagePath => Path.Combine(RootPath, "Resources", "Images");
+    public string UserFontPath => Path.Combine(RootPath, "Resources", "Fonts");
 
     public void Initialize() {
         Directory.CreateDirectory(RootPath);
@@ -19,5 +20,6 @@ public sealed class PathService(string rootPath) {
         Directory.CreateDirectory(ModulePath);
         Directory.CreateDirectory(JSPath);
         Directory.CreateDirectory(UserImagePath);
+        Directory.CreateDirectory(UserFontPath);
     }
 }

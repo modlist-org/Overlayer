@@ -167,11 +167,13 @@ internal sealed class OvInspectorBuilder(
             textCfg.PlayingText = value;
             cfg.Text = value;
             apply();
-        }, () => obj.GameObject.GetComponent<OvObject.TextEngineUpdater>()?.PlayingEngine);
+        }, () => obj.GameObject ? obj.GameObject.GetComponent<OvObject.TextEngineUpdater>()?.PlayingEngine : null);
+
         CodeEditor(card, "Not Playing Text", "text_not_playing", textCfg.NotPlayingText, value => {
             textCfg.NotPlayingText = value;
             apply();
-        }, () => obj.GameObject.GetComponent<OvObject.TextEngineUpdater>()?.NotPlayingEngine);
+        }, () => obj.GameObject ? obj.GameObject.GetComponent<OvObject.TextEngineUpdater>()?.NotPlayingEngine : null);
+        FontDropDown(card, cfg);
         Slider(card, "Font Size", 48f, 1f, 512f, cfg.FontSize, value => cfg.FontSize = value, "text_size", "F1");
         Toggle(card, "Rich Text", true, cfg.RichText, value => cfg.RichText = value, "text_rich");
         Toggle(card, "Auto Size", false, cfg.AutoSize, value => cfg.AutoSize = value, "text_auto_size");
@@ -1434,6 +1436,23 @@ internal sealed class OvInspectorBuilder(
             cfg.SpriteKey = selected == none ? null : selected;
             ApplyAndSave();
         }, "image_sprite");
+        Track(dropdown);
+    }
+
+    private void FontDropDown(Transform parent, TextMeshProUGUISettings cfg) {
+        const string none = "Default";
+        var options = UserResourceManager.Fnt.Keys.OrderBy(key => key).ToList();
+        if(!string.IsNullOrEmpty(cfg.FontKey) && !options.Contains(cfg.FontKey)) {
+            options.Insert(0, cfg.FontKey);
+        }
+        options.Insert(0, none);
+
+        string current = string.IsNullOrEmpty(cfg.FontKey) ? none : cfg.FontKey;
+        var row = GenerateUI.Row(parent, 50f);
+        var dropdown = GenerateUI.DropDown(row, none, current, options, option => $"Font: {option}", selected => {
+            cfg.FontKey = selected == none ? null : selected;
+            ApplyAndSave();
+        }, "text_font");
         Track(dropdown);
     }
 

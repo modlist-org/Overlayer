@@ -1,5 +1,7 @@
-﻿using Newtonsoft.Json.Linq;
+﻿using System.Linq;
+using Newtonsoft.Json.Linq;
 using Overlayer.IO.Interface;
+using Overlayer.IO.User;
 using UnityEngine;
 
 #if ML && IL2CPP
@@ -13,6 +15,7 @@ namespace Overlayer.IO.UnityComponent.Impl;
 public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<TextMeshProUGUISettings> {
     public string Text = "Text";
     public GradientColor Color = UnityEngine.Color.white;
+    public string FontKey = null;
     public float FontSize = 48f;
     public bool RichText = true;
     public TextAlignmentOptions Alignment = TextAlignmentOptions.Center;
@@ -43,6 +46,9 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
         com.text = Text;
         com.color = UnityEngine.Color.white;
         com.colorGradient = Color;
+        if(!string.IsNullOrEmpty(FontKey) && UserResourceManager.Fnt.TryGet(FontKey, out var fontAsset)) {
+            com.font = fontAsset;
+        }
         com.fontSize = FontSize;
         com.richText = RichText;
         com.alignment = Alignment;
@@ -102,6 +108,7 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
 
         Text = com.text;
         Color = com.colorGradient;
+        FontKey = UserResourceManager.Fnt.Keys.FirstOrDefault(key => UserResourceManager.Fnt.TryGet(key, out var font) && font == com.font);
         FontSize = com.fontSize;
         RichText = com.richText;
         Alignment = com.alignment;
@@ -135,6 +142,7 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
         return SerializeComponent(new JObject {
             [nameof(Text)] = Text,
             [nameof(Color)] = IOUtils.Write(Color),
+            [nameof(FontKey)] = FontKey,
             [nameof(FontSize)] = FontSize,
             [nameof(RichText)] = RichText,
             [nameof(Alignment)] = IOUtils.WriteEnum(Alignment),
@@ -162,6 +170,7 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
         DeserializeComponent(token);
         Text = IOUtils.Read(token, nameof(Text), Text);
         Color = IOUtils.Read(token, nameof(Color), Color);
+        FontKey = IOUtils.Read(token, nameof(FontKey), FontKey);
         FontSize = IOUtils.Read(token, nameof(FontSize), FontSize);
         if(Mathf.Approximately(FontSize, 42f)) {
             FontSize = 48f;
@@ -193,6 +202,7 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
         OverFlowMode = IOUtils.ReadEnum(token, nameof(OverFlowMode), OverFlowMode);
         OutlineSoftness = IOUtils.Read(token, nameof(OutlineSoftness), OutlineSoftness);
         AutoSize = IOUtils.Read(token, nameof(AutoSize), AutoSize);
+        FontKey = IOUtils.Read(token, nameof(FontKey), FontKey);
         FontSizeRange = IOUtils.Read(token, nameof(FontSizeRange), FontSizeRange);
     }
 
@@ -201,6 +211,7 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
             ComponentEnabled = ComponentEnabled,
             Text = Text,
             Color = Color,
+            FontKey = FontKey,
             FontSize = FontSize,
             RichText = RichText,
             Alignment = Alignment,
