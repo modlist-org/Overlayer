@@ -433,3 +433,6 @@ FodyWeavers.xsd
 
 # Overlayer
 Directory.Build.props
+
+# Overlayer language sync log files
+.ktl
