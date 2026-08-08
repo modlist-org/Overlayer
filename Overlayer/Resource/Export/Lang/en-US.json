@@ -35,6 +35,22 @@
     "SHOW_OVERLAYER_PANEL_AT_STARTUP": "Show Overlayer Panel at Startup",
     "SHOW_TOOLTIP": "Show Tooltip",
     "SLIDER_SENSITIVITY": "Slider Sensitivity",
-    "UI_SCALE": "UI Scale"
+    "UI_SCALE": "UI Scale",
+    "LANGUAGE_DROPDOWN_TOOLTIP": "In other languages some UI may remain untranslated.\n(This does not apply to English.)",
+    "CANVAS_TITLE": "Canvas Settings",
+    "HIERARCHY": "Hierarchy",
+    "INSPECTOR": "Inspector",
+    "BUTTON_TEXT": "Text",
+    "BUTTON_IMAGE": "Image",
+    "BUTTON_EMPTY": "Empty",
+    "BUTTON_UP": "Up",
+    "BUTTON_DOWN": "Down",
+    "BUTTON_DETACH": "Detach",
+    "BUTTON_DELETE": "Del",
+    "DEFAULT_TEXT_OBJECT_NAME": "TextObject",
+    "DEFAULT_IMAGE_OBJECT_NAME": "ImageObject",
+    "DEFAULT_EMPTY_OBJECT_NAME": "EmptyObject",
+    "CANVAS_ROOT": "Canvas: {0}",
+    "EMPTY": "(Empty)"
   }
 }

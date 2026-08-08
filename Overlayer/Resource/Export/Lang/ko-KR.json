@@ -35,6 +35,22 @@
     "SHOW_OVERLAYER_PANEL_AT_STARTUP": "시작 시 오버레이어 패널 표시",
     "SHOW_TOOLTIP": "도움말 표시",
     "SLIDER_SENSITIVITY": "슬라이더 감도",
-    "UI_SCALE": "화면 배율"
+    "UI_SCALE": "화면 배율",
+    "LANGUAGE_DROPDOWN_TOOLTIP": "유니티 엔진의 설정값이나 변수명을 직관적으로 구분할 수 있도록\n일부 UI는 번역하지 않고 그대로 두었습니다.",
+    "CANVAS_TITLE": "캔버스 설정",
+    "HIERARCHY": "계층",
+    "INSPECTOR": "인스펙터",
+    "BUTTON_TEXT": "텍스트",
+    "BUTTON_IMAGE": "이미지",
+    "BUTTON_EMPTY": "빈 객체",
+    "BUTTON_UP": "위로",
+    "BUTTON_DOWN": "아래로",
+    "BUTTON_DETACH": "분리",
+    "BUTTON_DELETE": "삭제",
+    "DEFAULT_TEXT_OBJECT_NAME": "TextObject",
+    "DEFAULT_IMAGE_OBJECT_NAME": "ImageObject",
+    "DEFAULT_EMPTY_OBJECT_NAME": "EmptyObject",
+    "CANVAS_ROOT": "캔버스: {0}",
+    "EMPTY": "(비어 있음)"
   }
 }

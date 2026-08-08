@@ -3,6 +3,7 @@ using Overlayer.Overlay;
 using Overlayer.Resource;
 using Overlayer.UI.Generator;
 using Overlayer.UI.Objects;
+using Overlayer.Localization;
 using Overlayer.UI.Utility;
 using UnityEngine;
 using UnityEngine.UI;
@@ -127,6 +128,7 @@ public class OvCanvasSettingPage : IDisposable {
         titleText.fontSize = 24;
         titleText.alignment = TextAlignmentOptions.Center;
         titleText.color = Color.white;
+        titleGo.AddComponent<TextLocalization>().Init("CANVAS_TITLE", "Canvas Settings");
 
         // Pad (Layout Area)
         GameObject pad = new("Pad");
@@ -180,8 +182,9 @@ public class OvCanvasSettingPage : IDisposable {
         var hierTitleTxt = hierTitle.AddComponent<TextMeshProUGUI>();
         hierTitleTxt.font = MainCore.Res.Get<TMP_FontAsset>(Asset.SUIT_Medium);
         hierTitleTxt.fontSize = 20f;
-        hierTitleTxt.text = "Hierarchy";
+        hierTitleTxt.text = MainCore.Tr.Get("HIERARCHY", "Hierarchy");
         hierTitleTxt.color = Color.white;
+        hierTitleTxt.gameObject.AddComponent<TextLocalization>().Init("HIERARCHY", "Hierarchy");
         var hierTitleLE = hierTitle.AddComponent<LayoutElement>();
         hierTitleLE.preferredHeight = 30f;
         hierTitleLE.minHeight = 30f;
@@ -240,7 +243,7 @@ public class OvCanvasSettingPage : IDisposable {
             }
 
             OvObject newObj = selectedObject != null ? selectedObject.CreateOvObject() : currentCanvas.CreateOvObject();
-            newObj.Config.Name = "TextObject";
+            newObj.Config.Name = MainCore.Tr.Get("DEFAULT_TEXT_OBJECT_NAME", "TextObject");
             newObj.Config.TextConfig = new TextMeshProUGUISettings();
             newObj.Config.TextEngineConfig = new OvTextSettings();
             newObj.ApplyComponent();
@@ -249,7 +252,8 @@ public class OvCanvasSettingPage : IDisposable {
             RebuildHierarchy();
             RebuildInspector();
             SaveConfig();
-        }, "Text", "btn_hier_add_text");
+        }, MainCore.Tr.Get("BUTTON_TEXT", "Text"), "btn_hier_add_text");
+        btnText.Label.gameObject.AddComponent<TextLocalization>().Init("BUTTON_TEXT", "Text");
         btnText.Rect.offsetMax = Vector2.zero;
         permanentUiObjects.Add(btnText);
 
@@ -259,7 +263,7 @@ public class OvCanvasSettingPage : IDisposable {
             }
 
             OvObject newObj = selectedObject != null ? selectedObject.CreateOvObject() : currentCanvas.CreateOvObject();
-            newObj.Config.Name = "ImageObject";
+            newObj.Config.Name = MainCore.Tr.Get("DEFAULT_IMAGE_OBJECT_NAME", "ImageObject");
             newObj.Config.ImageConfig = new ImageSettings();
             newObj.ApplyComponent();
             newObj.ApplyConfig();
@@ -267,7 +271,8 @@ public class OvCanvasSettingPage : IDisposable {
             RebuildHierarchy();
             RebuildInspector();
             SaveConfig();
-        }, "Image", "btn_hier_add_image");
+        }, MainCore.Tr.Get("BUTTON_IMAGE", "Image"), "btn_hier_add_image");
+        btnImage.Label.gameObject.AddComponent<TextLocalization>().Init("BUTTON_IMAGE", "Image");
         btnImage.Rect.offsetMax = Vector2.zero;
         permanentUiObjects.Add(btnImage);
 
@@ -277,14 +282,15 @@ public class OvCanvasSettingPage : IDisposable {
             }
 
             OvObject newObj = selectedObject != null ? selectedObject.CreateOvObject() : currentCanvas.CreateOvObject();
-            newObj.Config.Name = "EmptyObject";
+            newObj.Config.Name = MainCore.Tr.Get("DEFAULT_EMPTY_OBJECT_NAME", "EmptyObject");
             newObj.ApplyComponent();
             newObj.ApplyConfig();
             selectedObject = newObj;
             RebuildHierarchy();
             RebuildInspector();
             SaveConfig();
-        }, "Empty", "btn_hier_add_empty");
+        }, MainCore.Tr.Get("BUTTON_EMPTY", "Empty"), "btn_hier_add_empty");
+        btnEmpty.Label.gameObject.AddComponent<TextLocalization>().Init("BUTTON_EMPTY", "Empty");
         btnEmpty.Rect.offsetMax = Vector2.zero;
         permanentUiObjects.Add(btnEmpty);
 
@@ -311,7 +317,8 @@ public class OvCanvasSettingPage : IDisposable {
             }
 
             MoveSelectedOrder(-1);
-        }, "Up", "btn_hier_up");
+        }, MainCore.Tr.Get("BUTTON_UP", "Up"), "btn_hier_up");
+        btnUp.Label.gameObject.AddComponent<TextLocalization>().Init("BUTTON_UP", "Up");
         btnUp.Rect.offsetMax = Vector2.zero;
         permanentUiObjects.Add(btnUp);
 
@@ -321,7 +328,8 @@ public class OvCanvasSettingPage : IDisposable {
             }
 
             MoveSelectedOrder(1);
-        }, "Down", "btn_hier_down");
+        }, MainCore.Tr.Get("BUTTON_DOWN", "Down"), "btn_hier_down");
+        btnDown.Label.gameObject.AddComponent<TextLocalization>().Init("BUTTON_DOWN", "Down");
         btnDown.Rect.offsetMax = Vector2.zero;
         permanentUiObjects.Add(btnDown);
 
@@ -335,7 +343,8 @@ public class OvCanvasSettingPage : IDisposable {
             RebuildHierarchy();
             RebuildInspector();
             SaveConfig();
-        }, "Detach", "btn_hier_detach");
+        }, MainCore.Tr.Get("BUTTON_DETACH", "Detach"), "btn_hier_detach");
+        btnDetach.Label.gameObject.AddComponent<TextLocalization>().Init("BUTTON_DETACH", "Detach");
         btnDetach.Rect.offsetMax = Vector2.zero;
         permanentUiObjects.Add(btnDetach);
 
@@ -362,7 +371,8 @@ public class OvCanvasSettingPage : IDisposable {
             RebuildHierarchy();
             RebuildInspector();
             SaveConfig();
-        }, "Del", "btn_hier_del");
+        }, MainCore.Tr.Get("BUTTON_DELETE", "Del"), "btn_hier_del");
+        btnDel.Label.gameObject.AddComponent<TextLocalization>().Init("BUTTON_DELETE", "Del");
         btnDel.Rect.offsetMax = Vector2.zero;
         permanentUiObjects.Add(btnDel);
 
@@ -397,8 +407,9 @@ public class OvCanvasSettingPage : IDisposable {
         var inspTitleTxt = inspTitle.AddComponent<TextMeshProUGUI>();
         inspTitleTxt.font = MainCore.Res.Get<TMP_FontAsset>(Asset.SUIT_Medium);
         inspTitleTxt.fontSize = 20f;
-        inspTitleTxt.text = "Inspector";
+        inspTitleTxt.text = MainCore.Tr.Get("INSPECTOR", "Inspector");
         inspTitleTxt.color = Color.white;
+        inspTitleTxt.gameObject.AddComponent<TextLocalization>().Init("INSPECTOR", "Inspector");
         var inspTitleLE = inspTitle.AddComponent<LayoutElement>();
         inspTitleLE.preferredHeight = 30f;
         inspTitleLE.minHeight = 30f;
@@ -475,7 +486,9 @@ public class OvCanvasSettingPage : IDisposable {
 
     public void Open(OvCanvas canvas, bool noAnimate = false) {
         currentCanvas = canvas;
-        titleText.text = string.IsNullOrEmpty(canvas.Config.Name) ? "(Empty)" : canvas.Config.Name;
+        titleText.text = string.IsNullOrEmpty(canvas.Config.Name)
+            ? MainCore.Tr.Get("EMPTY", "(Empty)")
+            : canvas.Config.Name;
         selectedObject = null;
 
         RebuildHierarchy();
@@ -559,7 +572,10 @@ public class OvCanvasSettingPage : IDisposable {
         btnImg.color = (selectedObject == null) ? UIColors.ObjectActive : UIColors.ObjectBG;
 
         var tmp = GenerateUI.AddText(itemBtn.transform, true);
-        tmp.text = $"Canvas: {currentCanvas.Config.Name}";
+        tmp.text = string.Format(
+            MainCore.Tr.Get("CANVAS_ROOT", "Canvas: {0}"),
+            currentCanvas.Config.Name
+        );
         tmp.fontSize = 20f;
         tmp.color = Color.white;
         tmp.alignment = TextAlignmentOptions.Left;
@@ -832,7 +848,9 @@ public class OvCanvasSettingPage : IDisposable {
 
         if(selectedObject == null) {
             builder.BuildCanvas(currentCanvas, value => {
-                titleText.text = string.IsNullOrWhiteSpace(value) ? "(Empty)" : value;
+                titleText.text = string.IsNullOrWhiteSpace(value)
+                    ? MainCore.Tr.Get("EMPTY", "(Empty)")
+                    : value;
             });
         } else {
             builder.BuildObject(selectedObject);
