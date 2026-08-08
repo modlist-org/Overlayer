@@ -207,6 +207,7 @@ public sealed class ResourceManager(Assembly assembly, string resourcePath) : ID
         [Asset.CircleOutline256O64] = "Image.CircleOutline256O64.png",
         [Asset.Triangle128] = "Image.Triangle128.png",
         [Asset.Power128] = "Image.Power128.png",
-        [Asset.MagnifyingGlass128] = "Image.MagnifyingGlass128.png"
+        [Asset.MagnifyingGlass128] = "Image.MagnifyingGlass128.png",
+        [Asset.Box128] = "Image.Box128.png"
     };
 }
