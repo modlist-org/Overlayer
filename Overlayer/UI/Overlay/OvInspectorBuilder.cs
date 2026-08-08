@@ -345,7 +345,7 @@ internal sealed class OvInspectorBuilder(
 
         var input = GenerateUI.Input(
             row,
-            "Text",
+            null,
             value,
             OnTextChanged,
             $"{label} / tag expression",
@@ -736,7 +736,7 @@ internal sealed class OvInspectorBuilder(
             : Data(0);
 
         return diagnostic.Id switch {
-            DiagnosticId.TagNotFound => $"Tag '{Data(0, diagnostic.Context.TagName)}' not found",
+            DiagnosticId.TagNotFound => FormatMissingTag(diagnostic),
             DiagnosticId.ArgConvertFail => $"Argument {ArgumentNumber()} ('{Data(1)}') cannot convert to {Data(2)}",
             DiagnosticId.ArgTooFew => $"Expected at least {Data(0)} arguments; got {Data(1)}",
             DiagnosticId.ArgTooMany => $"Expected at most {Data(0)} arguments; got {Data(1)}",
@@ -745,6 +745,18 @@ internal sealed class OvInspectorBuilder(
             DiagnosticId.InternalError => "Internal compiler error",
             _ => diagnostic.Id.ToString()
         };
+    }
+
+    private static string FormatMissingTag(CompileDiagnostic diagnostic) {
+        string name = diagnostic.Data?.Length > 0 && diagnostic.Data[0] != null
+            ? diagnostic.Data[0].ToString()
+            : diagnostic.Context.TagName;
+        string suggestion = diagnostic.Data?.Length > 1 && diagnostic.Data[1] != null
+            ? diagnostic.Data[1].ToString()
+            : null;
+        return suggestion == null
+            ? $"Tag '{name}' not found"
+            : $"Tag '{name}' not found. Did you mean '{suggestion}'?";
     }
 
     private static int GetLine(string source, int index) {

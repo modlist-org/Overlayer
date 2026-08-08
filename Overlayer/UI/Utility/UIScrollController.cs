@@ -3,6 +3,7 @@ using GTweens.Extensions;
 using GTweens.Tweens;
 using Overlayer.Compat.OVC;
 using Overlayer.Core;
+using Overlayer.UI.Objects.Impl;
 using UnityEngine;
 
 #if ML && IL2CPP
@@ -53,6 +54,10 @@ public class UIScrollController
     }
 
     private void HandleWheel() {
+        if(UICodeInputField.ShouldConsumeParentScroll) {
+            return;
+        }
+
         float wheel = OVC_Input.MouseScrollDelta.y;
 
         if(Math.Abs(wheel) <= 0.0001f) {

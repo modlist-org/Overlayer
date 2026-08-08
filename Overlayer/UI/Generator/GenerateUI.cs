@@ -661,7 +661,9 @@ public static partial class GenerateUI {
         inputField.placeholder = placeholderText;
         inputField.fontAsset = text.font;
 
-        inputField.lineType = TMP_InputField.LineType.SingleLine;
+        inputField.lineType = multiline
+            ? TMP_InputField.LineType.MultiLineNewline
+            : TMP_InputField.LineType.SingleLine;
         inputField.characterValidation = TMP_InputField.CharacterValidation.None;
         inputField.richText = false;
 
@@ -688,6 +690,7 @@ public static partial class GenerateUI {
                 case InputButton.Middle:
                     if(
                         MainCore.Conf.MiddleClickToDefault &&
+                        input.DefaultValue != null &&
                         input.Value != input.DefaultValue
                     ) {
                         input.Reset();

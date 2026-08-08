@@ -2,6 +2,7 @@
 using Overlayer.Tag.Core;
 using Overlayer.Tag.Diagnostics;
 using Overlayer.TextEngine.Parse;
+using FuzzySharp;
 
 namespace Overlayer.Tag.Runtime;
 
@@ -18,8 +19,14 @@ public sealed class TagCache {
 
     public CompiledPlaceholder GetOrCompile(ParsedTag parsed) {
         if(!TagManager.TryGet(parsed.Name, out var tag)) {
+            string suggestion = FindSuggestion(parsed.Name);
             return new CompiledPlaceholder(() => parsed.Raw, [
-                new CompileDiagnostic(DiagnosticId.TagNotFound, CompileSeverity.Error, new(parsed.Name, parsed.Index, parsed.Length), [parsed.Name])
+                new CompileDiagnostic(
+                    DiagnosticId.TagNotFound,
+                    CompileSeverity.Error,
+                    new(parsed.Name, parsed.Index, parsed.Length),
+                    suggestion == null ? [parsed.Name] : [parsed.Name, suggestion]
+                )
             ]);
         }
 
@@ -76,6 +83,18 @@ public sealed class TagCache {
         (p.Args == null || p.Args.Length == 0)
         ? p.Name
         : string.Concat(p.Name, ":", string.Join(",", p.Args));
+
+    private static string FindSuggestion(string name) {
+        if(string.IsNullOrWhiteSpace(name)) {
+            return null;
+        }
+
+        var best = TagManager.GetAllTags()
+            .Select(tag => (tag.Name, Score: Fuzz.WeightedRatio(name, tag.Name)))
+            .OrderByDescending(item => item.Score)
+            .FirstOrDefault();
+        return best.Score >= 70 ? best.Name : null;
+    }
 
     private static CompiledPlaceholder WithContext(CompiledPlaceholder compiled, ParsedTag parsed) {
         if(compiled.Diagnostics.Length == 0) {
