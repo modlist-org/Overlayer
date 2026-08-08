@@ -139,11 +139,14 @@ internal sealed class TagCompletionPopup {
 
         string text = input.text ?? string.Empty;
         int caret = Math.Clamp(input.selectionFocusPosition, 0, text.Length);
-        if(suppressRefresh && text == suppressedText && caret == suppressedCaret) {
-            Hide();
-            return;
+        if(suppressRefresh) {
+            bool sameState = text == suppressedText && caret == suppressedCaret;
+            suppressRefresh = false;
+            if(sameState) {
+                Hide();
+                return;
+            }
         }
-        suppressRefresh = false;
 
         if(!TryGetContext(text, caret, out string query, out int start)) {
             Hide();

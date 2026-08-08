@@ -49,6 +49,7 @@ public sealed class UICodeInputField
 
     protected override void OnEnable() {
         base.OnEnable();
+        onFocusSelectAll = false;
         lastState = CaptureState();
         hasLastEdit = false;
         if(historyCallback == null) {
