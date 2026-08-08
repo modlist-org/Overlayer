@@ -142,8 +142,7 @@ public class V8Manager : IRuntimeService {
         sb.AppendLine(" * ");
         sb.AppendLine(" * @param {string} name - The unique name of the tag.");
         sb.AppendLine(" * @param {Function} func - The logic to execute.");
-        sb.AppendLine(" * @param {Object} options - Configuration object.");
-        sb.AppendLine(" * @param {string[]} options.Params - List of parameter names (e.g., ['time', 'val?']). REQUIRED.");
+        sb.AppendLine(" * @param {Object} [options] - Configuration object.");
         sb.AppendLine(" * @param {number} [options.Type] - TagType bitmask for engine behaviors.");
         sb.AppendLine(" * @param {string} [options.Desc] - Description of the tag.");
         sb.AppendLine(" */");

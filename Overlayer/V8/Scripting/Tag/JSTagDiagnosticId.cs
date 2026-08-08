@@ -29,17 +29,10 @@ public enum JSTagDiagnosticId {
     ScriptError,
 
     /// <summary>
-    /// Triggered when the 'options' object provided in RegisterTag does not conform to the expected format.
+    /// Triggered when the function or options object does not conform to the expected format.
     /// <para><strong>Data:</strong></para>
-    /// <c>[0]</c> (string) : The property name that failed validation.<br/>
-    /// <c>[1]</c> (string) : The expected type or format description.
+    /// <c>[0]</c> (string) : The tag name that failed validation.<br/>
+    /// <c>[1]</c> (string) : The validation error.
     /// </summary>
-    InvalidFormat,
-
-    /// <summary>
-    /// Triggered when the required 'Params' array option is missing or invalid in RegisterTag options.
-    /// <para><strong>Data:</strong></para>
-    /// <c>[0]</c> (string) : The tag name that caused the failure.
-    /// </summary>
-    MissingParams
+    InvalidFormat
 }
