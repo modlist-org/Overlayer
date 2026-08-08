@@ -36,7 +36,7 @@ public static class MenuFactory {
         items.Clear();
 
         var overlayer = CreateItem(parent, "Overlayer", MainCore.Spr.Get(UISprite.Monitor128), 0);
-        var resources = CreateItem(parent, "Resources", MainCore.Spr.Get(UISprite.Image128), 4);
+        var resources = CreateItem(parent, "Resources", MainCore.Spr.Get(UISprite.Box128), 4);
         var settings = CreateItem(parent, "Settings", MainCore.Spr.Get(UISprite.Gear128), 1);
         var docs = CreateItem(parent, "Docs", MainCore.Spr.Get(UISprite.Book128), 2);
         var credits = CreateItem(parent, "Credits", MainCore.Spr.Get(UISprite.Star128), 3);

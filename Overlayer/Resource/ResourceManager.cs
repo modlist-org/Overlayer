@@ -34,6 +34,7 @@ public enum Asset {
     Triangle128,
     Power128,
     MagnifyingGlass128,
+    Box128
 }
 
 public sealed class ResourceManager(Assembly assembly, string resourcePath) : IDisposable {
