@@ -54,7 +54,28 @@ public static class TagSyntaxHighlighter {
                 }
             }
         }
+        AddIncompleteTag(spans, source);
         return [.. spans];
+    }
+
+    private static void AddIncompleteTag(List<TagSyntaxSpan> spans, string source) {
+        int opening = source.LastIndexOf('{');
+        int closing = source.LastIndexOf('}');
+        if(opening <= closing) {
+            return;
+        }
+
+        int nameStart = opening + 1;
+        int nameEnd = nameStart;
+        while(nameEnd < source.Length && (char.IsLetterOrDigit(source[nameEnd]) || source[nameEnd] == '_')) {
+            nameEnd++;
+        }
+
+        spans.Add(new(opening, 1, TagSyntaxKind.Delimiter));
+        if(nameEnd > nameStart) {
+            bool known = TagManager.TryGet(source[nameStart..nameEnd], out _);
+            spans.Add(new(nameStart, nameEnd - nameStart, known ? TagSyntaxKind.Tag : TagSyntaxKind.UnknownTag));
+        }
     }
 
     private static void AddArguments(

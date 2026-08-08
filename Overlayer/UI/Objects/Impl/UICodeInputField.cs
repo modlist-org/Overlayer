@@ -24,6 +24,8 @@ public sealed class UICodeInputField
 #endif
 {
     public Action<TMP_Text, bool> AfterLabelUpdate;
+    public Func<KeyCode, bool> HandleKey;
+    public Action OnFieldDisabled;
     public bool CanUndo => undoHistory.Count > 0;
     public bool CanRedo => redoHistory.Count > 0;
 
@@ -61,6 +63,7 @@ public sealed class UICodeInputField
     }
 
     protected override void OnDisable() {
+        OnFieldDisabled?.Invoke();
         if(historyCallback != null) {
             onValueChanged.RemoveListener(historyCallback);
         }
@@ -85,6 +88,24 @@ public sealed class UICodeInputField
         if(textComponent != null) {
             AfterLabelUpdate?.Invoke(textComponent, isFocused && !string.IsNullOrEmpty(Input.compositionString));
         }
+    }
+
+    public override void OnUpdateSelected(BaseEventData eventData) {
+        if(isFocused && string.IsNullOrEmpty(Input.compositionString)) {
+            KeyCode key = OVC_Input.GetKeyDown(KeyCode.Tab) ? KeyCode.Tab
+                : OVC_Input.GetKeyDown(KeyCode.Return) ? KeyCode.Return
+                : OVC_Input.GetKeyDown(KeyCode.KeypadEnter) ? KeyCode.KeypadEnter
+                : OVC_Input.GetKeyDown(KeyCode.UpArrow) ? KeyCode.UpArrow
+                : OVC_Input.GetKeyDown(KeyCode.DownArrow) ? KeyCode.DownArrow
+                : OVC_Input.GetKeyDown(KeyCode.Escape) ? KeyCode.Escape
+                : KeyCode.None;
+
+            if(key != KeyCode.None && HandleKey?.Invoke(key) == true) {
+                return;
+            }
+        }
+
+        base.OnUpdateSelected(eventData);
     }
 
     private void Update() {

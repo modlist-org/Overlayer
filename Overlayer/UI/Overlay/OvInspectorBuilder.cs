@@ -449,6 +449,9 @@ internal sealed class OvInspectorBuilder(
         follower.Source = text.rectTransform;
         follower.LineNumbers = numbersRect;
 
+        var completionPopup = new TagCompletionPopup(codeInput, text);
+        codeInput.HandleKey = completionPopup.HandleKey;
+
         var diagnosticHoverRoot = new GameObject("DiagnosticHoverTargets");
         diagnosticHoverRoot.transform.SetParent(text.transform, false);
         var diagnosticHoverRect = diagnosticHoverRoot.AddComponent<RectTransform>();
@@ -471,6 +474,7 @@ internal sealed class OvInspectorBuilder(
                 );
             }
             ApplySyntaxHighlighting(sourceText, composing ? null : displayedText, composing ? [] : syntaxSpans);
+            completionPopup.Refresh(composing);
         };
 
         void SetDiagnosticsHeight(int diagnosticCount) {
