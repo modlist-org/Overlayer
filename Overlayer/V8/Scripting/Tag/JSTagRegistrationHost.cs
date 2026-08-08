@@ -8,10 +8,15 @@ using static Overlayer.Overlay.OvObject;
 namespace Overlayer.V8.Scripting.Tag;
 
 public class JSTagRegistrationHost(JSScriptLoader loader, string filePath) {
+    public const string HostBindingName = "__OverlayerRegisterTag";
+    public const string BindingScript =
+        "globalThis.RegisterTag = function(name, func, options) { " +
+        "__OverlayerRegisterTag(name, func, options, Function.prototype.toString.call(func)); };";
+
     private readonly JSScriptLoader _loader = loader;
     public string FilePath { get; } = filePath;
 
-    public void RegisterTag(string name, object func, object options) {
+    public void RegisterTag(string name, object func, object options, string functionSource) {
         if(string.IsNullOrWhiteSpace(name)) {
             _loader.Diagnostics.Add(new JSDiagnostic(JSTagDiagnosticId.MissingName, JSSeverity.Error, FilePath, FilePath));
             return;
@@ -26,7 +31,7 @@ public class JSTagRegistrationHost(JSScriptLoader loader, string filePath) {
         TagType type = TagType.None;
         string[] paramNames;
         try {
-            paramNames = ExtractParameterNames(scriptFunc);
+            paramNames = ExtractParameterNames(functionSource);
         } catch(Exception e) {
             _loader.Diagnostics.Add(new JSDiagnostic(
                 JSTagDiagnosticId.InvalidFormat,
@@ -68,11 +73,7 @@ public class JSTagRegistrationHost(JSScriptLoader loader, string filePath) {
         }
     }
 
-    private static string[] ExtractParameterNames(ScriptObject function) {
-        object sourceValue = function.Engine.Evaluate("Function.prototype.toString") is ScriptObject toString
-            ? toString.Invoke(false, function)
-            : function.InvokeMethod("toString");
-        string source = sourceValue?.ToString();
+    private static string[] ExtractParameterNames(string source) {
         if(string.IsNullOrWhiteSpace(source)) {
             throw new InvalidOperationException("Function source is unavailable");
         }

@@ -63,7 +63,11 @@ public class V8Manager : IRuntimeService {
             foreach(var file in files) {
                 try {
                     var host = new JSTagRegistrationHost(_scriptLoader, file);
-                    _engine.AddHostObject("RegisterTag", (Action<string, object, object>)host.RegisterTag);
+                    _engine.AddHostObject(
+                        JSTagRegistrationHost.HostBindingName,
+                        (Action<string, object, object, string>)host.RegisterTag
+                    );
+                    _engine.Execute(JSTagRegistrationHost.BindingScript);
                     string source = JSScriptPreprocessor.RemoveImplImports(
                         File.ReadAllText(file)
                     );
@@ -73,7 +77,9 @@ public class V8Manager : IRuntimeService {
                 }
             }
 
-            _engine.Execute("delete globalThis.RegisterTag;");
+            _engine.Execute(
+                $"delete globalThis.RegisterTag; delete globalThis.{JSTagRegistrationHost.HostBindingName};"
+            );
         }
     }
 

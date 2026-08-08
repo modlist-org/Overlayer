@@ -53,9 +53,13 @@ public class JSScriptLoader {
 
         var host = new JSTagRegistrationHost(this, filePath);
         engine.AddHostType(nameof(TagType), typeof(TagType));
-        engine.AddHostObject(nameof(JSTagRegistrationHost.RegisterTag), (Action<string, object, object>)host.RegisterTag);
+        engine.AddHostObject(
+            JSTagRegistrationHost.HostBindingName,
+            (Action<string, object, object, string>)host.RegisterTag
+        );
 
         try {
+            engine.Execute(JSTagRegistrationHost.BindingScript);
             string source = JSScriptPreprocessor.RemoveImplImports(
                 File.ReadAllText(filePath)
             );
