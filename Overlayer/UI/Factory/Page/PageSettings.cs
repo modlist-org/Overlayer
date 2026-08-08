@@ -159,12 +159,6 @@ internal static class PageSettings {
             },
             "language_dropdown"
         );
-        languageDropdown.Label.font = MainCore.Res.Get<TMP_FontAsset>(Asset.SUIT_Medium);
-        languageDropdown.Label.fontSize = 22f;
-        languageDropdown.Label.color = Color.white;
-        languageDropdown.Label.alignment = TextAlignmentOptions.Left;
-        languageDropdown.Label.verticalAlignment = VerticalAlignmentOptions.Middle;
-        languageDropdown.Label.characterSpacing = -3f;
         languageDropdown.Rect.AddToolTip(
             "LANGUAGE_DROPDOWN_TOOLTIP",
             "In other languages some UI may remain untranslated.\n(This does not apply to English.)"
