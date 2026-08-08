@@ -63,7 +63,7 @@ internal static class PageResources {
             string.Empty,
             _ => { },
             "Image path",
-            MainCore.Spr.Get(UISprite.Image128),
+            null,
             "resource_image_path"
         );
         pathInput.Placeholder.gameObject.AddComponent<TextLocalization>().Init("IMAGE_PATH", "Image path");
@@ -84,7 +84,7 @@ internal static class PageResources {
             string.Empty,
             _ => { },
             "Resource name",
-            MainCore.Spr.Get(UISprite.Image128),
+            null,
             "resource_image_name"
         );
         keyInput.Placeholder.gameObject.AddComponent<TextLocalization>().Init("RESOURCE_NAME", "Resource name");
@@ -572,7 +572,7 @@ internal static class PageResources {
             key,
             _ => { },
             "Resource name",
-            MainCore.Spr.Get(UISprite.Image128),
+            null,
             "rename_" + key
         );
         renameInput.Rect.anchorMin = new Vector2(0f, 0.5f);
