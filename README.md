@@ -31,6 +31,8 @@ Custom Unity Overlay UI mode for users!
 ### Controls
 * **Open/Close Settings Window:** Press <kbd>Alt</kbd> + <kbd>`</kbd> (Backtick) to toggle the main GUI configuration window.
 * **Reset Window Layout:** Hold the window toggle key (<kbd>Alt</kbd> + <kbd>`</kbd>) for **over 0.4 seconds** to reset the window's size and position to default.
+> [!NOTE]
+> Linux shortcuts are different. You must use <kbd>Ctrl</kbd> + <kbd>`</kbd> This is because they conflict with KDE Plasma shortcuts!
 * **Toggle Menu:** Click the **logo in the top-left corner** of the settings window to open and close the navigation menu.
 
 # 🧩 [Modules](https://github.com/modlist-org/Overlayer.Module)
