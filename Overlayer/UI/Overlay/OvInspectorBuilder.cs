@@ -68,6 +68,8 @@ internal sealed class OvInspectorBuilder(
         Vector2Sliders(scaling, "Reference", new Vector2(1920, 1080), 1f, 8192f, () => scale.ReferenceResolution, value => scale.ReferenceResolution = value, "canvas_reference", "F0");
         Slider(scaling, "Match Width / Height", 0.5f, 0f, 1f, scale.MatchWidthOrHeight, value => scale.MatchWidthOrHeight = value, "canvas_match");
         Slider(scaling, "Scale Factor", 1f, 0.01f, 10f, scale.ScaleFactor, value => scale.ScaleFactor = value, "canvas_scale_factor");
+
+        BuildCanvasRectTransform(canvas);
     }
 
     public void BuildObject(OvObject obj) {
@@ -90,6 +92,12 @@ internal sealed class OvInspectorBuilder(
         }
         if(obj.Config.ImageConfig != null) {
             BuildImage(obj, obj.Config.ImageConfig);
+        }
+        if(obj.Config.BoxCollider2DConfig != null) {
+            BuildBoxCollider2D(obj, obj.Config.BoxCollider2DConfig);
+        }
+        if(obj.Config.Rigidbody2DConfig != null) {
+            BuildRigidbody2D(obj, obj.Config.Rigidbody2DConfig);
         }
         if(obj.Config.ContentSizeFitterConfig != null) {
             BuildContentSizeFitter(obj, obj.Config.ContentSizeFitterConfig);
@@ -152,6 +160,43 @@ internal sealed class OvInspectorBuilder(
         NumericPropertyRow(anchors, "Max", new[] {
             ("X", 1f, (Func<float>)(() => cfg.AnchorMax.x), (Action<float>)(value => { cfg.AnchorMax.x = value; refreshAnchor(); refreshPositionFields(); }), "transform_anchor_max_x"),
             ("Y", 1f, (Func<float>)(() => cfg.AnchorMax.y), (Action<float>)(value => { cfg.AnchorMax.y = value; refreshAnchor(); refreshPositionFields(); }), "transform_anchor_max_y")
+        }, "F2");
+    }
+
+    private void BuildCanvasRectTransform(OvCanvas canvas) {
+        RectTransformSettings cfg = canvas.Config.RectTransformConfig;
+        var (_, basic) = Card("Rect Transform", false);
+        Action refreshPositionFields = null;
+        RectTransform rectLayout = CompactRow(basic, 92f, 6f);
+        Action refreshAnchor = AnchorPresetControl(rectLayout, cfg, canvas.RectTransform, () => refreshPositionFields?.Invoke());
+        refreshPositionFields = BuildRectPositionFields(rectLayout, cfg);
+
+        NumericPropertyRow(basic, "Position", new[] {
+            ("Z", 0f, (Func<float>)(() => cfg.AnchoredPositionZ), (Action<float>)(value => cfg.AnchoredPositionZ = value), "canvas_rect_position_z")
+        }, "F1");
+        NumericPropertyRow(basic, "Rotation", new[] {
+            ("X", 0f, (Func<float>)(() => cfg.RotationXY.x), (Action<float>)(value => cfg.RotationXY.x = value), "canvas_rect_rotation_x"),
+            ("Y", 0f, (Func<float>)(() => cfg.RotationXY.y), (Action<float>)(value => cfg.RotationXY.y = value), "canvas_rect_rotation_y"),
+            ("Z", 0f, (Func<float>)(() => cfg.Rotation), (Action<float>)(value => cfg.Rotation = value), "canvas_rect_rotation_z")
+        }, "F1");
+        NumericPropertyRow(basic, "Scale", new[] {
+            ("X", 1f, (Func<float>)(() => cfg.Scale.x), (Action<float>)(value => cfg.Scale.x = value), "canvas_rect_scale_x"),
+            ("Y", 1f, (Func<float>)(() => cfg.Scale.y), (Action<float>)(value => cfg.Scale.y = value), "canvas_rect_scale_y"),
+            ("Z", 1f, (Func<float>)(() => cfg.Scale.z), (Action<float>)(value => cfg.Scale.z = value), "canvas_rect_scale_z")
+        }, "F2");
+        NumericPropertyRow(basic, "Pivot", new[] {
+            ("X", 0.5f, (Func<float>)(() => cfg.Pivot.x), (Action<float>)(value => cfg.Pivot.x = value), "canvas_rect_pivot_x"),
+            ("Y", 0.5f, (Func<float>)(() => cfg.Pivot.y), (Action<float>)(value => cfg.Pivot.y = value), "canvas_rect_pivot_y")
+        }, "F2");
+
+        var (_, anchors) = Card("Anchors", false);
+        NumericPropertyRow(anchors, "Min", new[] {
+            ("X", 0f, (Func<float>)(() => cfg.AnchorMin.x), (Action<float>)(value => { cfg.AnchorMin.x = value; refreshAnchor(); refreshPositionFields(); }), "canvas_transform_anchor_min_x"),
+            ("Y", 0f, (Func<float>)(() => cfg.AnchorMin.y), (Action<float>)(value => { cfg.AnchorMin.y = value; refreshAnchor(); refreshPositionFields(); }), "canvas_transform_anchor_min_y")
+        }, "F2");
+        NumericPropertyRow(anchors, "Max", new[] {
+            ("X", 1f, (Func<float>)(() => cfg.AnchorMax.x), (Action<float>)(value => { cfg.AnchorMax.x = value; refreshAnchor(); refreshPositionFields(); }), "canvas_transform_anchor_max_x"),
+            ("Y", 1f, (Func<float>)(() => cfg.AnchorMax.y), (Action<float>)(value => { cfg.AnchorMax.y = value; refreshAnchor(); refreshPositionFields(); }), "canvas_transform_anchor_max_y")
         }, "F2");
     }
 
@@ -246,6 +291,40 @@ internal sealed class OvInspectorBuilder(
         Toggle(card, "Use Graphic Alpha", true, cfg.UseGraphicAlpha, value => cfg.UseGraphicAlpha = value, "outline_alpha");
     }
 
+    private void BuildBoxCollider2D(OvObject obj, BoxCollider2DSettings cfg) {
+        var (_, card) = ComponentCard("Box Collider 2D", cfg, () => {
+            obj.Config.BoxCollider2DConfig = null;
+            RefreshComponents(obj);
+        });
+
+        Vector2Sliders(card, "Size", Vector2.one, 0f, 1024f, () => cfg.Size, value => cfg.Size = value, "box_collider_size", "F1");
+        Vector2Sliders(card, "Offset", Vector2.zero, -1024f, 1024f, () => cfg.Offset, value => cfg.Offset = value, "box_collider_offset", "F1");
+        Toggle(card, "Is Trigger", false, cfg.IsTrigger, value => cfg.IsTrigger = value, "box_collider_trigger");
+        Toggle(card, "Used By Effector", false, cfg.UsedByEffector, value => cfg.UsedByEffector = value, "box_collider_effector");
+        Toggle(card, "Used By Composite", false, cfg.UsedByComposite, value => cfg.UsedByComposite = value, "box_collider_composite");
+        Slider(card, "Edge Radius", 0f, 0f, 100f, cfg.EdgeRadius, value => cfg.EdgeRadius = value, "box_collider_edge_radius", "F2");
+    }
+
+    private void BuildRigidbody2D(OvObject obj, Rigidbody2DSettings cfg) {
+        var (_, card) = ComponentCard("Rigidbody 2D", cfg, () => {
+            obj.Config.Rigidbody2DConfig = null;
+            RefreshComponents(obj);
+        });
+
+        EnumDropDown(card, "Body Type", RigidbodyType2D.Dynamic, cfg.BodyType, value => cfg.BodyType = value, "rigidbody2d_body_type");
+        Toggle(card, "Simulated", true, cfg.Simulated, value => cfg.Simulated = value, "rigidbody2d_simulated");
+        Toggle(card, "Use Auto Mass", false, cfg.UseAutoMass, value => cfg.UseAutoMass = value, "rigidbody2d_auto_mass");
+        Slider(card, "Mass", 1f, 0.01f, 1000f, cfg.Mass, value => cfg.Mass = value, "rigidbody2d_mass", "F2");
+        Slider(card, "Linear Damping", 0f, 0f, 100f, cfg.LinearDamping, value => cfg.LinearDamping = value, "rigidbody2d_linear_damping", "F2");
+        Slider(card, "Angular Damping", 0.05f, 0f, 100f, cfg.AngularDamping, value => cfg.AngularDamping = value, "rigidbody2d_angular_damping", "F2");
+        Slider(card, "Gravity Scale", 1f, -100f, 100f, cfg.GravityScale, value => cfg.GravityScale = value, "rigidbody2d_gravity_scale", "F2");
+        EnumDropDown(card, "Collision Detection", CollisionDetectionMode2D.Discrete, cfg.CollisionDetectionMode, value => cfg.CollisionDetectionMode = value, "rigidbody2d_collision");
+        EnumDropDown(card, "Sleep Mode", RigidbodySleepMode2D.StartAwake, cfg.SleepMode, value => cfg.SleepMode = value, "rigidbody2d_sleep_mode");
+        EnumDropDown(card, "Interpolation", RigidbodyInterpolation2D.None, cfg.Interpolation, value => cfg.Interpolation = value, "rigidbody2d_interpolation");
+        EnumDropDown(card, "Constraints", RigidbodyConstraints2D.None, cfg.Constraints, value => cfg.Constraints = value, "rigidbody2d_constraints");
+        Toggle(card, "Freeze Rotation", false, cfg.FreezeRotation, value => cfg.FreezeRotation = value, "rigidbody2d_freeze_rotation");
+    }
+
     private void BuildMask(OvObject obj, MaskSettings cfg) {
         var (_, card) = ComponentCard("Mask", cfg, () => {
             obj.Config.MaskConfig = null;
@@ -260,6 +339,8 @@ internal sealed class OvInspectorBuilder(
             options.Add("Text");
             options.Add("Image");
         }
+        if(obj.Config.BoxCollider2DConfig == null) options.Add("Box Collider 2D");
+        if(obj.Config.Rigidbody2DConfig == null) options.Add("Rigidbody 2D");
         if(obj.Config.ShadowConfig == null) options.Add("Shadow");
         if(obj.Config.OutlineConfig == null) options.Add("Outline");
         if(obj.Config.MaskConfig == null) options.Add("Mask");
@@ -275,6 +356,8 @@ internal sealed class OvInspectorBuilder(
                     obj.Config.TextEngineConfig = new OvTextSettings();
                     break;
                 case "Image": obj.Config.ImageConfig = new ImageSettings(); break;
+                case "Box Collider 2D": obj.Config.BoxCollider2DConfig = new BoxCollider2DSettings(); break;
+                case "Rigidbody 2D": obj.Config.Rigidbody2DConfig = new Rigidbody2DSettings(); break;
                 case "Shadow": obj.Config.ShadowConfig = new ShadowSettings(); break;
                 case "Outline": obj.Config.OutlineConfig = new OutlineSettings(); break;
                 case "Mask": obj.Config.MaskConfig = new MaskSettings(); break;
@@ -974,6 +1057,53 @@ internal sealed class OvInspectorBuilder(
         return RefreshValues;
     }
 
+    private Action BuildRectPositionFields(Transform parent, RectTransformSettings cfg) {
+        bool StretchX() => !Mathf.Approximately(cfg.AnchorMin.x, cfg.AnchorMax.x);
+        bool StretchY() => !Mathf.Approximately(cfg.AnchorMin.y, cfg.AnchorMax.y);
+        float PositionX() => cfg.AnchoredPosition.x;
+        float PositionY() => cfg.AnchoredPosition.y;
+        float SizeX() => cfg.SizeDelta.x;
+        float SizeY() => cfg.SizeDelta.y;
+        float Left() => cfg.GetOffsetMin(0);
+        float Right() => -cfg.GetOffsetMax(0);
+        float Top() => -cfg.GetOffsetMax(1);
+        float Bottom() => cfg.GetOffsetMin(1);
+
+        RectTransform fields = VerticalGroup(parent, 2f);
+        var firstRow = CompactRow(fields, 44f, 6f);
+        var secondRow = CompactRow(fields, 44f, 6f);
+        var firstX = NumericField(firstRow, "", 0f, () => StretchX() ? Left() : PositionX(), value => {
+            if(StretchX()) cfg.SetOffsetMin(0, value);
+            else cfg.AnchoredPosition.x = value;
+        }, "transform_rect_x1", "F1");
+        var firstY = NumericField(firstRow, "", 0f, () => StretchY() ? Top() : PositionY(), value => {
+            if(StretchY()) cfg.SetOffsetMax(1, -value);
+            else cfg.AnchoredPosition.y = value;
+        }, "transform_rect_y1", "F1");
+        var secondX = NumericField(secondRow, "", 200f, () => StretchX() ? Right() : SizeX(), value => {
+            if(StretchX()) cfg.SetOffsetMax(0, -value);
+            else cfg.SizeDelta.x = value;
+        }, "transform_rect_x2", "F1");
+        var secondY = NumericField(secondRow, "", 200f, () => StretchY() ? Bottom() : SizeY(), value => {
+            if(StretchY()) cfg.SetOffsetMin(1, value);
+            else cfg.SizeDelta.y = value;
+        }, "transform_rect_y2", "F1");
+
+        void RefreshValues() {
+            firstX.Field.Label.text = StretchX() ? "Left" : "Pos X";
+            SetDisplayedValue(firstX.Field, firstX.Get());
+            secondX.Field.Label.text = StretchX() ? "Right" : "Width";
+            SetDisplayedValue(secondX.Field, secondX.Get());
+            firstY.Field.Label.text = StretchY() ? "Top" : "Pos Y";
+            SetDisplayedValue(firstY.Field, firstY.Get());
+            secondY.Field.Label.text = StretchY() ? "Bottom" : "Height";
+            SetDisplayedValue(secondY.Field, secondY.Get());
+        }
+
+        RefreshValues();
+        return RefreshValues;
+    }
+
     private static void SetDisplayedValue(UISlider field, float value) {
         if(!Mathf.Approximately(field.Value, value)) field.Set(value, false);
     }
@@ -1126,6 +1256,162 @@ internal sealed class OvInspectorBuilder(
         popup.gameObject.GetComponent<OventHandler>().OnHoverUpdate = () => RefreshModifierGraphics();
         RefreshSummary();
         return RefreshSummary;
+    }
+
+    private Action AnchorPresetControl(Transform parent, RectTransformSettings cfg, RectTransform targetTransform, Action positionFieldsChanged) {
+        RectTransform buttonRow = GenerateUI.Row(parent, 58f);
+        var buttonLayout = buttonRow.GetComponent<LayoutElement>();
+        buttonLayout.minWidth = 58f;
+        buttonLayout.preferredWidth = 58f;
+        buttonLayout.flexibleWidth = 0f;
+        var summary = GenerateUI.Button(buttonRow, null, string.Empty, "transform_anchor_presets");
+        summary.Label.gameObject.SetActive(false);
+        summary.Rect.anchorMin = new Vector2(0f, 0.5f);
+        summary.Rect.anchorMax = new Vector2(0f, 0.5f);
+        summary.Rect.pivot = new Vector2(0f, 0.5f);
+        summary.Rect.anchoredPosition = Vector2.zero;
+        summary.Rect.sizeDelta = new Vector2(58f, 52f);
+        controls.Add(summary);
+
+        GameObject summaryGraphic = AddAnchorGraphic(summary.Rect, ModeForAxis(cfg, 0), ModeForAxis(cfg, 1), false, false, 42f);
+        TextMeshProUGUI horizontalLabel = AddAnchorHeader(summary.Rect, true, ModeName(ModeForAxis(cfg, 0), false));
+        TextMeshProUGUI verticalLabel = AddAnchorHeader(summary.Rect, false, ModeName(ModeForAxis(cfg, 1), true));
+
+        RectTransform popup = CreateAnchorPopup(UICore.Canvas.transform);
+        RectTransform blocker = CreatePopupBlocker(UICore.Canvas.transform);
+        blocker.gameObject.SetActive(false);
+        summary.OnDisposed += () => {
+            if(popup != null) UnityEngine.Object.Destroy(popup.gameObject);
+            if(blocker != null) UnityEngine.Object.Destroy(blocker.gameObject);
+        };
+        popup.gameObject.SetActive(false);
+        bool open = false;
+        float lastClickTime = -1f;
+
+        void ClosePopup() {
+            open = false;
+            if(popup != null) popup.gameObject.SetActive(false);
+            if(blocker != null) blocker.gameObject.SetActive(false);
+        }
+
+        GenerateUI.AddButton(blocker.gameObject, button => {
+            if(button == UnityEngine.EventSystems.PointerEventData.InputButton.Left) ClosePopup();
+        });
+
+        var selections = new List<(AnchorMode H, AnchorMode V, Image Image)>();
+        var presetGraphics = new List<(RectTransform Parent, AnchorMode H, AnchorMode V, bool Header, GameObject Graphic)>();
+        Transform table = popup.Find("Table");
+        TextMeshProUGUI modifierHelp = popup.Find("ModifierHelp").GetComponent<TextMeshProUGUI>();
+        AnchorMode[] horizontalModes = { AnchorMode.Custom, AnchorMode.Min, AnchorMode.Middle, AnchorMode.Max, AnchorMode.Stretch };
+        AnchorMode[] verticalModes = { AnchorMode.Custom, AnchorMode.Max, AnchorMode.Middle, AnchorMode.Min, AnchorMode.Stretch };
+        bool lastShift = false;
+        bool lastAlt = false;
+
+        void RefreshSummary() {
+            UnityEngine.Object.Destroy(summaryGraphic);
+            summaryGraphic = AddAnchorGraphic(summary.Rect, ModeForAxis(cfg, 0), ModeForAxis(cfg, 1), false, false, 42f);
+            horizontalLabel.text = ModeName(ModeForAxis(cfg, 0), false);
+            verticalLabel.text = ModeName(ModeForAxis(cfg, 1), true);
+            foreach(var cell in selections) {
+                bool selected = (cell.H == AnchorMode.Custom || cell.H == ModeForAxis(cfg, 0))
+                    && (cell.V == AnchorMode.Custom || cell.V == ModeForAxis(cfg, 1));
+                Color color = Color.white;
+                color.a = selected ? (cell.H == AnchorMode.Custom || cell.V == AnchorMode.Custom ? 0.55f : 1f) : 0f;
+                cell.Image.color = color;
+            }
+        }
+
+        void RefreshModifierGraphics(bool force = false) {
+            bool shift = OVC_Input.GetKey(KeyCode.LeftShift) || OVC_Input.GetKey(KeyCode.RightShift);
+            bool alt = OVC_Input.GetKey(KeyCode.LeftAlt) || OVC_Input.GetKey(KeyCode.RightAlt);
+            if(!force && shift == lastShift && alt == lastAlt) return;
+            lastShift = shift;
+            lastAlt = alt;
+
+            for(int i = 0; i < presetGraphics.Count; i++) {
+                var item = presetGraphics[i];
+                UnityEngine.Object.Destroy(item.Graphic);
+                GameObject graphic = AddAnchorGraphic(item.Parent, item.H, item.V, shift, alt, item.Header ? 34f : 40f);
+                PositionAnchorGraphic(graphic, item.H, item.V);
+                presetGraphics[i] = (item.Parent, item.H, item.V, item.Header, graphic);
+            }
+
+            modifierHelp.text = $"{(shift ? "<color=#FFCC44>" : "")}Shift: Also set pivot{(shift ? "</color>" : "")}     {(alt ? "<color=#FFCC44>" : "")}Alt: Also set position{(alt ? "</color>" : "")}";
+        }
+
+        for(int y = 0; y < verticalModes.Length; y++) {
+            for(int x = 0; x < horizontalModes.Length; x++) {
+                AnchorMode horizontal = horizontalModes[x];
+                AnchorMode vertical = verticalModes[y];
+                if(x == 0 && y == 0) {
+                    CreateAnchorTableBlank(table);
+                    continue;
+                }
+
+                var cell = GenerateUI.Button(table, null, string.Empty, $"transform_anchor_{x}_{y}");
+                cell.Label.gameObject.SetActive(false);
+                Track(cell);
+                bool header = x == 0 || y == 0;
+                cell.NormalColor = header
+                    ? new Color(0.13f, 0.13f, 0.17f, 1f)
+                    : new Color(0.09f, 0.09f, 0.12f, 1f);
+                cell.Background.color = cell.NormalColor;
+                Image selection = AddSelection(cell.Rect);
+                selections.Add((horizontal, vertical, selection));
+                GameObject graphic = AddAnchorGraphic(cell.Rect, horizontal, vertical, false, false, header ? 34f : 40f);
+                PositionAnchorGraphic(graphic, horizontal, vertical);
+                presetGraphics.Add((cell.Rect, horizontal, vertical, header, graphic));
+                if(header) AddTableHeader(cell.Rect, x == 0, x == 0 ? ModeName(vertical, true) : ModeName(horizontal, false));
+                cell.Rect.AddToolTip(AnchorCellName(horizontal, vertical));
+                cell.OnClick = () => {
+                    bool setPivot = OVC_Input.GetKey(KeyCode.LeftShift) || OVC_Input.GetKey(KeyCode.RightShift);
+                    bool setPosition = OVC_Input.GetKey(KeyCode.LeftAlt) || OVC_Input.GetKey(KeyCode.RightAlt);
+                    ApplyAnchorModes(cfg, targetTransform, horizontal, vertical, setPivot, setPosition);
+                    apply();
+                    Canvas.ForceUpdateCanvases();
+                    LayoutRebuilder.ForceRebuildLayoutImmediate(targetTransform);
+                    positionFieldsChanged();
+                    save();
+                    RefreshSummary();
+
+                    float now = Time.unscaledTime;
+                    if(now - lastClickTime < 0.35f) {
+                        ClosePopup();
+                    }
+                    lastClickTime = now;
+                };
+            }
+        }
+
+        summary.OnClick = () => {
+            open = !open;
+            if(open) {
+                RectTransform canvasRect = UICore.Canvas.GetComponent<RectTransform>();
+                Vector3 corner = summary.Rect.TransformPoint(new Vector3(summary.Rect.rect.xMin, summary.Rect.rect.yMin, 0f));
+                popup.anchoredPosition = canvasRect.InverseTransformPoint(corner);
+                blocker.gameObject.SetActive(true);
+                blocker.SetAsLastSibling();
+                popup.SetAsLastSibling();
+            } else {
+                blocker.gameObject.SetActive(false);
+            }
+            popup.gameObject.SetActive(open);
+            RefreshSummary();
+            if(open) RefreshModifierGraphics(true);
+        };
+        summary.Rect.GetComponent<OventHandler>().OnDisabled = () => {
+            ClosePopup();
+        };
+        popup.gameObject.GetComponent<OventHandler>().OnHoverUpdate = () => RefreshModifierGraphics();
+        RefreshSummary();
+        return RefreshSummary;
+    }
+
+    private static void ApplyAnchorModes(RectTransformSettings cfg, RectTransform targetTransform, AnchorMode horizontal, AnchorMode vertical, bool setPivot, bool setPosition) {
+        Vector2 parentSize = (targetTransform.parent as RectTransform)?.rect.size ?? new Vector2(1920f, 1080f);
+        Vector2 visibleSize = targetTransform.rect.size;
+        ApplyAnchorModeForAxis(cfg, 0, horizontal, parentSize.x, visibleSize.x, setPivot, setPosition);
+        ApplyAnchorModeForAxis(cfg, 1, vertical, parentSize.y, visibleSize.y, setPivot, setPosition);
     }
 
     private static RectTransform CreatePopupBlocker(Transform parent) {

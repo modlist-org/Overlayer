@@ -14,6 +14,8 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
     public TextMeshProUGUISettings TextConfig = null;
     public OvTextSettings TextEngineConfig = null;
     public ImageSettings ImageConfig = null;
+    public BoxCollider2DSettings BoxCollider2DConfig = null;
+    public Rigidbody2DSettings Rigidbody2DConfig = null;
     public MaskSettings MaskConfig = null;
     public ShadowSettings ShadowConfig = null;
     public OutlineSettings OutlineConfig = null;
@@ -35,6 +37,12 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
         }
         if(ImageConfig != null) {
             obj[nameof(ImageConfig)] = ImageConfig.Serialize();
+        }
+        if(BoxCollider2DConfig != null) {
+            obj[nameof(BoxCollider2DConfig)] = BoxCollider2DConfig.Serialize();
+        }
+        if(Rigidbody2DConfig != null) {
+            obj[nameof(Rigidbody2DConfig)] = Rigidbody2DConfig.Serialize();
         }
         if(ContentSizeFitterConfig != null) {
             obj[nameof(ContentSizeFitterConfig)] = ContentSizeFitterConfig.Serialize();
@@ -90,6 +98,8 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
             TextEngineConfig = null;
         }
         ImageConfig = ReadConfig<ImageSettings>(obj, nameof(ImageConfig));
+        BoxCollider2DConfig = ReadConfig<BoxCollider2DSettings>(obj, nameof(BoxCollider2DConfig));
+        Rigidbody2DConfig = ReadConfig<Rigidbody2DSettings>(obj, nameof(Rigidbody2DConfig));
         MaskConfig = ReadConfig<MaskSettings>(obj, nameof(MaskConfig));
         ShadowConfig = ReadConfig<ShadowSettings>(obj, nameof(ShadowConfig));
         OutlineConfig = ReadConfig<OutlineSettings>(obj, nameof(OutlineConfig));
@@ -107,6 +117,8 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
             TextConfig = TextConfig?.Copy(),
             TextEngineConfig = TextEngineConfig?.Copy(),
             ImageConfig = ImageConfig?.Copy(),
+            BoxCollider2DConfig = BoxCollider2DConfig?.Copy(),
+            Rigidbody2DConfig = Rigidbody2DConfig?.Copy(),
             MaskConfig = MaskConfig?.Copy(),
             ShadowConfig = ShadowConfig?.Copy(),
             OutlineConfig = OutlineConfig?.Copy(),

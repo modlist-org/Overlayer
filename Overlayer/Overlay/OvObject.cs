@@ -62,6 +62,8 @@ public sealed class OvObject : ISettingsFile {
             );
         }
         Config.ImageConfig?.ToUnity(GameObject);
+        Config.BoxCollider2DConfig?.ToUnity(GameObject);
+        Config.Rigidbody2DConfig?.ToUnity(GameObject);
         Config.MaskConfig?.ToUnity(GameObject);
         Config.ShadowConfig?.ToUnity(GameObject);
         Config.OutlineConfig?.ToUnity(GameObject);
@@ -93,13 +95,13 @@ public sealed class OvObject : ISettingsFile {
             }
         }
         EnsureComponent<Image>(Config.ImageConfig != null);
+        EnsureComponent<BoxCollider2D>(Config.BoxCollider2DConfig != null);
+        EnsureComponent<Rigidbody2D>(Config.Rigidbody2DConfig != null);
         EnsureComponent<ContentSizeFitter>(Config.ContentSizeFitterConfig != null);
         EnsureComponent<Mask>(Config.MaskConfig != null);
         EnsureComponent<Shadow>(Config.ShadowConfig != null);
         var rectMask = EnsureComponent<RectMask2D>(Config.HasRectMask2D);
-        if(rectMask != null) {
-            rectMask.enabled = Config.RectMask2DEnabled;
-        }
+        rectMask?.enabled = Config.RectMask2DEnabled;
         EnsureComponent<Outline>(Config.OutlineConfig != null);
     }
 
