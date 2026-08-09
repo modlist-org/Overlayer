@@ -22,7 +22,8 @@ public static partial class GenerateUI {
         Color value,
         Action<Color> onChanged,
         Action<Color> onComplete,
-        string id
+        string id,
+        string label = null
     ) {
         GameObject rootObject = new("ColorPicker");
         rootObject.transform.SetParent(parent, false);
@@ -51,6 +52,13 @@ public static partial class GenerateUI {
         Image preview = previewObject.AddComponent<Image>();
         preview.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P2048);
         preview.type = Image.Type.Sliced;
+        TextMeshProUGUI previewLabel = AddText(previewRect, true);
+        previewLabel.name = "ColorLabel";
+        previewLabel.text = label ?? string.Empty;
+        previewLabel.fontSize = 16f;
+        previewLabel.alignment = TextAlignmentOptions.Center;
+        previewLabel.verticalAlignment = VerticalAlignmentOptions.Middle;
+        previewLabel.raycastTarget = false;
 
         UIColorPicker picker = null;
         UIInput hexInput = Input(
@@ -151,7 +159,7 @@ public static partial class GenerateUI {
 
         Image sharedOutline = AddOutlineHover(header.gameObject, header.gameObject.AddComponent<EventTrigger>());
         picker = new UIColorPicker(
-            id, root, bodyObject, bodyCanvas, preview,
+            id, root, bodyObject, bodyCanvas, preview, previewLabel,
             wheel, hueHandle, colorHandle, hexInput, sharedOutline, sliders,
             rgbModeBackground, rgbModeLabel, hsvModeBackground, hsvModeLabel,
             defaultValue, value, onChanged, onComplete

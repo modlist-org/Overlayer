@@ -248,12 +248,15 @@ internal sealed class OvInspectorBuilder(
         Slider(card, "Line Spacing", 0f, -100f, 100f, cfg.LineSpacing, value => cfg.LineSpacing = value, "text_line_spacing", "F1");
         Slider(card, "Character Spacing", 0f, -100f, 100f, cfg.CharacterSpacing, value => cfg.CharacterSpacing = value, "text_char_spacing", "F1");
         Slider(card, "Word Spacing", 0f, -100f, 100f, cfg.WordSpacing, value => cfg.WordSpacing = value, "text_word_spacing", "F1");
+        GameObject textGradientControls = null;
         Toggle(card, "Text Gradient", false, !cfg.Color.SolidColor, value => {
             GradientColor color = cfg.Color;
             color.SolidColor = !value;
             cfg.Color = color;
+            textGradientControls?.SetActive(value);
         }, "text_gradient");
-        GradientColorSliders(card, () => cfg.Color, value => cfg.Color = value, "text_gradient", Color.white);
+        textGradientControls = GradientColorSliders(card, () => cfg.Color, value => cfg.Color = value, "text_gradient", Color.white);
+        textGradientControls.SetActive(!cfg.Color.SolidColor);
         Toggle(card, "Material Outline", false, cfg.EnableOutline, value => cfg.EnableOutline = value, "text_outline");
         Slider(card, "Outline Width", 0.05f, 0f, 0.25f, cfg.OutlineWidth, value => cfg.OutlineWidth = value, "text_outline_width");
         Slider(card, "Outline Softness", 0f, 0f, 1f, cfg.OutlineSoftness, value => cfg.OutlineSoftness = value, "text_outline_softness");
@@ -311,18 +314,24 @@ internal sealed class OvInspectorBuilder(
         Input(card, "Target Tag", null, cfg.TagName, value => cfg.TagName = value, "color_range_tag");
         Slider(card, "Minimum", 0f, -10000f, 10000f, (float)cfg.Minimum, value => cfg.Minimum = value, "color_range_min", "F2", false);
         Slider(card, "Maximum", 100f, -10000f, 10000f, (float)cfg.Maximum, value => cfg.Maximum = value, "color_range_max", "F2", false);
+        GameObject minimumGradientControls = null;
         Toggle(card, "Minimum Gradient", false, !cfg.MinimumColor.SolidColor, value => {
             GradientColor color = cfg.MinimumColor;
             color.SolidColor = !value;
             cfg.MinimumColor = color;
+            minimumGradientControls?.SetActive(value);
         }, "color_range_min_gradient");
-        GradientColorSliders(card, () => cfg.MinimumColor, value => cfg.MinimumColor = value, "color_range_min_gradient", Color.black);
+        minimumGradientControls = GradientColorSliders(card, () => cfg.MinimumColor, value => cfg.MinimumColor = value, "color_range_min_gradient", Color.black);
+        minimumGradientControls.SetActive(!cfg.MinimumColor.SolidColor);
+        GameObject maximumGradientControls = null;
         Toggle(card, "Maximum Gradient", false, !cfg.MaximumColor.SolidColor, value => {
             GradientColor color = cfg.MaximumColor;
             color.SolidColor = !value;
             cfg.MaximumColor = color;
+            maximumGradientControls?.SetActive(value);
         }, "color_range_max_gradient");
-        GradientColorSliders(card, () => cfg.MaximumColor, value => cfg.MaximumColor = value, "color_range_max_gradient", Color.white);
+        maximumGradientControls = GradientColorSliders(card, () => cfg.MaximumColor, value => cfg.MaximumColor = value, "color_range_max_gradient", Color.white);
+        maximumGradientControls.SetActive(!cfg.MaximumColor.SolidColor);
         EnumDropDown(card, "Ease", Easing.Linear, cfg.Ease, value => cfg.Ease = value, "color_range_ease");
     }
 
@@ -2113,11 +2122,11 @@ internal sealed class OvInspectorBuilder(
         UIColorPicker picker = GenerateUI.ColorPicker(row, defaults, get(), value => {
             set(value);
             apply();
-        }, _ => save(), id);
+        }, _ => save(), id, InspectorLabel(label));
         Track(picker);
     }
 
-    private void GradientColorSliders(
+    private GameObject GradientColorSliders(
         Transform parent,
         Func<GradientColor> get,
         Action<GradientColor> set,
@@ -2152,6 +2161,7 @@ internal sealed class OvInspectorBuilder(
             color.BR = value;
             set(color);
         }, idPrefix + "_bottom_right");
+        return gridObject;
     }
 
     private void GradientColorRow(

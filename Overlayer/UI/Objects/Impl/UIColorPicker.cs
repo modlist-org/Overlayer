@@ -41,6 +41,7 @@ public sealed class UIColorPicker : UIObject {
     private readonly RectTransform bodyRect;
     private readonly CanvasGroup bodyCanvas;
     private readonly Image preview;
+    private readonly TextMeshProUGUI previewLabel;
     private readonly RectTransform wheelRect;
     private readonly RectTransform hueHandle;
     private readonly RectTransform colorHandle;
@@ -74,6 +75,7 @@ public sealed class UIColorPicker : UIObject {
         GameObject body,
         CanvasGroup bodyCanvas,
         Image preview,
+        TextMeshProUGUI previewLabel,
         RectTransform wheelRect,
         RectTransform hueHandle,
         RectTransform colorHandle,
@@ -93,6 +95,7 @@ public sealed class UIColorPicker : UIObject {
         this.body = body;
         this.bodyCanvas = bodyCanvas;
         this.preview = preview;
+        this.previewLabel = previewLabel;
         this.wheelRect = wheelRect;
         this.hueHandle = hueHandle;
         this.colorHandle = colorHandle;
@@ -465,6 +468,7 @@ public sealed class UIColorPicker : UIObject {
         bool valid = validLength && ColorUtility.TryParseHtmlString(candidate, out parsed);
         pendingHexColor = valid ? parsed : null;
         preview.color = valid ? parsed : Value;
+        UpdateLabelColor(preview.color);
 
         Color stateColor = valid
             ? UIColors.ObjectActiveMathOk
@@ -488,10 +492,33 @@ public sealed class UIColorPicker : UIObject {
 
     private void UpdateVisuals() {
         preview.color = Value;
+        UpdateLabelColor(Value);
         UpdateSliderValues();
         SetHexText();
         UpdateTexture();
         UpdateHandles();
+    }
+
+    private void UpdateLabelColor(Color background) {
+        if(!previewLabel) {
+            return;
+        }
+
+        Color composite = Color.Lerp(UIColors.PanelBG, background, background.a);
+        float luminance = RelativeLuminance(composite);
+        float blackContrast = (luminance + 0.05f) / 0.05f;
+        float whiteContrast = 1.05f / (luminance + 0.05f);
+        previewLabel.color = whiteContrast >= blackContrast ? Color.white : Color.black;
+    }
+
+    private static float RelativeLuminance(Color color) {
+        static float Linearize(float channel) => channel <= 0.03928f
+            ? channel / 12.92f
+            : Mathf.Pow((channel + 0.055f) / 1.055f, 2.4f);
+
+        return 0.2126f * Linearize(color.r)
+            + 0.7152f * Linearize(color.g)
+            + 0.0722f * Linearize(color.b);
     }
 
     private void UpdateSliderValues() {
