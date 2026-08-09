@@ -13,7 +13,7 @@ namespace Overlayer.IO.UnityComponent.Impl;
 
 public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<TextMeshProUGUISettings> {
     public string Text = "Text";
-    public GradientColor Color = UnityEngine.Color.white;
+    public GradientColor Color = new(UnityEngine.Color.white, true);
     public string FontKey = null;
     public float FontSize = 48f;
     public bool RichText = true;

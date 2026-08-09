@@ -42,6 +42,20 @@ public sealed class OvObject : ISettingsFile {
         return obj;
     }
 
+    public OvObject Clone() {
+        var clone = new OvObject {
+            Config = Config.Copy()
+        };
+        clone.ApplyComponent();
+        clone.ApplyConfig();
+
+        foreach(var child in Children) {
+            clone.Attach(child.Clone());
+        }
+
+        return clone;
+    }
+
     public void ApplyConfig() {
         GameObject.name = Config.Name;
         GameObject.SetActive(Config.Enabled);

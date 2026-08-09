@@ -61,7 +61,9 @@ public struct GradientColor : ISettingsFile, ICopyable<GradientColor> {
     public Color TL {
         readonly get => data.topLeft;
         set {
-            data = new VertexGradient(value, value, value, value);
+            data = solidColor
+                ? new VertexGradient(value, value, value, value)
+                : new VertexGradient(value, data.topRight, data.bottomLeft, data.bottomRight);
 
             RebuildCache();
         }
@@ -144,7 +146,12 @@ public struct GradientColor : ISettingsFile, ICopyable<GradientColor> {
             return IOUtils.Write(data.topLeft);
         }
 
-        return IOUtils.Write(data.topLeft);
+        return new JArray {
+            IOUtils.Write(data.topLeft),
+            IOUtils.Write(data.topRight),
+            IOUtils.Write(data.bottomLeft),
+            IOUtils.Write(data.bottomRight)
+        };
     }
 
     public void Deserialize(JToken token) {
@@ -152,19 +159,22 @@ public struct GradientColor : ISettingsFile, ICopyable<GradientColor> {
             return;
         }
 
-        if(token.Type == JTokenType.Array) {
-            var arr = (JArray)token;
+        if(token is JArray arr) {
+            if(arr.Count >= 4 && arr[0] is JArray) {
+                data = new VertexGradient(
+                    ReadColor(arr[0]),
+                    ReadColor(arr[1]),
+                    ReadColor(arr[2]),
+                    ReadColor(arr[3])
+                );
+                solidColor = false;
+                RebuildCache();
+                return;
+            }
 
-            var c = new Color(
-                (float)arr[0],
-                (float)arr[1],
-                (float)arr[2],
-                (float)arr[3]
-            );
-
-            data = new VertexGradient(c, c, c, c);
-            solidColor = false;
-
+            var color = ReadColor(arr);
+            data = new VertexGradient(color, color, color, color);
+            solidColor = true;
             RebuildCache();
             return;
         }
@@ -176,6 +186,19 @@ public struct GradientColor : ISettingsFile, ICopyable<GradientColor> {
         solidColor = true;
 
         RebuildCache();
+    }
+
+    private static Color ReadColor(JToken token) {
+        if(token is not JArray arr || arr.Count < 4) {
+            throw new FormatException("Invalid gradient color.");
+        }
+
+        return new Color(
+            (float)arr[0],
+            (float)arr[1],
+            (float)arr[2],
+            (float)arr[3]
+        );
     }
 
     public GradientColor Copy() {

@@ -37,24 +37,31 @@ public static class Effects {
     [Tag]
     public static string ColorRange(string tagName, double minimum, double maximum, string minimumHex,
         string maximumHex, Easing ease = Easing.Linear, int maxLength = -1) {
-        if(!TryReadNumber(tagName, out double value) || !TryColor(minimumHex, out Color from, out bool fromAlpha)
+        if(!TryColorRangeProgress(tagName, minimum, maximum, ease, out float progress)
+            || !TryColor(minimumHex, out Color from, out bool fromAlpha)
             || !TryColor(maximumHex, out Color to, out bool toAlpha)) {
             return string.Empty;
         }
 
-        if(maximum <= minimum) {
-            return fromAlpha || toAlpha
-                ? ColorUtility.ToHtmlStringRGBA(from)
-                : ColorUtility.ToHtmlStringRGB(from);
-        }
-
-        float progress = Mathf.Clamp01((float)((value - minimum) / (maximum - minimum)));
-        float eased = EaseValue(progress, ease);
-        Color color = Color.LerpUnclamped(from, to, eased);
+        Color color = Color.LerpUnclamped(from, to, progress);
         string result = fromAlpha || toAlpha
             ? ColorUtility.ToHtmlStringRGBA(color)
             : ColorUtility.ToHtmlStringRGB(color);
         return maxLength < 0 || result.Length <= maxLength ? result : result[..maxLength];
+    }
+
+    internal static bool TryColorRangeProgress(string tagName, double minimum, double maximum, Easing ease, out float progress) {
+        progress = 0f;
+        if(!TryReadNumber(tagName, out double value)) {
+            return false;
+        }
+
+        if(maximum <= minimum) {
+            return true;
+        }
+
+        progress = EaseValue(Mathf.Clamp01((float)((value - minimum) / (maximum - minimum))), ease);
+        return true;
     }
 
     [Tag]

@@ -125,8 +125,8 @@ public sealed class ColorRangeComponent
     public string TagName;
     public double Minimum;
     public double Maximum;
-    public Color MinimumColor;
-    public Color MaximumColor;
+    public GradientColor MinimumColor;
+    public GradientColor MaximumColor;
     public Easing Ease;
 
     public void Init(TMP_Text text) => Text = text;
@@ -136,16 +136,17 @@ public sealed class ColorRangeComponent
             return;
         }
 
-        string hex = Effects.ColorRange(
-            TagName,
-            Minimum,
-            Maximum,
-            ColorUtility.ToHtmlStringRGBA(MinimumColor),
-            ColorUtility.ToHtmlStringRGBA(MaximumColor),
-            Ease
-        );
-        if(!string.IsNullOrEmpty(hex) && ColorUtility.TryParseHtmlString("#" + hex, out Color color)) {
-            Text.color = color;
+        if(!Effects.TryColorRangeProgress(TagName, Minimum, Maximum, Ease, out float progress)) {
+            return;
         }
+
+        Text.color = Color.white;
+        Text.colorGradient = new VertexGradient(
+            Color.LerpUnclamped(MinimumColor.TL, MaximumColor.TL, progress),
+            Color.LerpUnclamped(MinimumColor.TR, MaximumColor.TR, progress),
+            Color.LerpUnclamped(MinimumColor.BL, MaximumColor.BL, progress),
+            Color.LerpUnclamped(MinimumColor.BR, MaximumColor.BR, progress)
+        );
+        Text.enableVertexGradient = true;
     }
 }

@@ -294,24 +294,27 @@ public class OvCanvasSettingPage : IDisposable {
         btnEmpty.Rect.offsetMax = Vector2.zero;
         permanentUiObjects.Add(btnEmpty);
 
-        // Hierarchy Control Toolbar (Up, Down, Detach, Delete)
+        // Hierarchy Control Toolbar (Up, Down, Clone, Detach, Delete)
         GameObject hierCtrlToolbar = new("HierarchyControlToolbar");
         hierCtrlToolbar.transform.SetParent(hierarchyCol.transform, false);
         var hierCtrlRect = hierCtrlToolbar.AddComponent<RectTransform>();
         var hierCtrlLE = hierCtrlToolbar.AddComponent<LayoutElement>();
-        hierCtrlLE.preferredHeight = 36f;
-        hierCtrlLE.minHeight = 36f;
+        hierCtrlLE.preferredHeight = 78f;
+        hierCtrlLE.minHeight = 78f;
         hierCtrlLE.flexibleWidth = 0f;
         hierCtrlLE.flexibleHeight = 0f;
 
-        var ctrlHLayout = hierCtrlToolbar.AddComponent<HorizontalLayoutGroup>();
-        ctrlHLayout.spacing = 8f;
-        ctrlHLayout.childControlWidth = true;
-        ctrlHLayout.childControlHeight = true;
-        ctrlHLayout.childForceExpandWidth = true;
-        ctrlHLayout.childForceExpandHeight = true;
+        var ctrlVLayout = hierCtrlToolbar.AddComponent<VerticalLayoutGroup>();
+        ctrlVLayout.spacing = 6f;
+        ctrlVLayout.childControlWidth = true;
+        ctrlVLayout.childControlHeight = true;
+        ctrlVLayout.childForceExpandWidth = true;
+        ctrlVLayout.childForceExpandHeight = false;
 
-        var btnUp = GenerateUI.Button(hierCtrlToolbar.transform, () => {
+        RectTransform ctrlTopRow = CreateHierarchyControlRow(hierCtrlToolbar.transform);
+        RectTransform ctrlBottomRow = CreateHierarchyControlRow(hierCtrlToolbar.transform);
+
+        var btnUp = GenerateUI.Button(ctrlTopRow, () => {
             if(selectedObject == null || currentCanvas == null) {
                 return;
             }
@@ -322,7 +325,7 @@ public class OvCanvasSettingPage : IDisposable {
         btnUp.Rect.offsetMax = Vector2.zero;
         permanentUiObjects.Add(btnUp);
 
-        var btnDown = GenerateUI.Button(hierCtrlToolbar.transform, () => {
+        var btnDown = GenerateUI.Button(ctrlTopRow, () => {
             if(selectedObject == null || currentCanvas == null) {
                 return;
             }
@@ -333,7 +336,39 @@ public class OvCanvasSettingPage : IDisposable {
         btnDown.Rect.offsetMax = Vector2.zero;
         permanentUiObjects.Add(btnDown);
 
-        var btnDetach = GenerateUI.Button(hierCtrlToolbar.transform, () => {
+        var btnClone = GenerateUI.Button(ctrlTopRow, () => {
+            if(selectedObject == null || currentCanvas == null) {
+                return;
+            }
+
+            OvObject source = selectedObject;
+            OvObject clone = source.Clone();
+            clone.Config.Name = $"{source.Config.Name} Copy";
+            clone.ApplyConfig();
+
+            if(source.Parent != null) {
+                OvObject parent = source.Parent;
+                int index = parent.Children.IndexOf(source);
+                parent.Attach(clone);
+                parent.SetChildIndex(clone, index + 1);
+            } else {
+                int index = currentCanvas.OvObjects.IndexOf(source);
+                currentCanvas.Attach(clone);
+                currentCanvas.OvObjects.Remove(clone);
+                currentCanvas.OvObjects.Insert(index + 1, clone);
+                SyncRootSiblingOrder();
+            }
+
+            selectedObject = clone;
+            RebuildHierarchy();
+            RebuildInspector();
+            SaveConfig();
+        }, MainCore.Tr.Get("BUTTON_CLONE", "Clone"), "btn_hier_clone");
+        btnClone.Label.gameObject.AddComponent<TextLocalization>().Init("BUTTON_CLONE", "Clone");
+        btnClone.Rect.offsetMax = Vector2.zero;
+        permanentUiObjects.Add(btnClone);
+
+        var btnDetach = GenerateUI.Button(ctrlBottomRow, () => {
             if(selectedObject == null || selectedObject.Parent == null) {
                 return;
             }
@@ -348,7 +383,7 @@ public class OvCanvasSettingPage : IDisposable {
         btnDetach.Rect.offsetMax = Vector2.zero;
         permanentUiObjects.Add(btnDetach);
 
-        var btnDel = GenerateUI.Button(hierCtrlToolbar.transform, () => {
+        var btnDel = GenerateUI.Button(ctrlBottomRow, () => {
             if(selectedObject == null) {
                 if(currentCanvas == null) {
                     return;
@@ -511,6 +546,23 @@ public class OvCanvasSettingPage : IDisposable {
         selectedObject = obj;
         RebuildHierarchy();
         RebuildInspector();
+    }
+
+    private static RectTransform CreateHierarchyControlRow(Transform parent) {
+        GameObject rowObject = new("HierarchyControlRow");
+        rowObject.transform.SetParent(parent, false);
+        RectTransform row = rowObject.AddComponent<RectTransform>();
+        var rowElement = rowObject.AddComponent<LayoutElement>();
+        rowElement.preferredHeight = 36f;
+        rowElement.minHeight = 36f;
+
+        var rowLayout = rowObject.AddComponent<HorizontalLayoutGroup>();
+        rowLayout.spacing = 8f;
+        rowLayout.childControlWidth = true;
+        rowLayout.childControlHeight = true;
+        rowLayout.childForceExpandWidth = true;
+        rowLayout.childForceExpandHeight = true;
+        return row;
     }
 
     private void SaveConfig() => OverlayCore.SaveAllCanvases();

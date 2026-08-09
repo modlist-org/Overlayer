@@ -10,8 +10,8 @@ public sealed class ColorRangeSettings : UnityComponentSettingsBase, ICopyable<C
     public string TagName = string.Empty;
     public double Minimum;
     public double Maximum = 100;
-    public Color MinimumColor = Color.black;
-    public Color MaximumColor = Color.white;
+    public GradientColor MinimumColor = new(Color.black, true);
+    public GradientColor MaximumColor = new(Color.white, true);
     public Easing Ease = Easing.Linear;
 
     public override bool ToUnity(GameObject target) {

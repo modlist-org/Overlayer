@@ -237,7 +237,12 @@ internal sealed class OvInspectorBuilder(
         Slider(card, "Line Spacing", 0f, -100f, 100f, cfg.LineSpacing, value => cfg.LineSpacing = value, "text_line_spacing", "F1");
         Slider(card, "Character Spacing", 0f, -100f, 100f, cfg.CharacterSpacing, value => cfg.CharacterSpacing = value, "text_char_spacing", "F1");
         Slider(card, "Word Spacing", 0f, -100f, 100f, cfg.WordSpacing, value => cfg.WordSpacing = value, "text_word_spacing", "F1");
-        ColorSliders(card, "Color", Color.white, () => (Color)cfg.Color, value => cfg.Color = value, "text_color");
+        Toggle(card, "Text Gradient", false, !cfg.Color.SolidColor, value => {
+            GradientColor color = cfg.Color;
+            color.SolidColor = !value;
+            cfg.Color = color;
+        }, "text_gradient");
+        GradientColorSliders(card, () => cfg.Color, value => cfg.Color = value, "text_gradient", Color.white);
         Toggle(card, "Material Outline", false, cfg.EnableOutline, value => cfg.EnableOutline = value, "text_outline");
         Slider(card, "Outline Width", 0.05f, 0f, 0.25f, cfg.OutlineWidth, value => cfg.OutlineWidth = value, "text_outline_width");
         Slider(card, "Outline Softness", 0f, 0f, 1f, cfg.OutlineSoftness, value => cfg.OutlineSoftness = value, "text_outline_softness");
@@ -295,8 +300,18 @@ internal sealed class OvInspectorBuilder(
         Input(card, "Target Tag", null, cfg.TagName, value => cfg.TagName = value, "color_range_tag");
         Slider(card, "Minimum", 0f, -10000f, 10000f, (float)cfg.Minimum, value => cfg.Minimum = value, "color_range_min", "F2", false);
         Slider(card, "Maximum", 100f, -10000f, 10000f, (float)cfg.Maximum, value => cfg.Maximum = value, "color_range_max", "F2", false);
-        ColorSliders(card, "Minimum Color", Color.black, () => cfg.MinimumColor, value => cfg.MinimumColor = value, "color_range_min_color");
-        ColorSliders(card, "Maximum Color", Color.white, () => cfg.MaximumColor, value => cfg.MaximumColor = value, "color_range_max_color");
+        Toggle(card, "Minimum Gradient", false, !cfg.MinimumColor.SolidColor, value => {
+            GradientColor color = cfg.MinimumColor;
+            color.SolidColor = !value;
+            cfg.MinimumColor = color;
+        }, "color_range_min_gradient");
+        GradientColorSliders(card, () => cfg.MinimumColor, value => cfg.MinimumColor = value, "color_range_min_gradient", Color.black);
+        Toggle(card, "Maximum Gradient", false, !cfg.MaximumColor.SolidColor, value => {
+            GradientColor color = cfg.MaximumColor;
+            color.SolidColor = !value;
+            cfg.MaximumColor = color;
+        }, "color_range_max_gradient");
+        GradientColorSliders(card, () => cfg.MaximumColor, value => cfg.MaximumColor = value, "color_range_max_gradient", Color.white);
         EnumDropDown(card, "Ease", Easing.Linear, cfg.Ease, value => cfg.Ease = value, "color_range_ease");
     }
 
@@ -1948,6 +1963,69 @@ internal sealed class OvInspectorBuilder(
             apply();
         }, _ => save(), id);
         Track(picker);
+    }
+
+    private void GradientColorSliders(
+        Transform parent,
+        Func<GradientColor> get,
+        Action<GradientColor> set,
+        string idPrefix,
+        Color defaults
+    ) {
+        GameObject gridObject = new("GradientCorners");
+        gridObject.transform.SetParent(parent, false);
+        RectTransform grid = gridObject.AddComponent<RectTransform>();
+        var gridLayout = gridObject.AddComponent<VerticalLayoutGroup>();
+        gridLayout.spacing = 6f;
+        gridLayout.childControlWidth = true;
+        gridLayout.childControlHeight = true;
+        gridLayout.childForceExpandWidth = true;
+        gridLayout.childForceExpandHeight = false;
+
+        GradientColorRow(grid, defaults, "Top Left", () => get().TL, value => {
+            GradientColor color = get();
+            color.TL = value;
+            set(color);
+        }, idPrefix + "_top_left", "Top Right", () => get().TR, value => {
+            GradientColor color = get();
+            color.TR = value;
+            set(color);
+        }, idPrefix + "_top_right");
+        GradientColorRow(grid, defaults, "Bottom Left", () => get().BL, value => {
+            GradientColor color = get();
+            color.BL = value;
+            set(color);
+        }, idPrefix + "_bottom_left", "Bottom Right", () => get().BR, value => {
+            GradientColor color = get();
+            color.BR = value;
+            set(color);
+        }, idPrefix + "_bottom_right");
+    }
+
+    private void GradientColorRow(
+        Transform parent,
+        Color defaults,
+        string leftLabel,
+        Func<Color> leftGet,
+        Action<Color> leftSet,
+        string leftId,
+        string rightLabel,
+        Func<Color> rightGet,
+        Action<Color> rightSet,
+        string rightId
+    ) {
+        GameObject rowObject = new("TextGradientRow");
+        rowObject.transform.SetParent(parent, false);
+        RectTransform row = rowObject.AddComponent<RectTransform>();
+        var rowLayout = rowObject.AddComponent<HorizontalLayoutGroup>();
+        rowLayout.spacing = 6f;
+        rowLayout.childControlWidth = true;
+        rowLayout.childControlHeight = true;
+        rowLayout.childForceExpandWidth = true;
+        rowLayout.childForceExpandHeight = true;
+
+        ColorSliders(row, leftLabel, defaults, leftGet, leftSet, leftId);
+        ColorSliders(row, rightLabel, defaults, rightGet, rightSet, rightId);
     }
 
     private void Label(Transform parent, string text) {
