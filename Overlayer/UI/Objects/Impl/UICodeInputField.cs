@@ -18,9 +18,9 @@ namespace Overlayer.UI.Objects.Impl;
 #endif
 public sealed class UICodeInputField
 #if ML && IL2CPP
-    (IntPtr ptr) : TMP_InputField(ptr), IPointerEnterHandler, IPointerExitHandler
+    (IntPtr ptr) : TMP_InputField(ptr)
 #else
-    : TMP_InputField, IPointerEnterHandler, IPointerExitHandler
+    : TMP_InputField
 #endif
 {
     public Action<TMP_Text, bool> AfterLabelUpdate;
@@ -35,11 +35,7 @@ public sealed class UICodeInputField
     private EditInfo lastEdit;
     private bool hasLastEdit;
     private bool suppressHistory;
-#if ML && IL2CPP
     private UnityEngine.Events.UnityAction<string> historyCallback;
-#else
-    private UnityAction<string> historyCallback;
-#endif
     private const int MaxHistory = 100;
     private static UICodeInputField hoveredField;
     private RectTransform caretTransform;
@@ -47,7 +43,12 @@ public sealed class UICodeInputField
     public static bool ShouldConsumeParentScroll
         => hoveredField != null && IsShiftHeld();
 
-    protected override void OnEnable() {
+#if ML && IL2CPP
+    public
+#else
+    protected
+#endif
+    override void OnEnable() {
         base.OnEnable();
         onFocusSelectAll = false;
         lastState = CaptureState();
@@ -63,7 +64,12 @@ public sealed class UICodeInputField
         onValueChanged.AddListener(historyCallback);
     }
 
-    protected override void OnDisable() {
+#if ML && IL2CPP
+    public
+#else
+    protected
+#endif
+    override void OnDisable() {
         OnFieldDisabled?.Invoke();
         if(historyCallback != null) {
             onValueChanged.RemoveListener(historyCallback);
@@ -75,7 +81,12 @@ public sealed class UICodeInputField
         base.OnDisable();
     }
 
-    protected override void LateUpdate() {
+#if ML && IL2CPP
+    public
+#else
+    protected
+#endif
+    override void LateUpdate() {
         base.LateUpdate();
         if(!suppressHistory && text == lastState.Text) {
             HistoryState current = CaptureState();
@@ -123,17 +134,7 @@ public sealed class UICodeInputField
         float wheel = Mathf.Abs(delta.y) > 0.01f ? delta.y : delta.x;
         if(Mathf.Abs(wheel) > 0.0001f) ScrollHorizontal(wheel * 32f);
     }
-
-    public override void OnPointerEnter(PointerEventData eventData) {
-        base.OnPointerEnter(eventData);
-        hoveredField = this;
-    }
-
-    public override void OnPointerExit(PointerEventData eventData) {
-        base.OnPointerExit(eventData);
-        if(hoveredField == this) hoveredField = null;
-    }
-
+    
     public override void OnDeselect(BaseEventData eventData) {
         base.OnDeselect(eventData);
         hasLastEdit = false;

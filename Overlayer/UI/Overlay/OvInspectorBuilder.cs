@@ -1441,7 +1441,7 @@ internal sealed class OvInspectorBuilder(
         background.color = new Color(0.08f, 0.08f, 0.08f, 0.98f);
 
         var vertical = popup.gameObject.AddComponent<VerticalLayoutGroup>();
-        vertical.padding = new RectOffset(10, 10, 8, 8);
+        vertical.padding = new RectOffset { left = 10, right = 10, top = 8, bottom = 8 };
         vertical.spacing = 3f;
         vertical.childControlWidth = true;
         vertical.childControlHeight = true;

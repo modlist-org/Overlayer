@@ -191,7 +191,7 @@ internal static class PageResources {
 
         VerticalLayoutGroup layout = contentObject.AddComponent<VerticalLayoutGroup>();
         layout.spacing = 8f;
-        layout.padding = new RectOffset(0, 0, 0, 12);
+        layout.padding = new RectOffset { left = 0, right = 0, top = 0, bottom = 12 };
         layout.childControlWidth = true;
         layout.childControlHeight = true;
         layout.childForceExpandWidth = true;

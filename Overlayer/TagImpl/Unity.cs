@@ -1,13 +1,28 @@
 using Overlayer.Tag.Core;
 using UnityEngine.SceneManagement;
 
+#if ML && IL2CPP
+using Il2CppInterop.Runtime;
+#endif
+
 namespace Overlayer.TagImpl;
 
 public static class Unity {
     private static string _cachedSceneName = string.Empty;
 
     static Unity() {
-        SceneManager.sceneLoaded += (scene, mode) => _cachedSceneName = scene.name;
+        SceneManager.sceneLoaded +=
+#if IL2CPP
+            DelegateSupport.ConvertDelegate<UnityEngine.Events.UnityAction<Scene, LoadSceneMode>>(
+                new Action<Scene, LoadSceneMode>(
+#endif
+                    (scene, mode) => _cachedSceneName = scene.name
+#if IL2CPP
+                )
+            )
+#endif
+            ;
+
         _cachedSceneName = SceneManager.GetActiveScene().name;
     }
 
