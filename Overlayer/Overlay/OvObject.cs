@@ -61,6 +61,8 @@ public sealed class OvObject : ISettingsFile {
                 Config.TextEngineConfig.NotPlayingText
             );
         }
+        Config.MovingManConfig?.ToUnity(GameObject);
+        Config.ColorRangeConfig?.ToUnity(GameObject);
         Config.ImageConfig?.ToUnity(GameObject);
         Config.BoxCollider2DConfig?.ToUnity(GameObject);
         Config.Rigidbody2DConfig?.ToUnity(GameObject);
@@ -94,6 +96,14 @@ public sealed class OvObject : ISettingsFile {
                 updater.Init(tmp);
             }
         }
+        if(!tc) {
+            Config.ColorRangeConfig = null;
+        }
+        var movingMan = EnsureComponent<MovingManComponent>(Config.MovingManConfig != null);
+        var colorRange = EnsureComponent<ColorRangeComponent>(tc && Config.ColorRangeConfig != null);
+        var text = GameObject.GetComponent<TextMeshProUGUI>();
+        movingMan?.Init(text, RectTransform);
+        colorRange?.Init(text);
         EnsureComponent<Image>(Config.ImageConfig != null);
         EnsureComponent<BoxCollider2D>(Config.BoxCollider2DConfig != null);
         EnsureComponent<Rigidbody2D>(Config.Rigidbody2DConfig != null);

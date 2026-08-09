@@ -13,6 +13,8 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
 
     public TextMeshProUGUISettings TextConfig = null;
     public OvTextSettings TextEngineConfig = null;
+    public MovingManSettings MovingManConfig = null;
+    public ColorRangeSettings ColorRangeConfig = null;
     public ImageSettings ImageConfig = null;
     public BoxCollider2DSettings BoxCollider2DConfig = null;
     public Rigidbody2DSettings Rigidbody2DConfig = null;
@@ -34,6 +36,12 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
         if(TextConfig != null) {
             obj[nameof(TextConfig)] = TextConfig.Serialize();
             obj[nameof(TextEngineConfig)] = (TextEngineConfig ?? OvTextSettings.FromLegacy(TextConfig.Text)).Serialize();
+        }
+        if(MovingManConfig != null) {
+            obj[nameof(MovingManConfig)] = MovingManConfig.Serialize();
+        }
+        if(ColorRangeConfig != null) {
+            obj[nameof(ColorRangeConfig)] = ColorRangeConfig.Serialize();
         }
         if(ImageConfig != null) {
             obj[nameof(ImageConfig)] = ImageConfig.Serialize();
@@ -97,6 +105,8 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
         } else {
             TextEngineConfig = null;
         }
+        MovingManConfig = ReadConfig<MovingManSettings>(obj, nameof(MovingManConfig));
+        ColorRangeConfig = ReadConfig<ColorRangeSettings>(obj, nameof(ColorRangeConfig));
         ImageConfig = ReadConfig<ImageSettings>(obj, nameof(ImageConfig));
         BoxCollider2DConfig = ReadConfig<BoxCollider2DSettings>(obj, nameof(BoxCollider2DConfig));
         Rigidbody2DConfig = ReadConfig<Rigidbody2DSettings>(obj, nameof(Rigidbody2DConfig));
@@ -116,6 +126,8 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
             ContentSizeFitterConfig = ContentSizeFitterConfig?.Copy(),
             TextConfig = TextConfig?.Copy(),
             TextEngineConfig = TextEngineConfig?.Copy(),
+            MovingManConfig = MovingManConfig?.Copy(),
+            ColorRangeConfig = ColorRangeConfig?.Copy(),
             ImageConfig = ImageConfig?.Copy(),
             BoxCollider2DConfig = BoxCollider2DConfig?.Copy(),
             Rigidbody2DConfig = Rigidbody2DConfig?.Copy(),
