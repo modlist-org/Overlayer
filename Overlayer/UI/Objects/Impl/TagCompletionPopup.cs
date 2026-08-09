@@ -52,7 +52,8 @@ internal sealed class TagCompletionPopup {
         canvasRect = sourceText.canvas?.rootCanvas?.GetComponent<RectTransform>()
             ?? UICore.CanvasObj?.GetComponent<RectTransform>();
 
-        input.OnFieldDisabled = Dispose;
+        input.OnFieldDisabled = Deactivate;
+        input.OnFieldDestroyed = Dispose;
 
         GameObject popup = new("TagCompletion");
         popup.transform.SetParent(canvasRect, false);
@@ -64,7 +65,7 @@ internal sealed class TagCompletionPopup {
         popupRect.pivot = new(0f, 1f);
         popupRect.sizeDelta = new(PopupWidth, MaxItems * ItemHeight);
 
-        CompletionInputHandler inputHandler = popup.AddComponent<CompletionInputHandler>();
+        inputHandler = popup.AddComponent<CompletionInputHandler>();
         inputHandler.Initialize(this);
 
         Image popupImage = popup.AddComponent<Image>();
@@ -81,6 +82,11 @@ internal sealed class TagCompletionPopup {
 
     public bool HandleKey(KeyCode key) {
         if(HasSnippet) {
+            if(key == KeyCode.Tab) {
+                AdvanceSnippet(IsShiftHeld());
+                return true;
+            }
+
             if(key == KeyCode.Escape) {
                 ClearSnippet();
                 Hide();
@@ -491,6 +497,12 @@ internal sealed class TagCompletionPopup {
         visibleRowCount = 0;
         hoveredIndex = -1;
         popupRect?.gameObject.SetActive(false);
+    }
+
+    private void Deactivate() {
+        ClearSnippet();
+        suppressRefresh = false;
+        Hide();
     }
 
     private void Dispose() {

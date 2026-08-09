@@ -25,6 +25,7 @@ public sealed class UICodeInputField
     public Action<TMP_Text, bool> AfterLabelUpdate;
     public Func<KeyCode, bool> HandleKey;
     public Action OnFieldDisabled;
+    public Action OnFieldDestroyed;
     public bool CanUndo => undoHistory.Count > 0;
     public bool CanRedo => redoHistory.Count > 0;
 
@@ -80,6 +81,16 @@ public sealed class UICodeInputField
         }
         hasLastEdit = false;
         base.OnDisable();
+    }
+
+#if ML && IL2CPP
+    public
+#else
+    protected
+#endif
+    override void OnDestroy() {
+        OnFieldDestroyed?.Invoke();
+        base.OnDestroy();
     }
 
 #if ML && IL2CPP
