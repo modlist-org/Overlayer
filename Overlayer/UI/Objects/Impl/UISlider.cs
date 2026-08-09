@@ -77,7 +77,7 @@ public class UISlider : UIObject {
                     ? Evaluator<float>.Evaluate(val, Value, Min, Max)
                     : Evaluator<float>.Evaluate(val, Value);
 
-                LastValidValue = state != EvalState.Error ? result : null;
+                LastValidValue = state != EvalState.Error ? ApplyFilter(result) : null;
 
                 bool isCalc = state != EvalState.Error;
                 if(isCalc) {
@@ -119,7 +119,7 @@ public class UISlider : UIObject {
 #if ML && IL2CPP
             DelegateSupport.ConvertDelegate<UnityEngine.Events.UnityAction<string>>(new Action<string>(
 #endif
-                (_) => InputCore.SetValue(Value.ToString())
+                (_) => InputCore.SetValue(Value.ToString("R"))
 #if ML && IL2CPP
             ))
 #endif

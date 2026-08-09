@@ -293,7 +293,19 @@ internal sealed class OvInspectorBuilder(
         preserveAspectRow = Toggle(card, "Preserve Aspect", false, cfg.PreserveAspect, value => cfg.PreserveAspect = value, "image_aspect");
         useSpriteMeshRow = Toggle(card, "Use Sprite Mesh", false, cfg.UseSpriteMesh, value => cfg.UseSpriteMesh = value, "image_sprite_mesh");
         fillCenterRow = Toggle(card, "Fill Center", true, cfg.FillCenter, value => cfg.FillCenter = value, "image_fill_center");
-        pixelsPerUnitRow = Slider(card, "Pixels Per Unit", 1f, 0.01f, 10f, cfg.PixelsPerUnitMultiplier, value => cfg.PixelsPerUnitMultiplier = value, "image_pixels_per_unit");
+        pixelsPerUnitRow = Slider(
+            card,
+            "Pixels Per Unit",
+            1f,
+            0f,
+            10f,
+            cfg.PixelsPerUnitMultiplier,
+            value => cfg.PixelsPerUnitMultiplier = value,
+            "image_pixels_per_unit",
+            "F2",
+            false,
+            value => Mathf.Max(0f, value)
+        );
         fillMethodRow = EnumDropDown(card, "Fill Method", Image.FillMethod.Horizontal, cfg.FillMethod, value => {
             cfg.FillMethod = value;
             cfg.FillOrigin = 0;
@@ -1084,12 +1096,12 @@ internal sealed class OvInspectorBuilder(
         string source
     ) => $"{state}|{source?.GetHashCode() ?? 0}|{string.Join("|", diagnostics.Select(d => d.ToString()))}";
 
-    private RectTransform Slider(Transform parent, string label, float defaultValue, float min, float max, float value, Action<float> changed, string id, string format = "F2") => Slider(parent, label, defaultValue, min, max, value, changed, id, format, true);
+    private RectTransform Slider(Transform parent, string label, float defaultValue, float min, float max, float value, Action<float> changed, string id, string format = "F2") => Slider(parent, label, defaultValue, min, max, value, changed, id, format, true, null);
 
-    private RectTransform Slider(Transform parent, string label, float defaultValue, float min, float max, float value, Action<float> changed, string id, string format, bool clamp) {
+    private RectTransform Slider(Transform parent, string label, float defaultValue, float min, float max, float value, Action<float> changed, string id, string format, bool clamp, Func<float, float> filter = null) {
         label = InspectorLabel(label);
         var row = GenerateUI.Row(parent, 50f);
-        var slider = GenerateUI.Slider(row, defaultValue, min, max, value, clamp ? format : "G9", clamp, null, newValue => {
+        var slider = GenerateUI.Slider(row, defaultValue, min, max, value, format, clamp, filter, newValue => {
             changed(newValue);
             apply();
         }, _ => save(), label, id);
