@@ -16,7 +16,7 @@
         -->
         <!--
             <Il2CppPath>/path/to/il2cpp/game</Il2CppPath>
-            <Il2CppData>il2cppgame_Data</Il2CppData>
+            <Il2CppData>/path/to/il2cppAssemblies</Il2CppData>
         -->
     </PropertyGroup>
 </Project>
