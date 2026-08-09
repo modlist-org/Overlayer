@@ -159,11 +159,6 @@ internal static class PageSettings {
             },
             "language_dropdown"
         );
-        languageDropdown.Rect.AddToolTip(
-            "LANGUAGE_DROPDOWN_TOOLTIP",
-            "In other languages some UI may remain untranslated.\n(This does not apply to English.)"
-        );
-
         var langBtn = GenerateUI.Button(
             langRow,
             () => { },

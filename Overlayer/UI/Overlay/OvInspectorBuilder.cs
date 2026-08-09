@@ -113,7 +113,7 @@ internal sealed class OvInspectorBuilder(
             BuildMask(obj, obj.Config.MaskConfig);
         }
         if(obj.Config.HasRectMask2D) {
-            var (_, rectMask) = GenerateUI.ComponentCard(content, "Rect Mask 2D", obj.Config.RectMask2DEnabled, value => {
+            var (_, rectMask) = GenerateUI.ComponentCard(content, InspectorLabel("Rect Mask 2D"), obj.Config.RectMask2DEnabled, value => {
                 obj.Config.RectMask2DEnabled = value;
                 ApplyAndSave();
             }, () => {
@@ -121,7 +121,7 @@ internal sealed class OvInspectorBuilder(
                 obj.Config.RectMask2DEnabled = true;
                 RefreshComponents(obj);
             });
-            Label(rectMask, "Clips child graphics to this object's rectangle.");
+            Label(rectMask, InspectorText("INSPECTOR_RECT_MASK_DESCRIPTION", "Clips child graphics to this object's rectangle."));
         }
 #if !IL2CPP
         if(obj.Config.BoxCollider2DConfig != null) {
@@ -450,7 +450,7 @@ internal sealed class OvInspectorBuilder(
         }
 
         var row = GenerateUI.Row(content, 50f);
-        var dropdown = GenerateUI.DropDown(row, options[0], options[0], options, value => value, selected => {
+        var dropdown = GenerateUI.DropDown(row, options[0], options[0], options, InspectorLabel, selected => {
             switch(selected) {
                 case "Text":
                     obj.Config.TextConfig = new TextMeshProUGUISettings();
@@ -497,7 +497,22 @@ internal sealed class OvInspectorBuilder(
         Track(dropdown);
     }
 
-    private (RectTransform Card, RectTransform Content) Card(string title, bool removable, Action remove = null) => GenerateUI.ComponentCard(content, title, true, null, remove, removable, showActiveToggle: false);
+    private static string InspectorText(string key, string fallback) => MainCore.Tr.Get(key, fallback);
+
+    private static string InspectorLabel(string label) {
+        if(string.IsNullOrEmpty(label)) {
+            return label;
+        }
+
+        string key = label
+            .Replace(" / ", "_")
+            .Replace(" ", "_")
+            .Replace(".", string.Empty)
+            .ToUpperInvariant();
+        return InspectorText($"INSPECTOR_{key}", label);
+    }
+
+    private (RectTransform Card, RectTransform Content) Card(string title, bool removable, Action remove = null) => GenerateUI.ComponentCard(content, InspectorLabel(title), true, null, remove, removable, showActiveToggle: false);
 
     private (RectTransform Card, RectTransform Content) ComponentCard(
         string title,
@@ -505,7 +520,7 @@ internal sealed class OvInspectorBuilder(
         Action remove,
         Action enabledChanged = null
     ) {
-        return GenerateUI.ComponentCard(content, title, settings.ComponentEnabled, value => {
+        return GenerateUI.ComponentCard(content, InspectorLabel(title), settings.ComponentEnabled, value => {
             settings.ComponentEnabled = value;
             if(enabledChanged == null) {
                 ApplyAndSave();
@@ -516,6 +531,7 @@ internal sealed class OvInspectorBuilder(
     }
 
     private void Input(Transform parent, string label, string defaultValue, string value, Action<string> changed, string id, Action finished = null) {
+        label = InspectorLabel(label);
         var row = GenerateUI.Row(parent, 50f);
         var input = GenerateUI.Input(row, defaultValue, value, changed, label, null, id, _ => {
             finished?.Invoke();
@@ -558,7 +574,7 @@ internal sealed class OvInspectorBuilder(
             null,
             value,
             OnTextChanged,
-            $"{label} / tag expression",
+            InspectorLabel($"{label} / tag expression"),
             null,
             id,
             _ => save(),
@@ -781,13 +797,13 @@ internal sealed class OvInspectorBuilder(
         string source
     ) {
         if(state == TextEngineState.Compiling) {
-            label.text = "Checking...";
+            label.text = InspectorText("INSPECTOR_CHECKING", "Checking...");
             label.color = new Color(1f, 1f, 1f, 0.42f);
             return;
         }
 
         if(diagnostics.Length == 0) {
-            label.text = "No problems";
+            label.text = InspectorText("INSPECTOR_NO_PROBLEMS", "No problems");
             label.color = new Color(0.588f, 1f, 0.569f, 0.62f);
             return;
         }
@@ -826,7 +842,7 @@ internal sealed class OvInspectorBuilder(
             int end = Math.Clamp(start + Math.Max(1, group.Key.Length), start, source.Length);
             string tooltip = string.Join("\n", group
                 .OrderByDescending(d => d.Severity)
-                .Select(d => $"Line {GetLine(source, d.Context.Index) + 1} [{d.Severity}] {FormatDiagnostic(d)}"));
+                .Select(d => $"{InspectorText("INSPECTOR_LINE", "Line")} {GetLine(source, d.Context.Index) + 1} [{d.Severity}] {FormatDiagnostic(d)}"));
             Color underlineColor = SeverityUnityColor(group.Max(d => d.Severity));
             var characters = sourceText.textInfo.characterInfo
                 .Take(sourceText.textInfo.characterCount)
@@ -958,12 +974,12 @@ internal sealed class OvInspectorBuilder(
 
         return diagnostic.Id switch {
             DiagnosticId.TagNotFound => FormatMissingTag(diagnostic),
-            DiagnosticId.ArgConvertFail => $"Argument {ArgumentNumber()} ('{Data(1)}') cannot convert to {Data(2)}",
-            DiagnosticId.ArgTooFew => $"Expected at least {Data(0)} arguments; got {Data(1)}",
-            DiagnosticId.ArgTooMany => $"Expected at most {Data(0)} arguments; got {Data(1)}",
-            DiagnosticId.FormatFail => $"Invalid format '{Data(0)}'",
-            DiagnosticId.AdvancedTagException => Data(0, "Advanced tag failed"),
-            DiagnosticId.InternalError => "Internal compiler error",
+            DiagnosticId.ArgConvertFail => string.Format(InspectorText("INSPECTOR_DIAG_ARG_CONVERT", "Argument {0} ('{1}') cannot convert to {2}"), ArgumentNumber(), Data(1), Data(2)),
+            DiagnosticId.ArgTooFew => string.Format(InspectorText("INSPECTOR_DIAG_ARG_TOO_FEW", "Expected at least {0} arguments; got {1}"), Data(0), Data(1)),
+            DiagnosticId.ArgTooMany => string.Format(InspectorText("INSPECTOR_DIAG_ARG_TOO_MANY", "Expected at most {0} arguments; got {1}"), Data(0), Data(1)),
+            DiagnosticId.FormatFail => string.Format(InspectorText("INSPECTOR_DIAG_FORMAT", "Invalid format '{0}'"), Data(0)),
+            DiagnosticId.AdvancedTagException => Data(0, InspectorText("INSPECTOR_DIAG_ADVANCED_TAG", "Advanced tag failed")),
+            DiagnosticId.InternalError => InspectorText("INSPECTOR_DIAG_INTERNAL", "Internal compiler error"),
             _ => diagnostic.Id.ToString()
         };
     }
@@ -976,8 +992,8 @@ internal sealed class OvInspectorBuilder(
             ? diagnostic.Data[1].ToString()
             : null;
         return suggestion == null
-            ? $"Tag '{name}' not found"
-            : $"Tag '{name}' not found. Did you mean '{suggestion}'?";
+            ? string.Format(InspectorText("INSPECTOR_DIAG_TAG_NOT_FOUND", "Tag '{0}' not found"), name)
+            : string.Format(InspectorText("INSPECTOR_DIAG_TAG_SUGGESTION", "Tag '{0}' not found. Did you mean '{1}'?"), name, suggestion);
     }
 
     private static int GetLine(string source, int index) {
@@ -1001,6 +1017,7 @@ internal sealed class OvInspectorBuilder(
     private void Slider(Transform parent, string label, float defaultValue, float min, float max, float value, Action<float> changed, string id, string format = "F2") => Slider(parent, label, defaultValue, min, max, value, changed, id, format, true);
 
     private UISlider Slider(Transform parent, string label, float defaultValue, float min, float max, float value, Action<float> changed, string id, string format, bool clamp) {
+        label = InspectorLabel(label);
         var row = GenerateUI.Row(parent, 50f);
         var slider = GenerateUI.Slider(row, defaultValue, min, max, value, format, clamp, null, newValue => {
             changed(newValue);
@@ -1011,6 +1028,7 @@ internal sealed class OvInspectorBuilder(
     }
 
     private void Toggle(Transform parent, string label, bool defaultValue, bool value, Action<bool> changed, string id) {
+        label = InspectorLabel(label);
         var row = GenerateUI.Row(parent, 50f);
         var toggle = GenerateUI.Toggle(row, defaultValue, value, newValue => {
             changed(newValue);
@@ -1020,6 +1038,7 @@ internal sealed class OvInspectorBuilder(
     }
 
     private void EnumDropDown<T>(Transform parent, string label, T defaultValue, T value, Action<T> changed, string id, Action completed = null) where T : struct, Enum {
+        label = InspectorLabel(label);
         var values = Enum.GetValues(typeof(T)).Cast<T>().ToArray();
         var row = GenerateUI.Row(parent, 50f);
         var dropdown = GenerateUI.DropDown(row, defaultValue, value, values, option => $"{label}: {option}", newValue => {
@@ -1045,7 +1064,7 @@ internal sealed class OvInspectorBuilder(
         string format
     ) {
         RectTransform row = CompactRow(parent, 44f, 6f);
-        FixedLabel(row, label, 66f);
+        FixedLabel(row, InspectorLabel(label), 66f);
         var numericFields = new List<(UISlider Field, Func<float> Get)>();
         foreach(var field in fields) {
             numericFields.Add(NumericField(row, field.Label, field.Default, field.Get, field.Set, field.Id, format));
@@ -1070,6 +1089,7 @@ internal sealed class OvInspectorBuilder(
         string id,
         string format
     ) {
+        label = InspectorLabel(label);
         int decimals = 0;
         if(format.Length > 1 && (format[0] == 'F' || format[0] == 'f')) {
             int.TryParse(format[1..], out decimals);
@@ -1190,13 +1210,13 @@ internal sealed class OvInspectorBuilder(
         }, "transform_rect_y2", "F1");
 
         void RefreshValues() {
-            Field.Label.text = StretchX() ? "Left" : "Pos X";
+            Field.Label.text = InspectorLabel(StretchX() ? "Left" : "Pos X");
             SetDisplayedValue(Field, Get());
-            secondX.Field.Label.text = StretchX() ? "Right" : "Width";
+            secondX.Field.Label.text = InspectorLabel(StretchX() ? "Right" : "Width");
             SetDisplayedValue(secondX.Field, secondX.Get());
-            firstY.Field.Label.text = StretchY() ? "Top" : "Pos Y";
+            firstY.Field.Label.text = InspectorLabel(StretchY() ? "Top" : "Pos Y");
             SetDisplayedValue(firstY.Field, firstY.Get());
-            secondY.Field.Label.text = StretchY() ? "Bottom" : "Height";
+            secondY.Field.Label.text = InspectorLabel(StretchY() ? "Bottom" : "Height");
             SetDisplayedValue(secondY.Field, secondY.Get());
         }
 
@@ -1259,13 +1279,13 @@ internal sealed class OvInspectorBuilder(
         }, "transform_rect_y2", "F1");
 
         void RefreshValues() {
-            Field.Label.text = StretchX() ? "Left" : "Pos X";
+            Field.Label.text = InspectorLabel(StretchX() ? "Left" : "Pos X");
             SetDisplayedValue(Field, Get());
-            secondX.Field.Label.text = StretchX() ? "Right" : "Width";
+            secondX.Field.Label.text = InspectorLabel(StretchX() ? "Right" : "Width");
             SetDisplayedValue(secondX.Field, secondX.Get());
-            firstY.Field.Label.text = StretchY() ? "Top" : "Pos Y";
+            firstY.Field.Label.text = InspectorLabel(StretchY() ? "Top" : "Pos Y");
             SetDisplayedValue(firstY.Field, firstY.Get());
-            secondY.Field.Label.text = StretchY() ? "Bottom" : "Height";
+            secondY.Field.Label.text = InspectorLabel(StretchY() ? "Bottom" : "Height");
             SetDisplayedValue(secondY.Field, secondY.Get());
         }
 
@@ -1368,7 +1388,7 @@ internal sealed class OvInspectorBuilder(
                 presetGraphics[i] = (item.Parent, item.H, item.V, item.Header, graphic);
             }
 
-            modifierHelp.text = $"{(shift ? "<color=#FFCC44>" : "")}Shift: Also set pivot{(shift ? "</color>" : "")}     {(alt ? "<color=#FFCC44>" : "")}Alt: Also set position{(alt ? "</color>" : "")}";
+            modifierHelp.text = AnchorModifierHelp(shift, alt);
         }
 
         for(int y = 0; y < verticalModes.Length; y++) {
@@ -1530,7 +1550,7 @@ internal sealed class OvInspectorBuilder(
                 presetGraphics[i] = (item.Parent, item.H, item.V, item.Header, graphic);
             }
 
-            modifierHelp.text = $"{(shift ? "<color=#FFCC44>" : "")}Shift: Also set pivot{(shift ? "</color>" : "")}     {(alt ? "<color=#FFCC44>" : "")}Alt: Also set position{(alt ? "</color>" : "")}";
+            modifierHelp.text = AnchorModifierHelp(shift, alt);
         }
 
         for(int y = 0; y < verticalModes.Length; y++) {
@@ -1646,14 +1666,14 @@ internal sealed class OvInspectorBuilder(
         vertical.childForceExpandHeight = false;
 
         TextMeshProUGUI title = GenerateUI.AddText(popup, true);
-        title.text = "Anchor Presets";
+        title.text = InspectorText("INSPECTOR_ANCHOR_PRESETS", "Anchor Presets");
         title.fontSize = 18f;
         title.fontStyle = FontStyles.Bold;
         title.gameObject.AddComponent<LayoutElement>().preferredHeight = 23f;
 
         TextMeshProUGUI help = GenerateUI.AddText(popup, true);
         help.name = "ModifierHelp";
-        help.text = "Shift: Also set pivot     Alt: Also set position";
+        help.text = AnchorModifierHelp(false, false);
         help.fontSize = 12f;
         help.color = new Color(1f, 1f, 1f, 0.55f);
         help.gameObject.AddComponent<LayoutElement>().preferredHeight = 20f;
@@ -1869,23 +1889,29 @@ internal sealed class OvInspectorBuilder(
     }
 
     private static string ModeName(AnchorMode mode, bool vertical) => mode switch {
-        AnchorMode.Min => vertical ? "bottom" : "left",
-        AnchorMode.Middle => vertical ? "middle" : "center",
-        AnchorMode.Max => vertical ? "top" : "right",
-        AnchorMode.Stretch => "stretch",
-        _ => "custom"
+        AnchorMode.Min => InspectorText(vertical ? "INSPECTOR_ANCHOR_BOTTOM" : "INSPECTOR_ANCHOR_LEFT", vertical ? "bottom" : "left"),
+        AnchorMode.Middle => InspectorText("INSPECTOR_ANCHOR_MIDDLE", "middle"),
+        AnchorMode.Max => InspectorText(vertical ? "INSPECTOR_ANCHOR_TOP" : "INSPECTOR_ANCHOR_RIGHT", vertical ? "top" : "right"),
+        AnchorMode.Stretch => InspectorText("INSPECTOR_ANCHOR_STRETCH", "stretch"),
+        _ => InspectorText("INSPECTOR_ANCHOR_CUSTOM", "custom")
     };
 
     private static string AnchorCellName(AnchorMode horizontal, AnchorMode vertical) {
         if(horizontal == AnchorMode.Custom) {
-            return $"Vertical: {ModeName(vertical, true)}";
+            return $"{InspectorText("INSPECTOR_ANCHOR_VERTICAL", "Vertical")}: {ModeName(vertical, true)}";
         }
 
         if(vertical == AnchorMode.Custom) {
-            return $"Horizontal: {ModeName(horizontal, false)}";
+            return $"{InspectorText("INSPECTOR_ANCHOR_HORIZONTAL", "Horizontal")}: {ModeName(horizontal, false)}";
         }
 
         return $"{ModeName(horizontal, false)} / {ModeName(vertical, true)}";
+    }
+
+    private static string AnchorModifierHelp(bool shift, bool alt) {
+        string shiftText = InspectorText("INSPECTOR_ANCHOR_SHIFT", "Shift: Also set pivot");
+        string altText = InspectorText("INSPECTOR_ANCHOR_ALT", "Alt: Also set position");
+        return $"{(shift ? "<color=#FFCC44>" : "")}{shiftText}{(shift ? "</color>" : "")}     {(alt ? "<color=#FFCC44>" : "")}{altText}{(alt ? "</color>" : "")}";
     }
 
     private static void ApplyAnchorModes(OvObject obj, AnchorMode horizontal, AnchorMode vertical, bool setPivot, bool setPosition) {
@@ -1950,7 +1976,7 @@ internal sealed class OvInspectorBuilder(
 
         string current = string.IsNullOrEmpty(cfg.SpriteKey) ? none : cfg.SpriteKey;
         var row = GenerateUI.Row(parent, 50f);
-        var dropdown = GenerateUI.DropDown(row, none, current, options, option => $"Sprite: {option}", selected => {
+        var dropdown = GenerateUI.DropDown(row, none, current, options, option => $"{InspectorLabel("Sprite")}: {InspectorLabel(option)}", selected => {
             cfg.SpriteKey = selected == none ? null : selected;
             ApplyAndSave();
         }, "image_sprite");
@@ -1967,7 +1993,7 @@ internal sealed class OvInspectorBuilder(
 
         string current = string.IsNullOrEmpty(cfg.FontKey) ? none : cfg.FontKey;
         var row = GenerateUI.Row(parent, 50f);
-        var dropdown = GenerateUI.DropDown(row, none, current, options, option => $"Font: {option}", selected => {
+        var dropdown = GenerateUI.DropDown(row, none, current, options, option => $"{InspectorLabel("Font")}: {InspectorLabel(option)}", selected => {
             cfg.FontKey = selected == none ? null : selected;
             ApplyAndSave();
         }, "text_font");
