@@ -93,12 +93,6 @@ internal sealed class OvInspectorBuilder(
         if(obj.Config.ImageConfig != null) {
             BuildImage(obj, obj.Config.ImageConfig);
         }
-        if(obj.Config.BoxCollider2DConfig != null) {
-            BuildBoxCollider2D(obj, obj.Config.BoxCollider2DConfig);
-        }
-        if(obj.Config.Rigidbody2DConfig != null) {
-            BuildRigidbody2D(obj, obj.Config.Rigidbody2DConfig);
-        }
         if(obj.Config.ContentSizeFitterConfig != null) {
             BuildContentSizeFitter(obj, obj.Config.ContentSizeFitterConfig);
         }
@@ -122,6 +116,14 @@ internal sealed class OvInspectorBuilder(
             });
             Label(rectMask, "Clips child graphics to this object's rectangle.");
         }
+#if !IL2CPP
+        if(obj.Config.BoxCollider2DConfig != null) {
+            BuildBoxCollider2D(obj, obj.Config.BoxCollider2DConfig);
+        }
+        if(obj.Config.Rigidbody2DConfig != null) {
+            BuildRigidbody2D(obj, obj.Config.Rigidbody2DConfig);
+        }
+#endif
 
         BuildAddComponent(obj);
     }
@@ -207,17 +209,15 @@ internal sealed class OvInspectorBuilder(
             obj.Config.TextEngineConfig = null;
             RefreshComponents(obj);
         });
-
         CodeEditor(card, "Playing Text", "text_playing", textCfg.PlayingText, value => {
             textCfg.PlayingText = value;
             cfg.Text = value;
             apply();
-        }, () => obj.GameObject ? obj.GameObject.GetComponent<OvObject.TextEngineUpdater>()?.PlayingEngine : null);
-
+        }, () => obj.TextUpdater?.PlayingEngine);
         CodeEditor(card, "Not Playing Text", "text_not_playing", textCfg.NotPlayingText, value => {
             textCfg.NotPlayingText = value;
             apply();
-        }, () => obj.GameObject ? obj.GameObject.GetComponent<OvObject.TextEngineUpdater>()?.NotPlayingEngine : null);
+        }, () => obj.TextUpdater?.NotPlayingEngine);
         FontDropDown(card, cfg);
         Slider(card, "Font Size", 48f, 1f, 512f, cfg.FontSize, value => cfg.FontSize = value, "text_size", "F1");
         Toggle(card, "Rich Text", true, cfg.RichText, value => cfg.RichText = value, "text_rich");
@@ -290,7 +290,15 @@ internal sealed class OvInspectorBuilder(
         ColorSliders(card, "Color", Color.red, () => cfg.EffectColor, value => cfg.EffectColor = value, "outline_color");
         Toggle(card, "Use Graphic Alpha", true, cfg.UseGraphicAlpha, value => cfg.UseGraphicAlpha = value, "outline_alpha");
     }
+    private void BuildMask(OvObject obj, MaskSettings cfg) {
+        var (_, card) = ComponentCard("Mask", cfg, () => {
+            obj.Config.MaskConfig = null;
+            RefreshComponents(obj);
+        });
+        Toggle(card, "Show Mask Graphic", true, cfg.ShowMaskGraphic, value => cfg.ShowMaskGraphic = value, "mask_graphic");
+    }
 
+#if !IL2CPP
     private void BuildBoxCollider2D(OvObject obj, BoxCollider2DSettings cfg) {
         var (_, card) = ComponentCard("Box Collider 2D", cfg, () => {
             obj.Config.BoxCollider2DConfig = null;
@@ -324,14 +332,7 @@ internal sealed class OvInspectorBuilder(
         EnumDropDown(card, "Constraints", RigidbodyConstraints2D.None, cfg.Constraints, value => cfg.Constraints = value, "rigidbody2d_constraints");
         Toggle(card, "Freeze Rotation", false, cfg.FreezeRotation, value => cfg.FreezeRotation = value, "rigidbody2d_freeze_rotation");
     }
-
-    private void BuildMask(OvObject obj, MaskSettings cfg) {
-        var (_, card) = ComponentCard("Mask", cfg, () => {
-            obj.Config.MaskConfig = null;
-            RefreshComponents(obj);
-        });
-        Toggle(card, "Show Mask Graphic", true, cfg.ShowMaskGraphic, value => cfg.ShowMaskGraphic = value, "mask_graphic");
-    }
+#endif
 
     private void BuildAddComponent(OvObject obj) {
         var options = new List<string> { "Add Component..." };
@@ -339,13 +340,15 @@ internal sealed class OvInspectorBuilder(
             options.Add("Text");
             options.Add("Image");
         }
-        if(obj.Config.BoxCollider2DConfig == null) options.Add("Box Collider 2D");
-        if(obj.Config.Rigidbody2DConfig == null) options.Add("Rigidbody 2D");
         if(obj.Config.ShadowConfig == null) options.Add("Shadow");
         if(obj.Config.OutlineConfig == null) options.Add("Outline");
         if(obj.Config.MaskConfig == null) options.Add("Mask");
         if(obj.Config.ContentSizeFitterConfig == null) options.Add("Content Size Fitter");
         if(!obj.Config.HasRectMask2D) options.Add("Rect Mask 2D");
+#if !IL2CPP
+        if(obj.Config.BoxCollider2DConfig == null) options.Add("Box Collider 2D");
+        if(obj.Config.Rigidbody2DConfig == null) options.Add("Rigidbody 2D");
+#endif
         if(options.Count == 1) return;
 
         var row = GenerateUI.Row(content, 50f);
@@ -356,8 +359,6 @@ internal sealed class OvInspectorBuilder(
                     obj.Config.TextEngineConfig = new OvTextSettings();
                     break;
                 case "Image": obj.Config.ImageConfig = new ImageSettings(); break;
-                case "Box Collider 2D": obj.Config.BoxCollider2DConfig = new BoxCollider2DSettings(); break;
-                case "Rigidbody 2D": obj.Config.Rigidbody2DConfig = new Rigidbody2DSettings(); break;
                 case "Shadow": obj.Config.ShadowConfig = new ShadowSettings(); break;
                 case "Outline": obj.Config.OutlineConfig = new OutlineSettings(); break;
                 case "Mask": obj.Config.MaskConfig = new MaskSettings(); break;
@@ -366,6 +367,10 @@ internal sealed class OvInspectorBuilder(
                     obj.Config.HasRectMask2D = true;
                     obj.Config.RectMask2DEnabled = true;
                     break;
+#if !IL2CPP
+                case "Box Collider 2D": obj.Config.BoxCollider2DConfig = new BoxCollider2DSettings(); break;
+                case "Rigidbody 2D": obj.Config.Rigidbody2DConfig = new Rigidbody2DSettings(); break;
+#endif
                 default: return;
             }
             RefreshComponents(obj);

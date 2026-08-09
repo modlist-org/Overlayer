@@ -1,6 +1,5 @@
 using Overlayer.Core;
 using Overlayer.Compat.OVC;
-using Overlayer.Resource;
 using Overlayer.Tween;
 using Overlayer.UI.Utility;
 using GTweens.Builders;
@@ -32,6 +31,7 @@ public sealed class UIColorPicker : UIObject {
     private readonly RectTransform hostRow;
     private readonly LayoutElement hostLayout;
     private readonly GameObject body;
+    private readonly RectTransform bodyRect;
     private readonly CanvasGroup bodyCanvas;
     private readonly Image preview;
     private readonly Image triangle;
@@ -90,6 +90,7 @@ public sealed class UIColorPicker : UIObject {
         this.hostRow = hostRow;
         hostLayout = hostRow.GetComponent<LayoutElement>();
         this.body = body;
+        bodyRect = body.GetComponent<RectTransform>();
         this.bodyCanvas = bodyCanvas;
         this.preview = preview;
         this.triangle = triangle;
@@ -130,7 +131,7 @@ public sealed class UIColorPicker : UIObject {
         if(expanded) {
             body.SetActive(true);
             Canvas.ForceUpdateCanvases();
-            LayoutRebuilder.ForceRebuildLayoutImmediate(body.transform as RectTransform);
+            LayoutRebuilder.ForceRebuildLayoutImmediate(bodyRect);
             UpdateHandles();
         }
         bodyCanvas.interactable = expanded;
@@ -368,7 +369,7 @@ public sealed class UIColorPicker : UIObject {
     }
 
     private void SetHexText() {
-        string value = ColorUtility.ToHtmlStringRGBA(Value);
+        string value = ColorUtils.ToHtmlStringRGBA(Value);
         suppressHex = true;
         hexInput.Set(value, false);
         suppressHex = false;

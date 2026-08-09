@@ -15,6 +15,7 @@ using Overlayer.Compat.OVC;
 using GTweenExtensions = GTweens.Extensions.GTweenExtensions;
 
 #if ML && IL2CPP
+using MelonLoader;
 using Il2CppTMPro;
 #else
 using TMPro;
@@ -1148,12 +1149,25 @@ public static partial class GenerateUI {
         return (cardRect, contentRect);
     }
 
-    public class TweenDestroyer : MonoBehaviour {
+#if ML && IL2CPP
+    [RegisterTypeInIl2Cpp]
+#endif
+    public class TweenDestroyer
+#if ML && IL2CPP
+        (IntPtr ptr) : MonoBehaviour(ptr)
+#else
+    : MonoBehaviour
+#endif
+    {
         private GTween tween;
+
         public void Set(GTween newTween) {
             tween?.Kill();
             tween = newTween;
         }
-        void OnDestroy() => tween?.Kill();
+
+        private void OnDestroy() {
+            tween?.Kill();
+        }
     }
 }

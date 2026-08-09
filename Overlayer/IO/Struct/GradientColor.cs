@@ -2,6 +2,8 @@
 using Overlayer.IO;
 using Overlayer.IO.Interface;
 using UnityEngine;
+using Overlayer.UI.Utility;
+
 
 #if ML && IL2CPP
 using Il2CppTMPro;
@@ -30,10 +32,10 @@ public struct GradientColor : ISettingsFile, ICopyable<GradientColor> {
 
         data = new VertexGradient(TopLeft, TopRight, BottomLeft, BottomRight);
 
-        TLHex = ColorUtility.ToHtmlStringRGBA(TopLeft);
-        TRHex = ColorUtility.ToHtmlStringRGBA(TopRight);
-        BLHex = ColorUtility.ToHtmlStringRGBA(BottomLeft);
-        BRHex = ColorUtility.ToHtmlStringRGBA(BottomRight);
+        TLHex = ColorUtils.ToHtmlStringRGBA(TopLeft);
+        TRHex = ColorUtils.ToHtmlStringRGBA(TopRight);
+        BLHex = ColorUtils.ToHtmlStringRGBA(BottomLeft);
+        BRHex = ColorUtils.ToHtmlStringRGBA(BottomRight);
     }
 
     /// <summary>
@@ -132,10 +134,10 @@ public struct GradientColor : ISettingsFile, ICopyable<GradientColor> {
     /// Rebuilds cached hexadecimal color values from the current VertexGradient data.
     /// </summary>
     private void RebuildCache() {
-        TLHex = ColorUtility.ToHtmlStringRGBA(data.topLeft);
-        TRHex = ColorUtility.ToHtmlStringRGBA(data.topRight);
-        BLHex = ColorUtility.ToHtmlStringRGBA(data.bottomLeft);
-        BRHex = ColorUtility.ToHtmlStringRGBA(data.bottomRight);
+        TLHex = ColorUtils.ToHtmlStringRGBA(data.topLeft);
+        TRHex = ColorUtils.ToHtmlStringRGBA(data.topRight);
+        BLHex = ColorUtils.ToHtmlStringRGBA(data.bottomLeft);
+        BRHex = ColorUtils.ToHtmlStringRGBA(data.bottomRight);
     }
 
     public readonly JToken Serialize() {

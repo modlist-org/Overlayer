@@ -25,7 +25,7 @@ public sealed class TextEngineCore {
             field = value;
             StartCompile();
         }
-    }
+    } = string.Empty;
 
     public void ForceRecompile() => StartCompile();
 
@@ -98,22 +98,28 @@ public sealed class TextEngineCore {
     }
 
     public string Get() {
+        string text = Text ?? string.Empty;
+
         if(state == TextEngineState.Compiling) {
             return $"[ {MainCore.Tr.Get("COMPILING", "Compiling")}{GetLoadingText()} ]";
         }
 
         var segs = segments;
 
-        var sb = new StringBuilder(Text.Length);
+        if(segs == null || segs.Length == 0) {
+            return text;
+        }
+
+        var sb = new StringBuilder(text.Length);
         int last = 0;
 
         foreach(var s in segs) {
-            sb.Append(Text, last, s.Index - last);
+            sb.Append(text, last, s.Index - last);
             sb.Append(s.Replacer.Get());
             last = s.Index + s.Length;
         }
 
-        sb.Append(Text, last, Text.Length - last);
+        sb.Append(text, last, text.Length - last);
 
         return sb.ToString();
     }

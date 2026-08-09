@@ -524,8 +524,8 @@ public class OvCanvasSettingPage : IDisposable {
         }
         hierarchyUiObjects.Clear();
 
-        foreach(Transform child in hierarchyContent) {
-            UnityEngine.Object.Destroy(child.gameObject);
+        for(int i = hierarchyContent.childCount - 1; i >= 0; i--) {
+            UnityEngine.Object.Destroy(hierarchyContent.GetChild(i).gameObject);
         }
 
         if(currentCanvas == null) {
@@ -584,12 +584,31 @@ public class OvCanvasSettingPage : IDisposable {
 
         var trigger = itemBtn.AddComponent<EventTrigger>();
         GenerateUI.AddOutlineHover(itemBtn, trigger);
-        UnityUtils.AddEvents(trigger,
+        UnityUtils.AddEvents(
+            trigger,
             (EventTriggerType.PointerClick, eventData => {
-                if(((PointerEventData)eventData).button == InputButton.Left && draggedObject == null) SelectObject(null);
+#pragma warning disable IDE0019
+                var pointer =
+#pragma warning restore IDE0019
+#if ML && IL2CPP
+                    eventData.TryCast<PointerEventData>();
+#else
+                    eventData as PointerEventData;
+#endif
+                if(pointer == null || pointer.button != InputButton.Left) {
+                    return;
+                }
+
+                if(draggedObject == null) {
+                    SelectObject(null);
+                }
             }),
-            (EventTriggerType.PointerEnter, _ => SetHierarchyDropTarget(null, itemBtnRect, btnImg, true)),
-            (EventTriggerType.PointerExit, _ => ClearHierarchyDropTarget(itemBtnRect))
+            (EventTriggerType.PointerEnter, _ => {
+                SetHierarchyDropTarget(null, itemBtnRect, btnImg, true);
+            }),
+            (EventTriggerType.PointerExit, _ => {
+                ClearHierarchyDropTarget(itemBtnRect);
+            })
         );
         itemBtnRect.offsetMax = Vector2.zero;
     }
@@ -642,11 +661,37 @@ public class OvCanvasSettingPage : IDisposable {
         GenerateUI.AddOutlineHover(itemBtn, trigger);
         CanvasGroup dragCanvasGroup = itemBtn.AddComponent<CanvasGroup>();
         UnityUtils.AddEvents(trigger,
-            (EventTriggerType.PointerClick, eventData => {
-                if(((PointerEventData)eventData).button == InputButton.Left && draggedObject == null) SelectObject(obj);
+            (EventTriggerType.PointerClick, e => {
+#pragma warning disable IDE0019
+                var ped =
+#pragma warning restore IDE0019
+#if ML && IL2CPP
+                    e.TryCast<PointerEventData>();
+#else
+                    e as PointerEventData;
+#endif
+                if(ped == null || ped.button != InputButton.Left) {
+                    return;
+                }
+
+                if(draggedObject == null) {
+                    SelectObject(obj);
+                }
             }),
-            (EventTriggerType.BeginDrag, eventData => {
-                if(((PointerEventData)eventData).button != InputButton.Left) return;
+            (EventTriggerType.BeginDrag, e => {
+#pragma warning disable IDE0019
+                var ped =
+#pragma warning restore IDE0019
+#if ML && IL2CPP
+                    e.TryCast<PointerEventData>();
+#else
+                    e as PointerEventData;
+#endif
+
+                if(ped == null || ped.button != InputButton.Left) {
+                    return;
+                }
+
                 draggedObject = obj;
                 selectedObject = obj;
                 dragCanvasGroup.alpha = 0.45f;
@@ -658,8 +703,17 @@ public class OvCanvasSettingPage : IDisposable {
                 dragCanvasGroup.blocksRaycasts = true;
                 CompleteHierarchyDrag();
             }),
-            (EventTriggerType.PointerEnter, _ => SetHierarchyDropTarget(obj, itemBtnRect, btnImg, false)),
-            (EventTriggerType.PointerExit, _ => ClearHierarchyDropTarget(itemBtnRect))
+            (EventTriggerType.PointerEnter, _ => {
+                SetHierarchyDropTarget(
+                    obj,
+                    itemBtnRect,
+                    btnImg,
+                    false
+                );
+            }),
+            (EventTriggerType.PointerExit, _ => {
+                ClearHierarchyDropTarget(itemBtnRect);
+            })
         );
         itemBtnRect.offsetMax = Vector2.zero;
 
@@ -825,8 +879,11 @@ public class OvCanvasSettingPage : IDisposable {
         }
         inspectorUiObjects.Clear();
 
-        foreach(Transform child in inspectorContent) {
-            UnityEngine.Object.Destroy(child.gameObject);
+        for(int i = inspectorContent.childCount - 1; i >= 0; i--) {
+            var child = inspectorContent.GetChild(i);
+            if(child != null) {
+                UnityEngine.Object.Destroy(child.gameObject);
+            }
         }
 
         if(currentCanvas == null) {

@@ -6,6 +6,7 @@ using Overlayer.TextEngine.Core;
 using UnityEngine;
 using UnityEngine.UI;
 using Object = UnityEngine.Object;
+using Overlayer.Core;
 
 #if ML && IL2CPP
 using MelonLoader;
@@ -20,6 +21,8 @@ public sealed class OvObject : ISettingsFile {
     public readonly GameObject GameObject;
     public readonly RectTransform RectTransform;
     public readonly CanvasGroup CanvasGroup;
+
+    public TextEngineUpdater TextUpdater { get; private set; }
 
     public OvObject Parent { get; private set; }
     public readonly List<OvObject> Children = [];
@@ -56,18 +59,21 @@ public sealed class OvObject : ISettingsFile {
 
             Config.TextConfig.ToUnity(GameObject);
             Config.TextEngineConfig ??= OvTextSettings.FromLegacy(Config.TextConfig.Text);
-            GameObject.GetComponent<TextEngineUpdater>()?.SetText(
+            TextUpdater?.SetText(
                 Config.TextEngineConfig.PlayingText,
                 Config.TextEngineConfig.NotPlayingText
             );
         }
         Config.ImageConfig?.ToUnity(GameObject);
-        Config.BoxCollider2DConfig?.ToUnity(GameObject);
-        Config.Rigidbody2DConfig?.ToUnity(GameObject);
         Config.MaskConfig?.ToUnity(GameObject);
         Config.ShadowConfig?.ToUnity(GameObject);
         Config.OutlineConfig?.ToUnity(GameObject);
         Config.ContentSizeFitterConfig?.ToUnity(GameObject);
+
+#if !IL2CPP
+        Config.BoxCollider2DConfig?.ToUnity(GameObject);
+        Config.Rigidbody2DConfig?.ToUnity(GameObject);
+#endif
     }
 
     public void ApplyComponent() {
@@ -80,29 +86,38 @@ public sealed class OvObject : ISettingsFile {
         }
 
         bool tc = Config.TextConfig != null;
+
         if(tc) {
-            Config.TextEngineConfig ??= OvTextSettings.FromLegacy(Config.TextConfig.Text);
+            Config.TextEngineConfig ??= OvTextSettings.FromLegacy(
+                Config.TextConfig.Text
+            );
         } else {
             Config.TextEngineConfig = null;
         }
-        EnsureComponent<TextMeshProUGUI>(tc);
-        EnsureComponent<TextEngineUpdater>(tc);
-        if(tc) {
-            var tmp = GameObject.GetComponent<TextMeshProUGUI>();
-            var updater = GameObject.GetComponent<TextEngineUpdater>();
-            if(updater != null && tmp != null) {
-                updater.Init(tmp);
-            }
+
+        var tmp = EnsureComponent<TextMeshProUGUI>(tc);
+        TextUpdater = EnsureComponent<TextEngineUpdater>(tc);
+
+        if(TextUpdater != null && tmp != null) {
+            TextUpdater.Init(tmp);
         }
+
         EnsureComponent<Image>(Config.ImageConfig != null);
-        EnsureComponent<BoxCollider2D>(Config.BoxCollider2DConfig != null);
-        EnsureComponent<Rigidbody2D>(Config.Rigidbody2DConfig != null);
         EnsureComponent<ContentSizeFitter>(Config.ContentSizeFitterConfig != null);
         EnsureComponent<Mask>(Config.MaskConfig != null);
         EnsureComponent<Shadow>(Config.ShadowConfig != null);
+
         var rectMask = EnsureComponent<RectMask2D>(Config.HasRectMask2D);
-        rectMask?.enabled = Config.RectMask2DEnabled;
+        if(rectMask != null) {
+            rectMask.enabled = Config.RectMask2DEnabled;
+        }
+
         EnsureComponent<Outline>(Config.OutlineConfig != null);
+
+#if !IL2CPP
+        EnsureComponent<BoxCollider2D>(Config.BoxCollider2DConfig != null);
+        EnsureComponent<Rigidbody2D>(Config.Rigidbody2DConfig != null);
+#endif
     }
 
     private T EnsureComponent<T>(bool enabled) where T : Component {
@@ -110,7 +125,7 @@ public sealed class OvObject : ISettingsFile {
             return null;
         }
 
-        var comp = GameObject.GetComponent<T>();
+        T comp = GameObject.GetComponent<T>();
 
         if(!enabled) {
             if(comp != null) {
@@ -286,7 +301,19 @@ public sealed class OvObject : ISettingsFile {
             NotPlayingEngine.Text = notPlayingText ?? string.Empty;
         }
 
-        public void Update() => Tmp.text = (PlaybackState.IsPlaying ? PlayingEngine : NotPlayingEngine).Get();
+        public void Update() {
+            if(Tmp == null) {
+                return;
+            }
+
+            TextEngineCore engine =  PlaybackState.IsPlaying ? PlayingEngine : NotPlayingEngine;
+
+            if(engine == null) {
+                return;
+            }
+
+            Tmp.text = engine.Get();
+        }
 
         public void OnDestroy() {
             PlayingEngine?.Dispose();

@@ -1,3 +1,4 @@
+#if !IL2CPP
 using Newtonsoft.Json.Linq;
 using Overlayer.IO.Interface;
 using UnityEngine;
@@ -111,3 +112,4 @@ public class Rigidbody2DSettings : UnityComponentSettingsBase, ICopyable<Rigidbo
         };
     }
 }
+#endif

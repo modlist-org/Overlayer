@@ -1,3 +1,4 @@
+#if !IL2CPP
 using Newtonsoft.Json.Linq;
 using Overlayer.IO.Interface;
 using UnityEngine;
@@ -75,3 +76,4 @@ public class BoxCollider2DSettings : UnityComponentSettingsBase, ICopyable<BoxCo
         };
     }
 }
+#endif

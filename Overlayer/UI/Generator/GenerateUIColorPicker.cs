@@ -66,8 +66,8 @@ public static partial class GenerateUI {
         UIColorPicker picker = null;
         UIInput hexInput = Input(
             header,
-            ColorUtility.ToHtmlStringRGBA(defaultValue),
-            ColorUtility.ToHtmlStringRGBA(value),
+            ColorUtils.ToHtmlStringRGBA(defaultValue),
+            ColorUtils.ToHtmlStringRGBA(value),
             text => picker?.ValidateHex(text),
             string.Empty,
             null,
