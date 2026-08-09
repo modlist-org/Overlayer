@@ -75,7 +75,7 @@ public sealed class SettingsFile<T>(string path) where T : class, ISettingsFile,
 
         saveScheduled = true;
 
-        saveTask = Task.Run(async () => {
+        saveTask = Task.Run((Func<Task>)(async () => {
             try {
                 await Task.Delay(delay, token);
 
@@ -92,7 +92,7 @@ public sealed class SettingsFile<T>(string path) where T : class, ISettingsFile,
             } finally {
                 saveScheduled = false;
             }
-        });
+        }), token);
     }
 
     public void Dispose() {
