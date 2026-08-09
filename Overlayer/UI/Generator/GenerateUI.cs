@@ -724,10 +724,8 @@ public static partial class GenerateUI {
             }
         });
 
-        UnityUtils.AddEvents(
-            trigger,
-            (
-                EventTriggerType.PointerUp,
+        UnityUtils.AddEvents(trigger,
+            (EventTriggerType.PointerUp,
                 e => {
 #pragma warning disable IDE0019
                     var ped =
@@ -749,7 +747,7 @@ public static partial class GenerateUI {
                     inputField.Select();
                     inputField.ActivateInputField();
                 }
-        )
+            )
         );
 
         return input;

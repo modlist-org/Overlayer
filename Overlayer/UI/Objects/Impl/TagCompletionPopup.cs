@@ -7,8 +7,10 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using static UnityEngine.EventSystems.PointerEventData;
+using Overlayer.UI.Utility;
 
 #if ML && IL2CPP
+using MelonLoader;
 using Il2CppTMPro;
 #else
 using TMPro;
@@ -27,6 +29,7 @@ internal sealed class TagCompletionPopup {
     private readonly RectTransform popupRect;
     private readonly CompletionRow[] rows;
     private readonly List<TagCore> matches = [];
+    private readonly CompletionInputHandler inputHandler;
 
     private int selectedIndex;
     private int windowStart;
@@ -40,12 +43,15 @@ internal sealed class TagCompletionPopup {
     private bool suppressRefresh;
     private string suppressedText;
     private int suppressedCaret;
+    private int hoveredIndex = -1;
 
     public TagCompletionPopup(UICodeInputField input, TMP_Text sourceText) {
         this.input = input;
         this.sourceText = sourceText;
+
         canvasRect = sourceText.canvas?.rootCanvas?.GetComponent<RectTransform>()
             ?? UICore.CanvasObj?.GetComponent<RectTransform>();
+
         input.OnFieldDisabled = Dispose;
 
         GameObject popup = new("TagCompletion");
@@ -58,10 +64,14 @@ internal sealed class TagCompletionPopup {
         popupRect.pivot = new(0f, 1f);
         popupRect.sizeDelta = new(PopupWidth, MaxItems * ItemHeight);
 
+        CompletionInputHandler inputHandler = popup.AddComponent<CompletionInputHandler>();
+        inputHandler.Initialize(this);
+
         Image popupImage = popup.AddComponent<Image>();
         popupImage.color = new Color(0.10f, 0.10f, 0.14f, 0.98f);
 
         rows = new CompletionRow[MaxItems];
+
         for(int i = 0; i < MaxItems; i++) {
             rows[i] = CreateRow(popup.transform, i);
         }
@@ -71,11 +81,6 @@ internal sealed class TagCompletionPopup {
 
     public bool HandleKey(KeyCode key) {
         if(HasSnippet) {
-            if(key == KeyCode.Tab) {
-                AdvanceSnippet(IsShiftHeld());
-                return true;
-            }
-
             if(key == KeyCode.Escape) {
                 ClearSnippet();
                 Hide();
@@ -89,8 +94,7 @@ internal sealed class TagCompletionPopup {
 
         switch(key) {
             case KeyCode.Tab:
-                selectedIndex = (selectedIndex + (IsShiftHeld() ? matches.Count - 1 : 1)) % matches.Count;
-                UpdateRows();
+                Accept(selectedIndex);
                 return true;
 
             case KeyCode.Return:
@@ -99,13 +103,11 @@ internal sealed class TagCompletionPopup {
                 return true;
 
             case KeyCode.UpArrow:
-                selectedIndex = (selectedIndex + matches.Count - 1) % matches.Count;
-                UpdateRows();
+                MoveSelection(-1);
                 return true;
 
             case KeyCode.DownArrow:
-                selectedIndex = (selectedIndex + 1) % matches.Count;
-                UpdateRows();
+                MoveSelection(1);
                 return true;
 
             case KeyCode.Escape:
@@ -189,6 +191,7 @@ internal sealed class TagCompletionPopup {
         name.overflowMode = TextOverflowModes.Ellipsis;
         name.rectTransform.offsetMin = new(10f, 0f);
         name.rectTransform.offsetMax = new(-150f, 0f);
+        name.raycastTarget = false;
 
         TextMeshProUGUI detail = GenerateUI.AddText(row.transform, true);
         detail.font = sourceText.font;
@@ -200,6 +203,7 @@ internal sealed class TagCompletionPopup {
         detail.color = new Color(1f, 1f, 1f, 0.48f);
         detail.rectTransform.offsetMin = new(150f, 0f);
         detail.rectTransform.offsetMax = new(-10f, 0f);
+        detail.raycastTarget = false;
 
         GenerateUI.AddButton(row, button => {
             if(button == InputButton.Left) {
@@ -207,7 +211,50 @@ internal sealed class TagCompletionPopup {
             }
         });
 
+        EventTrigger trigger = row.AddComponent<EventTrigger>();
+
+        UnityUtils.AddEvents(
+            trigger,
+            (EventTriggerType.PointerEnter, _ => {
+                SetHoveredRow(index);
+            }
+        ),
+            (EventTriggerType.PointerExit, _ => {
+                ClearHoveredRow(index);
+            }
+        )
+        );
+
         return new CompletionRow(rect, image, name, detail);
+    }
+
+    private void SetHoveredRow(int rowIndex) {
+        if(!visible) {
+            return;
+        }
+
+        int matchIndex = windowStart + rowIndex;
+
+        if(rowIndex < 0 ||
+           rowIndex >= visibleRowCount ||
+           matchIndex < 0 ||
+           matchIndex >= matches.Count) {
+            return;
+        }
+
+        hoveredIndex = matchIndex;
+        UpdateRows();
+    }
+
+    private void ClearHoveredRow(int rowIndex) {
+        int matchIndex = windowStart + rowIndex;
+
+        if(hoveredIndex != matchIndex) {
+            return;
+        }
+
+        hoveredIndex = -1;
+        UpdateRows();
     }
 
     private void RebuildMatches(string query) {
@@ -272,7 +319,15 @@ internal sealed class TagCompletionPopup {
             }
 
             TagCore tag = matches[matchIndex];
-            rows[i].Image.color = matchIndex == selectedIndex ? UIColors.MenuHover : Color.clear;
+            if(matchIndex == selectedIndex) {
+                rows[i].Image.color = UIColors.MenuHover;
+            } else if(matchIndex == hoveredIndex) {
+                Color hoverColor = UIColors.MenuHover;
+                hoverColor.a *= 0.35f;
+                rows[i].Image.color = hoverColor;
+            } else {
+                rows[i].Image.color = Color.clear;
+            }
             rows[i].Name.text = tag.Name;
             rows[i].Detail.text = FormatSignature(tag);
         }
@@ -384,6 +439,15 @@ internal sealed class TagCompletionPopup {
         input.ForceLabelUpdate();
     }
 
+    private void MoveSelection(int delta) {
+        if(!visible || matches.Count == 0) {
+            return;
+        }
+
+        selectedIndex = (selectedIndex + delta + matches.Count) % matches.Count;
+        UpdateRows();
+    }
+
     private void UpdateSnippetAfterEdit() {
         if(!HasSnippet || input.text == snippetText) {
             return;
@@ -425,6 +489,7 @@ internal sealed class TagCompletionPopup {
         matches.Clear();
         windowStart = 0;
         visibleRowCount = 0;
+        hoveredIndex = -1;
         popupRect?.gameObject.SetActive(false);
     }
 
@@ -542,5 +607,71 @@ internal sealed class TagCompletionPopup {
         public readonly Image Image = image;
         public readonly TextMeshProUGUI Name = name;
         public readonly TextMeshProUGUI Detail = detail;
+    }
+
+#if ML && IL2CPP
+[RegisterTypeInIl2Cpp]
+#endif
+    private sealed class CompletionInputHandler
+#if ML && IL2CPP
+    (IntPtr ptr) : MonoBehaviour(ptr)
+#else
+        : MonoBehaviour
+#endif
+    {
+        private TagCompletionPopup popup;
+
+        private KeyCode repeatKey;
+        private float nextRepeatTime;
+        private bool repeating;
+
+        private const float InitialDelay = 0.35f;
+        private const float RepeatInterval = 0.05f;
+
+        public void Initialize(TagCompletionPopup popup) => this.popup = popup;
+
+        private void Update() {
+            if(popup == null || !popup.visible || popup.matches.Count == 0) {
+                repeating = false;
+                return;
+            }
+
+            KeyCode key = GetHeldNavigationKey();
+
+            if(key == KeyCode.None) {
+                repeating = false;
+                return;
+            }
+
+            if(!repeating || repeatKey != key) {
+                repeatKey = key;
+                repeating = true;
+                nextRepeatTime = Time.unscaledTime + InitialDelay;
+                return;
+            }
+
+            float now = Time.unscaledTime;
+            if(now < nextRepeatTime) {
+                return;
+            }
+
+            popup.MoveSelection(
+                key == KeyCode.DownArrow ? 1 : -1
+            );
+
+            nextRepeatTime = now + RepeatInterval;
+        }
+
+        private static KeyCode GetHeldNavigationKey() {
+            if(OVC_Input.GetKey(KeyCode.DownArrow)) {
+                return KeyCode.DownArrow;
+            }
+
+            if(OVC_Input.GetKey(KeyCode.UpArrow)) {
+                return KeyCode.UpArrow;
+            }
+
+            return KeyCode.None;
+        }
     }
 }

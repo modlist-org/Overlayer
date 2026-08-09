@@ -584,8 +584,7 @@ public class OvCanvasSettingPage : IDisposable {
 
         var trigger = itemBtn.AddComponent<EventTrigger>();
         GenerateUI.AddOutlineHover(itemBtn, trigger);
-        UnityUtils.AddEvents(
-            trigger,
+        UnityUtils.AddEvents(trigger,
             (EventTriggerType.PointerClick, eventData => {
 #pragma warning disable IDE0019
                 var pointer =
