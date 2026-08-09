@@ -260,5 +260,15 @@
 
 		<MakeDir Directories="$(GamePath)/UserData/Overlayer" />
 		<Copy SourceFiles="@(ExportFiles)" DestinationFiles="@(ExportFiles->'$(GamePath)/UserData/Overlayer/%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
-	</Target>
+
+        <PropertyGroup>
+            <BuildOutputDir>$(MSBuildProjectDirectory)\.build\$(Configuration)</BuildOutputDir>
+        </PropertyGroup>
+        <MakeDir Directories="$(BuildOutputDir)\Mods" Condition="'$(TargetPath)' != ''" />
+        <Copy Condition="'$(TargetPath)' != ''" SourceFiles="$(TargetPath)" DestinationFolder="$(BuildOutputDir)\Mods" SkipUnchangedFiles="true" />
+        <MakeDir Directories="$(BuildOutputDir)\UserLibs" Condition="'@(NuGetUserLibs)' != ''" />
+        <Copy SourceFiles="@(NuGetUserLibs)" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" />
+        <MakeDir Directories="$(BuildOutputDir)\UserData\Overlayer" />
+        <Copy SourceFiles="@(ExportFiles)" DestinationFiles="@(ExportFiles->'$(BuildOutputDir)\UserData\Overlayer\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+    </Target>
 </Project>
