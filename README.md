@@ -47,6 +47,12 @@ Overlayer v5 utilizes runtime-loaded modules to support specific game features a
   - Original project/source: [Google V8](https://v8.dev/)
 - Overlayer is not affiliated with, endorsed by, or associated with Google or the V8 project.
 
+### Third-Party Code
+- **[GTweens](https://github.com/Guillemsc/GTweens/tree/95debddfe122e5058c9be146083e1cd3397d53a4)**: Cloned directly as-is and embedded inside [`Overlayer/GTweens`](https://github.com/modlist-org/Overlayer/tree/main/Overlayer/GTweens)
+  - License: [MIT](https://github.com/modlist-org/Overlayer/blob/main/Overlayer/GTweens/LICENSE)
+- **[UniverseLib](https://github.com/sinai-dev/UniverseLib/tree/f6a9ed9a4d58bfe13eaae570c53f59a00b575ca0)**: Parts of input handling logic in [`OVC_Input.cs`](https://github.com/modlist-org/Overlayer/blob/main/Overlayer/Compat/OVC/OVC_Input.cs) are referenced and derived from UniverseLib.
+  - License: [LGPL-2.1](https://github.com/sinai-dev/UniverseLib/blob/f6a9ed9a4d58bfe13eaae570c53f59a00b575ca0/LICENSE)
+- All other external dependencies are managed and imported via **NuGet**.
 ---
 
 > [!NOTE]
