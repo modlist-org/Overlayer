@@ -118,15 +118,16 @@ public class OvCanvasSettingPage : IDisposable {
         GameObject titleGo = new("TitleText");
         titleGo.transform.SetParent(headerGo.transform, false);
         var titleRect = titleGo.AddComponent<RectTransform>();
-        titleRect.anchorMin = new Vector2(0.5f, 0.5f);
-        titleRect.anchorMax = new Vector2(0.5f, 0.5f);
+        titleRect.anchorMin = new Vector2(0f, 0.5f);
+        titleRect.anchorMax = new Vector2(0f, 0.5f);
+        titleRect.pivot = new Vector2(0f, 0.5f);
         titleRect.sizeDelta = new Vector2(400, 50);
-        titleRect.anchoredPosition = Vector2.zero;
+        titleRect.anchoredPosition = new Vector2(145f, 0f);
 
         titleText = titleGo.AddComponent<TextMeshProUGUI>();
         titleText.font = MainCore.Res.Get<TMP_FontAsset>(Asset.SUIT_Medium);
         titleText.fontSize = 24;
-        titleText.alignment = TextAlignmentOptions.Center;
+        titleText.alignment = TextAlignmentOptions.Left;
         titleText.color = Color.white;
         titleGo.AddComponent<TextLocalization>().Init("CANVAS_TITLE", "Canvas Settings");
 
@@ -139,7 +140,7 @@ public class OvCanvasSettingPage : IDisposable {
         padRect.anchorMax = Vector2.one;
         padRect.pivot = new Vector2(0.5f, 0.5f);
         padRect.offsetMin = new Vector2(18f, 18f);
-        padRect.offsetMax = new Vector2(-18f, -76f);
+        padRect.offsetMax = new Vector2(-18f, -18f);
 
         // 2-Column Horizontal Layout
         var padHLayout = pad.AddComponent<HorizontalLayoutGroup>();
@@ -167,7 +168,7 @@ public class OvCanvasSettingPage : IDisposable {
         hierVLayout.padding = new RectOffset {
             left = 10,
             right = 10,
-            top = 10,
+            top = 68,
             bottom = 10
         };
         hierVLayout.spacing = 10f;
@@ -479,6 +480,7 @@ public class OvCanvasSettingPage : IDisposable {
         inspContentFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
         inspectorCol.AddComponent<UIScrollController>().SetContent(inspectorContent, inspViewportRect);
+        headerGo.transform.SetAsLastSibling();
     }
 
     private void MoveSelectedOrder(int direction) {

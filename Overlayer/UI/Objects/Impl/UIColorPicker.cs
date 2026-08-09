@@ -258,11 +258,18 @@ public sealed class UIColorPicker : UIObject {
         RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, bottomScreen, null, out Vector2 bottomPosition);
 
         float popupWidth = PopupWidth * PopupScale;
+        float popupHeight = PopupHeight * PopupScale;
         float minX = canvasRect.rect.xMin + 8f;
         float maxX = canvasRect.rect.xMax - popupWidth - 8f;
         bottomPosition.x = maxX >= minX
             ? Mathf.Clamp(bottomPosition.x, minX, maxX)
             : minX;
+
+        float minY = canvasRect.rect.yMin + popupHeight + 8f;
+        float maxY = canvasRect.rect.yMax - 8f;
+        bottomPosition.y = maxY >= minY
+            ? Mathf.Clamp(bottomPosition.y, minY, maxY)
+            : maxY;
 
         popupRect.pivot = new Vector2(0f, 1f);
         popupRect.anchoredPosition = bottomPosition;

@@ -1381,7 +1381,14 @@ internal sealed class OvInspectorBuilder(
 
             RectTransform canvasRect = UICore.Canvas.GetComponent<RectTransform>();
             Vector3 corner = summary.Rect.TransformPoint(new Vector3(summary.Rect.rect.xMin, summary.Rect.rect.yMin, 0f));
-            popup.anchoredPosition = canvasRect.InverseTransformPoint(corner);
+            Vector2 position = canvasRect.InverseTransformPoint(corner);
+            float minX = canvasRect.rect.xMin + 8f;
+            float maxX = canvasRect.rect.xMax - popup.rect.width - 8f;
+            float minY = canvasRect.rect.yMin + popup.rect.height + 8f;
+            float maxY = canvasRect.rect.yMax - 8f;
+            position.x = maxX >= minX ? Mathf.Clamp(position.x, minX, maxX) : minX;
+            position.y = maxY >= minY ? Mathf.Clamp(position.y, minY, maxY) : maxY;
+            popup.anchoredPosition = position;
         }
 
         controls.Add(new UIWatcher("transform_anchor_popup", summary.Rect, RefreshPopupPosition));
@@ -1584,7 +1591,14 @@ internal sealed class OvInspectorBuilder(
 
             RectTransform canvasRect = UICore.Canvas.GetComponent<RectTransform>();
             Vector3 corner = summary.Rect.TransformPoint(new Vector3(summary.Rect.rect.xMin, summary.Rect.rect.yMin, 0f));
-            popup.anchoredPosition = canvasRect.InverseTransformPoint(corner);
+            Vector2 position = canvasRect.InverseTransformPoint(corner);
+            float minX = canvasRect.rect.xMin + 8f;
+            float maxX = canvasRect.rect.xMax - popup.rect.width - 8f;
+            float minY = canvasRect.rect.yMin + popup.rect.height + 8f;
+            float maxY = canvasRect.rect.yMax - 8f;
+            position.x = maxX >= minX ? Mathf.Clamp(position.x, minX, maxX) : minX;
+            position.y = maxY >= minY ? Mathf.Clamp(position.y, minY, maxY) : maxY;
+            popup.anchoredPosition = position;
         }
 
         controls.Add(new UIWatcher("transform_anchor_popup", summary.Rect, RefreshPopupPosition));
