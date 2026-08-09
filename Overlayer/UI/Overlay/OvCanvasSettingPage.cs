@@ -243,7 +243,7 @@ public class OvCanvasSettingPage : IDisposable {
             }
 
             OvObject newObj = selectedObject != null ? selectedObject.CreateOvObject() : currentCanvas.CreateOvObject();
-            newObj.Config.Name = MainCore.Tr.Get("DEFAULT_TEXT_OBJECT_NAME", "TextObject");
+            newObj.Config.Name = "TextObject";
             newObj.Config.TextConfig = new TextMeshProUGUISettings();
             newObj.Config.TextEngineConfig = new OvTextSettings();
             newObj.ApplyComponent();
@@ -263,7 +263,7 @@ public class OvCanvasSettingPage : IDisposable {
             }
 
             OvObject newObj = selectedObject != null ? selectedObject.CreateOvObject() : currentCanvas.CreateOvObject();
-            newObj.Config.Name = MainCore.Tr.Get("DEFAULT_IMAGE_OBJECT_NAME", "ImageObject");
+            newObj.Config.Name = "ImageObject";
             newObj.Config.ImageConfig = new ImageSettings();
             newObj.ApplyComponent();
             newObj.ApplyConfig();
@@ -282,7 +282,7 @@ public class OvCanvasSettingPage : IDisposable {
             }
 
             OvObject newObj = selectedObject != null ? selectedObject.CreateOvObject() : currentCanvas.CreateOvObject();
-            newObj.Config.Name = MainCore.Tr.Get("DEFAULT_EMPTY_OBJECT_NAME", "EmptyObject");
+            newObj.Config.Name = "EmptyObject";
             newObj.ApplyComponent();
             newObj.ApplyConfig();
             selectedObject = newObj;
