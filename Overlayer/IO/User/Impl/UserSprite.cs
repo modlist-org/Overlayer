@@ -142,6 +142,30 @@ public class UserSprite : UserResourceBase<(Sprite sprite, string textureKey, Sp
         }
     }
 
+    public bool UpdateBorder(string key, Vector4 border) {
+        if(!Cache.TryGetValue(key, out var entry) ||
+            !UserResourceManager.T2D.TryGet(entry.value.textureKey, out var textureValue)) {
+            return false;
+        }
+
+        SpriteSettings settings = entry.value.settings.Copy();
+        settings.Border = border;
+        Sprite sprite = settings.ToUnity(textureValue.texture);
+        if(!sprite) {
+            return false;
+        }
+
+        Cache[key] = (
+            entry.path,
+            (sprite, entry.value.textureKey, settings)
+        );
+        if(entry.value.sprite) {
+            UnityEngine.Object.Destroy(entry.value.sprite);
+        }
+
+        return true;
+    }
+
     public void Deserialize(JToken token) {
         if(token is not JObject obj) {
             MainCore.Log.Wrn(

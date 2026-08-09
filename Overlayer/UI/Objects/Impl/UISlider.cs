@@ -119,7 +119,7 @@ public class UISlider : UIObject {
 #if ML && IL2CPP
             DelegateSupport.ConvertDelegate<UnityEngine.Events.UnityAction<string>>(new Action<string>(
 #endif
-                (_) => valueInputField.text = Value.ToString()
+                (_) => InputCore.SetValue(Value.ToString())
 #if ML && IL2CPP
             ))
 #endif

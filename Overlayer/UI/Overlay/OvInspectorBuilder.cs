@@ -278,15 +278,73 @@ internal sealed class OvInspectorBuilder(
         SpriteDropDown(card, cfg);
         ColorSliders(card, "Color", Color.white, () => cfg.Color, value => cfg.Color = value, "image_color");
         Toggle(card, "Raycast Target", true, cfg.RaycastTarget, value => cfg.RaycastTarget = value, "image_raycast");
-        Toggle(card, "Preserve Aspect", false, cfg.PreserveAspect, value => cfg.PreserveAspect = value, "image_aspect");
-        Toggle(card, "Use Sprite Mesh", false, cfg.UseSpriteMesh, value => cfg.UseSpriteMesh = value, "image_sprite_mesh");
-        EnumDropDown(card, "Image Type", Image.Type.Simple, cfg.Type, value => cfg.Type = value, "image_type");
-        Toggle(card, "Fill Center", true, cfg.FillCenter, value => cfg.FillCenter = value, "image_fill_center");
-        Slider(card, "Pixels Per Unit", 1f, 0.01f, 10f, cfg.PixelsPerUnitMultiplier, value => cfg.PixelsPerUnitMultiplier = value, "image_pixels_per_unit");
-        EnumDropDown(card, "Fill Method", Image.FillMethod.Horizontal, cfg.FillMethod, value => cfg.FillMethod = value, "image_fill_method");
-        Slider(card, "Fill Amount", 1f, 0f, 1f, cfg.FillAmount, value => cfg.FillAmount = value, "image_fill_amount");
-        Slider(card, "Fill Origin", 0f, 0f, 3f, cfg.FillOrigin, value => cfg.FillOrigin = Mathf.RoundToInt(value), "image_fill_origin", "F0");
-        Toggle(card, "Fill Clockwise", true, cfg.FillClockwise, value => cfg.FillClockwise = value, "image_fill_clockwise");
+        RectTransform preserveAspectRow = null;
+        RectTransform useSpriteMeshRow = null;
+        RectTransform fillCenterRow = null;
+        RectTransform pixelsPerUnitRow = null;
+        RectTransform fillMethodRow = null;
+        RectTransform fillAmountRow = null;
+        RectTransform fillOriginRow = null;
+        RectTransform fillClockwiseRow = null;
+        EnumDropDown(card, "Image Type", Image.Type.Simple, cfg.Type, value => {
+            cfg.Type = value;
+            RefreshImageTypeOptions(value);
+        }, "image_type");
+        preserveAspectRow = Toggle(card, "Preserve Aspect", false, cfg.PreserveAspect, value => cfg.PreserveAspect = value, "image_aspect");
+        useSpriteMeshRow = Toggle(card, "Use Sprite Mesh", false, cfg.UseSpriteMesh, value => cfg.UseSpriteMesh = value, "image_sprite_mesh");
+        fillCenterRow = Toggle(card, "Fill Center", true, cfg.FillCenter, value => cfg.FillCenter = value, "image_fill_center");
+        pixelsPerUnitRow = Slider(card, "Pixels Per Unit", 1f, 0.01f, 10f, cfg.PixelsPerUnitMultiplier, value => cfg.PixelsPerUnitMultiplier = value, "image_pixels_per_unit");
+        fillMethodRow = EnumDropDown(card, "Fill Method", Image.FillMethod.Horizontal, cfg.FillMethod, value => {
+            cfg.FillMethod = value;
+            cfg.FillOrigin = 0;
+        }, "image_fill_method", () => {
+            ApplyAndSave();
+            rebuild();
+        });
+        fillAmountRow = Slider(card, "Fill Amount", 1f, 0f, 1f, cfg.FillAmount, value => cfg.FillAmount = value, "image_fill_amount");
+        cfg.FillOrigin = Mathf.Clamp(cfg.FillOrigin, 0, cfg.FillMethod is Image.FillMethod.Horizontal or Image.FillMethod.Vertical ? 1 : 3);
+        fillOriginRow = CreateFillOriginRow();
+        fillClockwiseRow = Toggle(card, "Fill Clockwise", true, cfg.FillClockwise, value => cfg.FillClockwise = value, "image_fill_clockwise");
+
+        RectTransform CreateFillOriginRow() => cfg.FillMethod switch {
+            Image.FillMethod.Horizontal => EnumDropDown(
+                card, "Fill Origin", Image.OriginHorizontal.Left, (Image.OriginHorizontal)cfg.FillOrigin,
+                value => cfg.FillOrigin = (int)value, "image_fill_origin"
+            ),
+            Image.FillMethod.Vertical => EnumDropDown(
+                card, "Fill Origin", Image.OriginVertical.Bottom, (Image.OriginVertical)cfg.FillOrigin,
+                value => cfg.FillOrigin = (int)value, "image_fill_origin"
+            ),
+            Image.FillMethod.Radial90 => EnumDropDown(
+                card, "Fill Origin", Image.Origin90.BottomLeft, (Image.Origin90)cfg.FillOrigin,
+                value => cfg.FillOrigin = (int)value, "image_fill_origin"
+            ),
+            Image.FillMethod.Radial180 => EnumDropDown(
+                card, "Fill Origin", Image.Origin180.Bottom, (Image.Origin180)cfg.FillOrigin,
+                value => cfg.FillOrigin = (int)value, "image_fill_origin"
+            ),
+            _ => EnumDropDown(
+                card, "Fill Origin", Image.Origin360.Bottom, (Image.Origin360)cfg.FillOrigin,
+                value => cfg.FillOrigin = (int)value, "image_fill_origin"
+            )
+        };
+
+        void RefreshImageTypeOptions(Image.Type type) {
+            bool simple = type == Image.Type.Simple;
+            bool slicedOrTiled = type is Image.Type.Sliced or Image.Type.Tiled;
+            bool filled = type == Image.Type.Filled;
+
+            preserveAspectRow.gameObject.SetActive(simple || filled);
+            useSpriteMeshRow.gameObject.SetActive(simple);
+            fillCenterRow.gameObject.SetActive(slicedOrTiled);
+            pixelsPerUnitRow.gameObject.SetActive(slicedOrTiled);
+            fillMethodRow.gameObject.SetActive(filled);
+            fillAmountRow.gameObject.SetActive(filled);
+            fillOriginRow.gameObject.SetActive(filled);
+            fillClockwiseRow.gameObject.SetActive(filled && cfg.FillMethod is not Image.FillMethod.Horizontal and not Image.FillMethod.Vertical);
+        }
+
+        RefreshImageTypeOptions(cfg.Type);
     }
 
     private void BuildMovingMan(OvObject obj, MovingManSettings cfg) {
@@ -1026,20 +1084,20 @@ internal sealed class OvInspectorBuilder(
         string source
     ) => $"{state}|{source?.GetHashCode() ?? 0}|{string.Join("|", diagnostics.Select(d => d.ToString()))}";
 
-    private void Slider(Transform parent, string label, float defaultValue, float min, float max, float value, Action<float> changed, string id, string format = "F2") => Slider(parent, label, defaultValue, min, max, value, changed, id, format, true);
+    private RectTransform Slider(Transform parent, string label, float defaultValue, float min, float max, float value, Action<float> changed, string id, string format = "F2") => Slider(parent, label, defaultValue, min, max, value, changed, id, format, true);
 
-    private UISlider Slider(Transform parent, string label, float defaultValue, float min, float max, float value, Action<float> changed, string id, string format, bool clamp) {
+    private RectTransform Slider(Transform parent, string label, float defaultValue, float min, float max, float value, Action<float> changed, string id, string format, bool clamp) {
         label = InspectorLabel(label);
         var row = GenerateUI.Row(parent, 50f);
-        var slider = GenerateUI.Slider(row, defaultValue, min, max, value, format, clamp, null, newValue => {
+        var slider = GenerateUI.Slider(row, defaultValue, min, max, value, clamp ? format : "G9", clamp, null, newValue => {
             changed(newValue);
             apply();
         }, _ => save(), label, id);
         Track(slider);
-        return slider;
+        return row;
     }
 
-    private void Toggle(Transform parent, string label, bool defaultValue, bool value, Action<bool> changed, string id) {
+    private RectTransform Toggle(Transform parent, string label, bool defaultValue, bool value, Action<bool> changed, string id) {
         label = InspectorLabel(label);
         var row = GenerateUI.Row(parent, 50f);
         var toggle = GenerateUI.Toggle(row, defaultValue, value, newValue => {
@@ -1047,9 +1105,10 @@ internal sealed class OvInspectorBuilder(
             ApplyAndSave();
         }, label, id);
         Track(toggle);
+        return row;
     }
 
-    private void EnumDropDown<T>(Transform parent, string label, T defaultValue, T value, Action<T> changed, string id, Action completed = null) where T : struct, Enum {
+    private RectTransform EnumDropDown<T>(Transform parent, string label, T defaultValue, T value, Action<T> changed, string id, Action completed = null) where T : struct, Enum {
         label = InspectorLabel(label);
         var values = Enum.GetValues(typeof(T)).Cast<T>().ToArray();
         var row = GenerateUI.Row(parent, 50f);
@@ -1062,6 +1121,7 @@ internal sealed class OvInspectorBuilder(
             }
         }, id);
         Track(dropdown);
+        return row;
     }
 
     private void Vector2Sliders(Transform parent, string label, Vector2 defaults, float min, float max, Func<Vector2> get, Action<Vector2> set, string id, string format = "F2") {
