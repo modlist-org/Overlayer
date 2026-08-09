@@ -95,15 +95,18 @@ public sealed class OvObject : ISettingsFile {
         } else {
             Config.TextEngineConfig = null;
         }
-        EnsureComponent<TextMeshProUGUI>(tc);
-        EnsureComponent<TextEngineUpdater>(tc);
+        var tmp = EnsureComponent<TextMeshProUGUI>(tc);
+        var updater = EnsureComponent<TextEngineUpdater>(tc);
+
         if(tc) {
-            var tmp = GameObject.GetComponent<TextMeshProUGUI>();
-            var updater = GameObject.GetComponent<TextEngineUpdater>();
             if(updater != null && tmp != null) {
                 updater.Init(tmp);
+                TextUpdater = updater;
             }
+        } else {
+            TextUpdater = null;
         }
+
         if(!tc) {
             Config.ColorRangeConfig = null;
         }
