@@ -11,7 +11,9 @@ public class ContentSizeFitterSettings : UnityComponentSettingsBase, ICopyable<C
 
     public override bool ToUnity(GameObject target) {
         var component = target.GetComponent<ContentSizeFitter>();
-        if(component == null) return false;
+        if(component == null) {
+            return false;
+        }
 
         component.horizontalFit = HorizontalFit;
         component.verticalFit = VerticalFit;
@@ -22,7 +24,9 @@ public class ContentSizeFitterSettings : UnityComponentSettingsBase, ICopyable<C
 
     public override bool FromUnity(GameObject source) {
         var component = source.GetComponent<ContentSizeFitter>();
-        if(component == null) return false;
+        if(component == null) {
+            return false;
+        }
 
         HorizontalFit = component.horizontalFit;
         VerticalFit = component.verticalFit;
@@ -38,7 +42,10 @@ public class ContentSizeFitterSettings : UnityComponentSettingsBase, ICopyable<C
     }
 
     public override void Deserialize(JToken token) {
-        if(token == null) return;
+        if(token == null) {
+            return;
+        }
+
         DeserializeComponent(token);
         HorizontalFit = IOUtils.ReadEnum(token, nameof(HorizontalFit), HorizontalFit);
         VerticalFit = IOUtils.ReadEnum(token, nameof(VerticalFit), VerticalFit);

@@ -232,15 +232,18 @@ public static partial class GenerateUI {
             id, rect, fillRect, fillImg, label, inputField, previewLabel,
             changeImg, changeUpImg, AddOutlineHover(rect.gameObject, trigger), defaultValue, min, max,
             value, format, useInputClamp, filter, onChanged, onComplete
-        );
-        slider.ShowFill = showFill;
+        ) {
+            ShowFill = showFill
+        };
         fill.SetActive(showFill);
         inputObj.SetActive(true);
 
         RectTransform dragBlocker = blockHoverWhileDragging
             ? CreateSliderDragBlocker(UICore.Canvas.transform)
             : null;
-        if(dragBlocker) dragBlocker.gameObject.SetActive(false);
+        if(dragBlocker) {
+            dragBlocker.gameObject.SetActive(false);
+        }
 
         AddButton(rect.gameObject, e => {
             switch(e) {
@@ -273,7 +276,10 @@ public static partial class GenerateUI {
                 isDragging = true;
                 cachedValue = slider.Value;
 
-                if(EventSystem.current) EventSystem.current.SetSelectedGameObject(null);
+                if(EventSystem.current) {
+                    EventSystem.current.SetSelectedGameObject(null);
+                }
+
                 resetPos = Vector2Int.RoundToInt(OVC_Input.OSMousePosition);
                 previousMousePos = OVC_Input.MousePosition;
                 justWarped = false;
@@ -334,15 +340,24 @@ public static partial class GenerateUI {
 
                     OVC_Input.OSMousePosition = resetPos;
                     Cursor.visible = true;
-                    if(dragBlocker) dragBlocker.gameObject.SetActive(false);
+                    if(dragBlocker) {
+                        dragBlocker.gameObject.SetActive(false);
+                    }
                 }
-            }),
+            }
+        ),
             (EventTriggerType.Cancel, (e) => {
-                if(!isDragging) return;
+                if(!isDragging) {
+                    return;
+                }
+
                 isDragging = false;
                 OVC_Input.OSMousePosition = resetPos;
                 Cursor.visible = true;
-                if(dragBlocker) dragBlocker.gameObject.SetActive(false);
+                if(dragBlocker) {
+                    dragBlocker.gameObject.SetActive(false);
+                }
+
                 slider.OnComplete?.Invoke(slider.Value);
             }
         ),
@@ -379,7 +394,9 @@ public static partial class GenerateUI {
                 OVC_Input.OSMousePosition = resetPos;
                 Cursor.visible = true;
             }
-            if(dragBlocker) UnityEngine.Object.Destroy(dragBlocker.gameObject);
+            if(dragBlocker) {
+                UnityEngine.Object.Destroy(dragBlocker.gameObject);
+            }
         };
 
         slider.Set(Apply(value), false);
@@ -513,8 +530,13 @@ public static partial class GenerateUI {
                     GTweenExtensions.Tween(
                         () => parentLayout ? parentLayout.preferredHeight : targetHeight,
                         x => {
-                            if(parentLayout) parentLayout.preferredHeight = x;
-                            if(rootRect) LayoutRebuilder.ForceRebuildLayoutImmediate(rootRect);
+                            if(parentLayout) {
+                                parentLayout.preferredHeight = x;
+                            }
+
+                            if(rootRect) {
+                                LayoutRebuilder.ForceRebuildLayoutImmediate(rootRect);
+                            }
                         },
                         targetHeight,
                         0.14f
@@ -523,7 +545,7 @@ public static partial class GenerateUI {
                 .Join(
                     GTweenExtensions.Tween(
                         () => listCg ? listCg.alpha : targetAlpha,
-                        x => { if(listCg) listCg.alpha = x; },
+                        x => { if(listCg) { listCg.alpha = x; } },
                         targetAlpha,
                         0.16f
                     ).SetEasing(Easing.OutSine)
@@ -715,7 +737,7 @@ public static partial class GenerateUI {
 #else
                         e as PointerEventData;
 #endif
-                    
+
                     if(ped == null || ped.button != InputButton.Left) {
                         return;
                     }
@@ -727,7 +749,7 @@ public static partial class GenerateUI {
                     inputField.Select();
                     inputField.ActivateInputField();
                 }
-            )
+        )
         );
 
         return input;
@@ -1098,7 +1120,10 @@ public static partial class GenerateUI {
             Transform parentTransform = cardGo.transform.parent;
             while(parentTransform != null) {
                 var parentRect = parentTransform.GetComponent<RectTransform>();
-                if(parentRect != null) LayoutRebuilder.ForceRebuildLayoutImmediate(parentRect);
+                if(parentRect != null) {
+                    LayoutRebuilder.ForceRebuildLayoutImmediate(parentRect);
+                }
+
                 parentTransform = parentTransform.parent;
             }
         }
@@ -1118,21 +1143,33 @@ public static partial class GenerateUI {
                 float targetHeight = isExpanded ? expandedContentHeight : 0f;
                 contentElement.enabled = true;
                 contentElement.preferredHeight = currentHeight;
-                if(isExpanded) contentGo.SetActive(true);
+                if(isExpanded) {
+                    contentGo.SetActive(true);
+                }
+
                 contentCanvasGroup.alpha = isCurrentActive ? 1f : 0.42f;
-                if(isExpanded) LayoutRebuilder.ForceRebuildLayoutImmediate(contentRect);
+                if(isExpanded) {
+                    LayoutRebuilder.ForceRebuildLayoutImmediate(contentRect);
+                }
 
                 var layoutTween = GTweenExtensions.Tween(
                     () => contentElement ? contentElement.preferredHeight : targetHeight,
                     height => {
-                        if(contentElement) contentElement.preferredHeight = Mathf.Max(0f, height);
+                        if(contentElement) {
+                            contentElement.preferredHeight = Mathf.Max(0f, height);
+                        }
+
                         RebuildCardLayout();
                     },
                     targetHeight,
                     0.18f
                 ).SetEasing(Easing.OutCubic).OnComplete(() => {
-                    if(isExpanded && contentElement) contentElement.enabled = false;
-                    else if(!isExpanded && contentGo) contentGo.SetActive(false);
+                    if(isExpanded && contentElement) {
+                        contentElement.enabled = false;
+                    } else if(!isExpanded && contentGo) {
+                        contentGo.SetActive(false);
+                    }
+
                     RebuildCardLayout();
                 });
 
@@ -1166,8 +1203,6 @@ public static partial class GenerateUI {
             tween = newTween;
         }
 
-        private void OnDestroy() {
-            tween?.Kill();
-        }
+        private void OnDestroy() => tween?.Kill();
     }
 }

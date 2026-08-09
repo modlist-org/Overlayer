@@ -145,9 +145,15 @@ public class OvCanvas : ISettingsFile {
 
     internal void RefreshLayouts() {
         ApplyConfig();
-        foreach(var obj in OvObjects) obj.RefreshLayout();
+        foreach(var obj in OvObjects) {
+            obj.RefreshLayout();
+        }
+
         Canvas.ForceUpdateCanvases();
-        foreach(var obj in OvObjects) obj.RebuildLayout();
+        foreach(var obj in OvObjects) {
+            obj.RebuildLayout();
+        }
+
         Canvas.ForceUpdateCanvases();
     }
 

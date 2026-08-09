@@ -14,6 +14,5 @@ public static class UIInputBlocker {
         if(focused && inputObject != null && EventSystem.current != null) {
             EventSystem.current.SetSelectedGameObject(inputObject);
         }
-
     }
 }

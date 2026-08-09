@@ -36,7 +36,10 @@ public static class OverlayCore {
     }
 
     public static bool DeleteOvCanvas(OvCanvas canvas) {
-        if(canvas == null || !Canvases.Remove(canvas)) return false;
+        if(canvas == null || !Canvases.Remove(canvas)) {
+            return false;
+        }
+
         canvas.Dispose();
         SaveAllCanvases();
         return true;
@@ -64,14 +67,17 @@ public static class OverlayCore {
         }
     }
 
-    public static void RequestLayoutRefresh() {
-        pendingLayoutRefreshes = Math.Max(pendingLayoutRefreshes, 3);
-    }
+    public static void RequestLayoutRefresh() => pendingLayoutRefreshes = Math.Max(pendingLayoutRefreshes, 3);
 
     public static void Tick() {
-        if(pendingLayoutRefreshes <= 0 || Core == null) return;
+        if(pendingLayoutRefreshes <= 0 || Core == null) {
+            return;
+        }
+
         pendingLayoutRefreshes--;
-        foreach(var canvas in Canvases) canvas.RefreshLayouts();
+        foreach(var canvas in Canvases) {
+            canvas.RefreshLayouts();
+        }
     }
 
     public static void SaveAllCanvases() {

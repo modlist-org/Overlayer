@@ -8,45 +8,43 @@ using Il2CppInterop.Runtime;
 namespace Overlayer.TagImpl;
 
 public static class Unity {
-    private static string _cachedSceneName = string.Empty;
-
     static Unity() {
         SceneManager.sceneLoaded +=
 #if IL2CPP
             DelegateSupport.ConvertDelegate<UnityEngine.Events.UnityAction<Scene, LoadSceneMode>>(
                 new Action<Scene, LoadSceneMode>(
 #endif
-                    (scene, mode) => _cachedSceneName = scene.name
+                    (scene, mode) => SceneName = scene.name
 #if IL2CPP
                 )
             )
 #endif
             ;
 
-        _cachedSceneName = SceneManager.GetActiveScene().name;
+        SceneName = SceneManager.GetActiveScene().name;
     }
 
     [Tag(Desc = "[Unity] Name of the currently active Unity scene")]
-    public static string SceneName => _cachedSceneName;
-    
+    public static string SceneName { get; private set; } = string.Empty;
+
     [Tag(Desc = "[Unity] Current screen width in pixels")]
     public static int ScreenWidth => UnityEngine.Screen.width;
-    
+
     [Tag(Desc = "[Unity] Current screen height in pixels")]
     public static int ScreenHeight => UnityEngine.Screen.height;
-    
+
     [Tag(Desc = "[Unity] Current target refresh rate of the monitor")]
     public static int RefreshRate => (int)UnityEngine.Screen.currentResolution.refreshRateRatio.value;
-    
+
     [Tag(Desc = "[Unity] Returns true if the game is in fullscreen mode")]
     public static bool IsFullScreen => UnityEngine.Screen.fullScreen;
-    
+
     [Tag(Desc = "[Unity] Current Time.timeScale value")]
     public static float TimeScale => UnityEngine.Time.timeScale;
-    
+
     [Tag(Desc = "[Unity] Total time elapsed since game start, in seconds")]
     public static double TimeSinceStart => UnityEngine.Time.unscaledTimeAsDouble;
-    
+
     [Tag(Desc = "[Unity] Time in seconds since the last frame\n(affected by timeScale)")]
     public static float DeltaTime => UnityEngine.Time.deltaTime;
 
@@ -67,13 +65,13 @@ public static class Unity {
 
     [Tag(Desc = "[Unity] Maximum time a frame can take\n(prevents physics spiral of death)")]
     public static float MaximumDeltaTime => UnityEngine.Time.maximumDeltaTime;
-    
+
     [Tag(Desc = "[Unity] Returns true if the application window currently has focus")]
     public static bool IsFocused => UnityEngine.Application.isFocused;
 
     [Tag(Desc = "[Unity] Unity engine version")]
     public static string UnityVersion => UnityEngine.Application.unityVersion;
-    
+
     [Tag(Desc = "[Unity] Current mouse X position in screen coordinates")]
     public static float MouseX => UnityEngine.Input.mousePosition.x;
 
@@ -85,7 +83,7 @@ public static class Unity {
 
     [Tag(Desc = "[Unity] Current cursor lock state (None, Locked, Confined)")]
     public static string CursorLockState => UnityEngine.Cursor.lockState.ToString();
-    
+
     [Tag(Desc = "[Unity] Currently applied Quality Level index")]
     public static int QualityLevel => UnityEngine.QualitySettings.GetQualityLevel();
 
@@ -100,13 +98,13 @@ public static class Unity {
 
     [Tag(Desc = "[Unity] DPI (dots per inch) of the current screen")]
     public static float ScreenDpi => UnityEngine.Screen.dpi;
-    
+
     [Tag(Desc = "[Unity] Master volume of the AudioListener (0.0 to 1.0)")]
     public static float MasterVolume => UnityEngine.AudioListener.volume;
 
     [Tag(Desc = "[Unity] Returns true if all audio in the game is currently muted")]
     public static bool IsAudioMuted => UnityEngine.AudioListener.pause;
-    
+
     [Tag(Desc = "[Unity] Operating system version and build info")]
     public static string OperatingSystem => UnityEngine.SystemInfo.operatingSystem;
 
@@ -115,7 +113,7 @@ public static class Unity {
 
     [Tag(Desc = "[Unity] Graphics API type (Direct3D11, Vulkan, Metal, etc.)")]
     public static string GraphicsDeviceType => UnityEngine.SystemInfo.graphicsDeviceType.ToString();
-    
+
     [Tag(Desc = "[Unity] Max supported texture size in pixels")]
     public static int MaxTextureSize => UnityEngine.SystemInfo.maxTextureSize;
 }

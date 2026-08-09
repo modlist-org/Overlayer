@@ -11,11 +11,16 @@ internal sealed class UIWatcher : UIObject {
     }
 
     public override void Tick() {
-        if(!IsDisposed) tick?.Invoke();
+        if(!IsDisposed) {
+            tick?.Invoke();
+        }
     }
 
     public override void Dispose() {
-        if(IsDisposed) return;
+        if(IsDisposed) {
+            return;
+        }
+
         tick = null;
         base.Dispose();
     }

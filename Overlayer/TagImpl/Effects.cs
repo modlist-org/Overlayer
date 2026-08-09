@@ -17,7 +17,10 @@ public static class Effects {
     [Tag(TagType = TagType.ProcessFormat)]
     public static double EasedValue(string tagName, int digits = -1, double speed = 500,
         Easing ease = Easing.Linear) {
-        if(!TryReadNumber(tagName, out double value)) return 0;
+        if(!TryReadNumber(tagName, out double value)) {
+            return 0;
+        }
+
         AnimationState state = GetState(easedValues, tagName, value);
         double now = UnityEngine.Time.realtimeSinceStartup * 1000d;
         double current = Interpolate(state, now, speed, ease);
@@ -35,7 +38,10 @@ public static class Effects {
     public static string ColorRange(string tagName, double minimum, double maximum, string minimumHex,
         string maximumHex, Easing ease = Easing.Linear, int maxLength = -1) {
         if(!TryReadNumber(tagName, out double value) || !TryColor(minimumHex, out Color from, out bool fromAlpha)
-            || !TryColor(maximumHex, out Color to, out bool toAlpha)) return string.Empty;
+            || !TryColor(maximumHex, out Color to, out bool toAlpha)) {
+            return string.Empty;
+        }
+
         if(maximum <= minimum) {
             return fromAlpha || toAlpha
                 ? ColorUtility.ToHtmlStringRGBA(from)
@@ -54,7 +60,10 @@ public static class Effects {
     [Tag]
     public static double MovingMan(string tagName, double startSize, double endSize, double defaultSize,
         double speed, bool invert = false, Easing ease = Easing.OutExpo) {
-        if(!TryReadNumber(tagName, out double value)) return defaultSize;
+        if(!TryReadNumber(tagName, out double value)) {
+            return defaultSize;
+        }
+
         AnimationState state = GetState(movingValues, tagName, value);
         double now = UnityEngine.Time.realtimeSinceStartup * 1000d;
         if(value != state.Target) {
@@ -62,10 +71,13 @@ public static class Effects {
             state.StartedAt = now;
         }
 
-        if(speed <= 0 || now - state.StartedAt >= speed) return defaultSize;
+        if(speed <= 0 || now - state.StartedAt >= speed) {
+            return defaultSize;
+        }
+
         float progress = Mathf.Clamp01((float)((now - state.StartedAt) / speed));
         float eased = EaseValue(invert ? 1f - progress : progress, ease);
-        return startSize + (endSize - startSize) * eased;
+        return startSize + ((endSize - startSize) * eased);
     }
 
     private static AnimationState GetState(Dictionary<string, AnimationState> states, string key, double value) {
@@ -82,9 +94,12 @@ public static class Effects {
     }
 
     private static double Interpolate(AnimationState state, double now, double speed, Easing ease) {
-        if(speed <= 0) return state.Target;
+        if(speed <= 0) {
+            return state.Target;
+        }
+
         float progress = Mathf.Clamp01((float)((now - state.StartedAt) / speed));
-        return state.Previous + (state.Target - state.Previous) * EaseValue(progress, ease);
+        return state.Previous + ((state.Target - state.Previous) * EaseValue(progress, ease));
     }
 
     private static float EaseValue(float progress, Easing ease)
@@ -92,11 +107,16 @@ public static class Effects {
 
     private static bool TryReadNumber(string tagName, out double value) {
         value = 0;
-        if(!TagManager.TryGet(tagName, out TagCore tag) || tag.RequiredParameterCount != 0) return false;
+        if(!TagManager.TryGet(tagName, out TagCore tag) || tag.RequiredParameterCount != 0) {
+            return false;
+        }
 
         try {
             object[] args = new object[tag.Parameters.Length];
-            for(int i = 0; i < args.Length; i++) args[i] = tag.Parameters[i].DefaultValue;
+            for(int i = 0; i < args.Length; i++) {
+                args[i] = tag.Parameters[i].DefaultValue;
+            }
+
             object result = tag.Invoke(args);
             return result != null && double.TryParse(result.ToString(), out value);
         } catch {

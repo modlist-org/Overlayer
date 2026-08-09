@@ -125,7 +125,10 @@ public sealed class UIColorPicker : UIObject {
     public void ToggleExpanded() => SetExpanded(!Expanded);
 
     public void SetExpanded(bool expanded, bool noAnimate = false) {
-        if(IsDisposed) return;
+        if(IsDisposed) {
+            return;
+        }
+
         layoutTween?.Kill();
         Expanded = expanded;
         if(expanded) {
@@ -144,9 +147,17 @@ public sealed class UIColorPicker : UIObject {
         Vector3 targetRotation = expanded ? new Vector3(0f, 0f, 180f) : Vector3.zero;
 
         void Rebuild(float height) {
-            if(hostLayout) hostLayout.preferredHeight = height;
-            if(hostRow) LayoutRebuilder.ForceRebuildLayoutImmediate(hostRow);
-            if(hostRow && hostRow.parent is RectTransform parent) LayoutRebuilder.ForceRebuildLayoutImmediate(parent);
+            if(hostLayout) {
+                hostLayout.preferredHeight = height;
+            }
+
+            if(hostRow) {
+                LayoutRebuilder.ForceRebuildLayoutImmediate(hostRow);
+            }
+
+            if(hostRow && hostRow.parent is RectTransform parent) {
+                LayoutRebuilder.ForceRebuildLayoutImmediate(parent);
+            }
         }
 
         if(noAnimate) {
@@ -173,7 +184,9 @@ public sealed class UIColorPicker : UIObject {
             .Join(triangleRect.GTRotate(targetRotation, 0.4f).SetEasing(Easing.OutBack))
             .Build()
             .OnComplete(() => {
-                if(!Expanded) body.SetActive(false);
+                if(!Expanded) {
+                    body.SetActive(false);
+                }
             });
         MainCore.TC.Play(layoutTween);
     }
@@ -184,7 +197,10 @@ public sealed class UIColorPicker : UIObject {
     }
 
     public void Set(Color value, bool invoke = true) {
-        if(IsDisposed) return;
+        if(IsDisposed) {
+            return;
+        }
+
         value.r = Mathf.Clamp01(value.r);
         value.g = Mathf.Clamp01(value.g);
         value.b = Mathf.Clamp01(value.b);
@@ -192,11 +208,16 @@ public sealed class UIColorPicker : UIObject {
         Value = value;
         Color.RGBToHSV(value, out hue, out saturation, out brightness);
         UpdateVisuals();
-        if(invoke) onChanged?.Invoke(Value);
+        if(invoke) {
+            onChanged?.Invoke(Value);
+        }
     }
 
     public void SetMode(bool useHsv) {
-        if(IsDisposed) return;
+        if(IsDisposed) {
+            return;
+        }
+
         hsvMode = useHsv;
         rgbModeBackground.color = useHsv ? Color.clear : UIColors.ObjectActive;
         hsvModeBackground.color = useHsv ? UIColors.ObjectActive : Color.clear;
@@ -239,9 +260,15 @@ public sealed class UIColorPicker : UIObject {
         }
 
         switch(channel) {
-            case 0: hue = value; break;
-            case 1: saturation = value; break;
-            case 2: brightness = value; break;
+            case 0:
+                hue = value;
+                break;
+            case 1:
+                saturation = value;
+                break;
+            case 2:
+                brightness = value;
+                break;
             case 3:
                 Value = new Color(Value.r, Value.g, Value.b, value);
                 UpdateVisuals();
@@ -256,20 +283,32 @@ public sealed class UIColorPicker : UIObject {
     }
 
     public void BeginPointer(BaseEventData data) {
-        if(!TryGetPointerPosition(data, out Vector2 normalized)) return;
+        if(!TryGetPointerPosition(data, out Vector2 normalized)) {
+            return;
+        }
+
         float distance = normalized.magnitude;
-        if(distance > 0.56f) return;
+        if(distance > 0.56f) {
+            return;
+        }
+
         dragTarget = distance >= RingInner - 0.03f ? DragTarget.Hue : DragTarget.Triangle;
         ApplyPointer(normalized);
     }
 
     public void DragPointer(BaseEventData data) {
-        if(dragTarget == DragTarget.None || !TryGetPointerPosition(data, out Vector2 normalized)) return;
+        if(dragTarget == DragTarget.None || !TryGetPointerPosition(data, out Vector2 normalized)) {
+            return;
+        }
+
         ApplyPointer(normalized);
     }
 
     public void EndPointer(BaseEventData data) {
-        if(dragTarget == DragTarget.None) return;
+        if(dragTarget == DragTarget.None) {
+            return;
+        }
+
         dragTarget = DragTarget.None;
         onComplete?.Invoke(Value);
     }
@@ -284,14 +323,21 @@ public sealed class UIColorPicker : UIObject {
             data as PointerEventData;
 #endif
         normalized = default;
-        if(pointer == null || pointer.button != PointerEventData.InputButton.Left) return false;
+        if(pointer == null || pointer.button != PointerEventData.InputButton.Left) {
+            return false;
+        }
 
         if(!RectTransformUtility.ScreenPointToLocalPointInRectangle(
             wheelRect, pointer.position, pointer.pressEventCamera, out Vector2 local
-        )) return false;
+        )) {
+            return false;
+        }
 
         float radius = Mathf.Min(wheelRect.rect.width, wheelRect.rect.height);
-        if(radius <= 0f) return false;
+        if(radius <= 0f) {
+            return false;
+        }
+
         normalized = local / radius;
         return true;
     }
@@ -308,10 +354,12 @@ public sealed class UIColorPicker : UIObject {
         }
 
         Vector2 huePoint = Direction(hue) * TriangleRadius;
-        Vector2 whitePoint = Direction(hue + 1f / 3f) * TriangleRadius;
-        Vector2 blackPoint = Direction(hue - 1f / 3f) * TriangleRadius;
+        Vector2 whitePoint = Direction(hue + (1f / 3f)) * TriangleRadius;
+        Vector2 blackPoint = Direction(hue - (1f / 3f)) * TriangleRadius;
         Vector2 point = ClosestPointOnTriangle(normalized, huePoint, whitePoint, blackPoint);
-        if(!Barycentric(point, huePoint, whitePoint, blackPoint, out Vector3 weights)) return;
+        if(!Barycentric(point, huePoint, whitePoint, blackPoint, out Vector3 weights)) {
+            return;
+        }
 
         saturation = weights.x / Mathf.Max(weights.x + weights.y, 0.0001f);
         brightness = Mathf.Clamp01(weights.x + weights.y);
@@ -323,9 +371,12 @@ public sealed class UIColorPicker : UIObject {
     }
 
     public void ValidateHex(string text) {
-        if(suppressHex) return;
+        if(suppressHex) {
+            return;
+        }
+
         string candidate = text.StartsWith("#") ? text : "#" + text;
-        bool validLength = candidate.Length == 7 || candidate.Length == 9;
+        bool validLength = candidate.Length is 7 or 9;
         Color parsed = default;
         bool valid = validLength && ColorUtility.TryParseHtmlString(candidate, out parsed);
         pendingHexColor = valid ? parsed : null;
@@ -364,8 +415,13 @@ public sealed class UIColorPicker : UIObject {
         float[] values = hsvMode
             ? [hue, saturation, brightness, Value.a]
             : [Value.r, Value.g, Value.b, Value.a];
-        for(int i = 0; i < sliders.Length; i++) sliders[i].Set(values[i], false);
-        if(hsvMode) sliders[0].FillImage.color = Color.HSVToRGB(hue, 1f, 1f);
+        for(int i = 0; i < sliders.Length; i++) {
+            sliders[i].Set(values[i], false);
+        }
+
+        if(hsvMode) {
+            sliders[0].FillImage.color = Color.HSVToRGB(hue, 1f, 1f);
+        }
     }
 
     private void SetHexText() {
@@ -395,14 +451,22 @@ public sealed class UIColorPicker : UIObject {
     }
 
     private static bool IsPartialHex(string text) {
-        if(string.IsNullOrEmpty(text)) return true;
+        if(string.IsNullOrEmpty(text)) {
+            return true;
+        }
+
         int start = text[0] == '#' ? 1 : 0;
         int length = text.Length - start;
-        if(length > 8) return false;
+        if(length > 8) {
+            return false;
+        }
+
         for(int i = start; i < text.Length; i++) {
             char c = text[i];
-            bool isHex = c >= '0' && c <= '9' || c >= 'a' && c <= 'f' || c >= 'A' && c <= 'F';
-            if(!isHex) return false;
+            bool isHex = c is (>= '0' and <= '9') or (>= 'a' and <= 'f') or (>= 'A' and <= 'F');
+            if(!isHex) {
+                return false;
+            }
         }
         return true;
     }
@@ -415,36 +479,39 @@ public sealed class UIColorPicker : UIObject {
         float whiteWeight = (1f - saturation) * brightness;
         float blackWeight = 1f - brightness;
         Vector2 position = Direction(hue) * hueWeight;
-        position += Direction(hue + 1f / 3f) * whiteWeight;
-        position += Direction(hue - 1f / 3f) * blackWeight;
+        position += Direction(hue + (1f / 3f)) * whiteWeight;
+        position += Direction(hue - (1f / 3f)) * blackWeight;
         colorHandle.anchoredPosition = position * (size * TriangleRadius);
     }
 
     private void UpdateTexture() {
-        if(renderedHue >= 0f && Mathf.Abs(Mathf.DeltaAngle(renderedHue * 360f, hue * 360f)) < 0.5f) return;
+        if(renderedHue >= 0f && Mathf.Abs(Mathf.DeltaAngle(renderedHue * 360f, hue * 360f)) < 0.5f) {
+            return;
+        }
+
         renderedHue = hue;
         Color hueColor = Color.HSVToRGB(hue, 1f, 1f);
         Color32[] pixels = new Color32[TextureSize * TextureSize];
         Vector2 huePoint = Direction(hue) * TriangleRadius;
-        Vector2 whitePoint = Direction(hue + 1f / 3f) * TriangleRadius;
-        Vector2 blackPoint = Direction(hue - 1f / 3f) * TriangleRadius;
+        Vector2 whitePoint = Direction(hue + (1f / 3f)) * TriangleRadius;
+        Vector2 blackPoint = Direction(hue - (1f / 3f)) * TriangleRadius;
 
         for(int y = 0; y < TextureSize; y++) {
             for(int x = 0; x < TextureSize; x++) {
                 Vector2 point = new(
-                    (x + 0.5f) / TextureSize - 0.5f,
-                    (y + 0.5f) / TextureSize - 0.5f
+                    ((x + 0.5f) / TextureSize) - 0.5f,
+                    ((y + 0.5f) / TextureSize) - 0.5f
                 );
                 float distance = point.magnitude;
                 Color color = Color.clear;
-                if(distance >= RingInner && distance <= RingOuter) {
+                if(distance is >= RingInner and <= RingOuter) {
                     float angle = Mathf.Repeat(Mathf.Atan2(point.y, point.x) / (Mathf.PI * 2f), 1f);
                     color = Color.HSVToRGB(angle, 1f, 1f);
                 } else if(Barycentric(point, huePoint, whitePoint, blackPoint, out Vector3 weights)) {
-                    color = hueColor * weights.x + Color.white * weights.y + Color.black * weights.z;
+                    color = (hueColor * weights.x) + (Color.white * weights.y) + (Color.black * weights.z);
                     color.a = 1f;
                 }
-                pixels[y * TextureSize + x] = color;
+                pixels[(y * TextureSize) + x] = color;
             }
         }
         texture.SetPixels32(pixels);
@@ -460,44 +527,59 @@ public sealed class UIColorPicker : UIObject {
         Vector2 v0 = b - a;
         Vector2 v1 = c - a;
         Vector2 v2 = point - a;
-        float denominator = v0.x * v1.y - v1.x * v0.y;
+        float denominator = (v0.x * v1.y) - (v1.x * v0.y);
         if(Mathf.Abs(denominator) < 0.00001f) {
             weights = default;
             return false;
         }
-        float y = (v2.x * v1.y - v1.x * v2.y) / denominator;
-        float z = (v0.x * v2.y - v2.x * v0.y) / denominator;
+        float y = ((v2.x * v1.y) - (v1.x * v2.y)) / denominator;
+        float z = ((v0.x * v2.y) - (v2.x * v0.y)) / denominator;
         float x = 1f - y - z;
         weights = new Vector3(x, y, z);
         return x >= 0f && y >= 0f && z >= 0f;
     }
 
     private static Vector2 ClosestPointOnTriangle(Vector2 point, Vector2 a, Vector2 b, Vector2 c) {
-        if(Barycentric(point, a, b, c, out _)) return point;
+        if(Barycentric(point, a, b, c, out _)) {
+            return point;
+        }
+
         Vector2 ab = ClosestPointOnSegment(point, a, b);
         Vector2 bc = ClosestPointOnSegment(point, b, c);
         Vector2 ca = ClosestPointOnSegment(point, c, a);
         float abDistance = (point - ab).sqrMagnitude;
         float bcDistance = (point - bc).sqrMagnitude;
         float caDistance = (point - ca).sqrMagnitude;
-        if(abDistance <= bcDistance && abDistance <= caDistance) return ab;
+        if(abDistance <= bcDistance && abDistance <= caDistance) {
+            return ab;
+        }
+
         return bcDistance <= caDistance ? bc : ca;
     }
 
     private static Vector2 ClosestPointOnSegment(Vector2 point, Vector2 a, Vector2 b) {
         Vector2 segment = b - a;
         float length = segment.sqrMagnitude;
-        if(length <= 0.00001f) return a;
-        return a + segment * Mathf.Clamp01(Vector2.Dot(point - a, segment) / length);
+        if(length <= 0.00001f) {
+            return a;
+        }
+
+        return a + (segment * Mathf.Clamp01(Vector2.Dot(point - a, segment) / length));
     }
 
     public override void Dispose() {
-        if(IsDisposed) return;
+        if(IsDisposed) {
+            return;
+        }
+
         layoutTween?.Kill();
         validationTween?.Kill();
         layoutTween = null;
         validationTween = null;
-        foreach(UISlider slider in sliders) slider.Dispose();
+        foreach(UISlider slider in sliders) {
+            slider.Dispose();
+        }
+
         hexInput.Dispose();
         UnityEngine.Object.Destroy(textureSprite);
         UnityEngine.Object.Destroy(texture);

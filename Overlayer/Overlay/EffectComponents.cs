@@ -51,12 +51,14 @@ public sealed class MovingManComponent
     }
 
     public void Update() {
-        if(Rect == null) return;
+        if(Rect == null) {
+            return;
+        }
 
         double value = Effects.MovingMan(TagName, StartSize, EndSize, DefaultSize, Speed, Invert, Ease);
         switch(Target) {
             case MovingManTarget.TextSize:
-                if(Text != null) Text.fontSize = Mathf.Max(0f, (float)value);
+                Text?.fontSize = Mathf.Max(0f, (float)value);
                 break;
             case MovingManTarget.PositionX:
                 SetPosition(0, (float)value);
@@ -130,7 +132,9 @@ public sealed class ColorRangeComponent
     public void Init(TMP_Text text) => Text = text;
 
     public void Update() {
-        if(Text == null) return;
+        if(Text == null) {
+            return;
+        }
 
         string hex = Effects.ColorRange(
             TagName,

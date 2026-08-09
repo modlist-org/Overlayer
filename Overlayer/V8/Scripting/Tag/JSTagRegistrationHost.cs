@@ -100,7 +100,7 @@ public class JSTagRegistrationHost(JSScriptLoader loader, string filePath) {
         }
 
         return SplitParameters(parameters)
-            .Select((parameter, index) => NormalizeParameter(parameter, index))
+            .Select(NormalizeParameter)
             .ToArray();
     }
 
@@ -120,9 +120,14 @@ public class JSTagRegistrationHost(JSScriptLoader loader, string filePath) {
         for(int i = 0; i < source.Length; i++) {
             char current = source[i];
             if(quote != '\0') {
-                if(escaped) escaped = false;
-                else if(current == '\\') escaped = true;
-                else if(current == quote) quote = '\0';
+                if(escaped) {
+                    escaped = false;
+                } else if(current == '\\') {
+                    escaped = true;
+                } else if(current == quote) {
+                    quote = '\0';
+                }
+
                 continue;
             }
 
@@ -132,12 +137,24 @@ public class JSTagRegistrationHost(JSScriptLoader loader, string filePath) {
             }
 
             switch(current) {
-                case '(': parentheses++; break;
-                case ')': parentheses--; break;
-                case '[': brackets++; break;
-                case ']': brackets--; break;
-                case '{': braces++; break;
-                case '}': braces--; break;
+                case '(':
+                    parentheses++;
+                    break;
+                case ')':
+                    parentheses--;
+                    break;
+                case '[':
+                    brackets++;
+                    break;
+                case ']':
+                    brackets--;
+                    break;
+                case '{':
+                    braces++;
+                    break;
+                case '}':
+                    braces--;
+                    break;
                 case ',' when parentheses == 0 && brackets == 0 && braces == 0:
                     parameters.Add(source[start..i]);
                     start = i + 1;
@@ -188,9 +205,14 @@ public class JSTagRegistrationHost(JSScriptLoader loader, string filePath) {
         for(int i = 0; i < source.Length; i++) {
             char current = source[i];
             if(quote != '\0') {
-                if(escaped) escaped = false;
-                else if(current == '\\') escaped = true;
-                else if(current == quote) quote = '\0';
+                if(escaped) {
+                    escaped = false;
+                } else if(current == '\\') {
+                    escaped = true;
+                } else if(current == quote) {
+                    quote = '\0';
+                }
+
                 continue;
             }
 
@@ -200,12 +222,24 @@ public class JSTagRegistrationHost(JSScriptLoader loader, string filePath) {
             }
 
             switch(current) {
-                case '(': parentheses++; break;
-                case ')': parentheses--; break;
-                case '[': brackets++; break;
-                case ']': brackets--; break;
-                case '{': braces++; break;
-                case '}': braces--; break;
+                case '(':
+                    parentheses++;
+                    break;
+                case ')':
+                    parentheses--;
+                    break;
+                case '[':
+                    brackets++;
+                    break;
+                case ']':
+                    brackets--;
+                    break;
+                case '{':
+                    braces++;
+                    break;
+                case '}':
+                    braces--;
+                    break;
             }
 
             if(current == '=' && i + 1 < source.Length && source[i + 1] == '>' &&
@@ -225,9 +259,14 @@ public class JSTagRegistrationHost(JSScriptLoader loader, string filePath) {
         for(int i = start; i < source.Length; i++) {
             char current = source[i];
             if(quote != '\0') {
-                if(escaped) escaped = false;
-                else if(current == '\\') escaped = true;
-                else if(current == quote) quote = '\0';
+                if(escaped) {
+                    escaped = false;
+                } else if(current == '\\') {
+                    escaped = true;
+                } else if(current == quote) {
+                    quote = '\0';
+                }
+
                 continue;
             }
 
@@ -236,8 +275,11 @@ public class JSTagRegistrationHost(JSScriptLoader loader, string filePath) {
                 continue;
             }
 
-            if(current == '(') depth++;
-            else if(current == ')' && --depth == 0) return i;
+            if(current == '(') {
+                depth++;
+            } else if(current == ')' && --depth == 0) {
+                return i;
+            }
         }
 
         return -1;
@@ -253,9 +295,14 @@ public class JSTagRegistrationHost(JSScriptLoader loader, string filePath) {
         for(int i = 0; i < source.Length; i++) {
             char current = source[i];
             if(quote != '\0') {
-                if(escaped) escaped = false;
-                else if(current == '\\') escaped = true;
-                else if(current == quote) quote = '\0';
+                if(escaped) {
+                    escaped = false;
+                } else if(current == '\\') {
+                    escaped = true;
+                } else if(current == quote) {
+                    quote = '\0';
+                }
+
                 continue;
             }
 
@@ -265,12 +312,24 @@ public class JSTagRegistrationHost(JSScriptLoader loader, string filePath) {
             }
 
             switch(current) {
-                case '(': parentheses++; break;
-                case ')': parentheses--; break;
-                case '[': brackets++; break;
-                case ']': brackets--; break;
-                case '{': braces++; break;
-                case '}': braces--; break;
+                case '(':
+                    parentheses++;
+                    break;
+                case ')':
+                    parentheses--;
+                    break;
+                case '[':
+                    brackets++;
+                    break;
+                case ']':
+                    brackets--;
+                    break;
+                case '{':
+                    braces++;
+                    break;
+                case '}':
+                    braces--;
+                    break;
             }
 
             if(current == target && parentheses == 0 && brackets == 0 && braces == 0) {

@@ -15,7 +15,7 @@ public class BoxCollider2DSettings : UnityComponentSettingsBase, ICopyable<BoxCo
 
     public override bool ToUnity(GameObject target) {
         var com = target.GetComponent<BoxCollider2D>();
-        if (com == null) {
+        if(com == null) {
             return false;
         }
 
@@ -31,7 +31,7 @@ public class BoxCollider2DSettings : UnityComponentSettingsBase, ICopyable<BoxCo
 
     public override bool FromUnity(GameObject source) {
         var com = source.GetComponent<BoxCollider2D>();
-        if (com == null) {
+        if(com == null) {
             return false;
         }
 
@@ -48,7 +48,7 @@ public class BoxCollider2DSettings : UnityComponentSettingsBase, ICopyable<BoxCo
     public override JToken Serialize() {
         return new JObject {
             [nameof(Size)] = IOUtils.Write(Size),
-            [nameof(Offset)] =IOUtils.Write(Offset),
+            [nameof(Offset)] = IOUtils.Write(Offset),
             [nameof(IsTrigger)] = IsTrigger,
             [nameof(UsedByEffector)] = UsedByEffector,
             [nameof(CompositeOperation)] = IOUtils.WriteEnum(CompositeOperation),

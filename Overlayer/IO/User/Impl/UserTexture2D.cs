@@ -7,7 +7,7 @@ using UnityEngine;
 namespace Overlayer.IO.User.Impl;
 
 public class UserTexture2D : UserResourceBase<(Texture2D texture, Texture2DSettings settings)> {
-    public static readonly HashSet<string> Ext = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".png", ".jpg", ".jpeg", ".bmp", ".tga" };
+    public static readonly HashSet<string> Ext = new(StringComparer.OrdinalIgnoreCase) { ".png", ".jpg", ".jpeg", ".bmp", ".tga" };
 
     public enum Result {
         Success,
@@ -65,7 +65,10 @@ public class UserTexture2D : UserResourceBase<(Texture2D texture, Texture2DSetti
             }));
             return Result.Success;
         } catch(Exception e) {
-            if(texture) UnityEngine.Object.Destroy(texture);
+            if(texture) {
+                UnityEngine.Object.Destroy(texture);
+            }
+
             MainCore.Log.Err($"[{nameof(UserTexture2D)}] Texture load failed: {e}");
             return Result.Failed;
         }
@@ -91,18 +94,30 @@ public class UserTexture2D : UserResourceBase<(Texture2D texture, Texture2DSetti
                 MipChain = mipChain,
                 Linear = linear
             }));
-            if(current.value.texture) UnityEngine.Object.Destroy(current.value.texture);
+            if(current.value.texture) {
+                UnityEngine.Object.Destroy(current.value.texture);
+            }
+
             return Result.Success;
         } catch(Exception e) {
-            if(replacement) UnityEngine.Object.Destroy(replacement);
+            if(replacement) {
+                UnityEngine.Object.Destroy(replacement);
+            }
+
             MainCore.Log.Err($"[{nameof(UserTexture2D)}] Texture replace failed: {e}");
             return Result.Failed;
         }
     }
 
     public bool Remove(string key) {
-        if(!Cache.Remove(key, out var entry)) return false;
-        if(entry.value.texture) UnityEngine.Object.Destroy(entry.value.texture);
+        if(!Cache.Remove(key, out var entry)) {
+            return false;
+        }
+
+        if(entry.value.texture) {
+            UnityEngine.Object.Destroy(entry.value.texture);
+        }
+
         return true;
     }
 

@@ -145,12 +145,18 @@ public class UISlider : UIObject {
     }
 
     public override void Tick() {
-        if(IsDisposed) return;
+        if(IsDisposed) {
+            return;
+        }
+
         InputCore.OnTick();
     }
 
     public void Set(float value, bool invoke = true, bool noFilter = false) {
-        if(IsDisposed) return;
+        if(IsDisposed) {
+            return;
+        }
+
         if(float.IsNaN(value)) {
             return;
         }
@@ -172,7 +178,10 @@ public class UISlider : UIObject {
     }
 
     public void SetDefaultValue(float value, bool noAnimate = false) {
-        if(IsDisposed || float.IsNaN(value)) return;
+        if(IsDisposed || float.IsNaN(value)) {
+            return;
+        }
+
         DefaultValue = ClampSafe(ApplyFilter(value), Min, Max);
         UpdateVisual(noAnimate);
     }
@@ -205,7 +214,10 @@ public class UISlider : UIObject {
     private float ApplyFilter(float v) => Filter?.Invoke(v) ?? v;
 
     public void UpdateVisual(bool noAnimate = false) {
-        if(IsDisposed) return;
+        if(IsDisposed) {
+            return;
+        }
+
         fillSeq?.Kill();
         changeSeq?.Kill();
 
@@ -237,14 +249,20 @@ public class UISlider : UIObject {
 
         var changeBuilder = GTweenSequenceBuilder.New()
             .Join(ChangedImage.GTAlpha(changeAlpha, 0.2f).SetEasing(Easing.OutSine));
-        if(ShowFill) changeBuilder.Join(ChangedUpImage.GTAlpha(changeAlpha, 0.2f).SetEasing(Easing.OutSine));
+        if(ShowFill) {
+            changeBuilder.Join(ChangedUpImage.GTAlpha(changeAlpha, 0.2f).SetEasing(Easing.OutSine));
+        }
+
         changeSeq = changeBuilder.Build();
         MainCore.TC.Play(changeSeq);
     }
 
     public void OnDrag(float normalizedValue) => SetNormalized(normalizedValue, true);
     private void SetStateVisuals(Color targetColor, bool isCalculating, float? value = null) {
-        if(IsDisposed) return;
+        if(IsDisposed) {
+            return;
+        }
+
         stateSeq?.Kill();
 
         float targetFillAlpha = isCalculating ? (value.HasValue ? 0.3f : 0f) : 1f;
@@ -256,10 +274,21 @@ public class UISlider : UIObject {
 
         stateSeq = GTweenSequenceBuilder.New()
             .Join(GTweenExtensions.Tween(() => 0f, x => {
-                if(OutlineImage) OutlineImage.color = Color.Lerp(startOutline, new(targetColor.r, targetColor.g, targetColor.b, isCalculating ? targetColor.a : 0f), x);
-                if(FillImage) FillImage.color = Color.Lerp(startFill, new(targetColor.r, targetColor.g, targetColor.b, targetFillAlpha), x);
-                if(ChangedImage) ChangedImage.color = Color.Lerp(startChanged, new(targetColor.r, targetColor.g, targetColor.b, ChangedImage.color.a), x);
-                if(InputCore.InputField) InputCore.InputField.caretColor = Color.Lerp(startCaret, new(targetColor.r, targetColor.g, targetColor.b, InputCore.InputField.caretColor.a), x);
+                if(OutlineImage) {
+                    OutlineImage.color = Color.Lerp(startOutline, new(targetColor.r, targetColor.g, targetColor.b, isCalculating ? targetColor.a : 0f), x);
+                }
+
+                if(FillImage) {
+                    FillImage.color = Color.Lerp(startFill, new(targetColor.r, targetColor.g, targetColor.b, targetFillAlpha), x);
+                }
+
+                if(ChangedImage) {
+                    ChangedImage.color = Color.Lerp(startChanged, new(targetColor.r, targetColor.g, targetColor.b, ChangedImage.color.a), x);
+                }
+
+                if(InputCore.InputField) {
+                    InputCore.InputField.caretColor = Color.Lerp(startCaret, new(targetColor.r, targetColor.g, targetColor.b, InputCore.InputField.caretColor.a), x);
+                }
             }, 1f, 0.2f).SetEasing(Easing.OutSine)).Build();
         MainCore.TC.Play(stateSeq);
 
@@ -272,7 +301,10 @@ public class UISlider : UIObject {
     }
 
     public override void Dispose() {
-        if(IsDisposed) return;
+        if(IsDisposed) {
+            return;
+        }
+
         fillSeq?.Kill();
         changeSeq?.Kill();
         stateSeq?.Kill();

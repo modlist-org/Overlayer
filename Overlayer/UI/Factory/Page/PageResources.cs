@@ -10,7 +10,6 @@ using Overlayer.UI.Utility;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
-using static UnityEngine.EventSystems.PointerEventData;
 
 #if ML && IL2CPP
 using Il2CppTMPro;
@@ -202,7 +201,9 @@ internal static class PageResources {
 
         CreateDisabledPanel(root);
         MainCore.OnModEnabledChanged += (isEnabled, isDispose) => {
-            if(!isDispose) ToggleUIStateByMod(isEnabled);
+            if(!isDispose) {
+                ToggleUIStateByMod(isEnabled);
+            }
         };
         ToggleUIStateByMod(MainCore.IsModEnabled);
 
@@ -210,12 +211,17 @@ internal static class PageResources {
         MainThread.Enqueue(() => {
             BuildList();
             Canvas.ForceUpdateCanvases();
-            if(listContent) LayoutRebuilder.ForceRebuildLayoutImmediate(listContent);
+            if(listContent) {
+                LayoutRebuilder.ForceRebuildLayoutImmediate(listContent);
+            }
         });
     }
 
     private static void BeginBrowse() {
-        if(busy) return;
+        if(busy) {
+            return;
+        }
+
         browseButton.SetBlocked(true);
         browseButton.Label.text = "...";
         SetStatus("OPENING_FILE_PICKER", "Opening file picker...", UIColors.ObjectActive);
@@ -223,7 +229,10 @@ internal static class PageResources {
         if(currentMode == ResourceMode.Images) {
             _ = NativeImageFilePicker.PickAsync().ContinueWith(task => {
                 MainThread.Enqueue(() => {
-                    if(!MainCore.IsModEnabled) return;
+                    if(!MainCore.IsModEnabled) {
+                        return;
+                    }
+
                     browseButton.SetBlocked(false);
                     browseButton.Label.text = T("BROWSE", "Browse");
                     string path = task.Status == TaskStatus.RanToCompletion ? task.Result : null;
@@ -242,7 +251,10 @@ internal static class PageResources {
         } else {
             _ = NativeFontFilePicker.PickAsync().ContinueWith(task => {
                 MainThread.Enqueue(() => {
-                    if(!MainCore.IsModEnabled) return;
+                    if(!MainCore.IsModEnabled) {
+                        return;
+                    }
+
                     browseButton.SetBlocked(false);
                     browseButton.Label.text = T("BROWSE", "Browse");
                     string path = task.Status == TaskStatus.RanToCompletion ? task.Result : null;
@@ -262,7 +274,10 @@ internal static class PageResources {
     }
 
     private static void BeginImport() {
-        if(busy) return;
+        if(busy) {
+            return;
+        }
+
         if(currentMode == ResourceMode.Images) {
             if(!string.IsNullOrEmpty(settingsEditKey)) {
                 BeginSettingsApply();
@@ -307,9 +322,7 @@ internal static class PageResources {
                 } catch(Exception e) {
                     return (Bytes: (byte[])null, Path: target, Error: e.Message);
                 }
-            }).ContinueWith(task => {
-                MainThread.Enqueue(() => FinishImport(task, key));
-            });
+            }).ContinueWith(task => MainThread.Enqueue(() => FinishImport(task, key)));
         } else {
             // Fonts
             string source = UserResourceManager.FromUser(pathInput.Value?.Trim());
@@ -351,9 +364,7 @@ internal static class PageResources {
                 } catch(Exception e) {
                     return (Path: string.Empty, Bytes: (byte[])null, Error: e.Message);
                 }
-            }).ContinueWith(task => {
-                MainThread.Enqueue(() => FinishFontImport(task, key));
-            });
+            }).ContinueWith(task => MainThread.Enqueue(() => FinishFontImport(task, key)));
         }
     }
 
@@ -361,7 +372,10 @@ internal static class PageResources {
         Task<(byte[] Bytes, string Path, string Error)> task,
         string key
     ) {
-        if(!MainCore.IsModEnabled) return;
+        if(!MainCore.IsModEnabled) {
+            return;
+        }
+
         var result = task.Status == TaskStatus.RanToCompletion
             ? task.Result
             : (Bytes: (byte[])null, Path: string.Empty, Error: "Image read task failed.");
@@ -413,7 +427,10 @@ internal static class PageResources {
         Task<(string Path, byte[] Bytes, string Error)> task,
         string key
     ) {
-        if(!MainCore.IsModEnabled) return;
+        if(!MainCore.IsModEnabled) {
+            return;
+        }
+
         var result = task.Status == TaskStatus.RanToCompletion
             ? task.Result
             : (Path: string.Empty, Bytes: (byte[])null, Error: "Font read task failed.");
@@ -482,9 +499,7 @@ internal static class PageResources {
             } catch(Exception e) {
                 return (Bytes: (byte[])null, Error: e.Message);
             }
-        }).ContinueWith(task => {
-            MainThread.Enqueue(() => FinishSettingsApply(task, key, mipChain, linear));
-        });
+        }).ContinueWith(task => MainThread.Enqueue(() => FinishSettingsApply(task, key, mipChain, linear)));
     }
 
     private static void FinishSettingsApply(
@@ -493,19 +508,22 @@ internal static class PageResources {
         bool mipChain,
         bool linear
     ) {
-        if(!MainCore.IsModEnabled) return;
-        var result = task.Status == TaskStatus.RanToCompletion
+        if(!MainCore.IsModEnabled) {
+            return;
+        }
+
+        var (Bytes, Error) = task.Status == TaskStatus.RanToCompletion
             ? task.Result
             : (Bytes: (byte[])null, Error: "Image read task failed.");
-        if(result.Bytes == null) {
+        if(Bytes == null) {
             FinishSettingsBusy();
-            SetStatus("SETTINGS_FAILED", "Settings failed: {0}", UIColors.ObjectActiveMathErr, result.Error);
+            SetStatus("SETTINGS_FAILED", "Settings failed: {0}", UIColors.ObjectActiveMathErr, Error);
             return;
         }
 
         UserTexture2D.Result textureResult = UserResourceManager.T2D.ReplaceData(
             key,
-            result.Bytes,
+            Bytes,
             mipChain,
             linear
         );
@@ -542,8 +560,13 @@ internal static class PageResources {
     }
 
     private static void EnterSettingsEdit(string key) {
-        if(busy || !UserResourceManager.T2D.TryGet(key, out var textureValue)) return;
-        if(!UserResourceManager.T2D.TryGetPath(key, out string path)) return;
+        if(busy || !UserResourceManager.T2D.TryGet(key, out var textureValue)) {
+            return;
+        }
+
+        if(!UserResourceManager.T2D.TryGetPath(key, out string path)) {
+            return;
+        }
 
         settingsEditKey = key;
         pathInput.Set(UserResourceManager.ToUser(path));
@@ -559,7 +582,10 @@ internal static class PageResources {
     }
 
     private static void CancelSettingsEdit() {
-        if(busy) return;
+        if(busy) {
+            return;
+        }
+
         settingsEditKey = null;
         pathInput.Set(string.Empty);
         keyInput.Set(string.Empty);
@@ -573,7 +599,10 @@ internal static class PageResources {
     }
 
     private static void BuildList() {
-        if(listContent == null) return;
+        if(listContent == null) {
+            return;
+        }
+
         for(int i = listContent.childCount - 1; i >= 0; i--) {
             UnityEngine.Object.Destroy(listContent.GetChild(i).gameObject);
         }
@@ -603,8 +632,11 @@ internal static class PageResources {
             element.preferredHeight = 100f;
         } else {
             foreach(string key in keys) {
-                if(currentMode == ResourceMode.Images) CreateCard(listContent, key);
-                else CreateFontCard(listContent, key);
+                if(currentMode == ResourceMode.Images) {
+                    CreateCard(listContent, key);
+                } else {
+                    CreateFontCard(listContent, key);
+                }
             }
         }
         LayoutRebuilder.ForceRebuildLayoutImmediate(listContent);
@@ -639,15 +671,16 @@ internal static class PageResources {
         );
         addButton.Label.text = currentMode == ResourceMode.Images ? T("ADD_IMAGE", "Add Image") : T("ADD_FONT", "Add Font");
 
-        if(imageSettingsRow != null) {
-            imageSettingsRow.gameObject.SetActive(currentMode == ResourceMode.Images);
-        }
+        imageSettingsRow?.gameObject.SetActive(currentMode == ResourceMode.Images);
 
         BuildList();
     }
 
     private static void ToggleUIStateByMod(bool isEnabled) {
-        if(disabledPanel == null) return;
+        if(disabledPanel == null) {
+            return;
+        }
+
         disabledPanel.SetActive(!isEnabled);
         if(!isEnabled) {
             busy = false;
@@ -657,10 +690,15 @@ internal static class PageResources {
             return;
         }
         MainThread.Enqueue(() => {
-            if(!MainCore.IsModEnabled) return;
+            if(!MainCore.IsModEnabled) {
+                return;
+            }
+
             BuildList();
             Canvas.ForceUpdateCanvases();
-            if(listContent) LayoutRebuilder.ForceRebuildLayoutImmediate(listContent);
+            if(listContent) {
+                LayoutRebuilder.ForceRebuildLayoutImmediate(listContent);
+            }
         });
     }
 
@@ -692,7 +730,10 @@ internal static class PageResources {
     }
 
     private static void CreateCard(Transform parent, string key) {
-        if(!UserResourceManager.Spr.TryGet(key, out var spriteValue)) return;
+        if(!UserResourceManager.Spr.TryGet(key, out var spriteValue)) {
+            return;
+        }
+
         GameObject cardObject = new(key);
         cardObject.transform.SetParent(parent, false);
         RectTransform card = cardObject.AddComponent<RectTransform>();
@@ -819,7 +860,9 @@ internal static class PageResources {
     }
 
     private static void CreateFontCard(Transform parent, string key) {
-        if(!UserResourceManager.Fnt.TryGet(key, out var fontAsset)) return;
+        if(!UserResourceManager.Fnt.TryGet(key, out var fontAsset)) {
+            return;
+        }
 
         GameObject cardObject = new(key);
         cardObject.transform.SetParent(parent, false);
@@ -956,7 +999,11 @@ internal static class PageResources {
 
             if(!string.IsNullOrEmpty(filePath) && filePath.StartsWith(MainCore.Paths.UserFontPath, StringComparison.OrdinalIgnoreCase)) {
                 _ = Task.Run(() => {
-                    try { if(File.Exists(filePath)) File.Delete(filePath); } catch { }
+                    try {
+                        if(File.Exists(filePath)) {
+                            File.Delete(filePath);
+                        }
+                    } catch { }
                 });
             }
         };
@@ -1026,28 +1073,34 @@ internal static class PageResources {
 
         if(path.StartsWith(MainCore.Paths.UserImagePath, StringComparison.OrdinalIgnoreCase)) {
             _ = Task.Run(() => {
-                try { if(File.Exists(path)) File.Delete(path); } catch { }
+                try {
+                    if(File.Exists(path)) {
+                        File.Delete(path);
+                    }
+                } catch { }
             });
         }
     }
 
     private static string SanitizeKey(string value) {
-        if(string.IsNullOrWhiteSpace(value)) return string.Empty;
+        if(string.IsNullOrWhiteSpace(value)) {
+            return string.Empty;
+        }
+
         char[] invalid = Path.GetInvalidFileNameChars();
         string result = new(value.Trim().Select(c => invalid.Contains(c) ? '_' : c).ToArray());
         return result.Trim().Trim('.', ' ');
     }
 
-    private static string T(string key, string defaultValue, params object[] args) {
-        return string.Format(MainCore.Tr.Get(key, defaultValue), args);
-    }
+    private static string T(string key, string defaultValue, params object[] args) => string.Format(MainCore.Tr.Get(key, defaultValue), args);
 
-    private static void SetStatus(string key, string defaultValue, Color color, params object[] args) {
-        SetStatus(T(key, defaultValue, args), color);
-    }
+    private static void SetStatus(string key, string defaultValue, Color color, params object[] args) => SetStatus(T(key, defaultValue, args), color);
 
     private static void SetStatus(string text, Color color) {
-        if(statusLabel == null) return;
+        if(statusLabel == null) {
+            return;
+        }
+
         statusLabel.text = text;
         statusLabel.color = color;
     }
@@ -1091,9 +1144,7 @@ internal static class PageResources {
         return label;
     }
 
-    private static void ResizeInput(RectTransform rect, float rightWidth) {
-        rect.offsetMax = new Vector2(-rightWidth, 0f);
-    }
+    private static void ResizeInput(RectTransform rect, float rightWidth) => rect.offsetMax = new Vector2(-rightWidth, 0f);
 
     private static void PlaceRight(RectTransform rect, float width, float height = 0f, float rightOffset = 0f) {
         rect.anchorMin = new Vector2(1f, height > 0f ? 0.5f : 0f);

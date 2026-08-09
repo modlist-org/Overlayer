@@ -1,9 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using GTweens.Tweens;
-using GTweens.Extensions;
 using GTweens.Easings;
-using GTweens.Builders;
 using Overlayer.Core;
 using Overlayer.Tween;
 
@@ -55,7 +53,10 @@ public sealed class UIInput : UIObject {
     }
 
     public void Set(string value, bool invoke = true) {
-        if(IsDisposed) return;
+        if(IsDisposed) {
+            return;
+        }
+
         Core.SetValue(value, false);
         if(invoke) {
             Core.OnChanged?.Invoke(value);
@@ -71,7 +72,10 @@ public sealed class UIInput : UIObject {
     }
 
     public void UpdateVisual(bool noAnimate = false) {
-        if(IsDisposed) return;
+        if(IsDisposed) {
+            return;
+        }
+
         changeTween?.Kill();
         float target = (DefaultValue != null && DefaultValue != Core.Value) ? 1f : 0f;
         if(noAnimate) {
@@ -95,13 +99,19 @@ public sealed class UIInput : UIObject {
     }
 
     public override void Tick() {
-        if(IsDisposed) return;
+        if(IsDisposed) {
+            return;
+        }
+
         Core.OnTick();
         UpdateIconImage(InputField.isFocused);
     }
 
     public override void Dispose() {
-        if(IsDisposed) return;
+        if(IsDisposed) {
+            return;
+        }
+
         Core.Dispose();
         changeTween?.Kill();
         iconTween?.Kill();

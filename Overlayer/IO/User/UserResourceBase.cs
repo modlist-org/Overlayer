@@ -1,7 +1,7 @@
 ﻿namespace Overlayer.IO.User;
 
 public abstract class UserResourceBase<T> {
-    protected Dictionary<string, (string path, T value)> Cache { get; } = new Dictionary<string, (string path, T value)>();
+    protected Dictionary<string, (string path, T value)> Cache { get; } = [];
     public ICollection<string> Keys => Cache.Keys;
 
     public bool TryGet(string key, out T value) {

@@ -21,7 +21,7 @@ public class Rigidbody2DSettings : UnityComponentSettingsBase, ICopyable<Rigidbo
 
     public override bool ToUnity(GameObject target) {
         var com = target.GetComponent<Rigidbody2D>();
-        if (com == null) {
+        if(com == null) {
             return false;
         }
 
@@ -43,7 +43,7 @@ public class Rigidbody2DSettings : UnityComponentSettingsBase, ICopyable<Rigidbo
 
     public override bool FromUnity(GameObject source) {
         var com = source.GetComponent<Rigidbody2D>();
-        if (com == null) {
+        if(com == null) {
             return false;
         }
 

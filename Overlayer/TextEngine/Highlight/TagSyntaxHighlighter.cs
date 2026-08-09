@@ -95,8 +95,14 @@ public static class TagSyntaxHighlighter {
 
             int left = segmentStart;
             int right = i;
-            while(left < right && char.IsWhiteSpace(source[left])) left++;
-            while(right > left && char.IsWhiteSpace(source[right - 1])) right--;
+            while(left < right && char.IsWhiteSpace(source[left])) {
+                left++;
+            }
+
+            while(right > left && char.IsWhiteSpace(source[right - 1])) {
+                right--;
+            }
+
             if(right > left) {
                 spans.Add(new(left, right - left, GetArgumentKind(tag, argumentIndex, argumentCount)));
             }
@@ -115,7 +121,7 @@ public static class TagSyntaxHighlighter {
         }
 
         bool format = tag.Parameters.Length == 0 ||
-            (tag.TagType & TagType.ProcessFormat) != 0 && index == count - 1;
+            ((tag.TagType & TagType.ProcessFormat) != 0 && index == count - 1);
         return format ? TagSyntaxKind.Format : TagSyntaxKind.Argument;
     }
 }

@@ -1,7 +1,6 @@
 using GTweens.Easings;
 using Newtonsoft.Json.Linq;
 using Overlayer.IO.Interface;
-using Overlayer.IO.UnityComponent;
 using Overlayer.Overlay;
 using UnityEngine;
 
@@ -17,7 +16,9 @@ public sealed class ColorRangeSettings : UnityComponentSettingsBase, ICopyable<C
 
     public override bool ToUnity(GameObject target) {
         var component = target.GetComponent<ColorRangeComponent>();
-        if(component == null) return false;
+        if(component == null) {
+            return false;
+        }
 
         component.TagName = TagName;
         component.Minimum = Minimum;
@@ -31,7 +32,9 @@ public sealed class ColorRangeSettings : UnityComponentSettingsBase, ICopyable<C
 
     public override bool FromUnity(GameObject source) {
         var component = source.GetComponent<ColorRangeComponent>();
-        if(component == null) return false;
+        if(component == null) {
+            return false;
+        }
 
         TagName = component.TagName;
         Minimum = component.Minimum;

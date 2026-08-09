@@ -129,7 +129,9 @@ public sealed class ResourceManager(Assembly assembly, string resourcePath) : ID
                 TMP_FontAsset suitFont = LoadFont(suitPath, suitTempPath);
 
                 if(suitFont != null) {
+#pragma warning disable IDE0028
                     asset.fallbackFontAssetTable ??= new();
+#pragma warning restore IDE0028
                     if(!asset.fallbackFontAssetTable.Contains(suitFont)) {
                         asset.fallbackFontAssetTable.Add(suitFont);
                     }

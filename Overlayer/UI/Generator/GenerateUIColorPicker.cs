@@ -89,7 +89,9 @@ public static partial class GenerateUI {
         hexInput.InputField.onFocusSelectAll = false;
         hexInput.InputField.characterLimit = 9;
         Transform hexHover = hexRect.Find("Hover");
-        if(hexHover) hexHover.gameObject.SetActive(false);
+        if(hexHover) {
+            hexHover.gameObject.SetActive(false);
+        }
 
         GameObject bodyObject = new("Body");
         bodyObject.transform.SetParent(root, false);
@@ -190,7 +192,10 @@ public static partial class GenerateUI {
                     picker.ToggleExpanded();
                     break;
                 case InputButton.Middle:
-                    if(MainCore.Conf.MiddleClickToDefault) picker.Reset();
+                    if(MainCore.Conf.MiddleClickToDefault) {
+                        picker.Reset();
+                    }
+
                     break;
             }
         });
@@ -215,7 +220,9 @@ public static partial class GenerateUI {
         label.alignment = TextAlignmentOptions.Center;
         label.raycastTarget = false;
         AddButton(buttonObject, button => {
-            if(button == InputButton.Left) onClick();
+            if(button == InputButton.Left) {
+                onClick();
+            }
         });
         return (background, label);
     }

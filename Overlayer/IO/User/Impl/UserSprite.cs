@@ -71,8 +71,14 @@ public class UserSprite : UserResourceBase<(Sprite sprite, string textureKey, Sp
     }
 
     public bool Remove(string key) {
-        if(!Cache.Remove(key, out var entry)) return false;
-        if(entry.value.sprite) UnityEngine.Object.Destroy(entry.value.sprite);
+        if(!Cache.Remove(key, out var entry)) {
+            return false;
+        }
+
+        if(entry.value.sprite) {
+            UnityEngine.Object.Destroy(entry.value.sprite);
+        }
+
         return true;
     }
 
@@ -95,7 +101,9 @@ public class UserSprite : UserResourceBase<(Sprite sprite, string textureKey, Sp
     }
 
     public bool RebuildTexture(string textureKey, Texture2D texture) {
-        if(string.IsNullOrWhiteSpace(textureKey) || !texture) return false;
+        if(string.IsNullOrWhiteSpace(textureKey) || !texture) {
+            return false;
+        }
 
         var replacements = new List<(string key, Sprite oldSprite, Sprite newSprite)>();
         try {
@@ -111,19 +119,23 @@ public class UserSprite : UserResourceBase<(Sprite sprite, string textureKey, Sp
                 ));
             }
 
-            foreach(var replacement in replacements) {
-                var entry = Cache[replacement.key];
-                Cache[replacement.key] = (
-                    entry.path,
-                    (replacement.newSprite, entry.value.textureKey, entry.value.settings)
+            foreach(var (key, oldSprite, newSprite) in replacements) {
+                var (path, value) = Cache[key];
+                Cache[key] = (
+                    path,
+                    (newSprite, value.textureKey, value.settings)
                 );
-                if(replacement.oldSprite) UnityEngine.Object.Destroy(replacement.oldSprite);
+                if(oldSprite) {
+                    UnityEngine.Object.Destroy(oldSprite);
+                }
             }
 
             return replacements.Count > 0;
         } catch(Exception e) {
-            foreach(var replacement in replacements) {
-                if(replacement.newSprite) UnityEngine.Object.Destroy(replacement.newSprite);
+            foreach(var (key, oldSprite, newSprite) in replacements) {
+                if(newSprite) {
+                    UnityEngine.Object.Destroy(newSprite);
+                }
             }
             MainCore.Log.Err($"[{nameof(UserSprite)}] Sprite rebuild failed: {e}");
             return false;

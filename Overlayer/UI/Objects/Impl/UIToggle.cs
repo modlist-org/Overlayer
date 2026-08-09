@@ -6,7 +6,6 @@ using GTweens.Tweens;
 using Overlayer.Tween;
 using GTweens.Builders;
 using GTweens.Easings;
-using GTweenExtensions = GTweens.Extensions.GTweenExtensions;
 
 #if ML && IL2CPP
 using Il2CppTMPro;
@@ -51,7 +50,10 @@ public class UIToggle : UIObject {
     }
 
     public void Set(bool value, bool invoke = true) {
-        if(IsDisposed) return;
+        if(IsDisposed) {
+            return;
+        }
+
         Value = value;
 
         if(invoke) {
@@ -66,7 +68,10 @@ public class UIToggle : UIObject {
     public void Reset() => Set(DefaultValue);
 
     public void UpdateVisual(bool noAnimate = false) {
-        if(IsDisposed) return;
+        if(IsDisposed) {
+            return;
+        }
+
         circleSeq?.Kill();
         changeSeq?.Kill();
 
@@ -102,7 +107,10 @@ public class UIToggle : UIObject {
     }
 
     public override void Dispose() {
-        if(IsDisposed) return;
+        if(IsDisposed) {
+            return;
+        }
+
         circleSeq?.Kill();
         changeSeq?.Kill();
         circleSeq = null;

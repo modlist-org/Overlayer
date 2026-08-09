@@ -106,9 +106,7 @@ public class UIInputCore {
         }
     }
 
-    private void OnValueEndEdit(string value) {
-        OnEndEdit?.Invoke(value);
-    }
+    private void OnValueEndEdit(string value) => OnEndEdit?.Invoke(value);
 
     private void UpdateCaretAnimation(bool focused) {
         if(focused) {

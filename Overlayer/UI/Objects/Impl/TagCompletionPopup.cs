@@ -2,8 +2,6 @@ using FuzzySharp;
 using Overlayer.Compat.OVC;
 using Overlayer.Tag.Core;
 using Overlayer.UI.Generator;
-using Overlayer.UI.Utility;
-using Overlayer.UI;
 using System.Reflection;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -132,7 +130,7 @@ internal sealed class TagCompletionPopup {
         }
 
         UpdateSnippetAfterEdit();
-        if(composing || input.selectionAnchorPosition != input.selectionFocusPosition && !HasSnippet) {
+        if(composing || (input.selectionAnchorPosition != input.selectionFocusPosition && !HasSnippet)) {
             Hide();
             return;
         }
@@ -427,9 +425,7 @@ internal sealed class TagCompletionPopup {
         matches.Clear();
         windowStart = 0;
         visibleRowCount = 0;
-        if(popupRect != null) {
-            popupRect.gameObject.SetActive(false);
-        }
+        popupRect?.gameObject.SetActive(false);
     }
 
     private void Dispose() {
@@ -518,7 +514,7 @@ internal sealed class TagCompletionPopup {
     private static string FormatSignature(TagCore tag) {
         string parameters = tag.Parameters.Length == 0
             ? string.Empty
-            : $"({string.Join(", ", tag.Parameters.Select((parameter, index) => GetParameterName(parameter, index)))})";
+            : $"({string.Join(", ", tag.Parameters.Select(GetParameterName))})";
         return parameters.Length > 0 ? parameters : tag.ReturnType?.Name ?? string.Empty;
     }
 

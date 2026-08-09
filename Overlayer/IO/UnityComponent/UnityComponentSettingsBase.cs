@@ -18,9 +18,7 @@ public abstract class UnityComponentSettingsBase : ISettingsFile {
         return properties;
     }
 
-    protected void DeserializeComponent(JToken token) {
-        ComponentEnabled = IOUtils.Read(token, nameof(ComponentEnabled), ComponentEnabled);
-    }
+    protected void DeserializeComponent(JToken token) => ComponentEnabled = IOUtils.Read(token, nameof(ComponentEnabled), ComponentEnabled);
 
     public abstract bool ToUnity(GameObject target);
     public abstract bool FromUnity(GameObject source);

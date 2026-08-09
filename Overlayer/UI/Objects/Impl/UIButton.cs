@@ -36,7 +36,10 @@ public class UIButton : UIObject {
     }
 
     public void OnHoverEnter() {
-        if(IsDisposed) return;
+        if(IsDisposed) {
+            return;
+        }
+
         hoverTween?.Kill();
 
         hoverTween = Background
@@ -46,7 +49,10 @@ public class UIButton : UIObject {
     }
 
     public void OnHoverExit() {
-        if(IsDisposed) return;
+        if(IsDisposed) {
+            return;
+        }
+
         hoverTween?.Kill();
 
         hoverTween = Background
@@ -56,7 +62,10 @@ public class UIButton : UIObject {
     }
 
     public void Click(bool invoke = true) {
-        if(IsDisposed) return;
+        if(IsDisposed) {
+            return;
+        }
+
         if(invoke) {
             OnClick?.Invoke();
         }
@@ -65,7 +74,10 @@ public class UIButton : UIObject {
     }
 
     public void UpdateVisual(bool noAnimate = false) {
-        if(IsDisposed) return;
+        if(IsDisposed) {
+            return;
+        }
+
         hoverTween?.Kill();
 
         if(noAnimate) {
@@ -80,7 +92,10 @@ public class UIButton : UIObject {
     }
 
     public override void Dispose() {
-        if(IsDisposed) return;
+        if(IsDisposed) {
+            return;
+        }
+
         hoverTween?.Kill();
         hoverTween = null;
         OnClick = null;

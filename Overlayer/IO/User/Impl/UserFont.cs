@@ -12,7 +12,7 @@ using TMPro;
 namespace Overlayer.IO.User.Impl;
 
 public class UserFont : UserResourceBase<TMP_FontAsset>, ISettingsFile {
-    public static readonly HashSet<string> Ext = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".ttf", ".otf" };
+    public static readonly HashSet<string> Ext = new(StringComparer.OrdinalIgnoreCase) { ".ttf", ".otf" };
 
     public enum Result {
         Success,
@@ -53,8 +53,14 @@ public class UserFont : UserResourceBase<TMP_FontAsset>, ISettingsFile {
     }
 
     public bool Remove(string key) {
-        if(!Cache.Remove(key, out var entry)) return false;
-        if(entry.value) UnityEngine.Object.Destroy(entry.value);
+        if(!Cache.Remove(key, out var entry)) {
+            return false;
+        }
+
+        if(entry.value) {
+            UnityEngine.Object.Destroy(entry.value);
+        }
+
         return true;
     }
 

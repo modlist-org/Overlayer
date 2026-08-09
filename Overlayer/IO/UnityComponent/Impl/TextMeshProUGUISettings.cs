@@ -1,5 +1,4 @@
-﻿using System.Linq;
-using Newtonsoft.Json.Linq;
+﻿using Newtonsoft.Json.Linq;
 using Overlayer.IO.Interface;
 using Overlayer.IO.User;
 using UnityEngine;

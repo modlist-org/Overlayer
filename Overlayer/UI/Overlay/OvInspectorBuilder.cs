@@ -143,33 +143,33 @@ internal sealed class OvInspectorBuilder(
         Action refreshAnchor = AnchorPresetControl(rectLayout, obj, () => refreshPositionFields?.Invoke());
         refreshPositionFields = BuildRectPositionFields(rectLayout, obj);
 
-        NumericPropertyRow(basic, "Position", new[] {
-            ("Z", 0f, (Func<float>)(() => cfg.AnchoredPositionZ), (Action<float>)(value => cfg.AnchoredPositionZ = value), "rect_position_z")
-        }, "F1");
-        NumericPropertyRow(basic, "Rotation", new[] {
-            ("X", 0f, (Func<float>)(() => cfg.RotationXY.x), (Action<float>)(value => cfg.RotationXY.x = value), "rect_rotation_x"),
-            ("Y", 0f, (Func<float>)(() => cfg.RotationXY.y), (Action<float>)(value => cfg.RotationXY.y = value), "rect_rotation_y"),
-            ("Z", 0f, (Func<float>)(() => cfg.Rotation), (Action<float>)(value => cfg.Rotation = value), "rect_rotation_z")
-        }, "F1");
-        NumericPropertyRow(basic, "Scale", new[] {
-            ("X", 1f, (Func<float>)(() => cfg.Scale.x), (Action<float>)(value => cfg.Scale.x = value), "rect_scale_x"),
-            ("Y", 1f, (Func<float>)(() => cfg.Scale.y), (Action<float>)(value => cfg.Scale.y = value), "rect_scale_y"),
-            ("Z", 1f, (Func<float>)(() => cfg.Scale.z), (Action<float>)(value => cfg.Scale.z = value), "rect_scale_z")
-        }, "F2");
-        NumericPropertyRow(basic, "Pivot", new[] {
-            ("X", 0.5f, (Func<float>)(() => cfg.Pivot.x), (Action<float>)(value => cfg.Pivot.x = value), "rect_pivot_x"),
-            ("Y", 0.5f, (Func<float>)(() => cfg.Pivot.y), (Action<float>)(value => cfg.Pivot.y = value), "rect_pivot_y")
-        }, "F2");
+        NumericPropertyRow(basic, "Position", [
+            ("Z", 0f, () => cfg.AnchoredPositionZ, value => cfg.AnchoredPositionZ = value, "rect_position_z")
+        ], "F1");
+        NumericPropertyRow(basic, "Rotation", [
+            ("X", 0f, () => cfg.RotationXY.x, value => cfg.RotationXY.x = value, "rect_rotation_x"),
+            ("Y", 0f, () => cfg.RotationXY.y, value => cfg.RotationXY.y = value, "rect_rotation_y"),
+            ("Z", 0f, () => cfg.Rotation, value => cfg.Rotation = value, "rect_rotation_z")
+        ], "F1");
+        NumericPropertyRow(basic, "Scale", [
+            ("X", 1f, () => cfg.Scale.x, value => cfg.Scale.x = value, "rect_scale_x"),
+            ("Y", 1f, () => cfg.Scale.y, value => cfg.Scale.y = value, "rect_scale_y"),
+            ("Z", 1f, () => cfg.Scale.z, value => cfg.Scale.z = value, "rect_scale_z")
+        ], "F2");
+        NumericPropertyRow(basic, "Pivot", [
+            ("X", 0.5f, () => cfg.Pivot.x, value => cfg.Pivot.x = value, "rect_pivot_x"),
+            ("Y", 0.5f, () => cfg.Pivot.y, value => cfg.Pivot.y = value, "rect_pivot_y")
+        ], "F2");
 
         var (_, anchors) = Card("Anchors", false);
-        NumericPropertyRow(anchors, "Min", new[] {
-            ("X", 0f, (Func<float>)(() => cfg.AnchorMin.x), (Action<float>)(value => { cfg.AnchorMin.x = value; refreshAnchor(); refreshPositionFields(); }), "transform_anchor_min_x"),
-            ("Y", 0f, (Func<float>)(() => cfg.AnchorMin.y), (Action<float>)(value => { cfg.AnchorMin.y = value; refreshAnchor(); refreshPositionFields(); }), "transform_anchor_min_y")
-        }, "F2");
-        NumericPropertyRow(anchors, "Max", new[] {
-            ("X", 1f, (Func<float>)(() => cfg.AnchorMax.x), (Action<float>)(value => { cfg.AnchorMax.x = value; refreshAnchor(); refreshPositionFields(); }), "transform_anchor_max_x"),
-            ("Y", 1f, (Func<float>)(() => cfg.AnchorMax.y), (Action<float>)(value => { cfg.AnchorMax.y = value; refreshAnchor(); refreshPositionFields(); }), "transform_anchor_max_y")
-        }, "F2");
+        NumericPropertyRow(anchors, "Min", [
+            ("X", 0f, () => cfg.AnchorMin.x, value => { cfg.AnchorMin.x = value; refreshAnchor(); refreshPositionFields(); }, "transform_anchor_min_x"),
+            ("Y", 0f, () => cfg.AnchorMin.y, value => { cfg.AnchorMin.y = value; refreshAnchor(); refreshPositionFields(); }, "transform_anchor_min_y")
+        ], "F2");
+        NumericPropertyRow(anchors, "Max", [
+            ("X", 1f, () => cfg.AnchorMax.x, value => { cfg.AnchorMax.x = value; refreshAnchor(); refreshPositionFields(); }, "transform_anchor_max_x"),
+            ("Y", 1f, () => cfg.AnchorMax.y, value => { cfg.AnchorMax.y = value; refreshAnchor(); refreshPositionFields(); }, "transform_anchor_max_y")
+        ], "F2");
     }
 
     private void BuildCanvasRectTransform(OvCanvas canvas) {
@@ -180,33 +180,33 @@ internal sealed class OvInspectorBuilder(
         Action refreshAnchor = AnchorPresetControl(rectLayout, cfg, canvas.RectTransform, () => refreshPositionFields?.Invoke());
         refreshPositionFields = BuildRectPositionFields(rectLayout, cfg);
 
-        NumericPropertyRow(basic, "Position", new[] {
-            ("Z", 0f, (Func<float>)(() => cfg.AnchoredPositionZ), (Action<float>)(value => cfg.AnchoredPositionZ = value), "canvas_rect_position_z")
-        }, "F1");
-        NumericPropertyRow(basic, "Rotation", new[] {
-            ("X", 0f, (Func<float>)(() => cfg.RotationXY.x), (Action<float>)(value => cfg.RotationXY.x = value), "canvas_rect_rotation_x"),
-            ("Y", 0f, (Func<float>)(() => cfg.RotationXY.y), (Action<float>)(value => cfg.RotationXY.y = value), "canvas_rect_rotation_y"),
-            ("Z", 0f, (Func<float>)(() => cfg.Rotation), (Action<float>)(value => cfg.Rotation = value), "canvas_rect_rotation_z")
-        }, "F1");
-        NumericPropertyRow(basic, "Scale", new[] {
-            ("X", 1f, (Func<float>)(() => cfg.Scale.x), (Action<float>)(value => cfg.Scale.x = value), "canvas_rect_scale_x"),
-            ("Y", 1f, (Func<float>)(() => cfg.Scale.y), (Action<float>)(value => cfg.Scale.y = value), "canvas_rect_scale_y"),
-            ("Z", 1f, (Func<float>)(() => cfg.Scale.z), (Action<float>)(value => cfg.Scale.z = value), "canvas_rect_scale_z")
-        }, "F2");
-        NumericPropertyRow(basic, "Pivot", new[] {
-            ("X", 0.5f, (Func<float>)(() => cfg.Pivot.x), (Action<float>)(value => cfg.Pivot.x = value), "canvas_rect_pivot_x"),
-            ("Y", 0.5f, (Func<float>)(() => cfg.Pivot.y), (Action<float>)(value => cfg.Pivot.y = value), "canvas_rect_pivot_y")
-        }, "F2");
+        NumericPropertyRow(basic, "Position", [
+            ("Z", 0f, () => cfg.AnchoredPositionZ, value => cfg.AnchoredPositionZ = value, "canvas_rect_position_z")
+        ], "F1");
+        NumericPropertyRow(basic, "Rotation", [
+            ("X", 0f, () => cfg.RotationXY.x, value => cfg.RotationXY.x = value, "canvas_rect_rotation_x"),
+            ("Y", 0f, () => cfg.RotationXY.y, value => cfg.RotationXY.y = value, "canvas_rect_rotation_y"),
+            ("Z", 0f, () => cfg.Rotation, value => cfg.Rotation = value, "canvas_rect_rotation_z")
+        ], "F1");
+        NumericPropertyRow(basic, "Scale", [
+            ("X", 1f, () => cfg.Scale.x, value => cfg.Scale.x = value, "canvas_rect_scale_x"),
+            ("Y", 1f, () => cfg.Scale.y, value => cfg.Scale.y = value, "canvas_rect_scale_y"),
+            ("Z", 1f, () => cfg.Scale.z, value => cfg.Scale.z = value, "canvas_rect_scale_z")
+        ], "F2");
+        NumericPropertyRow(basic, "Pivot", [
+            ("X", 0.5f, () => cfg.Pivot.x, value => cfg.Pivot.x = value, "canvas_rect_pivot_x"),
+            ("Y", 0.5f, () => cfg.Pivot.y, value => cfg.Pivot.y = value, "canvas_rect_pivot_y")
+        ], "F2");
 
         var (_, anchors) = Card("Anchors", false);
-        NumericPropertyRow(anchors, "Min", new[] {
-            ("X", 0f, (Func<float>)(() => cfg.AnchorMin.x), (Action<float>)(value => { cfg.AnchorMin.x = value; refreshAnchor(); refreshPositionFields(); }), "canvas_transform_anchor_min_x"),
-            ("Y", 0f, (Func<float>)(() => cfg.AnchorMin.y), (Action<float>)(value => { cfg.AnchorMin.y = value; refreshAnchor(); refreshPositionFields(); }), "canvas_transform_anchor_min_y")
-        }, "F2");
-        NumericPropertyRow(anchors, "Max", new[] {
-            ("X", 1f, (Func<float>)(() => cfg.AnchorMax.x), (Action<float>)(value => { cfg.AnchorMax.x = value; refreshAnchor(); refreshPositionFields(); }), "canvas_transform_anchor_max_x"),
-            ("Y", 1f, (Func<float>)(() => cfg.AnchorMax.y), (Action<float>)(value => { cfg.AnchorMax.y = value; refreshAnchor(); refreshPositionFields(); }), "canvas_transform_anchor_max_y")
-        }, "F2");
+        NumericPropertyRow(anchors, "Min", [
+            ("X", 0f, () => cfg.AnchorMin.x, value => { cfg.AnchorMin.x = value; refreshAnchor(); refreshPositionFields(); }, "canvas_transform_anchor_min_x"),
+            ("Y", 0f, () => cfg.AnchorMin.y, value => { cfg.AnchorMin.y = value; refreshAnchor(); refreshPositionFields(); }, "canvas_transform_anchor_min_y")
+        ], "F2");
+        NumericPropertyRow(anchors, "Max", [
+            ("X", 1f, () => cfg.AnchorMax.x, value => { cfg.AnchorMax.x = value; refreshAnchor(); refreshPositionFields(); }, "canvas_transform_anchor_max_x"),
+            ("Y", 1f, () => cfg.AnchorMax.y, value => { cfg.AnchorMax.y = value; refreshAnchor(); refreshPositionFields(); }, "canvas_transform_anchor_max_y")
+        ], "F2");
     }
 
     private void BuildText(OvObject obj, TextMeshProUGUISettings cfg) {
@@ -378,20 +378,53 @@ internal sealed class OvInspectorBuilder(
             options.Add("Text");
             options.Add("Image");
         }
-        if(obj.Config.MovingManConfig == null) options.Add("Moving Man");
-        if(obj.Config.TextConfig != null && obj.Config.ColorRangeConfig == null) options.Add("Color Range");
-        if(obj.Config.BoxCollider2DConfig == null) options.Add("Box Collider 2D");
-        if(obj.Config.Rigidbody2DConfig == null) options.Add("Rigidbody 2D");
-        if(obj.Config.ShadowConfig == null) options.Add("Shadow");
-        if(obj.Config.OutlineConfig == null) options.Add("Outline");
-        if(obj.Config.MaskConfig == null) options.Add("Mask");
-        if(obj.Config.ContentSizeFitterConfig == null) options.Add("Content Size Fitter");
-        if(!obj.Config.HasRectMask2D) options.Add("Rect Mask 2D");
+        if(obj.Config.MovingManConfig == null) {
+            options.Add("Moving Man");
+        }
+
+        if(obj.Config.TextConfig != null && obj.Config.ColorRangeConfig == null) {
+            options.Add("Color Range");
+        }
 #if !IL2CPP
-        if(obj.Config.BoxCollider2DConfig == null) options.Add("Box Collider 2D");
-        if(obj.Config.Rigidbody2DConfig == null) options.Add("Rigidbody 2D");
+        if(obj.Config.BoxCollider2DConfig == null) {
+            options.Add("Box Collider 2D");
+        }
+
+        if(obj.Config.Rigidbody2DConfig == null) {
+            options.Add("Rigidbody 2D");
+        }
 #endif
-        if(options.Count == 1) return;
+        if(obj.Config.ShadowConfig == null) {
+            options.Add("Shadow");
+        }
+
+        if(obj.Config.OutlineConfig == null) {
+            options.Add("Outline");
+        }
+
+        if(obj.Config.MaskConfig == null) {
+            options.Add("Mask");
+        }
+
+        if(obj.Config.ContentSizeFitterConfig == null) {
+            options.Add("Content Size Fitter");
+        }
+
+        if(!obj.Config.HasRectMask2D) {
+            options.Add("Rect Mask 2D");
+        }
+#if !IL2CPP
+        if(obj.Config.BoxCollider2DConfig == null) {
+            options.Add("Box Collider 2D");
+        }
+
+        if(obj.Config.Rigidbody2DConfig == null) {
+            options.Add("Rigidbody 2D");
+        }
+#endif
+        if(options.Count == 1) {
+            return;
+        }
 
         var row = GenerateUI.Row(content, 50f);
         var dropdown = GenerateUI.DropDown(row, options[0], options[0], options, value => value, selected => {
@@ -400,31 +433,48 @@ internal sealed class OvInspectorBuilder(
                     obj.Config.TextConfig = new TextMeshProUGUISettings();
                     obj.Config.TextEngineConfig = new OvTextSettings();
                     break;
-                case "Image": obj.Config.ImageConfig = new ImageSettings(); break;
-                case "Moving Man": obj.Config.MovingManConfig = new MovingManSettings(); break;
-                case "Color Range": obj.Config.ColorRangeConfig = new ColorRangeSettings(); break;
-                case "Shadow": obj.Config.ShadowConfig = new ShadowSettings(); break;
-                case "Outline": obj.Config.OutlineConfig = new OutlineSettings(); break;
-                case "Mask": obj.Config.MaskConfig = new MaskSettings(); break;
-                case "Content Size Fitter": obj.Config.ContentSizeFitterConfig = new ContentSizeFitterSettings(); break;
+                case "Image":
+                    obj.Config.ImageConfig = new ImageSettings();
+                    break;
+                case "Moving Man":
+                    obj.Config.MovingManConfig = new MovingManSettings();
+                    break;
+                case "Color Range":
+                    obj.Config.ColorRangeConfig = new ColorRangeSettings();
+                    break;
+                case "Shadow":
+                    obj.Config.ShadowConfig = new ShadowSettings();
+                    break;
+                case "Outline":
+                    obj.Config.OutlineConfig = new OutlineSettings();
+                    break;
+                case "Mask":
+                    obj.Config.MaskConfig = new MaskSettings();
+                    break;
+                case "Content Size Fitter":
+                    obj.Config.ContentSizeFitterConfig = new ContentSizeFitterSettings();
+                    break;
                 case "Rect Mask 2D":
                     obj.Config.HasRectMask2D = true;
                     obj.Config.RectMask2DEnabled = true;
                     break;
 #if !IL2CPP
-                case "Box Collider 2D": obj.Config.BoxCollider2DConfig = new BoxCollider2DSettings(); break;
-                case "Rigidbody 2D": obj.Config.Rigidbody2DConfig = new Rigidbody2DSettings(); break;
+                case "Box Collider 2D":
+                    obj.Config.BoxCollider2DConfig = new BoxCollider2DSettings();
+                    break;
+                case "Rigidbody 2D":
+                    obj.Config.Rigidbody2DConfig = new Rigidbody2DSettings();
+                    break;
 #endif
-                default: return;
+                default:
+                    return;
             }
             RefreshComponents(obj);
         }, "add_component");
         Track(dropdown);
     }
 
-    private (RectTransform Card, RectTransform Content) Card(string title, bool removable, Action remove = null) {
-        return GenerateUI.ComponentCard(content, title, true, null, remove, removable, showActiveToggle: false);
-    }
+    private (RectTransform Card, RectTransform Content) Card(string title, bool removable, Action remove = null) => GenerateUI.ComponentCard(content, title, true, null, remove, removable, showActiveToggle: false);
 
     private (RectTransform Card, RectTransform Content) ComponentCard(
         string title,
@@ -434,8 +484,11 @@ internal sealed class OvInspectorBuilder(
     ) {
         return GenerateUI.ComponentCard(content, title, settings.ComponentEnabled, value => {
             settings.ComponentEnabled = value;
-            if(enabledChanged == null) ApplyAndSave();
-            else enabledChanged();
+            if(enabledChanged == null) {
+                ApplyAndSave();
+            } else {
+                enabledChanged();
+            }
         }, remove);
     }
 
@@ -613,7 +666,7 @@ internal sealed class OvInspectorBuilder(
 
         void SetDiagnosticsHeight(int diagnosticCount) {
             int lines = Math.Max(1, diagnosticCount);
-            diagnosticsHeight = lines * diagnosticsLineHeight + 8f;
+            diagnosticsHeight = (lines * diagnosticsLineHeight) + 8f;
             float rowHeight = editorHeight + diagnosticsHeight;
             rowLayout.minHeight = rowHeight;
             rowLayout.preferredHeight = rowHeight;
@@ -637,7 +690,7 @@ internal sealed class OvInspectorBuilder(
             }
 
             diagnosticsCompiling = false;
-            var diagnostics = state == TextEngineState.Ready || state == TextEngineState.Error
+            var diagnostics = state is TextEngineState.Ready or TextEngineState.Error
                 ? engine.GetDiagnostics()
                 : [];
             string key = BuildDiagnosticsKey(state, diagnostics, displayedText);
@@ -796,14 +849,17 @@ internal sealed class OvInspectorBuilder(
         unchecked {
             int hash = 17;
             Rect rect = text.rectTransform.rect;
-            hash = hash * 31 + rect.width.GetHashCode();
-            hash = hash * 31 + rect.height.GetHashCode();
-            hash = hash * 31 + text.textInfo.characterCount;
+            hash = (hash * 31) + rect.width.GetHashCode();
+            hash = (hash * 31) + rect.height.GetHashCode();
+            hash = (hash * 31) + text.textInfo.characterCount;
             for(int i = 0; i < text.textInfo.characterCount; i++) {
                 var character = text.textInfo.characterInfo[i];
-                if(!character.isVisible) continue;
-                hash = hash * 31 + character.bottomLeft.GetHashCode();
-                hash = hash * 31 + character.topRight.GetHashCode();
+                if(!character.isVisible) {
+                    continue;
+                }
+
+                hash = (hash * 31) + character.bottomLeft.GetHashCode();
+                hash = (hash * 31) + character.topRight.GetHashCode();
             }
             return hash;
         }
@@ -819,7 +875,9 @@ internal sealed class OvInspectorBuilder(
             foreach(var span in spans) {
                 int start = Math.Clamp(span.Index, 0, kinds.Length);
                 int end = Math.Clamp(start + span.Length, start, kinds.Length);
-                for(int i = start; i < end; i++) kinds[i] = span.Kind;
+                for(int i = start; i < end; i++) {
+                    kinds[i] = span.Kind;
+                }
             }
         }
 
@@ -827,7 +885,9 @@ internal sealed class OvInspectorBuilder(
         var textInfo = text.textInfo;
         for(int i = 0; i < textInfo.characterCount; i++) {
             var character = textInfo.characterInfo[i];
-            if(!character.isVisible) continue;
+            if(!character.isVisible) {
+                continue;
+            }
 
             Color32 color = character.index >= 0 && character.index < kinds.Length && kinds[character.index].HasValue
                 ? SyntaxColor(kinds[character.index].Value)
@@ -902,7 +962,9 @@ internal sealed class OvInspectorBuilder(
         int limit = Math.Clamp(index, 0, source.Length);
         int line = 0;
         for(int i = 0; i < limit; i++) {
-            if(source[i] == '\n') line++;
+            if(source[i] == '\n') {
+                line++;
+            }
         }
         return line;
     }
@@ -913,9 +975,7 @@ internal sealed class OvInspectorBuilder(
         string source
     ) => $"{state}|{source?.GetHashCode() ?? 0}|{string.Join("|", diagnostics.Select(d => d.ToString()))}";
 
-    private void Slider(Transform parent, string label, float defaultValue, float min, float max, float value, Action<float> changed, string id, string format = "F2") {
-        Slider(parent, label, defaultValue, min, max, value, changed, id, format, true);
-    }
+    private void Slider(Transform parent, string label, float defaultValue, float min, float max, float value, Action<float> changed, string id, string format = "F2") => Slider(parent, label, defaultValue, min, max, value, changed, id, format, true);
 
     private UISlider Slider(Transform parent, string label, float defaultValue, float min, float max, float value, Action<float> changed, string id, string format, bool clamp) {
         var row = GenerateUI.Row(parent, 50f);
@@ -941,8 +1001,11 @@ internal sealed class OvInspectorBuilder(
         var row = GenerateUI.Row(parent, 50f);
         var dropdown = GenerateUI.DropDown(row, defaultValue, value, values, option => $"{label}: {option}", newValue => {
             changed(newValue);
-            if(completed == null) ApplyAndSave();
-            else completed();
+            if(completed == null) {
+                ApplyAndSave();
+            } else {
+                completed();
+            }
         }, id);
         Track(dropdown);
     }
@@ -1064,26 +1127,38 @@ internal sealed class OvInspectorBuilder(
         RectTransform fields = VerticalGroup(parent, 2f);
         var firstRow = CompactRow(fields, 44f, 6f);
         var secondRow = CompactRow(fields, 44f, 6f);
-        var firstX = NumericField(firstRow, "", 0f, () => StretchX() ? Left() : PositionX(), value => {
-            if(StretchX()) cfg.SetOffsetMin(0, value);
-            else cfg.AnchoredPosition.x = value;
+        var (Field, Get) = NumericField(firstRow, "", 0f, () => StretchX() ? Left() : PositionX(), value => {
+            if(StretchX()) {
+                cfg.SetOffsetMin(0, value);
+            } else {
+                cfg.AnchoredPosition.x = value;
+            }
         }, "transform_rect_x1", "F1");
         var firstY = NumericField(firstRow, "", 0f, () => StretchY() ? Top() : PositionY(), value => {
-            if(StretchY()) cfg.SetOffsetMax(1, -value);
-            else cfg.AnchoredPosition.y = value;
+            if(StretchY()) {
+                cfg.SetOffsetMax(1, -value);
+            } else {
+                cfg.AnchoredPosition.y = value;
+            }
         }, "transform_rect_y1", "F1");
         var secondX = NumericField(secondRow, "", 200f, () => StretchX() ? Right() : SizeX(), value => {
-            if(StretchX()) cfg.SetOffsetMax(0, -value);
-            else cfg.SizeDelta.x = value;
+            if(StretchX()) {
+                cfg.SetOffsetMax(0, -value);
+            } else {
+                cfg.SizeDelta.x = value;
+            }
         }, "transform_rect_x2", "F1");
         var secondY = NumericField(secondRow, "", 200f, () => StretchY() ? Bottom() : SizeY(), value => {
-            if(StretchY()) cfg.SetOffsetMin(1, value);
-            else cfg.SizeDelta.y = value;
+            if(StretchY()) {
+                cfg.SetOffsetMin(1, value);
+            } else {
+                cfg.SizeDelta.y = value;
+            }
         }, "transform_rect_y2", "F1");
 
         void RefreshValues() {
-            firstX.Field.Label.text = StretchX() ? "Left" : "Pos X";
-            SetDisplayedValue(firstX.Field, firstX.Get());
+            Field.Label.text = StretchX() ? "Left" : "Pos X";
+            SetDisplayedValue(Field, Get());
             secondX.Field.Label.text = StretchX() ? "Right" : "Width";
             SetDisplayedValue(secondX.Field, secondX.Get());
             firstY.Field.Label.text = StretchY() ? "Top" : "Pos Y";
@@ -1094,7 +1169,7 @@ internal sealed class OvInspectorBuilder(
 
         bool drivenX = DrivenX();
         bool drivenY = DrivenY();
-        firstX.Field.SetBlocked(drivenX && StretchX(), true);
+        Field.SetBlocked(drivenX && StretchX(), true);
         secondX.Field.SetBlocked(drivenX, true);
         firstY.Field.SetBlocked(drivenY && StretchY(), true);
         secondY.Field.SetBlocked(drivenY, true);
@@ -1121,26 +1196,38 @@ internal sealed class OvInspectorBuilder(
         RectTransform fields = VerticalGroup(parent, 2f);
         var firstRow = CompactRow(fields, 44f, 6f);
         var secondRow = CompactRow(fields, 44f, 6f);
-        var firstX = NumericField(firstRow, "", 0f, () => StretchX() ? Left() : PositionX(), value => {
-            if(StretchX()) cfg.SetOffsetMin(0, value);
-            else cfg.AnchoredPosition.x = value;
+        var (Field, Get) = NumericField(firstRow, "", 0f, () => StretchX() ? Left() : PositionX(), value => {
+            if(StretchX()) {
+                cfg.SetOffsetMin(0, value);
+            } else {
+                cfg.AnchoredPosition.x = value;
+            }
         }, "transform_rect_x1", "F1");
         var firstY = NumericField(firstRow, "", 0f, () => StretchY() ? Top() : PositionY(), value => {
-            if(StretchY()) cfg.SetOffsetMax(1, -value);
-            else cfg.AnchoredPosition.y = value;
+            if(StretchY()) {
+                cfg.SetOffsetMax(1, -value);
+            } else {
+                cfg.AnchoredPosition.y = value;
+            }
         }, "transform_rect_y1", "F1");
         var secondX = NumericField(secondRow, "", 200f, () => StretchX() ? Right() : SizeX(), value => {
-            if(StretchX()) cfg.SetOffsetMax(0, -value);
-            else cfg.SizeDelta.x = value;
+            if(StretchX()) {
+                cfg.SetOffsetMax(0, -value);
+            } else {
+                cfg.SizeDelta.x = value;
+            }
         }, "transform_rect_x2", "F1");
         var secondY = NumericField(secondRow, "", 200f, () => StretchY() ? Bottom() : SizeY(), value => {
-            if(StretchY()) cfg.SetOffsetMin(1, value);
-            else cfg.SizeDelta.y = value;
+            if(StretchY()) {
+                cfg.SetOffsetMin(1, value);
+            } else {
+                cfg.SizeDelta.y = value;
+            }
         }, "transform_rect_y2", "F1");
 
         void RefreshValues() {
-            firstX.Field.Label.text = StretchX() ? "Left" : "Pos X";
-            SetDisplayedValue(firstX.Field, firstX.Get());
+            Field.Label.text = StretchX() ? "Left" : "Pos X";
+            SetDisplayedValue(Field, Get());
             secondX.Field.Label.text = StretchX() ? "Right" : "Width";
             SetDisplayedValue(secondX.Field, secondX.Get());
             firstY.Field.Label.text = StretchY() ? "Top" : "Pos Y";
@@ -1154,7 +1241,9 @@ internal sealed class OvInspectorBuilder(
     }
 
     private static void SetDisplayedValue(UISlider field, float value) {
-        if(!Mathf.Approximately(field.Value, value)) field.Set(value, false);
+        if(!Mathf.Approximately(field.Value, value)) {
+            field.Set(value, false);
+        }
     }
 
     private Action AnchorPresetControl(Transform parent, OvObject obj, Action positionFieldsChanged) {
@@ -1181,8 +1270,13 @@ internal sealed class OvInspectorBuilder(
         RectTransform blocker = CreatePopupBlocker(UICore.Canvas.transform);
         blocker.gameObject.SetActive(false);
         summary.OnDisposed += () => {
-            if(popup != null) UnityEngine.Object.Destroy(popup.gameObject);
-            if(blocker != null) UnityEngine.Object.Destroy(blocker.gameObject);
+            if(popup != null) {
+                UnityEngine.Object.Destroy(popup.gameObject);
+            }
+
+            if(blocker != null) {
+                UnityEngine.Object.Destroy(blocker.gameObject);
+            }
         };
         popup.gameObject.SetActive(false);
         bool open = false;
@@ -1190,12 +1284,14 @@ internal sealed class OvInspectorBuilder(
 
         void ClosePopup() {
             open = false;
-            if(popup != null) popup.gameObject.SetActive(false);
-            if(blocker != null) blocker.gameObject.SetActive(false);
+            popup?.gameObject.SetActive(false);
+            blocker?.gameObject.SetActive(false);
         }
 
         GenerateUI.AddButton(blocker.gameObject, button => {
-            if(button == UnityEngine.EventSystems.PointerEventData.InputButton.Left) ClosePopup();
+            if(button == UnityEngine.EventSystems.PointerEventData.InputButton.Left) {
+                ClosePopup();
+            }
         });
 
         var selections = new List<(AnchorMode H, AnchorMode V, Image Image)>();
@@ -1224,7 +1320,10 @@ internal sealed class OvInspectorBuilder(
         void RefreshModifierGraphics(bool force = false) {
             bool shift = OVC_Input.GetKey(KeyCode.LeftShift) || OVC_Input.GetKey(KeyCode.RightShift);
             bool alt = OVC_Input.GetKey(KeyCode.LeftAlt) || OVC_Input.GetKey(KeyCode.RightAlt);
-            if(!force && shift == lastShift && alt == lastAlt) return;
+            if(!force && shift == lastShift && alt == lastAlt) {
+                return;
+            }
+
             lastShift = shift;
             lastAlt = alt;
 
@@ -1261,7 +1360,10 @@ internal sealed class OvInspectorBuilder(
                 GameObject graphic = AddAnchorGraphic(cell.Rect, horizontal, vertical, false, false, header ? 34f : 40f);
                 PositionAnchorGraphic(graphic, horizontal, vertical);
                 presetGraphics.Add((cell.Rect, horizontal, vertical, header, graphic));
-                if(header) AddTableHeader(cell.Rect, x == 0, x == 0 ? ModeName(vertical, true) : ModeName(horizontal, false));
+                if(header) {
+                    AddTableHeader(cell.Rect, x == 0, x == 0 ? ModeName(vertical, true) : ModeName(horizontal, false));
+                }
+
                 cell.Rect.AddToolTip(AnchorCellName(horizontal, vertical));
                 cell.OnClick = () => {
                     bool setPivot = OVC_Input.GetKey(KeyCode.LeftShift) || OVC_Input.GetKey(KeyCode.RightShift);
@@ -1297,11 +1399,11 @@ internal sealed class OvInspectorBuilder(
             }
             popup.gameObject.SetActive(open);
             RefreshSummary();
-            if(open) RefreshModifierGraphics(true);
+            if(open) {
+                RefreshModifierGraphics(true);
+            }
         };
-        summary.Rect.GetComponent<OventHandler>().OnDisabled = () => {
-            ClosePopup();
-        };
+        summary.Rect.GetComponent<OventHandler>().OnDisabled = ClosePopup;
         popup.gameObject.GetComponent<OventHandler>().OnHoverUpdate = () => RefreshModifierGraphics();
         RefreshSummary();
         return RefreshSummary;
@@ -1330,8 +1432,13 @@ internal sealed class OvInspectorBuilder(
         RectTransform blocker = CreatePopupBlocker(UICore.Canvas.transform);
         blocker.gameObject.SetActive(false);
         summary.OnDisposed += () => {
-            if(popup != null) UnityEngine.Object.Destroy(popup.gameObject);
-            if(blocker != null) UnityEngine.Object.Destroy(blocker.gameObject);
+            if(popup != null) {
+                UnityEngine.Object.Destroy(popup.gameObject);
+            }
+
+            if(blocker != null) {
+                UnityEngine.Object.Destroy(blocker.gameObject);
+            }
         };
         popup.gameObject.SetActive(false);
         bool open = false;
@@ -1339,12 +1446,14 @@ internal sealed class OvInspectorBuilder(
 
         void ClosePopup() {
             open = false;
-            if(popup != null) popup.gameObject.SetActive(false);
-            if(blocker != null) blocker.gameObject.SetActive(false);
+            popup?.gameObject.SetActive(false);
+            blocker?.gameObject.SetActive(false);
         }
 
         GenerateUI.AddButton(blocker.gameObject, button => {
-            if(button == UnityEngine.EventSystems.PointerEventData.InputButton.Left) ClosePopup();
+            if(button == UnityEngine.EventSystems.PointerEventData.InputButton.Left) {
+                ClosePopup();
+            }
         });
 
         var selections = new List<(AnchorMode H, AnchorMode V, Image Image)>();
@@ -1373,7 +1482,10 @@ internal sealed class OvInspectorBuilder(
         void RefreshModifierGraphics(bool force = false) {
             bool shift = OVC_Input.GetKey(KeyCode.LeftShift) || OVC_Input.GetKey(KeyCode.RightShift);
             bool alt = OVC_Input.GetKey(KeyCode.LeftAlt) || OVC_Input.GetKey(KeyCode.RightAlt);
-            if(!force && shift == lastShift && alt == lastAlt) return;
+            if(!force && shift == lastShift && alt == lastAlt) {
+                return;
+            }
+
             lastShift = shift;
             lastAlt = alt;
 
@@ -1410,7 +1522,10 @@ internal sealed class OvInspectorBuilder(
                 GameObject graphic = AddAnchorGraphic(cell.Rect, horizontal, vertical, false, false, header ? 34f : 40f);
                 PositionAnchorGraphic(graphic, horizontal, vertical);
                 presetGraphics.Add((cell.Rect, horizontal, vertical, header, graphic));
-                if(header) AddTableHeader(cell.Rect, x == 0, x == 0 ? ModeName(vertical, true) : ModeName(horizontal, false));
+                if(header) {
+                    AddTableHeader(cell.Rect, x == 0, x == 0 ? ModeName(vertical, true) : ModeName(horizontal, false));
+                }
+
                 cell.Rect.AddToolTip(AnchorCellName(horizontal, vertical));
                 cell.OnClick = () => {
                     bool setPivot = OVC_Input.GetKey(KeyCode.LeftShift) || OVC_Input.GetKey(KeyCode.RightShift);
@@ -1446,11 +1561,11 @@ internal sealed class OvInspectorBuilder(
             }
             popup.gameObject.SetActive(open);
             RefreshSummary();
-            if(open) RefreshModifierGraphics(true);
+            if(open) {
+                RefreshModifierGraphics(true);
+            }
         };
-        summary.Rect.GetComponent<OventHandler>().OnDisabled = () => {
-            ClosePopup();
-        };
+        summary.Rect.GetComponent<OventHandler>().OnDisabled = ClosePopup;
         popup.gameObject.GetComponent<OventHandler>().OnHoverUpdate = () => RefreshModifierGraphics();
         RefreshSummary();
         return RefreshSummary;
@@ -1575,12 +1690,16 @@ internal sealed class OvInspectorBuilder(
         AddGraphicLine(frame, "Left", new Vector2(-edge, 0f), new Vector2(1f, size), parentColor);
         AddGraphicLine(frame, "Right", new Vector2(edge, 0f), new Vector2(1f, size), parentColor);
 
-        if(horizontal == AnchorMode.Custom && vertical == AnchorMode.Custom) return root;
+        if(horizontal == AnchorMode.Custom && vertical == AnchorMode.Custom) {
+            return root;
+        }
 
         float innerSize = size * 0.5f;
         Vector2 objectSize = new(horizontal == AnchorMode.Stretch ? size - 4f : innerSize, vertical == AnchorMode.Stretch ? size - 4f : innerSize);
         Vector2 objectPosition = new(ModePosition(horizontal, size), ModePosition(vertical, size));
-        if(!alignPosition) objectPosition = Vector2.zero;
+        if(!alignPosition) {
+            objectPosition = Vector2.zero;
+        }
 
         GameObject objectGraphic = new("Self");
         objectGraphic.transform.SetParent(frame, false);
@@ -1596,13 +1715,19 @@ internal sealed class OvInspectorBuilder(
         Color stretchColor = new(0.1f, 0.85f, 1f, 1f);
         if(horizontal != AnchorMode.Custom) {
             float x = ModePosition(horizontal, size, true);
-            if(horizontal == AnchorMode.Stretch) AddStretchArrow(frame, true, stretchColor, size);
-            else AddGraphicLine(frame, "HorizontalAnchor", new Vector2(x, 0f), new Vector2(1f, size - 2f), simpleColor);
+            if(horizontal == AnchorMode.Stretch) {
+                AddStretchArrow(frame, true, stretchColor, size);
+            } else {
+                AddGraphicLine(frame, "HorizontalAnchor", new Vector2(x, 0f), new Vector2(1f, size - 2f), simpleColor);
+            }
         }
         if(vertical != AnchorMode.Custom) {
             float y = ModePosition(vertical, size, true);
-            if(vertical == AnchorMode.Stretch) AddStretchArrow(frame, false, stretchColor, size);
-            else AddGraphicLine(frame, "VerticalAnchor", new Vector2(0f, y), new Vector2(size - 2f, 1f), simpleColor);
+            if(vertical == AnchorMode.Stretch) {
+                AddStretchArrow(frame, false, stretchColor, size);
+            } else {
+                AddGraphicLine(frame, "VerticalAnchor", new Vector2(0f, y), new Vector2(size - 2f, 1f), simpleColor);
+            }
         }
 
         Color cornerColor = new(1f, 0.72f, 0.05f, 1f);
@@ -1631,8 +1756,12 @@ internal sealed class OvInspectorBuilder(
         label.fontSize = 11f;
         label.color = new Color(1f, 1f, 1f, 0.55f);
         label.alignment = horizontal ? TextAlignmentOptions.Bottom : TextAlignmentOptions.MidlineLeft;
-        if(horizontal) label.rectTransform.offsetMin = new Vector2(0f, 2f);
-        else label.rectTransform.offsetMin = new Vector2(6f, 0f);
+        if(horizontal) {
+            label.rectTransform.offsetMin = new Vector2(0f, 2f);
+        } else {
+            label.rectTransform.offsetMin = new Vector2(6f, 0f);
+        }
+
         label.raycastTarget = false;
         return label;
     }
@@ -1670,7 +1799,10 @@ internal sealed class OvInspectorBuilder(
     }
 
     private static IEnumerable<float> AnchorPositions(AnchorMode mode, float size) {
-        if(mode == AnchorMode.Stretch) return new[] { size * -0.5f, size * 0.5f };
+        if(mode == AnchorMode.Stretch) {
+            return new[] { size * -0.5f, size * 0.5f };
+        }
+
         return new[] { ModePosition(mode, size, true) };
     }
 
@@ -1679,17 +1811,27 @@ internal sealed class OvInspectorBuilder(
         return mode switch { AnchorMode.Min => -range, AnchorMode.Max => range, _ => 0f };
     }
 
-    private static float PivotOffset(AnchorMode mode, float size) {
-        return mode switch { AnchorMode.Min => size * -0.5f, AnchorMode.Max => size * 0.5f, _ => 0f };
-    }
+    private static float PivotOffset(AnchorMode mode, float size) => mode switch { AnchorMode.Min => size * -0.5f, AnchorMode.Max => size * 0.5f, _ => 0f };
 
     private static AnchorMode ModeForAxis(RectTransformSettings cfg, int axis) {
         float min = cfg.AnchorMin[axis];
         float max = cfg.AnchorMax[axis];
-        if(Mathf.Approximately(min, 0f) && Mathf.Approximately(max, 0f)) return AnchorMode.Min;
-        if(Mathf.Approximately(min, 0.5f) && Mathf.Approximately(max, 0.5f)) return AnchorMode.Middle;
-        if(Mathf.Approximately(min, 1f) && Mathf.Approximately(max, 1f)) return AnchorMode.Max;
-        if(Mathf.Approximately(min, 0f) && Mathf.Approximately(max, 1f)) return AnchorMode.Stretch;
+        if(Mathf.Approximately(min, 0f) && Mathf.Approximately(max, 0f)) {
+            return AnchorMode.Min;
+        }
+
+        if(Mathf.Approximately(min, 0.5f) && Mathf.Approximately(max, 0.5f)) {
+            return AnchorMode.Middle;
+        }
+
+        if(Mathf.Approximately(min, 1f) && Mathf.Approximately(max, 1f)) {
+            return AnchorMode.Max;
+        }
+
+        if(Mathf.Approximately(min, 0f) && Mathf.Approximately(max, 1f)) {
+            return AnchorMode.Stretch;
+        }
+
         return AnchorMode.Custom;
     }
 
@@ -1702,8 +1844,14 @@ internal sealed class OvInspectorBuilder(
     };
 
     private static string AnchorCellName(AnchorMode horizontal, AnchorMode vertical) {
-        if(horizontal == AnchorMode.Custom) return $"Vertical: {ModeName(vertical, true)}";
-        if(vertical == AnchorMode.Custom) return $"Horizontal: {ModeName(horizontal, false)}";
+        if(horizontal == AnchorMode.Custom) {
+            return $"Vertical: {ModeName(vertical, true)}";
+        }
+
+        if(vertical == AnchorMode.Custom) {
+            return $"Horizontal: {ModeName(horizontal, false)}";
+        }
+
         return $"{ModeName(horizontal, false)} / {ModeName(vertical, true)}";
     }
 
@@ -1716,7 +1864,9 @@ internal sealed class OvInspectorBuilder(
     }
 
     private static void ApplyAnchorModeForAxis(RectTransformSettings cfg, int axis, AnchorMode mode, float parentSize, float visibleSize, bool setPivot, bool setPosition) {
-        if(mode == AnchorMode.Custom) return;
+        if(mode == AnchorMode.Custom) {
+            return;
+        }
 
         float oldMin = cfg.AnchorMin[axis];
         float oldMax = cfg.AnchorMax[axis];
@@ -1727,13 +1877,13 @@ internal sealed class OvInspectorBuilder(
         float newReference = Mathf.Lerp(newMin, newMax, oldPivot);
 
         cfg.AnchoredPosition[axis] += (oldReference - newReference) * parentSize;
-        cfg.SizeDelta[axis] += ((oldMax - oldMin) - (newMax - newMin)) * parentSize;
+        cfg.SizeDelta[axis] += (oldMax - oldMin - (newMax - newMin)) * parentSize;
         cfg.AnchorMin[axis] = newMin;
         cfg.AnchorMax[axis] = newMax;
 
         if(setPivot) {
             float newPivot = mode switch { AnchorMode.Min => 0f, AnchorMode.Max => 1f, _ => 0.5f };
-            float rectSize = parentSize * (newMax - newMin) + cfg.SizeDelta[axis];
+            float rectSize = (parentSize * (newMax - newMin)) + cfg.SizeDelta[axis];
             cfg.AnchoredPosition[axis] += (newPivot - oldPivot) * rectSize;
             cfg.Pivot[axis] = newPivot;
         }

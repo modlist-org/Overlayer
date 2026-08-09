@@ -602,13 +602,10 @@ public class OvCanvasSettingPage : IDisposable {
                 if(draggedObject == null) {
                     SelectObject(null);
                 }
-            }),
-            (EventTriggerType.PointerEnter, _ => {
-                SetHierarchyDropTarget(null, itemBtnRect, btnImg, true);
-            }),
-            (EventTriggerType.PointerExit, _ => {
-                ClearHierarchyDropTarget(itemBtnRect);
-            })
+            }
+        ),
+            (EventTriggerType.PointerEnter, _ => SetHierarchyDropTarget(null, itemBtnRect, btnImg, true)),
+            (EventTriggerType.PointerExit, _ => ClearHierarchyDropTarget(itemBtnRect))
         );
         itemBtnRect.offsetMax = Vector2.zero;
     }
@@ -677,7 +674,8 @@ public class OvCanvasSettingPage : IDisposable {
                 if(draggedObject == null) {
                     SelectObject(obj);
                 }
-            }),
+            }
+        ),
             (EventTriggerType.BeginDrag, e => {
 #pragma warning disable IDE0019
                 var ped =
@@ -696,13 +694,15 @@ public class OvCanvasSettingPage : IDisposable {
                 selectedObject = obj;
                 dragCanvasGroup.alpha = 0.45f;
                 dragCanvasGroup.blocksRaycasts = false;
-            }),
+            }
+        ),
             (EventTriggerType.Drag, UpdateHierarchyDropPreview),
             (EventTriggerType.EndDrag, _ => {
                 dragCanvasGroup.alpha = 1f;
                 dragCanvasGroup.blocksRaycasts = true;
                 CompleteHierarchyDrag();
-            }),
+            }
+        ),
             (EventTriggerType.PointerEnter, _ => {
                 SetHierarchyDropTarget(
                     obj,
@@ -710,10 +710,9 @@ public class OvCanvasSettingPage : IDisposable {
                     btnImg,
                     false
                 );
-            }),
-            (EventTriggerType.PointerExit, _ => {
-                ClearHierarchyDropTarget(itemBtnRect);
-            })
+            }
+        ),
+            (EventTriggerType.PointerExit, _ => ClearHierarchyDropTarget(itemBtnRect))
         );
         itemBtnRect.offsetMax = Vector2.zero;
 
@@ -739,7 +738,7 @@ public class OvCanvasSettingPage : IDisposable {
             barRect.anchorMin = new Vector2(0.5f, 0.5f);
             barRect.anchorMax = new Vector2(0.5f, 0.5f);
             barRect.pivot = new Vector2(0.5f, 0.5f);
-            barRect.anchoredPosition = new Vector2(0f, 3f - i * 3f);
+            barRect.anchoredPosition = new Vector2(0f, 3f - (i * 3f));
             barRect.sizeDelta = new Vector2(8f, 1.2f);
             Image barImage = bar.AddComponent<Image>();
             barImage.color = new Color(1f, 1f, 1f, 0.58f);
@@ -748,7 +747,10 @@ public class OvCanvasSettingPage : IDisposable {
     }
 
     private void SetHierarchyDropTarget(OvObject target, RectTransform rect, Image image, bool canvas) {
-        if(draggedObject == null || target == draggedObject || IsDescendantOf(target, draggedObject)) return;
+        if(draggedObject == null || target == draggedObject || IsDescendantOf(target, draggedObject)) {
+            return;
+        }
+
         ResetHierarchyDropVisual();
         hierarchyDropTarget = target;
         hierarchyDropRect = rect;
@@ -759,7 +761,10 @@ public class OvCanvasSettingPage : IDisposable {
     }
 
     private void ClearHierarchyDropTarget(RectTransform rect) {
-        if(hierarchyDropRect != rect) return;
+        if(hierarchyDropRect != rect) {
+            return;
+        }
+
         ResetHierarchyDropVisual();
         hierarchyDropTarget = null;
         hierarchyDropRect = null;
@@ -768,7 +773,9 @@ public class OvCanvasSettingPage : IDisposable {
     }
 
     private void UpdateHierarchyDropPreview(BaseEventData _) {
-        if(draggedObject == null || hierarchyDropRect == null || hierarchyDropImage == null) return;
+        if(draggedObject == null || hierarchyDropRect == null || hierarchyDropImage == null) {
+            return;
+        }
 
         HierarchyDropZone zone = HierarchyDropZone.Inside;
         if(!hierarchyDropOnCanvas) {
@@ -777,13 +784,22 @@ public class OvCanvasSettingPage : IDisposable {
                 Overlayer.Compat.OVC.OVC_Input.MousePosition,
                 null,
                 out Vector2 point
-            )) return;
+            )) {
+                return;
+            }
+
             float edge = hierarchyDropRect.rect.height * 0.27f;
-            if(point.y > hierarchyDropRect.rect.yMax - edge) zone = HierarchyDropZone.Before;
-            else if(point.y < hierarchyDropRect.rect.yMin + edge) zone = HierarchyDropZone.After;
+            if(point.y > hierarchyDropRect.rect.yMax - edge) {
+                zone = HierarchyDropZone.Before;
+            } else if(point.y < hierarchyDropRect.rect.yMin + edge) {
+                zone = HierarchyDropZone.After;
+            }
         }
 
-        if(hierarchyDropVisualActive && zone == hierarchyDropZone) return;
+        if(hierarchyDropVisualActive && zone == hierarchyDropZone) {
+            return;
+        }
+
         ResetHierarchyDropVisual();
         hierarchyDropZone = zone;
         hierarchyDropVisualActive = true;
@@ -806,8 +822,11 @@ public class OvCanvasSettingPage : IDisposable {
     }
 
     private void ResetHierarchyDropVisual() {
-        if(hierarchyDropImage != null) hierarchyDropImage.color = hierarchyDropBaseColor;
-        if(hierarchyDropLine != null) UnityEngine.Object.Destroy(hierarchyDropLine);
+        hierarchyDropImage?.color = hierarchyDropBaseColor;
+        if(hierarchyDropLine != null) {
+            UnityEngine.Object.Destroy(hierarchyDropLine);
+        }
+
         hierarchyDropLine = null;
         hierarchyDropVisualActive = false;
     }
@@ -825,10 +844,15 @@ public class OvCanvasSettingPage : IDisposable {
         bool canvas = hierarchyDropOnCanvas;
         ClearHierarchyDropState();
 
-        if(!canvas && (target == null || target == moving || IsDescendantOf(target, moving))) return;
+        if(!canvas && (target == null || target == moving || IsDescendantOf(target, moving))) {
+            return;
+        }
 
-        if(moving.Parent != null) moving.Detach();
-        else currentCanvas.Detach(moving);
+        if(moving.Parent != null) {
+            moving.Detach();
+        } else {
+            currentCanvas.Detach(moving);
+        }
 
         if(canvas) {
             currentCanvas.Attach(moving);
@@ -862,7 +886,9 @@ public class OvCanvasSettingPage : IDisposable {
 
     private static bool IsDescendantOf(OvObject candidate, OvObject ancestor) {
         for(OvObject current = candidate; current != null; current = current.Parent) {
-            if(current == ancestor) return true;
+            if(current == ancestor) {
+                return true;
+            }
         }
         return false;
     }

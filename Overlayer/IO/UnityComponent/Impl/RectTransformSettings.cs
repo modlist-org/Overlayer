@@ -18,24 +18,20 @@ public class RectTransformSettings : UnityComponentSettingsBase, ICopyable<RectT
     public Vector2 OffsetMin = Vector2.zero;
     public Vector2 OffsetMax = Vector2.zero;
 
-    public float GetOffsetMin(int axis) {
-        return AnchoredPosition[axis] - SizeDelta[axis] * Pivot[axis];
-    }
+    public float GetOffsetMin(int axis) => AnchoredPosition[axis] - (SizeDelta[axis] * Pivot[axis]);
 
-    public float GetOffsetMax(int axis) {
-        return AnchoredPosition[axis] + SizeDelta[axis] * (1f - Pivot[axis]);
-    }
+    public float GetOffsetMax(int axis) => AnchoredPosition[axis] + (SizeDelta[axis] * (1f - Pivot[axis]));
 
     public void SetOffsetMin(int axis, float value) {
         float max = GetOffsetMax(axis);
         SizeDelta[axis] = max - value;
-        AnchoredPosition[axis] = value + SizeDelta[axis] * Pivot[axis];
+        AnchoredPosition[axis] = value + (SizeDelta[axis] * Pivot[axis]);
     }
 
     public void SetOffsetMax(int axis, float value) {
         float min = GetOffsetMin(axis);
         SizeDelta[axis] = value - min;
-        AnchoredPosition[axis] = min + SizeDelta[axis] * Pivot[axis];
+        AnchoredPosition[axis] = min + (SizeDelta[axis] * Pivot[axis]);
     }
 
     public override bool ToUnity(GameObject target) {

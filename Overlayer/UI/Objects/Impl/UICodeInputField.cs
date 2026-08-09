@@ -1,6 +1,5 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
-using UnityEngine.Events;
 using Overlayer.Compat.OVC;
 
 #if ML && IL2CPP
@@ -53,6 +52,7 @@ public sealed class UICodeInputField
         onFocusSelectAll = false;
         lastState = CaptureState();
         hasLastEdit = false;
+#pragma warning disable IDE0074
         if(historyCallback == null) {
             historyCallback =
 #if ML && IL2CPP
@@ -61,6 +61,7 @@ public sealed class UICodeInputField
                 OnHistoryValueChanged;
 #endif
         }
+#pragma warning restore IDE0074
         onValueChanged.AddListener(historyCallback);
     }
 
@@ -129,12 +130,17 @@ public sealed class UICodeInputField
             hoveredField = this;
         }
 
-        if(hoveredField != this || !IsShiftHeld()) return;
+        if(hoveredField != this || !IsShiftHeld()) {
+            return;
+        }
+
         Vector2 delta = OVC_Input.MouseScrollDelta;
         float wheel = Mathf.Abs(delta.y) > 0.01f ? delta.y : delta.x;
-        if(Mathf.Abs(wheel) > 0.0001f) ScrollHorizontal(wheel * 32f);
+        if(Mathf.Abs(wheel) > 0.0001f) {
+            ScrollHorizontal(wheel * 32f);
+        }
     }
-    
+
     public override void OnDeselect(BaseEventData eventData) {
         base.OnDeselect(eventData);
         hasLastEdit = false;
@@ -144,14 +150,20 @@ public sealed class UICodeInputField
         => OVC_Input.GetKey(KeyCode.LeftShift) || OVC_Input.GetKey(KeyCode.RightShift);
 
     public void Undo() {
-        if(!isFocused || undoHistory.Count == 0) return;
+        if(!isFocused || undoHistory.Count == 0) {
+            return;
+        }
+
         HistoryState previous = undoHistory.Pop();
         redoHistory.Push(CaptureState());
         SetHistoryValue(previous);
     }
 
     public void Redo() {
-        if(!isFocused || redoHistory.Count == 0) return;
+        if(!isFocused || redoHistory.Count == 0) {
+            return;
+        }
+
         HistoryState next = redoHistory.Pop();
         undoHistory.Push(CaptureState());
         SetHistoryValue(next);
@@ -159,7 +171,10 @@ public sealed class UICodeInputField
 
     private void OnHistoryValueChanged(string value) {
         HistoryState current = CaptureState(value);
-        if(suppressHistory || current.Text == lastState.Text) return;
+        if(suppressHistory || current.Text == lastState.Text) {
+            return;
+        }
+
         EditInfo edit = DescribeEdit(lastState, current);
         if(!CanMerge(edit)) {
             PushUndo(lastState);
@@ -198,7 +213,9 @@ public sealed class UICodeInputField
 
     private void PushUndo(HistoryState state) {
         undoHistory.Push(state);
-        if(undoHistory.Count <= MaxHistory) return;
+        if(undoHistory.Count <= MaxHistory) {
+            return;
+        }
 
         var values = undoHistory.Take(MaxHistory).ToArray();
         undoHistory.Clear();
@@ -242,7 +259,9 @@ public sealed class UICodeInputField
         string newText = after.Text;
         int prefix = 0;
         int sharedLength = Math.Min(oldText.Length, newText.Length);
-        while(prefix < sharedLength && oldText[prefix] == newText[prefix]) prefix++;
+        while(prefix < sharedLength && oldText[prefix] == newText[prefix]) {
+            prefix++;
+        }
 
         int oldEnd = oldText.Length - 1;
         int newEnd = newText.Length - 1;
@@ -347,22 +366,28 @@ public sealed class UICodeInputField
 
     private void HandleShortcuts() {
         if(!isFocused || !string.IsNullOrEmpty(Input.compositionString) ||
-           !Input.GetKey(KeyCode.LeftControl) && !Input.GetKey(KeyCode.RightControl) &&
-           !Input.GetKey(KeyCode.LeftCommand) && !Input.GetKey(KeyCode.RightCommand)) {
+           (!Input.GetKey(KeyCode.LeftControl) && !Input.GetKey(KeyCode.RightControl) &&
+           !Input.GetKey(KeyCode.LeftCommand) && !Input.GetKey(KeyCode.RightCommand))) {
             return;
         }
 
         bool shift = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
         if(Input.GetKeyDown(KeyCode.Z)) {
-            if(shift) Redo();
-            else Undo();
+            if(shift) {
+                Redo();
+            } else {
+                Undo();
+            }
         } else if(Input.GetKeyDown(KeyCode.Y)) {
             Redo();
         }
     }
 
     private void ScrollHorizontal(float amount) {
-        if(textComponent == null || textViewport == null) return;
+        if(textComponent == null || textViewport == null) {
+            return;
+        }
+
         textComponent.ForceMeshUpdate();
         float contentWidth = Mathf.Max(
             textComponent.rectTransform.rect.width,
@@ -376,9 +401,14 @@ public sealed class UICodeInputField
     }
 
     private void SyncCaretTransform() {
-        if(textComponent == null || textViewport == null) return;
+        if(textComponent == null || textViewport == null) {
+            return;
+        }
+
         caretTransform ??= textViewport.Find("Caret") as RectTransform;
-        if(caretTransform == null) return;
+        if(caretTransform == null) {
+            return;
+        }
 
         RectTransform textTransform = textComponent.rectTransform;
         caretTransform.localPosition = textTransform.localPosition;

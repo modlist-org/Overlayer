@@ -6,7 +6,6 @@ using Overlayer.TextEngine.Core;
 using UnityEngine;
 using UnityEngine.UI;
 using Object = UnityEngine.Object;
-using Overlayer.Core;
 
 #if ML && IL2CPP
 using MelonLoader;
@@ -50,9 +49,9 @@ public sealed class OvObject : ISettingsFile {
         Config.CanvasGroupConfig.ToUnity(GameObject);
         if(Config.TextConfig != null) {
             var tmp = GameObject.GetComponent<TextMeshProUGUI>();
-            if (tmp != null) {
+            if(tmp != null) {
                 TMP_FontAsset font = TextFontProvider.Current;
-                if (font != null) {
+                if(font != null) {
                     tmp.font = font;
                 }
             }
@@ -119,9 +118,7 @@ public sealed class OvObject : ISettingsFile {
         EnsureComponent<Shadow>(Config.ShadowConfig != null);
 
         var rectMask = EnsureComponent<RectMask2D>(Config.HasRectMask2D);
-        if(rectMask != null) {
-            rectMask.enabled = Config.RectMask2DEnabled;
-        }
+        rectMask?.enabled = Config.RectMask2DEnabled;
 
         EnsureComponent<Outline>(Config.OutlineConfig != null);
 
@@ -259,11 +256,16 @@ public sealed class OvObject : ISettingsFile {
         ApplyComponent();
         ApplyConfig();
 
-        foreach(var child in Children) child.RefreshLayout();
+        foreach(var child in Children) {
+            child.RefreshLayout();
+        }
     }
 
     internal void RebuildLayout() {
-        foreach(var child in Children) child.RebuildLayout();
+        foreach(var child in Children) {
+            child.RebuildLayout();
+        }
+
         LayoutRebuilder.ForceRebuildLayoutImmediate(RectTransform);
     }
 
@@ -317,7 +319,7 @@ public sealed class OvObject : ISettingsFile {
                 return;
             }
 
-            TextEngineCore engine =  PlaybackState.IsPlaying ? PlayingEngine : NotPlayingEngine;
+            TextEngineCore engine = PlaybackState.IsPlaying ? PlayingEngine : NotPlayingEngine;
 
             if(engine == null) {
                 return;

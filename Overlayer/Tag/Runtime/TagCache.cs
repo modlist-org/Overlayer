@@ -1,8 +1,8 @@
-﻿using Overlayer.Tag.Compile;
+﻿using FuzzySharp;
+using Overlayer.Tag.Compile;
 using Overlayer.Tag.Core;
 using Overlayer.Tag.Diagnostics;
 using Overlayer.TextEngine.Parse;
-using FuzzySharp;
 
 namespace Overlayer.Tag.Runtime;
 
@@ -89,11 +89,11 @@ public sealed class TagCache {
             return null;
         }
 
-        var best = TagManager.GetAllTags()
+        var (Name, Score) = TagManager.GetAllTags()
             .Select(tag => (tag.Name, Score: Fuzz.WeightedRatio(name, tag.Name)))
             .OrderByDescending(item => item.Score)
             .FirstOrDefault();
-        return best.Score >= 70 ? best.Name : null;
+        return Score >= 70 ? Name : null;
     }
 
     private static CompiledPlaceholder WithContext(CompiledPlaceholder compiled, ParsedTag parsed) {
