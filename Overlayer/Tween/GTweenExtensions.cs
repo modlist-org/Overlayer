@@ -60,6 +60,16 @@ public static class GTweenExtensions {
     }
 
     extension(RectTransform target) {
+        public GTween GTScale(Vector3 to, float duration) {
+            Vector3 from = target ? target.localScale : Vector3.one;
+            return GTweens.Extensions.GTweenExtensions.Tween(
+                () => 0f,
+                x => { if(target) { target.localScale = Vector3.LerpUnclamped(from, to, x); } },
+                1f,
+                duration
+            );
+        }
+
         public GTween GTAnchorPos(Vector2 to, float duration) {
             var from = target ? target.anchoredPosition : Vector2.zero;
             return GTweens.Extensions.GTweenExtensions.Tween(

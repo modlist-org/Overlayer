@@ -52,17 +52,6 @@ public static partial class GenerateUI {
         preview.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P2048);
         preview.type = Image.Type.Sliced;
 
-        GameObject triangleObject = new("Triangle");
-        triangleObject.transform.SetParent(header, false);
-        RectTransform triangleRect = triangleObject.AddComponent<RectTransform>();
-        triangleRect.anchorMin = new Vector2(0.55f, 0.5f);
-        triangleRect.anchorMax = new Vector2(0.55f, 0.5f);
-        triangleRect.pivot = new Vector2(0.5f, 0.5f);
-        triangleRect.sizeDelta = new Vector2(22f, 22f);
-        Image triangle = triangleObject.AddComponent<Image>();
-        triangle.sprite = MainCore.Spr.Get(UISprite.Triangle128);
-        triangle.raycastTarget = false;
-
         UIColorPicker picker = null;
         UIInput hexInput = Input(
             header,
@@ -162,8 +151,8 @@ public static partial class GenerateUI {
 
         Image sharedOutline = AddOutlineHover(header.gameObject, header.gameObject.AddComponent<EventTrigger>());
         picker = new UIColorPicker(
-            id, root, parent as RectTransform, bodyObject, bodyCanvas, preview, triangle,
-            triangleRect, wheel, hueHandle, colorHandle, hexInput, sharedOutline, sliders,
+            id, root, bodyObject, bodyCanvas, preview,
+            wheel, hueHandle, colorHandle, hexInput, sharedOutline, sliders,
             rgbModeBackground, rgbModeLabel, hsvModeBackground, hsvModeLabel,
             defaultValue, value, onChanged, onComplete
         );

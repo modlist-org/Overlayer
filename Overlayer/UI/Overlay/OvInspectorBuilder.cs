@@ -13,7 +13,10 @@ using Overlayer.UI.Generator;
 using Overlayer.UI.Objects;
 using Overlayer.UI.Objects.Impl;
 using Overlayer.UI.Utility;
+using Overlayer.Tween;
+using GTweens.Builders;
 using GTweens.Easings;
+using GTweens.Tweens;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -1321,8 +1324,11 @@ internal sealed class OvInspectorBuilder(
 
         RectTransform popup = CreateAnchorPopup(UICore.Canvas.transform);
         RectTransform blocker = CreatePopupBlocker(UICore.Canvas.transform);
+        CanvasGroup popupCanvas = popup.gameObject.AddComponent<CanvasGroup>();
         blocker.gameObject.SetActive(false);
+        GTween popupTween = null;
         summary.OnDisposed += () => {
+            popupTween?.Kill();
             if(popup != null) {
                 UnityEngine.Object.Destroy(popup.gameObject);
             }
@@ -1336,10 +1342,49 @@ internal sealed class OvInspectorBuilder(
         float lastClickTime = -1f;
 
         void ClosePopup() {
+            if(!open) {
+                return;
+            }
+
             open = false;
-            popup?.gameObject.SetActive(false);
-            blocker?.gameObject.SetActive(false);
+            popupTween?.Kill();
+            popupCanvas.interactable = false;
+            popupCanvas.blocksRaycasts = false;
+            popupTween = PlayPopupAnimation(popup, popupCanvas, false).OnComplete(() => {
+                if(open) {
+                    return;
+                }
+
+                popup.gameObject.SetActive(false);
+                blocker.gameObject.SetActive(false);
+            });
         }
+
+        void OpenPopup() {
+            open = true;
+            popupTween?.Kill();
+            popup.gameObject.SetActive(true);
+            popup.localScale = new Vector3(0.96f, 0.96f, 1f);
+            popupCanvas.alpha = 0f;
+            popupCanvas.interactable = true;
+            popupCanvas.blocksRaycasts = true;
+            blocker.gameObject.SetActive(true);
+            blocker.SetAsLastSibling();
+            popup.SetAsLastSibling();
+            popupTween = PlayPopupAnimation(popup, popupCanvas, true);
+        }
+
+        void RefreshPopupPosition() {
+            if(!open) {
+                return;
+            }
+
+            RectTransform canvasRect = UICore.Canvas.GetComponent<RectTransform>();
+            Vector3 corner = summary.Rect.TransformPoint(new Vector3(summary.Rect.rect.xMin, summary.Rect.rect.yMin, 0f));
+            popup.anchoredPosition = canvasRect.InverseTransformPoint(corner);
+        }
+
+        controls.Add(new UIWatcher("transform_anchor_popup", summary.Rect, RefreshPopupPosition));
 
         GenerateUI.AddButton(blocker.gameObject, button => {
             if(button == UnityEngine.EventSystems.PointerEventData.InputButton.Left) {
@@ -1439,24 +1484,23 @@ internal sealed class OvInspectorBuilder(
         }
 
         summary.OnClick = () => {
-            open = !open;
             if(open) {
-                RectTransform canvasRect = UICore.Canvas.GetComponent<RectTransform>();
-                Vector3 corner = summary.Rect.TransformPoint(new Vector3(summary.Rect.rect.xMin, summary.Rect.rect.yMin, 0f));
-                popup.anchoredPosition = canvasRect.InverseTransformPoint(corner);
-                blocker.gameObject.SetActive(true);
-                blocker.SetAsLastSibling();
-                popup.SetAsLastSibling();
+                ClosePopup();
             } else {
-                blocker.gameObject.SetActive(false);
+                OpenPopup();
+                RefreshPopupPosition();
             }
-            popup.gameObject.SetActive(open);
             RefreshSummary();
             if(open) {
                 RefreshModifierGraphics(true);
             }
         };
         summary.Rect.GetComponent<OventHandler>().OnDisabled = ClosePopup;
+        popup.gameObject.GetComponent<OventHandler>().OnDisabled = () => {
+            if(open) {
+                ClosePopup();
+            }
+        };
         popup.gameObject.GetComponent<OventHandler>().OnHoverUpdate = () => RefreshModifierGraphics();
         RefreshSummary();
         return RefreshSummary;
@@ -1483,8 +1527,11 @@ internal sealed class OvInspectorBuilder(
 
         RectTransform popup = CreateAnchorPopup(UICore.Canvas.transform);
         RectTransform blocker = CreatePopupBlocker(UICore.Canvas.transform);
+        CanvasGroup popupCanvas = popup.gameObject.AddComponent<CanvasGroup>();
         blocker.gameObject.SetActive(false);
+        GTween popupTween = null;
         summary.OnDisposed += () => {
+            popupTween?.Kill();
             if(popup != null) {
                 UnityEngine.Object.Destroy(popup.gameObject);
             }
@@ -1498,10 +1545,49 @@ internal sealed class OvInspectorBuilder(
         float lastClickTime = -1f;
 
         void ClosePopup() {
+            if(!open) {
+                return;
+            }
+
             open = false;
-            popup?.gameObject.SetActive(false);
-            blocker?.gameObject.SetActive(false);
+            popupTween?.Kill();
+            popupCanvas.interactable = false;
+            popupCanvas.blocksRaycasts = false;
+            popupTween = PlayPopupAnimation(popup, popupCanvas, false).OnComplete(() => {
+                if(open) {
+                    return;
+                }
+
+                popup.gameObject.SetActive(false);
+                blocker.gameObject.SetActive(false);
+            });
         }
+
+        void OpenPopup() {
+            open = true;
+            popupTween?.Kill();
+            popup.gameObject.SetActive(true);
+            popup.localScale = new Vector3(0.96f, 0.96f, 1f);
+            popupCanvas.alpha = 0f;
+            popupCanvas.interactable = true;
+            popupCanvas.blocksRaycasts = true;
+            blocker.gameObject.SetActive(true);
+            blocker.SetAsLastSibling();
+            popup.SetAsLastSibling();
+            popupTween = PlayPopupAnimation(popup, popupCanvas, true);
+        }
+
+        void RefreshPopupPosition() {
+            if(!open) {
+                return;
+            }
+
+            RectTransform canvasRect = UICore.Canvas.GetComponent<RectTransform>();
+            Vector3 corner = summary.Rect.TransformPoint(new Vector3(summary.Rect.rect.xMin, summary.Rect.rect.yMin, 0f));
+            popup.anchoredPosition = canvasRect.InverseTransformPoint(corner);
+        }
+
+        controls.Add(new UIWatcher("transform_anchor_popup", summary.Rect, RefreshPopupPosition));
 
         GenerateUI.AddButton(blocker.gameObject, button => {
             if(button == UnityEngine.EventSystems.PointerEventData.InputButton.Left) {
@@ -1601,24 +1687,23 @@ internal sealed class OvInspectorBuilder(
         }
 
         summary.OnClick = () => {
-            open = !open;
             if(open) {
-                RectTransform canvasRect = UICore.Canvas.GetComponent<RectTransform>();
-                Vector3 corner = summary.Rect.TransformPoint(new Vector3(summary.Rect.rect.xMin, summary.Rect.rect.yMin, 0f));
-                popup.anchoredPosition = canvasRect.InverseTransformPoint(corner);
-                blocker.gameObject.SetActive(true);
-                blocker.SetAsLastSibling();
-                popup.SetAsLastSibling();
+                ClosePopup();
             } else {
-                blocker.gameObject.SetActive(false);
+                OpenPopup();
+                RefreshPopupPosition();
             }
-            popup.gameObject.SetActive(open);
             RefreshSummary();
             if(open) {
                 RefreshModifierGraphics(true);
             }
         };
         summary.Rect.GetComponent<OventHandler>().OnDisabled = ClosePopup;
+        popup.gameObject.GetComponent<OventHandler>().OnDisabled = () => {
+            if(open) {
+                ClosePopup();
+            }
+        };
         popup.gameObject.GetComponent<OventHandler>().OnHoverUpdate = () => RefreshModifierGraphics();
         RefreshSummary();
         return RefreshSummary;
@@ -1629,6 +1714,15 @@ internal sealed class OvInspectorBuilder(
         Vector2 visibleSize = targetTransform.rect.size;
         ApplyAnchorModeForAxis(cfg, 0, horizontal, parentSize.x, visibleSize.x, setPivot, setPosition);
         ApplyAnchorModeForAxis(cfg, 1, vertical, parentSize.y, visibleSize.y, setPivot, setPosition);
+    }
+
+    private static GTween PlayPopupAnimation(RectTransform popup, CanvasGroup canvas, bool opening) {
+        GTween sequence = GTweenSequenceBuilder.New()
+            .Join(popup.GTScale(opening ? Vector3.one : new Vector3(0.96f, 0.96f, 1f), 0.2f).SetEasing(Easing.OutBack))
+            .Join(canvas.GTFade(opening ? 1f : 0f, 0.16f).SetEasing(Easing.OutSine))
+            .Build();
+        MainCore.TC.Play(sequence);
+        return sequence;
     }
 
     private static RectTransform CreatePopupBlocker(Transform parent) {

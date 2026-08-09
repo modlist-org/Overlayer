@@ -1,6 +1,7 @@
 using Overlayer.Core;
 using Overlayer.Compat.OVC;
 using Overlayer.Tween;
+using Overlayer.UI.Generator;
 using Overlayer.UI.Utility;
 using GTweens.Builders;
 using GTweens.Easings;
@@ -20,6 +21,9 @@ namespace Overlayer.UI.Objects.Impl;
 
 public sealed class UIColorPicker : UIObject {
     private const int TextureSize = 256;
+    private const float PopupWidth = 360f;
+    private const float PopupHeight = 578f;
+    private const float PopupScale = 0.9f;
     private const float RingInner = 0.37f;
     private const float RingOuter = 0.49f;
     private const float TriangleRadius = 0.32f;
@@ -28,14 +32,15 @@ public sealed class UIColorPicker : UIObject {
     public Color Value { get; private set; }
     public bool Expanded { get; private set; }
 
-    private readonly RectTransform hostRow;
-    private readonly LayoutElement hostLayout;
+    private readonly RectTransform canvasRect;
+    private readonly RectTransform popupRect;
+    private readonly GameObject popup;
+    private readonly GameObject popupBlocker;
+    private readonly CanvasGroup popupCanvas;
     private readonly GameObject body;
     private readonly RectTransform bodyRect;
     private readonly CanvasGroup bodyCanvas;
     private readonly Image preview;
-    private readonly Image triangle;
-    private readonly RectTransform triangleRect;
     private readonly RectTransform wheelRect;
     private readonly RectTransform hueHandle;
     private readonly RectTransform colorHandle;
@@ -59,19 +64,16 @@ public sealed class UIColorPicker : UIObject {
     private Color? pendingHexColor;
     private bool hsvMode;
     private DragTarget dragTarget;
-    private GTween layoutTween, validationTween;
+    private GTween popupTween, validationTween;
 
     private enum DragTarget { None, Hue, Triangle }
 
     public UIColorPicker(
         string id,
         RectTransform rect,
-        RectTransform hostRow,
         GameObject body,
         CanvasGroup bodyCanvas,
         Image preview,
-        Image triangle,
-        RectTransform triangleRect,
         RectTransform wheelRect,
         RectTransform hueHandle,
         RectTransform colorHandle,
@@ -87,14 +89,10 @@ public sealed class UIColorPicker : UIObject {
         Action<Color> onChanged,
         Action<Color> onComplete
     ) : base(id, rect) {
-        this.hostRow = hostRow;
-        hostLayout = hostRow.GetComponent<LayoutElement>();
+        canvasRect = UICore.CanvasObj?.GetComponent<RectTransform>();
         this.body = body;
-        bodyRect = body.GetComponent<RectTransform>();
         this.bodyCanvas = bodyCanvas;
         this.preview = preview;
-        this.triangle = triangle;
-        this.triangleRect = triangleRect;
         this.wheelRect = wheelRect;
         this.hueHandle = hueHandle;
         this.colorHandle = colorHandle;
@@ -109,6 +107,32 @@ public sealed class UIColorPicker : UIObject {
         this.onComplete = onComplete;
         DefaultValue = defaultValue;
 
+        popup = new GameObject("ColorPickerPopup");
+        popup.transform.SetParent(canvasRect, false);
+        popupRect = popup.AddComponent<RectTransform>();
+        popupRect.anchorMin = new Vector2(0.5f, 0.5f);
+        popupRect.anchorMax = new Vector2(0.5f, 0.5f);
+        popupRect.pivot = new Vector2(0f, 1f);
+        popupRect.sizeDelta = new Vector2(PopupWidth, PopupHeight);
+        popupCanvas = popup.AddComponent<CanvasGroup>();
+
+        RectTransform bodyTransform = body.GetComponent<RectTransform>();
+        bodyTransform.SetParent(popupRect, false);
+        bodyRect = bodyTransform;
+        bodyRect.anchorMin = new Vector2(0f, 1f);
+        bodyRect.anchorMax = new Vector2(1f, 1f);
+        bodyRect.pivot = new Vector2(0.5f, 1f);
+        bodyRect.offsetMin = new Vector2(12f, -566f);
+        bodyRect.offsetMax = new Vector2(-12f, -12f);
+
+        popupBlocker = CreatePopupBlocker(canvasRect);
+        popupBlocker.SetActive(false);
+        GenerateUI.AddButton(popupBlocker, button => {
+            if(button == PointerEventData.InputButton.Left) {
+                SetExpanded(false);
+            }
+        });
+
         texture = new Texture2D(TextureSize, TextureSize, TextureFormat.RGBA32, false) {
             name = $"ColorPicker_{id}",
             filterMode = FilterMode.Bilinear,
@@ -120,75 +144,128 @@ public sealed class UIColorPicker : UIObject {
         Set(value, false);
         SetMode(false);
         SetExpanded(false, true);
+        RegisterTick();
+        OnDisposed += () => {
+            popup?.SetActive(false);
+            if(popup) {
+                UnityEngine.Object.Destroy(popup);
+            }
+
+            if(popupBlocker) {
+                UnityEngine.Object.Destroy(popupBlocker);
+            }
+        };
     }
 
     public void ToggleExpanded() => SetExpanded(!Expanded);
+
+    public override void Tick() {
+        if(!IsDisposed && Expanded) {
+            PositionPopup();
+        }
+    }
 
     public void SetExpanded(bool expanded, bool noAnimate = false) {
         if(IsDisposed) {
             return;
         }
 
-        layoutTween?.Kill();
+        popupTween?.Kill();
         Expanded = expanded;
         if(expanded) {
+            PositionPopup();
+            popup.SetActive(true);
+            popupBlocker.SetActive(true);
+            popupBlocker.transform.SetAsLastSibling();
+            popup.transform.SetAsLastSibling();
+            popupRect.localScale = new Vector3(PopupScale * 0.96f, PopupScale * 0.96f, 1f);
+            popupCanvas.alpha = 0f;
+            popupCanvas.interactable = true;
+            popupCanvas.blocksRaycasts = true;
             body.SetActive(true);
             Canvas.ForceUpdateCanvases();
             LayoutRebuilder.ForceRebuildLayoutImmediate(bodyRect);
             UpdateHandles();
+            bodyCanvas.alpha = 1f;
+            if(noAnimate) {
+                popupRect.localScale = new Vector3(PopupScale, PopupScale, 1f);
+                popupCanvas.alpha = 1f;
+                return;
+            }
+
+            popupTween = PlayPopupAnimation(true);
+        } else {
+            bodyCanvas.interactable = false;
+            bodyCanvas.blocksRaycasts = false;
+            popupCanvas.interactable = false;
+            popupCanvas.blocksRaycasts = false;
+            if(noAnimate) {
+                popup.SetActive(false);
+                popupBlocker.SetActive(false);
+                body.SetActive(false);
+                bodyCanvas.alpha = 0f;
+                popupCanvas.alpha = 0f;
+                return;
+            }
+
+            popupTween = PlayPopupAnimation(false).OnComplete(() => {
+                if(Expanded) {
+                    return;
+                }
+
+                popup.SetActive(false);
+                popupBlocker.SetActive(false);
+                body.SetActive(false);
+                bodyCanvas.alpha = 0f;
+            });
         }
         bodyCanvas.interactable = expanded;
         bodyCanvas.blocksRaycasts = expanded;
+    }
 
-        const float collapsedHeight = 50f;
-        const float expandedHeight = 578f;
-        float targetHeight = expanded ? expandedHeight : collapsedHeight;
-        float targetAlpha = expanded ? 1f : 0f;
-        Vector3 targetRotation = expanded ? new Vector3(0f, 0f, 180f) : Vector3.zero;
+    private GTween PlayPopupAnimation(bool opening) {
+        GTween sequence = GTweenSequenceBuilder.New()
+            .Join(popupRect.GTScale(
+                opening ? new Vector3(PopupScale, PopupScale, 1f) : new Vector3(PopupScale * 0.96f, PopupScale * 0.96f, 1f),
+                0.2f
+            ).SetEasing(Easing.OutBack))
+            .Join(popupCanvas.GTFade(opening ? 1f : 0f, 0.16f).SetEasing(Easing.OutSine))
+            .Build();
+        MainCore.TC.Play(sequence);
+        return sequence;
+    }
 
-        void Rebuild(float height) {
-            if(hostLayout) {
-                hostLayout.preferredHeight = height;
-            }
+    private static GameObject CreatePopupBlocker(RectTransform parent) {
+        GameObject blockerObject = new("ColorPickerPopupBlocker");
+        blockerObject.transform.SetParent(parent, false);
+        RectTransform blocker = blockerObject.AddComponent<RectTransform>();
+        blocker.anchorMin = Vector2.zero;
+        blocker.anchorMax = Vector2.one;
+        blocker.offsetMin = Vector2.zero;
+        blocker.offsetMax = Vector2.zero;
+        Image image = blockerObject.AddComponent<Image>();
+        image.color = Color.clear;
+        return blockerObject;
+    }
 
-            if(hostRow) {
-                LayoutRebuilder.ForceRebuildLayoutImmediate(hostRow);
-            }
-
-            if(hostRow && hostRow.parent is RectTransform parent) {
-                LayoutRebuilder.ForceRebuildLayoutImmediate(parent);
-            }
-        }
-
-        if(noAnimate) {
-            Rebuild(targetHeight);
-            bodyCanvas.alpha = targetAlpha;
-            triangleRect.localRotation = Quaternion.Euler(targetRotation);
-            body.SetActive(expanded);
+    private void PositionPopup() {
+        if(!canvasRect || !Rect) {
             return;
         }
 
-        layoutTween = GTweenSequenceBuilder.New()
-            .Join(GTweenExtensions.Tween(
-                () => hostLayout ? hostLayout.preferredHeight : targetHeight,
-                Rebuild,
-                targetHeight,
-                0.22f
-            ).SetEasing(Easing.OutBack))
-            .Join(GTweenExtensions.Tween(
-                () => bodyCanvas.alpha,
-                value => bodyCanvas.alpha = value,
-                targetAlpha,
-                0.16f
-            ).SetEasing(Easing.OutSine))
-            .Join(triangleRect.GTRotate(targetRotation, 0.4f).SetEasing(Easing.OutBack))
-            .Build()
-            .OnComplete(() => {
-                if(!Expanded) {
-                    body.SetActive(false);
-                }
-            });
-        MainCore.TC.Play(layoutTween);
+        Vector3 bottomWorld = Rect.TransformPoint(new Vector3(Rect.rect.xMin, Rect.rect.yMin, 0f));
+        Vector2 bottomScreen = RectTransformUtility.WorldToScreenPoint(null, bottomWorld);
+        RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, bottomScreen, null, out Vector2 bottomPosition);
+
+        float popupWidth = PopupWidth * PopupScale;
+        float minX = canvasRect.rect.xMin + 8f;
+        float maxX = canvasRect.rect.xMax - popupWidth - 8f;
+        bottomPosition.x = maxX >= minX
+            ? Mathf.Clamp(bottomPosition.x, minX, maxX)
+            : minX;
+
+        popupRect.pivot = new Vector2(0f, 1f);
+        popupRect.anchoredPosition = bottomPosition;
     }
 
     public void Reset() {
@@ -404,7 +481,6 @@ public sealed class UIColorPicker : UIObject {
 
     private void UpdateVisuals() {
         preview.color = Value;
-        triangle.color = Value;
         UpdateSliderValues();
         SetHexText();
         UpdateTexture();
@@ -572,9 +648,8 @@ public sealed class UIColorPicker : UIObject {
             return;
         }
 
-        layoutTween?.Kill();
         validationTween?.Kill();
-        layoutTween = null;
+        popupTween?.Kill();
         validationTween = null;
         foreach(UISlider slider in sliders) {
             slider.Dispose();
