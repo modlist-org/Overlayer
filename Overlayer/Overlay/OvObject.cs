@@ -64,6 +64,8 @@ public sealed class OvObject : ISettingsFile {
                 Config.TextEngineConfig.NotPlayingText
             );
         }
+        Config.MovingManConfig?.ToUnity(GameObject);
+        Config.ColorRangeConfig?.ToUnity(GameObject);
         Config.ImageConfig?.ToUnity(GameObject);
         Config.MaskConfig?.ToUnity(GameObject);
         Config.ShadowConfig?.ToUnity(GameObject);
@@ -94,14 +96,23 @@ public sealed class OvObject : ISettingsFile {
         } else {
             Config.TextEngineConfig = null;
         }
-
-        var tmp = EnsureComponent<TextMeshProUGUI>(tc);
-        TextUpdater = EnsureComponent<TextEngineUpdater>(tc);
-
-        if(TextUpdater != null && tmp != null) {
-            TextUpdater.Init(tmp);
+        EnsureComponent<TextMeshProUGUI>(tc);
+        EnsureComponent<TextEngineUpdater>(tc);
+        if(tc) {
+            var tmp = GameObject.GetComponent<TextMeshProUGUI>();
+            var updater = GameObject.GetComponent<TextEngineUpdater>();
+            if(updater != null && tmp != null) {
+                updater.Init(tmp);
+            }
         }
-
+        if(!tc) {
+            Config.ColorRangeConfig = null;
+        }
+        var movingMan = EnsureComponent<MovingManComponent>(Config.MovingManConfig != null);
+        var colorRange = EnsureComponent<ColorRangeComponent>(tc && Config.ColorRangeConfig != null);
+        var text = GameObject.GetComponent<TextMeshProUGUI>();
+        movingMan?.Init(text, RectTransform);
+        colorRange?.Init(text);
         EnsureComponent<Image>(Config.ImageConfig != null);
         EnsureComponent<ContentSizeFitter>(Config.ContentSizeFitterConfig != null);
         EnsureComponent<Mask>(Config.MaskConfig != null);

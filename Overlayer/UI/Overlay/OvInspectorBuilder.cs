@@ -13,6 +13,7 @@ using Overlayer.UI.Generator;
 using Overlayer.UI.Objects;
 using Overlayer.UI.Objects.Impl;
 using Overlayer.UI.Utility;
+using GTweens.Easings;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -89,6 +90,12 @@ internal sealed class OvInspectorBuilder(
 
         if(obj.Config.TextConfig != null) {
             BuildText(obj, obj.Config.TextConfig);
+        }
+        if(obj.Config.MovingManConfig != null) {
+            BuildMovingMan(obj, obj.Config.MovingManConfig);
+        }
+        if(obj.Config.ColorRangeConfig != null) {
+            BuildColorRange(obj, obj.Config.ColorRangeConfig);
         }
         if(obj.Config.ImageConfig != null) {
             BuildImage(obj, obj.Config.ImageConfig);
@@ -207,6 +214,7 @@ internal sealed class OvInspectorBuilder(
         var (_, card) = ComponentCard("Text", cfg, () => {
             obj.Config.TextConfig = null;
             obj.Config.TextEngineConfig = null;
+            obj.Config.ColorRangeConfig = null;
             RefreshComponents(obj);
         });
         CodeEditor(card, "Playing Text", "text_playing", textCfg.PlayingText, value => {
@@ -260,6 +268,36 @@ internal sealed class OvInspectorBuilder(
         Slider(card, "Fill Amount", 1f, 0f, 1f, cfg.FillAmount, value => cfg.FillAmount = value, "image_fill_amount");
         Slider(card, "Fill Origin", 0f, 0f, 3f, cfg.FillOrigin, value => cfg.FillOrigin = Mathf.RoundToInt(value), "image_fill_origin", "F0");
         Toggle(card, "Fill Clockwise", true, cfg.FillClockwise, value => cfg.FillClockwise = value, "image_fill_clockwise");
+    }
+
+    private void BuildMovingMan(OvObject obj, MovingManSettings cfg) {
+        var (_, card) = ComponentCard("Moving Man", cfg, () => {
+            obj.Config.MovingManConfig = null;
+            RefreshComponents(obj);
+        });
+
+        Input(card, "Target Tag", null, cfg.TagName, value => cfg.TagName = value, "moving_man_tag");
+        EnumDropDown(card, "Target", MovingManTarget.TextSize, cfg.Target, value => cfg.Target = value, "moving_man_target");
+        Slider(card, "Start Value", 30f, -10000f, 10000f, (float)cfg.StartSize, value => cfg.StartSize = value, "moving_man_start", "F1", false);
+        Slider(card, "End Value", 80f, -10000f, 10000f, (float)cfg.EndSize, value => cfg.EndSize = value, "moving_man_end", "F1", false);
+        Slider(card, "Default Value", 30f, -10000f, 10000f, (float)cfg.DefaultSize, value => cfg.DefaultSize = value, "moving_man_default", "F1", false);
+        Slider(card, "Speed", 800f, 0f, 10000f, (float)cfg.Speed, value => cfg.Speed = value, "moving_man_speed", "F0");
+        Toggle(card, "Invert", false, cfg.Invert, value => cfg.Invert = value, "moving_man_invert");
+        EnumDropDown(card, "Ease", Easing.OutExpo, cfg.Ease, value => cfg.Ease = value, "moving_man_ease");
+    }
+
+    private void BuildColorRange(OvObject obj, ColorRangeSettings cfg) {
+        var (_, card) = ComponentCard("Color Range", cfg, () => {
+            obj.Config.ColorRangeConfig = null;
+            RefreshComponents(obj);
+        });
+
+        Input(card, "Target Tag", null, cfg.TagName, value => cfg.TagName = value, "color_range_tag");
+        Slider(card, "Minimum", 0f, -10000f, 10000f, (float)cfg.Minimum, value => cfg.Minimum = value, "color_range_min", "F2", false);
+        Slider(card, "Maximum", 100f, -10000f, 10000f, (float)cfg.Maximum, value => cfg.Maximum = value, "color_range_max", "F2", false);
+        ColorSliders(card, "Minimum Color", Color.black, () => cfg.MinimumColor, value => cfg.MinimumColor = value, "color_range_min_color");
+        ColorSliders(card, "Maximum Color", Color.white, () => cfg.MaximumColor, value => cfg.MaximumColor = value, "color_range_max_color");
+        EnumDropDown(card, "Ease", Easing.Linear, cfg.Ease, value => cfg.Ease = value, "color_range_ease");
     }
 
     private void BuildContentSizeFitter(OvObject obj, ContentSizeFitterSettings cfg) {
@@ -340,6 +378,10 @@ internal sealed class OvInspectorBuilder(
             options.Add("Text");
             options.Add("Image");
         }
+        if(obj.Config.MovingManConfig == null) options.Add("Moving Man");
+        if(obj.Config.TextConfig != null && obj.Config.ColorRangeConfig == null) options.Add("Color Range");
+        if(obj.Config.BoxCollider2DConfig == null) options.Add("Box Collider 2D");
+        if(obj.Config.Rigidbody2DConfig == null) options.Add("Rigidbody 2D");
         if(obj.Config.ShadowConfig == null) options.Add("Shadow");
         if(obj.Config.OutlineConfig == null) options.Add("Outline");
         if(obj.Config.MaskConfig == null) options.Add("Mask");
@@ -359,6 +401,10 @@ internal sealed class OvInspectorBuilder(
                     obj.Config.TextEngineConfig = new OvTextSettings();
                     break;
                 case "Image": obj.Config.ImageConfig = new ImageSettings(); break;
+                case "Moving Man": obj.Config.MovingManConfig = new MovingManSettings(); break;
+                case "Color Range": obj.Config.ColorRangeConfig = new ColorRangeSettings(); break;
+                case "Box Collider 2D": obj.Config.BoxCollider2DConfig = new BoxCollider2DSettings(); break;
+                case "Rigidbody 2D": obj.Config.Rigidbody2DConfig = new Rigidbody2DSettings(); break;
                 case "Shadow": obj.Config.ShadowConfig = new ShadowSettings(); break;
                 case "Outline": obj.Config.OutlineConfig = new OutlineSettings(); break;
                 case "Mask": obj.Config.MaskConfig = new MaskSettings(); break;
