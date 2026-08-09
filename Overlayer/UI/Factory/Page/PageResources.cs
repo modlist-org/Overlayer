@@ -50,7 +50,7 @@ internal static class PageResources {
         titleRow.offsetMin = new Vector2(24f, -62f);
         titleRow.offsetMax = new Vector2(-24f, -12f);
 
-        titleLabel = CreateText(titleRow, "Image Resources", 30f, TextAlignmentOptions.Left);
+        titleLabel = CreateText(titleRow, T("IMAGE_RESOURCES", "Image Resources"), 30f, TextAlignmentOptions.Left);
         titleLabel.rectTransform.anchorMin = new Vector2(0f, 0f);
         titleLabel.rectTransform.anchorMax = new Vector2(1f, 1f);
         titleLabel.rectTransform.offsetMin = new Vector2(0f, 0f);
@@ -58,7 +58,7 @@ internal static class PageResources {
         titleLabel.raycastTarget = true;
         titleLabel.gameObject.AddComponent<TextLocalization>().Init("IMAGE_RESOURCES", "Image Resources");
 
-        modeButton = GenerateUI.Button(titleRow, ToggleMode, "Images", "resource_mode");
+        modeButton = GenerateUI.Button(titleRow, ToggleMode, T("RESOURCE_MODE_IMAGES", "Images"), "resource_mode");
         PlaceRight(modeButton.Rect, 174f);
         modeButton.Label.gameObject.AddComponent<TextLocalization>().Init("RESOURCE_MODE_IMAGES", "Images");
 
@@ -74,7 +74,7 @@ internal static class PageResources {
             string.Empty,
             string.Empty,
             _ => { },
-            "Image path",
+            T("IMAGE_PATH", "Image path"),
             null,
             "resource_image_path"
         );
@@ -85,7 +85,7 @@ internal static class PageResources {
         );
         ResizeInput(pathInput.Rect, 190f);
 
-        browseButton = GenerateUI.Button(pathRow, BeginBrowse, "Browse", "resource_browse");
+        browseButton = GenerateUI.Button(pathRow, BeginBrowse, T("BROWSE", "Browse"), "resource_browse");
         PlaceRight(browseButton.Rect, 174f);
         browseButton.Label.gameObject.AddComponent<TextLocalization>().Init("BROWSE", "Browse");
 
@@ -106,7 +106,7 @@ internal static class PageResources {
         );
         ResizeInput(keyInput.Rect, 190f);
 
-        addButton = GenerateUI.Button(keyRow, BeginImport, "Add Image", "resource_add");
+        addButton = GenerateUI.Button(keyRow, BeginImport, T("ADD_IMAGE", "Add Image"), "resource_add");
         PlaceRight(addButton.Rect, 174f);
         addButton.Label.gameObject.AddComponent<TextLocalization>().Init("ADD_IMAGE", "Add Image");
 
@@ -117,7 +117,7 @@ internal static class PageResources {
             false,
             false,
             _ => { },
-            "Mip Chain",
+            T("MIP_CHAIN", "Mip Chain"),
             "resource_mip_chain"
         );
         PlaceHalf(mipChainToggle.Rect, false);
@@ -132,7 +132,7 @@ internal static class PageResources {
             false,
             false,
             _ => { },
-            "Linear",
+            T("LINEAR", "Linear"),
             "resource_linear"
         );
         PlaceHalf(linearToggle.Rect, true);
@@ -142,7 +142,7 @@ internal static class PageResources {
         );
         linearToggle.Label.gameObject.AddComponent<TextLocalization>().Init("LINEAR", "Linear");
 
-        statusLabel = CreateText(root, "Ready", 15f, TextAlignmentOptions.Left);
+        statusLabel = CreateText(root, T("READY", "Ready"), 15f, TextAlignmentOptions.Left);
         statusLabel.color = new Color(1f, 1f, 1f, 0.55f);
         statusLabel.rectTransform.anchorMin = new Vector2(0f, 1f);
         statusLabel.rectTransform.anchorMax = new Vector2(1f, 1f);
@@ -159,7 +159,7 @@ internal static class PageResources {
             string.Empty,
             string.Empty,
             _ => BuildList(),
-            "Search resources",
+            T("SEARCH_RESOURCE", "Search resources"),
             MainCore.Spr.Get(UISprite.MagnifyingGlass128),
             "resource_search"
         );
@@ -191,7 +191,7 @@ internal static class PageResources {
 
         VerticalLayoutGroup layout = contentObject.AddComponent<VerticalLayoutGroup>();
         layout.spacing = 8f;
-        layout.padding = new RectOffset(0, 0, 0, 12);
+        layout.padding = new RectOffset { left = 0, right = 0, top = 0, bottom = 12 };
         layout.childControlWidth = true;
         layout.childControlHeight = true;
         layout.childForceExpandWidth = true;
@@ -218,17 +218,17 @@ internal static class PageResources {
         if(busy) return;
         browseButton.SetBlocked(true);
         browseButton.Label.text = "...";
-        SetStatus("Opening file picker...", UIColors.ObjectActive);
+        SetStatus("OPENING_FILE_PICKER", "Opening file picker...", UIColors.ObjectActive);
 
         if(currentMode == ResourceMode.Images) {
             _ = NativeImageFilePicker.PickAsync().ContinueWith(task => {
                 MainThread.Enqueue(() => {
                     if(!MainCore.IsModEnabled) return;
                     browseButton.SetBlocked(false);
-                    browseButton.Label.text = "Browse";
+                    browseButton.Label.text = T("BROWSE", "Browse");
                     string path = task.Status == TaskStatus.RanToCompletion ? task.Result : null;
                     if(string.IsNullOrWhiteSpace(path)) {
-                        SetStatus("No image selected.", UIColors.ObjectActiveMathWarn);
+                        SetStatus("NO_IMAGE_SELECTED", "No image selected.", UIColors.ObjectActiveMathWarn);
                         return;
                     }
 
@@ -236,7 +236,7 @@ internal static class PageResources {
                     if(string.IsNullOrWhiteSpace(keyInput.Value)) {
                         keyInput.Set(Path.GetFileNameWithoutExtension(path));
                     }
-                    SetStatus("Image selected. Choose Add Image.", UIColors.ObjectActive);
+                    SetStatus("IMAGE_SELECTED_ADD_IMAGE", "Image selected. Choose Add Image.", UIColors.ObjectActive);
                 });
             });
         } else {
@@ -244,10 +244,10 @@ internal static class PageResources {
                 MainThread.Enqueue(() => {
                     if(!MainCore.IsModEnabled) return;
                     browseButton.SetBlocked(false);
-                    browseButton.Label.text = "Browse";
+                    browseButton.Label.text = T("BROWSE", "Browse");
                     string path = task.Status == TaskStatus.RanToCompletion ? task.Result : null;
                     if(string.IsNullOrWhiteSpace(path)) {
-                        SetStatus("No font selected.", UIColors.ObjectActiveMathWarn);
+                        SetStatus("NO_FONT_SELECTED", "No font selected.", UIColors.ObjectActiveMathWarn);
                         return;
                     }
 
@@ -255,7 +255,7 @@ internal static class PageResources {
                     if(string.IsNullOrWhiteSpace(keyInput.Value)) {
                         keyInput.Set(Path.GetFileNameWithoutExtension(path));
                     }
-                    SetStatus("Font selected. Choose Add Font.", UIColors.ObjectActive);
+                    SetStatus("FONT_SELECTED_ADD_FONT", "Font selected. Choose Add Font.", UIColors.ObjectActive);
                 });
             });
         }
@@ -272,19 +272,19 @@ internal static class PageResources {
             string key = SanitizeKey(keyInput.Value);
 
             if(string.IsNullOrWhiteSpace(source)) {
-                SetStatus("Choose an image first.", UIColors.ObjectActiveMathErr);
+                SetStatus("CHOOSE_IMAGE_FIRST", "Choose an image first.", UIColors.ObjectActiveMathErr);
                 return;
             }
             if(string.IsNullOrWhiteSpace(key)) {
-                SetStatus("Enter a resource name.", UIColors.ObjectActiveMathErr);
+                SetStatus("ENTER_RESOURCE_NAME", "Enter a resource name.", UIColors.ObjectActiveMathErr);
                 return;
             }
             if(UserResourceManager.T2D.Keys.Contains(key) || UserResourceManager.Spr.Keys.Contains(key)) {
-                SetStatus("Resource name already exists.", UIColors.ObjectActiveMathErr);
+                SetStatus("RESOURCE_NAME_ALREADY_EXISTS", "Resource name already exists.", UIColors.ObjectActiveMathErr);
                 return;
             }
             if(!UserTexture2D.Ext.Contains(Path.GetExtension(source).ToLowerInvariant())) {
-                SetStatus("Unsupported image format.", UIColors.ObjectActiveMathErr);
+                SetStatus("UNSUPPORTED_IMAGE_FORMAT", "Unsupported image format.", UIColors.ObjectActiveMathErr);
                 return;
             }
 
@@ -293,8 +293,8 @@ internal static class PageResources {
             keyInput.SetBlocked(true);
             browseButton.SetBlocked(true);
             addButton.SetBlocked(true);
-            addButton.Label.text = "Loading...";
-            SetStatus("Reading image...", UIColors.ObjectActive);
+            addButton.Label.text = T("LOADING", "Loading...");
+            SetStatus("READING_IMAGE", "Reading image...", UIColors.ObjectActive);
 
             string extension = Path.GetExtension(source).ToLowerInvariant();
             string target = Path.Combine(MainCore.Paths.UserImagePath, key + extension);
@@ -316,19 +316,19 @@ internal static class PageResources {
             string key = SanitizeKey(keyInput.Value);
 
             if(string.IsNullOrWhiteSpace(source)) {
-                SetStatus("Choose a font first.", UIColors.ObjectActiveMathErr);
+                SetStatus("CHOOSE_FONT_FIRST", "Choose a font first.", UIColors.ObjectActiveMathErr);
                 return;
             }
             if(string.IsNullOrWhiteSpace(key)) {
-                SetStatus("Enter a resource name.", UIColors.ObjectActiveMathErr);
+                SetStatus("ENTER_RESOURCE_NAME", "Enter a resource name.", UIColors.ObjectActiveMathErr);
                 return;
             }
             if(UserResourceManager.Fnt.Keys.Contains(key)) {
-                SetStatus("Resource name already exists.", UIColors.ObjectActiveMathErr);
+                SetStatus("RESOURCE_NAME_ALREADY_EXISTS", "Resource name already exists.", UIColors.ObjectActiveMathErr);
                 return;
             }
             if(!UserFont.Ext.Contains(Path.GetExtension(source).ToLowerInvariant())) {
-                SetStatus("Unsupported font format.", UIColors.ObjectActiveMathErr);
+                SetStatus("UNSUPPORTED_FONT_FORMAT", "Unsupported font format.", UIColors.ObjectActiveMathErr);
                 return;
             }
 
@@ -337,8 +337,8 @@ internal static class PageResources {
             keyInput.SetBlocked(true);
             browseButton.SetBlocked(true);
             addButton.SetBlocked(true);
-            addButton.Label.text = "Loading...";
-            SetStatus("Reading font...", UIColors.ObjectActive);
+            addButton.Label.text = T("LOADING", "Loading...");
+            SetStatus("READING_FONT", "Reading font...", UIColors.ObjectActive);
 
             string extension = Path.GetExtension(source).ToLowerInvariant();
             string target = Path.Combine(MainCore.Paths.UserFontPath, key + extension);
@@ -367,7 +367,7 @@ internal static class PageResources {
             : (Bytes: (byte[])null, Path: string.Empty, Error: "Image read task failed.");
         if(result.Bytes == null) {
             FinishBusy();
-            SetStatus($"Import failed: {result.Error}", UIColors.ObjectActiveMathErr);
+            SetStatus("IMPORT_FAILED", "Import failed: {0}", UIColors.ObjectActiveMathErr, result.Error);
             return;
         }
 
@@ -381,7 +381,7 @@ internal static class PageResources {
         if(textureResult != UserTexture2D.Result.Success ||
             !UserResourceManager.T2D.TryGet(key, out var textureValue)) {
             FinishBusy();
-            SetStatus($"Image load failed: {textureResult}", UIColors.ObjectActiveMathErr);
+            SetStatus("IMAGE_LOAD_FAILED", "Image load failed: {0}", UIColors.ObjectActiveMathErr, textureResult);
             return;
         }
 
@@ -397,7 +397,7 @@ internal static class PageResources {
         if(spriteResult != UserSprite.Result.Success) {
             UserResourceManager.T2D.Remove(key);
             FinishBusy();
-            SetStatus($"Sprite creation failed: {spriteResult}", UIColors.ObjectActiveMathErr);
+            SetStatus("SPRITE_CREATION_FAILED", "Sprite creation failed: {0}", UIColors.ObjectActiveMathErr, spriteResult);
             return;
         }
 
@@ -419,14 +419,14 @@ internal static class PageResources {
             : (Path: string.Empty, Bytes: (byte[])null, Error: "Font read task failed.");
         if(result.Bytes == null) {
             FinishBusy();
-            SetStatus($"Import failed: {result.Error}", UIColors.ObjectActiveMathErr);
+            SetStatus("IMPORT_FAILED", "Import failed: {0}", UIColors.ObjectActiveMathErr, result.Error);
             return;
         }
 
         var fontResult = UserResourceManager.Fnt.Load(key, result.Path);
         if(fontResult != UserFont.Result.Success || !UserResourceManager.Fnt.TryGet(key, out var fontValue)) {
             FinishBusy();
-            SetStatus($"Font load failed: {fontResult}", UIColors.ObjectActiveMathErr);
+            SetStatus("FONT_LOAD_FAILED", "Font load failed: {0}", UIColors.ObjectActiveMathErr, fontResult);
             return;
         }
 
@@ -444,7 +444,7 @@ internal static class PageResources {
         keyInput.SetBlocked(false);
         browseButton.SetBlocked(false);
         addButton.SetBlocked(false);
-        addButton.Label.text = currentMode == ResourceMode.Images ? "Add Image" : "Add Font";
+        addButton.Label.text = currentMode == ResourceMode.Images ? T("ADD_IMAGE", "Add Image") : T("ADD_FONT", "Add Font");
     }
 
     private static void BeginSettingsApply() {
@@ -454,7 +454,7 @@ internal static class PageResources {
             !UserResourceManager.T2D.TryGetPath(key, out string path) ||
             !File.Exists(path)
         ) {
-            SetStatus("Image file not found.", UIColors.ObjectActiveMathErr);
+            SetStatus("IMAGE_FILE_NOT_FOUND", "Image file not found.", UIColors.ObjectActiveMathErr);
             return;
         }
 
@@ -465,7 +465,7 @@ internal static class PageResources {
             current.settings.MipChain == mipChain &&
             current.settings.Linear == linear
         ) {
-            SetStatus("Settings unchanged.", UIColors.ObjectActive);
+            SetStatus("SETTINGS_UNCHANGED", "Settings unchanged.", UIColors.ObjectActive);
             CancelSettingsEdit();
             return;
         }
@@ -473,8 +473,8 @@ internal static class PageResources {
         busy = true;
         browseButton.SetBlocked(true);
         addButton.SetBlocked(true);
-        addButton.Label.text = "Applying...";
-        SetStatus("Reading image...", UIColors.ObjectActive);
+        addButton.Label.text = T("APPLYING", "Applying...");
+        SetStatus("READING_IMAGE", "Reading image...", UIColors.ObjectActive);
 
         _ = Task.Run(() => {
             try {
@@ -499,7 +499,7 @@ internal static class PageResources {
             : (Bytes: (byte[])null, Error: "Image read task failed.");
         if(result.Bytes == null) {
             FinishSettingsBusy();
-            SetStatus($"Settings failed: {result.Error}", UIColors.ObjectActiveMathErr);
+            SetStatus("SETTINGS_FAILED", "Settings failed: {0}", UIColors.ObjectActiveMathErr, result.Error);
             return;
         }
 
@@ -514,7 +514,7 @@ internal static class PageResources {
             !UserResourceManager.T2D.TryGet(key, out var textureValue)
         ) {
             FinishSettingsBusy();
-            SetStatus($"Settings failed: {textureResult}", UIColors.ObjectActiveMathErr);
+            SetStatus("SETTINGS_FAILED", "Settings failed: {0}", UIColors.ObjectActiveMathErr, textureResult);
             return;
         }
 
@@ -523,7 +523,7 @@ internal static class PageResources {
             !UserResourceManager.Spr.RebuildTexture(key, textureValue.texture)
         ) {
             FinishSettingsBusy();
-            SetStatus("Sprite rebuild failed.", UIColors.ObjectActiveMathErr);
+            SetStatus("SPRITE_REBUILD_FAILED", "Sprite rebuild failed.", UIColors.ObjectActiveMathErr);
             return;
         }
 
@@ -531,14 +531,14 @@ internal static class PageResources {
         busy = false;
         CancelSettingsEdit();
         BuildList();
-        SetStatus("Texture settings applied.", UIColors.ObjectActiveMathOk);
+        SetStatus("TEXTURE_SETTINGS_APPLIED", "Texture settings applied.", UIColors.ObjectActiveMathOk);
     }
 
     private static void FinishSettingsBusy() {
         busy = false;
         browseButton.SetBlocked(false);
         addButton.SetBlocked(false);
-        addButton.Label.text = "Apply Settings";
+        addButton.Label.text = T("APPLY_SETTINGS", "Apply Settings");
     }
 
     private static void EnterSettingsEdit(string key) {
@@ -551,11 +551,11 @@ internal static class PageResources {
         pathInput.SetBlocked(true);
         keyInput.SetBlocked(true);
         browseButton.OnClick = CancelSettingsEdit;
-        browseButton.Label.text = "Cancel";
-        addButton.Label.text = "Apply Settings";
+        browseButton.Label.text = T("CANCEL", "Cancel");
+        addButton.Label.text = T("APPLY_SETTINGS", "Apply Settings");
         mipChainToggle.Set(textureValue.settings.MipChain);
         linearToggle.Set(textureValue.settings.Linear);
-        SetStatus($"Editing {key} texture settings.", UIColors.ObjectActive);
+        SetStatus("EDITING_TEXTURE_SETTINGS", "Editing {0} texture settings.", UIColors.ObjectActive, key);
     }
 
     private static void CancelSettingsEdit() {
@@ -569,7 +569,7 @@ internal static class PageResources {
         keyInput.SetBlocked(false);
         browseButton.OnClick = BeginBrowse;
         FinishBusy();
-        browseButton.Label.text = "Browse";
+        browseButton.Label.text = T("BROWSE", "Browse");
     }
 
     private static void BuildList() {
@@ -594,8 +594,8 @@ internal static class PageResources {
 
         if(keys.Length == 0) {
             string text = currentMode == ResourceMode.Images
-                ? "No images yet. Add one above."
-                : "No fonts yet. Add one above.";
+                ? T("NO_IMAGES_YET", "No images yet. Add one above.")
+                : T("NO_FONTS_YET", "No fonts yet. Add one above.");
             TextMeshProUGUI empty = CreateText(listContent, text, 18f, TextAlignmentOptions.Center);
             empty.color = new Color(1f, 1f, 1f, 0.45f);
             LayoutElement element = empty.gameObject.AddComponent<LayoutElement>();
@@ -612,7 +612,10 @@ internal static class PageResources {
 
     private static void ToggleMode() {
         currentMode = currentMode == ResourceMode.Images ? ResourceMode.Fonts : ResourceMode.Images;
-        titleLabel.text = currentMode == ResourceMode.Images ? "Image Resources" : "Font Resources";
+        titleLabel.text = T(
+            currentMode == ResourceMode.Images ? "IMAGE_RESOURCES" : "FONT_RESOURCES",
+            currentMode == ResourceMode.Images ? "Image Resources" : "Font Resources"
+        );
         titleLabel.GetComponent<TextLocalization>()?.Init(
             currentMode == ResourceMode.Images ? "IMAGE_RESOURCES" : "FONT_RESOURCES",
             currentMode == ResourceMode.Images ? "Image Resources" : "Font Resources"
@@ -622,19 +625,19 @@ internal static class PageResources {
             pathInput.Placeholder.GetComponent<TextLocalization>()?.Init("IMAGE_PATH", "Image path");
             pathInput.Rect.AddToolTip("IMAGE_PATH_TOOLTIP", "Select image file to import.");
             modeButton.Label.GetComponent<TextLocalization>()?.Init("RESOURCE_MODE_IMAGES", "Images");
-            modeButton.Label.text = "Images";
+            modeButton.Label.text = T("RESOURCE_MODE_IMAGES", "Images");
         } else {
             pathInput.Placeholder.GetComponent<TextLocalization>()?.Init("FONT_PATH", "Font path");
             pathInput.Rect.AddToolTip("FONT_PATH_TOOLTIP", "Select font file to import.");
             modeButton.Label.GetComponent<TextLocalization>()?.Init("RESOURCE_MODE_FONTS", "Fonts");
-            modeButton.Label.text = "Fonts";
+            modeButton.Label.text = T("RESOURCE_MODE_FONTS", "Fonts");
         }
 
         addButton.Label.GetComponent<TextLocalization>()?.Init(
             currentMode == ResourceMode.Images ? "ADD_IMAGE" : "ADD_FONT",
             currentMode == ResourceMode.Images ? "Add Image" : "Add Font"
         );
-        addButton.Label.text = currentMode == ResourceMode.Images ? "Add Image" : "Add Font";
+        addButton.Label.text = currentMode == ResourceMode.Images ? T("ADD_IMAGE", "Add Image") : T("ADD_FONT", "Add Font");
 
         if(imageSettingsRow != null) {
             imageSettingsRow.gameObject.SetActive(currentMode == ResourceMode.Images);
@@ -675,7 +678,7 @@ internal static class PageResources {
         image.color = UIColors.PanelBG;
         image.raycastTarget = true;
 
-        TextMeshProUGUI message = CreateText(disabledPanel.transform, "Only available when the Mod is Enabled!", 24f, TextAlignmentOptions.Center);
+        TextMeshProUGUI message = CreateText(disabledPanel.transform, T("ONLY_AVAILABLE_WHEN_ENABLED", "Only available when the Mod is Enabled!"), 24f, TextAlignmentOptions.Center);
         message.rectTransform.anchorMin = Vector2.zero;
         message.rectTransform.anchorMax = Vector2.one;
         message.rectTransform.offsetMin = Vector2.zero;
@@ -727,7 +730,7 @@ internal static class PageResources {
             key,
             key,
             _ => { },
-            "Resource name",
+            T("RESOURCE_NAME", "Resource name"),
             null,
             "rename_" + key
         );
@@ -751,7 +754,7 @@ internal static class PageResources {
         details.rectTransform.offsetMin = new Vector2(116f, 14f);
         details.rectTransform.offsetMax = new Vector2(-324f, 0f);
 
-        UIButton settings = GenerateUI.Button(card, () => EnterSettingsEdit(key), "Settings", "settings_" + key);
+        UIButton settings = GenerateUI.Button(card, () => EnterSettingsEdit(key), T("SETTINGS", "Settings"), "settings_" + key);
         PlaceRight(settings.Rect, 100f, 54f, 216f);
         settings.Label.fontSize = 15f;
         settings.Label.gameObject.AddComponent<TextLocalization>().Init("SETTINGS", "Settings");
@@ -759,10 +762,12 @@ internal static class PageResources {
         UIButton rename = GenerateUI.Button(card, () => { }, "Rename", "rename_button_" + key);
         PlaceRight(rename.Rect, 100f, 54f, 108f);
         rename.Label.fontSize = 15f;
+        rename.Label.gameObject.AddComponent<TextLocalization>().Init("RENAME", "Rename");
 
         UIButton remove = GenerateUI.Button(card, () => { }, "Remove", "remove_" + key);
         PlaceRight(remove.Rect, 100f, 54f);
         remove.Label.fontSize = 15f;
+        remove.Label.gameObject.AddComponent<TextLocalization>().Init("REMOVE", "Remove");
         bool confirm = false;
         bool editing = false;
         rename.OnClick = () => {
@@ -772,10 +777,10 @@ internal static class PageResources {
                 name.gameObject.SetActive(false);
                 renameInput.Set(key, false);
                 renameInput.Rect.gameObject.SetActive(true);
-                rename.Label.text = "Save";
+                rename.Label.text = T("SAVE", "Save");
                 rename.NormalColor = UIColors.ObjectActive;
                 rename.UpdateVisual();
-                remove.Label.text = "Cancel";
+                remove.Label.text = T("CANCEL", "Cancel");
                 remove.NormalColor = UIColors.ObjectButton;
                 remove.UpdateVisual();
                 renameInput.InputField.Select();
@@ -784,7 +789,7 @@ internal static class PageResources {
             }
 
             if(Rename(key, renameInput.Value)) {
-                SetStatus($"Renamed {key}.", UIColors.ObjectActiveMathOk);
+                SetStatus("RENAMED_RESOURCE", "Renamed {0}.", UIColors.ObjectActiveMathOk, key);
                 BuildList();
             }
         };
@@ -793,16 +798,16 @@ internal static class PageResources {
                 editing = false;
                 renameInput.Rect.gameObject.SetActive(false);
                 name.gameObject.SetActive(true);
-                rename.Label.text = "Rename";
+                rename.Label.text = T("RENAME", "Rename");
                 rename.NormalColor = UIColors.ObjectButton;
                 rename.UpdateVisual();
-                remove.Label.text = "Remove";
+                remove.Label.text = T("REMOVE", "Remove");
                 return;
             }
 
             if(!confirm) {
                 confirm = true;
-                remove.Label.text = "Confirm";
+                remove.Label.text = T("CONFIRM", "Confirm");
                 remove.NormalColor = UIColors.SoftRed;
                 remove.UpdateVisual();
                 return;
@@ -827,7 +832,8 @@ internal static class PageResources {
         background.type = Image.Type.Sliced;
         background.color = UIColors.ObjectBG;
 
-        TextMeshProUGUI sample = CreateText(card, "The quick brown fox jumps over the lazy dog", 20f, TextAlignmentOptions.Left);
+        TextMeshProUGUI sample = CreateText(card, T("SAMPLE_TEXT", "The quick brown fox jumps over the lazy dog"), 20f, TextAlignmentOptions.Left);
+        sample.gameObject.AddComponent<TextLocalization>().Init("SAMPLE_TEXT", "The quick brown fox jumps over the lazy dog");
         sample.rectTransform.anchorMin = new Vector2(0f, 0.5f);
         sample.rectTransform.anchorMax = new Vector2(1f, 1f);
         sample.rectTransform.offsetMin = new Vector2(16f, -4f);
@@ -846,7 +852,7 @@ internal static class PageResources {
             key,
             key,
             _ => { },
-            "Resource name",
+            T("RESOURCE_NAME", "Resource name"),
             null,
             "rename_" + key
         );
@@ -873,10 +879,12 @@ internal static class PageResources {
         UIButton rename = GenerateUI.Button(card, () => { }, "Rename", "rename_button_" + key);
         PlaceRight(rename.Rect, 100f, 54f, 108f);
         rename.Label.fontSize = 15f;
+        rename.Label.gameObject.AddComponent<TextLocalization>().Init("RENAME", "Rename");
 
         UIButton remove = GenerateUI.Button(card, () => { }, "Remove", "remove_" + key);
         PlaceRight(remove.Rect, 100f, 54f);
         remove.Label.fontSize = 15f;
+        remove.Label.gameObject.AddComponent<TextLocalization>().Init("REMOVE", "Remove");
         bool confirm = false;
         bool editing = false;
         rename.OnClick = () => {
@@ -886,10 +894,10 @@ internal static class PageResources {
                 name.gameObject.SetActive(false);
                 renameInput.Set(key, false);
                 renameInput.Rect.gameObject.SetActive(true);
-                rename.Label.text = "Save";
+                rename.Label.text = T("SAVE", "Save");
                 rename.NormalColor = UIColors.ObjectActive;
                 rename.UpdateVisual();
-                remove.Label.text = "Cancel";
+                remove.Label.text = T("CANCEL", "Cancel");
                 remove.NormalColor = UIColors.ObjectButton;
                 remove.UpdateVisual();
                 renameInput.InputField.Select();
@@ -899,25 +907,25 @@ internal static class PageResources {
 
             string newKey = SanitizeKey(renameInput.Value);
             if(string.IsNullOrWhiteSpace(newKey)) {
-                SetStatus("Enter a resource name.", UIColors.ObjectActiveMathErr);
+                SetStatus("ENTER_RESOURCE_NAME", "Enter a resource name.", UIColors.ObjectActiveMathErr);
                 return;
             }
             if(string.Equals(key, newKey, StringComparison.Ordinal)) {
-                SetStatus("Name unchanged.", UIColors.ObjectActive);
+                SetStatus("NAME_UNCHANGED", "Name unchanged.", UIColors.ObjectActive);
                 return;
             }
             if(UserResourceManager.Fnt.Keys.Contains(newKey)) {
-                SetStatus("Resource name already exists.", UIColors.ObjectActiveMathErr);
+                SetStatus("RESOURCE_NAME_ALREADY_EXISTS", "Resource name already exists.", UIColors.ObjectActiveMathErr);
                 return;
             }
 
             if(!UserResourceManager.Fnt.TryRenameKey(key, newKey)) {
-                SetStatus("Resource rename failed.", UIColors.ObjectActiveMathErr);
+                SetStatus("RESOURCE_RENAME_FAILED", "Resource rename failed.", UIColors.ObjectActiveMathErr);
                 return;
             }
 
             UserResourceManager.Config.RequestSave(50);
-            SetStatus($"Renamed {key} to {newKey}.", UIColors.ObjectActiveMathOk);
+            SetStatus("RENAMED_RESOURCE_TO", "Renamed {0} to {1}.", UIColors.ObjectActiveMathOk, key, newKey);
             BuildList();
         };
         remove.OnClick = () => {
@@ -925,16 +933,16 @@ internal static class PageResources {
                 editing = false;
                 renameInput.Rect.gameObject.SetActive(false);
                 name.gameObject.SetActive(true);
-                rename.Label.text = "Rename";
+                rename.Label.text = T("RENAME", "Rename");
                 rename.NormalColor = UIColors.ObjectButton;
                 rename.UpdateVisual();
-                remove.Label.text = "Remove";
+                remove.Label.text = T("REMOVE", "Remove");
                 return;
             }
 
             if(!confirm) {
                 confirm = true;
-                remove.Label.text = "Confirm";
+                remove.Label.text = T("CONFIRM", "Confirm");
                 remove.NormalColor = UIColors.SoftRed;
                 remove.UpdateVisual();
                 return;
@@ -944,7 +952,7 @@ internal static class PageResources {
             UserResourceManager.Fnt.Remove(key);
             UserResourceManager.Config.RequestSave(50);
             BuildList();
-            SetStatus($"Removed {key}.", UIColors.ObjectActiveMathOk);
+            SetStatus("RESOURCE_REMOVED", "Removed {0}.", UIColors.ObjectActiveMathOk, key);
 
             if(!string.IsNullOrEmpty(filePath) && filePath.StartsWith(MainCore.Paths.UserFontPath, StringComparison.OrdinalIgnoreCase)) {
                 _ = Task.Run(() => {
@@ -959,18 +967,18 @@ internal static class PageResources {
     private static bool Rename(string oldKey, string value) {
         string newKey = SanitizeKey(value);
         if(string.IsNullOrWhiteSpace(newKey)) {
-            SetStatus("Enter a resource name.", UIColors.ObjectActiveMathErr);
+            SetStatus("ENTER_RESOURCE_NAME", "Enter a resource name.", UIColors.ObjectActiveMathErr);
             return false;
         }
         if(string.Equals(oldKey, newKey, StringComparison.Ordinal)) {
-            SetStatus("Name unchanged.", UIColors.ObjectActive);
+            SetStatus("NAME_UNCHANGED", "Name unchanged.", UIColors.ObjectActive);
             return false;
         }
         if(
             UserResourceManager.T2D.Keys.Contains(newKey) ||
             UserResourceManager.Spr.Keys.Contains(newKey)
         ) {
-            SetStatus("Resource name already exists.", UIColors.ObjectActiveMathErr);
+            SetStatus("RESOURCE_NAME_ALREADY_EXISTS", "Resource name already exists.", UIColors.ObjectActiveMathErr);
             return false;
         }
 
@@ -985,7 +993,7 @@ internal static class PageResources {
             if(hasTexture && textureRenamed) {
                 UserResourceManager.T2D.TryRenameKey(newKey, oldKey);
             }
-            SetStatus("Resource rename failed.", UIColors.ObjectActiveMathErr);
+            SetStatus("RESOURCE_RENAME_FAILED", "Resource rename failed.", UIColors.ObjectActiveMathErr);
             return false;
         }
 
@@ -993,7 +1001,7 @@ internal static class PageResources {
             UserResourceManager.Spr.RenameTextureKey(oldKey, newKey);
         }
         if(!hasTexture && !hasSprite) {
-            SetStatus("Resource not found.", UIColors.ObjectActiveMathErr);
+            SetStatus("RESOURCE_NOT_FOUND", "Resource not found.", UIColors.ObjectActiveMathErr);
             return false;
         }
 
@@ -1014,7 +1022,7 @@ internal static class PageResources {
         }
         UserResourceManager.Config.RequestSave(50);
         BuildList();
-        SetStatus($"Removed {key}.", UIColors.ObjectActiveMathOk);
+        SetStatus("RESOURCE_REMOVED", "Removed {0}.", UIColors.ObjectActiveMathOk, key);
 
         if(path.StartsWith(MainCore.Paths.UserImagePath, StringComparison.OrdinalIgnoreCase)) {
             _ = Task.Run(() => {
@@ -1028,6 +1036,14 @@ internal static class PageResources {
         char[] invalid = Path.GetInvalidFileNameChars();
         string result = new(value.Trim().Select(c => invalid.Contains(c) ? '_' : c).ToArray());
         return result.Trim().Trim('.', ' ');
+    }
+
+    private static string T(string key, string defaultValue, params object[] args) {
+        return string.Format(MainCore.Tr.Get(key, defaultValue), args);
+    }
+
+    private static void SetStatus(string key, string defaultValue, Color color, params object[] args) {
+        SetStatus(T(key, defaultValue, args), color);
     }
 
     private static void SetStatus(string text, Color color) {

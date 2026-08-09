@@ -431,5 +431,11 @@ FodyWeavers.xsd
 #InteliJ
 .idea
 
-# Overlayer
+# Overlayer build settings
 Directory.Build.props
+
+# Overlayer language sync log files
+.ktl
+
+# Overlayer build output
+.build

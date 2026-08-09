@@ -701,6 +701,34 @@ public static partial class GenerateUI {
             }
         });
 
+        UnityUtils.AddEvents(
+            trigger,
+            (
+                EventTriggerType.PointerUp,
+                e => {
+#pragma warning disable IDE0019
+                    var ped =
+#pragma warning restore IDE0019
+#if ML && IL2CPP
+                        e.TryCast<PointerEventData>();
+#else
+                        e as PointerEventData;
+#endif
+                    
+                    if(ped == null || ped.button != InputButton.Left) {
+                        return;
+                    }
+
+                    if(EventSystem.current) {
+                        EventSystem.current.SetSelectedGameObject(null);
+                    }
+
+                    inputField.Select();
+                    inputField.ActivateInputField();
+                }
+            )
+        );
+
         return input;
     }
 
