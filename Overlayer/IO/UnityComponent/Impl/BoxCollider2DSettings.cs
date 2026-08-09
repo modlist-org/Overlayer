@@ -10,7 +10,7 @@ public class BoxCollider2DSettings : UnityComponentSettingsBase, ICopyable<BoxCo
     public Vector2 Offset = Vector2.zero;
     public bool IsTrigger = false;
     public bool UsedByEffector = false;
-    public bool UsedByComposite = false;
+    public Collider2D.CompositeOperation CompositeOperation = Collider2D.CompositeOperation.None;
     public float EdgeRadius = 0f;
 
     public override bool ToUnity(GameObject target) {
@@ -23,7 +23,7 @@ public class BoxCollider2DSettings : UnityComponentSettingsBase, ICopyable<BoxCo
         com.offset = Offset;
         com.isTrigger = IsTrigger;
         com.usedByEffector = UsedByEffector;
-        com.usedByComposite = UsedByComposite;
+        com.compositeOperation = CompositeOperation;
         com.edgeRadius = EdgeRadius;
 
         return true;
@@ -39,7 +39,7 @@ public class BoxCollider2DSettings : UnityComponentSettingsBase, ICopyable<BoxCo
         Offset = com.offset;
         IsTrigger = com.isTrigger;
         UsedByEffector = com.usedByEffector;
-        UsedByComposite = com.usedByComposite;
+        CompositeOperation = com.compositeOperation;
         EdgeRadius = com.edgeRadius;
 
         return true;
@@ -51,7 +51,7 @@ public class BoxCollider2DSettings : UnityComponentSettingsBase, ICopyable<BoxCo
             [nameof(Offset)] =IOUtils.Write(Offset),
             [nameof(IsTrigger)] = IsTrigger,
             [nameof(UsedByEffector)] = UsedByEffector,
-            [nameof(UsedByComposite)] = UsedByComposite,
+            [nameof(CompositeOperation)] = IOUtils.WriteEnum(CompositeOperation),
             [nameof(EdgeRadius)] = EdgeRadius
         };
     }
@@ -61,7 +61,7 @@ public class BoxCollider2DSettings : UnityComponentSettingsBase, ICopyable<BoxCo
         Offset = IOUtils.Read(token, nameof(Offset), Offset);
         IsTrigger = IOUtils.Read(token, nameof(IsTrigger), IsTrigger);
         UsedByEffector = IOUtils.Read(token, nameof(UsedByEffector), UsedByEffector);
-        UsedByComposite = IOUtils.Read(token, nameof(UsedByComposite), UsedByComposite);
+        CompositeOperation = IOUtils.ReadEnum(token, nameof(CompositeOperation), CompositeOperation);
         EdgeRadius = IOUtils.Read(token, nameof(EdgeRadius), EdgeRadius);
     }
 
@@ -71,7 +71,7 @@ public class BoxCollider2DSettings : UnityComponentSettingsBase, ICopyable<BoxCo
             Offset = Offset,
             IsTrigger = IsTrigger,
             UsedByEffector = UsedByEffector,
-            UsedByComposite = UsedByComposite,
+            CompositeOperation = CompositeOperation,
             EdgeRadius = EdgeRadius
         };
     }

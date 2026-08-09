@@ -29,8 +29,8 @@ public class Rigidbody2DSettings : UnityComponentSettingsBase, ICopyable<Rigidbo
         com.simulated = Simulated;
         com.useAutoMass = UseAutoMass;
         com.mass = Mass;
-        com.drag = LinearDamping;
-        com.angularDrag = AngularDamping;
+        com.linearDamping = LinearDamping;
+        com.angularDamping = AngularDamping;
         com.gravityScale = GravityScale;
         com.collisionDetectionMode = CollisionDetectionMode;
         com.sleepMode = SleepMode;

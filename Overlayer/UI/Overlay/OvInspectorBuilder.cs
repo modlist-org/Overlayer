@@ -347,7 +347,7 @@ internal sealed class OvInspectorBuilder(
         Vector2Sliders(card, "Offset", Vector2.zero, -1024f, 1024f, () => cfg.Offset, value => cfg.Offset = value, "box_collider_offset", "F1");
         Toggle(card, "Is Trigger", false, cfg.IsTrigger, value => cfg.IsTrigger = value, "box_collider_trigger");
         Toggle(card, "Used By Effector", false, cfg.UsedByEffector, value => cfg.UsedByEffector = value, "box_collider_effector");
-        Toggle(card, "Used By Composite", false, cfg.UsedByComposite, value => cfg.UsedByComposite = value, "box_collider_composite");
+        EnumDropDown(card, "Composite Operation", Collider2D.CompositeOperation.None, cfg.CompositeOperation, value => cfg.CompositeOperation = value, "box_collider_composite");
         Slider(card, "Edge Radius", 0f, 0f, 100f, cfg.EdgeRadius, value => cfg.EdgeRadius = value, "box_collider_edge_radius", "F2");
     }
 
@@ -403,8 +403,6 @@ internal sealed class OvInspectorBuilder(
                 case "Image": obj.Config.ImageConfig = new ImageSettings(); break;
                 case "Moving Man": obj.Config.MovingManConfig = new MovingManSettings(); break;
                 case "Color Range": obj.Config.ColorRangeConfig = new ColorRangeSettings(); break;
-                case "Box Collider 2D": obj.Config.BoxCollider2DConfig = new BoxCollider2DSettings(); break;
-                case "Rigidbody 2D": obj.Config.Rigidbody2DConfig = new Rigidbody2DSettings(); break;
                 case "Shadow": obj.Config.ShadowConfig = new ShadowSettings(); break;
                 case "Outline": obj.Config.OutlineConfig = new OutlineSettings(); break;
                 case "Mask": obj.Config.MaskConfig = new MaskSettings(); break;
