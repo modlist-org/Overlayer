@@ -262,7 +262,9 @@
 		<Copy SourceFiles="@(ExportFiles)" DestinationFiles="@(ExportFiles->'$(GamePath)/UserData/Overlayer/%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
 
         <PropertyGroup>
-            <BuildOutputDir>$(MSBuildProjectDirectory)\.build\$(Configuration)</BuildOutputDir>
+            <SolutionRoot Condition="'$(SolutionDir)' != ''">$(SolutionDir)</SolutionRoot>
+            <SolutionRoot Condition="'$(SolutionDir)' == ''">$(MSBuildProjectDirectory)\..\</SolutionRoot>
+            <BuildOutputDir>$(SolutionRoot)\.build\$(Configuration)\$(TargetName)</BuildOutputDir>
         </PropertyGroup>
         <MakeDir Directories="$(BuildOutputDir)\Mods" Condition="'$(TargetPath)' != ''" />
         <Copy Condition="'$(TargetPath)' != ''" SourceFiles="$(TargetPath)" DestinationFolder="$(BuildOutputDir)\Mods" SkipUnchangedFiles="true" />
