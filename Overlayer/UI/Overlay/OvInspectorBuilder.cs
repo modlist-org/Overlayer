@@ -139,8 +139,12 @@ internal sealed class OvInspectorBuilder(
         RectTransformSettings cfg = obj.Config.RectTransformConfig;
         var (_, basic) = Card("Rect Transform", false);
         Action refreshPositionFields = null;
+        Action refreshPivotFields = null;
         RectTransform rectLayout = CompactRow(basic, 92f, 6f);
-        Action refreshAnchor = AnchorPresetControl(rectLayout, obj, () => refreshPositionFields?.Invoke());
+        Action refreshAnchor = AnchorPresetControl(rectLayout, obj, () => {
+            refreshPositionFields?.Invoke();
+            refreshPivotFields?.Invoke();
+        });
         refreshPositionFields = BuildRectPositionFields(rectLayout, obj);
 
         NumericPropertyRow(basic, "Position", [
@@ -156,7 +160,7 @@ internal sealed class OvInspectorBuilder(
             ("Y", 1f, () => cfg.Scale.y, value => cfg.Scale.y = value, "rect_scale_y"),
             ("Z", 1f, () => cfg.Scale.z, value => cfg.Scale.z = value, "rect_scale_z")
         ], "F2");
-        NumericPropertyRow(basic, "Pivot", [
+        refreshPivotFields = NumericPropertyRow(basic, "Pivot", [
             ("X", 0.5f, () => cfg.Pivot.x, value => cfg.Pivot.x = value, "rect_pivot_x"),
             ("Y", 0.5f, () => cfg.Pivot.y, value => cfg.Pivot.y = value, "rect_pivot_y")
         ], "F2");
@@ -176,8 +180,12 @@ internal sealed class OvInspectorBuilder(
         RectTransformSettings cfg = canvas.Config.RectTransformConfig;
         var (_, basic) = Card("Rect Transform", false);
         Action refreshPositionFields = null;
+        Action refreshPivotFields = null;
         RectTransform rectLayout = CompactRow(basic, 92f, 6f);
-        Action refreshAnchor = AnchorPresetControl(rectLayout, cfg, canvas.RectTransform, () => refreshPositionFields?.Invoke());
+        Action refreshAnchor = AnchorPresetControl(rectLayout, cfg, canvas.RectTransform, () => {
+            refreshPositionFields?.Invoke();
+            refreshPivotFields?.Invoke();
+        });
         refreshPositionFields = BuildRectPositionFields(rectLayout, cfg);
 
         NumericPropertyRow(basic, "Position", [
@@ -193,7 +201,7 @@ internal sealed class OvInspectorBuilder(
             ("Y", 1f, () => cfg.Scale.y, value => cfg.Scale.y = value, "canvas_rect_scale_y"),
             ("Z", 1f, () => cfg.Scale.z, value => cfg.Scale.z = value, "canvas_rect_scale_z")
         ], "F2");
-        NumericPropertyRow(basic, "Pivot", [
+        refreshPivotFields = NumericPropertyRow(basic, "Pivot", [
             ("X", 0.5f, () => cfg.Pivot.x, value => cfg.Pivot.x = value, "canvas_rect_pivot_x"),
             ("Y", 0.5f, () => cfg.Pivot.y, value => cfg.Pivot.y = value, "canvas_rect_pivot_y")
         ], "F2");
@@ -1030,7 +1038,7 @@ internal sealed class OvInspectorBuilder(
         Slider(parent, $"{label} Y", defaults.y, min, max, get().y, value => set(new Vector2(get().x, value)), id + "_y", format);
     }
 
-    private void NumericPropertyRow(
+    private Action NumericPropertyRow(
         Transform parent,
         string label,
         (string Label, float Default, Func<float> Get, Action<float> Set, string Id)[] fields,
@@ -1038,9 +1046,19 @@ internal sealed class OvInspectorBuilder(
     ) {
         RectTransform row = CompactRow(parent, 44f, 6f);
         FixedLabel(row, label, 66f);
+        var numericFields = new List<(UISlider Field, Func<float> Get)>();
         foreach(var field in fields) {
-            NumericField(row, field.Label, field.Default, field.Get, field.Set, field.Id, format);
+            numericFields.Add(NumericField(row, field.Label, field.Default, field.Get, field.Set, field.Id, format));
         }
+
+        void RefreshValues() {
+            foreach(var field in numericFields) {
+                SetDisplayedValue(field.Field, field.Get());
+            }
+        }
+
+        RefreshValues();
+        return RefreshValues;
     }
 
     private (UISlider Field, Func<float> Get) NumericField(
