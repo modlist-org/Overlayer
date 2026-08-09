@@ -115,62 +115,62 @@
     </ItemGroup>
 	
 	<ItemGroup Condition="$(Configuration.Contains('IL2CPP'))">
-        <Reference Include="Il2Cppmscorlib"><HintPath>$(Il2CppPath)/Il2Cppmscorlib.dll</HintPath></Reference>
-        <Reference Include="Unity.Addressables"><HintPath>$(Il2CppPath)/Unity.Addressables.dll</HintPath></Reference>
-        <Reference Include="Unity.Burst"><HintPath>$(Il2CppPath)/Unity.Burst.dll</HintPath></Reference>
-        <Reference Include="Unity.Burst.Unsafe"><HintPath>$(Il2CppPath)/Unity.Burst.Unsafe.dll</HintPath></Reference>
-        <Reference Include="Unity.Collections"><HintPath>$(Il2CppPath)/Unity.Collections.dll</HintPath></Reference>
-        <Reference Include="Unity.Collections.LowLevel.ILSupport"><HintPath>$(Il2CppPath)/Unity.Collections.LowLevel.ILSupport.dll</HintPath></Reference>
-        <Reference Include="Unity.Mathematics"><HintPath>$(Il2CppPath)/Unity.Mathematics.dll</HintPath></Reference>
-        <Reference Include="Unity.MemoryProfiler"><HintPath>$(Il2CppPath)/Unity.MemoryProfiler.dll</HintPath></Reference>
-        <Reference Include="Unity.ResourceManager"><HintPath>$(Il2CppPath)/Unity.ResourceManager.dll</HintPath></Reference>
-        <Reference Include="Unity.TextMeshPro"><HintPath>$(Il2CppPath)/Unity.TextMeshPro.dll</HintPath></Reference>
-        <Reference Include="UnityEngine"><HintPath>$(Il2CppPath)/UnityEngine.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.AccessibilityModule"><HintPath>$(Il2CppPath)/UnityEngine.AccessibilityModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.AIModule"><HintPath>$(Il2CppPath)/UnityEngine.AIModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.AndroidJNIModule"><HintPath>$(Il2CppPath)/UnityEngine.AndroidJNIModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.AnimationModule"><HintPath>$(Il2CppPath)/UnityEngine.AnimationModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.AssetBundleModule"><HintPath>$(Il2CppPath)/UnityEngine.AssetBundleModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.AudioModule"><HintPath>$(Il2CppPath)/UnityEngine.AudioModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.ClothModule"><HintPath>$(Il2CppPath)/UnityEngine.ClothModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.ContentLoadModule"><HintPath>$(Il2CppPath)/UnityEngine.ContentLoadModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.CoreModule"><HintPath>$(Il2CppPath)/UnityEngine.CoreModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.CrashReportingModule"><HintPath>$(Il2CppPath)/UnityEngine.CrashReportingModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.DirectorModule"><HintPath>$(Il2CppPath)/UnityEngine.DirectorModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.DSPGraphModule"><HintPath>$(Il2CppPath)/UnityEngine.DSPGraphModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.GameCenterModule"><HintPath>$(Il2CppPath)/UnityEngine.GameCenterModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.GIModule"><HintPath>$(Il2CppPath)/UnityEngine.GIModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.GridModule"><HintPath>$(Il2CppPath)/UnityEngine.GridModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.HotReloadModule"><HintPath>$(Il2CppPath)/UnityEngine.HotReloadModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.ImageConversionModule"><HintPath>$(Il2CppPath)/UnityEngine.ImageConversionModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.IMGUIModule"><HintPath>$(Il2CppPath)/UnityEngine.IMGUIModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.InputLegacyModule"><HintPath>$(Il2CppPath)/UnityEngine.InputLegacyModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.InputModule"><HintPath>$(Il2CppPath)/UnityEngine.InputModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.JSONSerializeModule"><HintPath>$(Il2CppPath)/UnityEngine.JSONSerializeModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.LocalizationModule"><HintPath>$(Il2CppPath)/UnityEngine.LocalizationModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.ParticleSystemModule"><HintPath>$(Il2CppPath)/UnityEngine.ParticleSystemModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.PerformanceReportingModule"><HintPath>$(Il2CppPath)/UnityEngine.PerformanceReportingModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.Physics2DModule"><HintPath>$(Il2CppPath)/UnityEngine.Physics2DModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.PhysicsModule"><HintPath>$(Il2CppPath)/UnityEngine.PhysicsModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.PropertiesModule"><HintPath>$(Il2CppPath)/UnityEngine.PropertiesModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.RuntimeInitializeOnLoadManagerInitializerModule"><HintPath>$(Il2CppPath)/UnityEngine.RuntimeInitializeOnLoadManagerInitializerModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.ScreenCaptureModule"><HintPath>$(Il2CppPath)/UnityEngine.ScreenCaptureModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.SharedInternalsModule"><HintPath>$(Il2CppPath)/UnityEngine.SharedInternalsModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.SpriteMaskModule"><HintPath>$(Il2CppPath)/UnityEngine.SpriteMaskModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.SpriteShapeModule"><HintPath>$(Il2CppPath)/UnityEngine.SpriteShapeModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.StreamingModule"><HintPath>$(Il2CppPath)/UnityEngine.StreamingModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.SubstanceModule"><HintPath>$(Il2CppPath)/UnityEngine.SubstanceModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.SubsystemsModule"><HintPath>$(Il2CppPath)/UnityEngine.SubsystemsModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.TerrainModule"><HintPath>$(Il2CppPath)/UnityEngine.TerrainModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.TerrainPhysicsModule"><HintPath>$(Il2CppPath)/UnityEngine.TerrainPhysicsModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.TextCoreFontEngineModule"><HintPath>$(Il2CppPath)/UnityEngine.TextCoreFontEngineModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.TextCoreTextEngineModule"><HintPath>$(Il2CppPath)/UnityEngine.TextCoreTextEngineModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.TextRenderingModule"><HintPath>$(Il2CppPath)/UnityEngine.TextRenderingModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.TilemapModule"><HintPath>$(Il2CppPath)/UnityEngine.TilemapModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.TLSModule"><HintPath>$(Il2CppPath)/UnityEngine.TLSModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.UI"><HintPath>$(Il2CppPath)/UnityEngine.UI.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.UIElementsModule"><HintPath>$(Il2CppPath)/UnityEngine.UIElementsModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.UIModule"><HintPath>$(Il2CppPath)/UnityEngine.UIModule.dll</HintPath></Reference>
+        <Reference Include="Il2Cppmscorlib"><HintPath>$(Il2CppPath)/$(Il2CppData)/Il2Cppmscorlib.dll</HintPath></Reference>
+        <Reference Include="Unity.Addressables"><HintPath>$(Il2CppPath)/$(Il2CppData)/Unity.Addressables.dll</HintPath></Reference>
+        <Reference Include="Unity.Burst"><HintPath>$(Il2CppPath)/$(Il2CppData)/Unity.Burst.dll</HintPath></Reference>
+        <Reference Include="Unity.Burst.Unsafe"><HintPath>$(Il2CppPath)/$(Il2CppData)/Unity.Burst.Unsafe.dll</HintPath></Reference>
+        <Reference Include="Unity.Collections"><HintPath>$(Il2CppPath)/$(Il2CppData)/Unity.Collections.dll</HintPath></Reference>
+        <Reference Include="Unity.Collections.LowLevel.ILSupport"><HintPath>$(Il2CppPath)/$(Il2CppData)/Unity.Collections.LowLevel.ILSupport.dll</HintPath></Reference>
+        <Reference Include="Unity.Mathematics"><HintPath>$(Il2CppPath)/$(Il2CppData)/Unity.Mathematics.dll</HintPath></Reference>
+        <Reference Include="Unity.MemoryProfiler"><HintPath>$(Il2CppPath)/$(Il2CppData)/Unity.MemoryProfiler.dll</HintPath></Reference>
+        <Reference Include="Unity.ResourceManager"><HintPath>$(Il2CppPath)/$(Il2CppData)/Unity.ResourceManager.dll</HintPath></Reference>
+        <Reference Include="Unity.TextMeshPro"><HintPath>$(Il2CppPath)/$(Il2CppData)/Unity.TextMeshPro.dll</HintPath></Reference>
+        <Reference Include="UnityEngine"><HintPath>$(Il2CppPath)/$(Il2CppData)/UnityEngine.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.AccessibilityModule"><HintPath>$(Il2CppPath)/$(Il2CppData)/UnityEngine.AccessibilityModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.AIModule"><HintPath>$(Il2CppPath)/$(Il2CppData)/UnityEngine.AIModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.AndroidJNIModule"><HintPath>$(Il2CppPath)/$(Il2CppData)/UnityEngine.AndroidJNIModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.AnimationModule"><HintPath>$(Il2CppPath)/$(Il2CppData)/UnityEngine.AnimationModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.AssetBundleModule"><HintPath>$(Il2CppPath)/$(Il2CppData)/UnityEngine.AssetBundleModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.AudioModule"><HintPath>$(Il2CppPath)/$(Il2CppData)/UnityEngine.AudioModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.ClothModule"><HintPath>$(Il2CppPath)/$(Il2CppData)/UnityEngine.ClothModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.ContentLoadModule"><HintPath>$(Il2CppPath)/$(Il2CppData)/UnityEngine.ContentLoadModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.CoreModule"><HintPath>$(Il2CppPath)/$(Il2CppData)/UnityEngine.CoreModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.CrashReportingModule"><HintPath>$(Il2CppPath)/$(Il2CppData)/UnityEngine.CrashReportingModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.DirectorModule"><HintPath>$(Il2CppPath)/$(Il2CppData)/UnityEngine.DirectorModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.DSPGraphModule"><HintPath>$(Il2CppPath)/$(Il2CppData)/UnityEngine.DSPGraphModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.GameCenterModule"><HintPath>$(Il2CppPath)/$(Il2CppData)/UnityEngine.GameCenterModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.GIModule"><HintPath>$(Il2CppPath)/$(Il2CppData)/UnityEngine.GIModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.GridModule"><HintPath>$(Il2CppPath)/$(Il2CppData)/UnityEngine.GridModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.HotReloadModule"><HintPath>$(Il2CppPath)/$(Il2CppData)/UnityEngine.HotReloadModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.ImageConversionModule"><HintPath>$(Il2CppPath)/$(Il2CppData)/UnityEngine.ImageConversionModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.IMGUIModule"><HintPath>$(Il2CppPath)/$(Il2CppData)/UnityEngine.IMGUIModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.InputLegacyModule"><HintPath>$(Il2CppPath)/$(Il2CppData)/UnityEngine.InputLegacyModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.InputModule"><HintPath>$(Il2CppPath)/$(Il2CppData)/UnityEngine.InputModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.JSONSerializeModule"><HintPath>$(Il2CppPath)/$(Il2CppData)/UnityEngine.JSONSerializeModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.LocalizationModule"><HintPath>$(Il2CppPath)/$(Il2CppData)/UnityEngine.LocalizationModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.ParticleSystemModule"><HintPath>$(Il2CppPath)/$(Il2CppData)/UnityEngine.ParticleSystemModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.PerformanceReportingModule"><HintPath>$(Il2CppPath)/$(Il2CppData)/UnityEngine.PerformanceReportingModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.Physics2DModule"><HintPath>$(Il2CppPath)/$(Il2CppData)/UnityEngine.Physics2DModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.PhysicsModule"><HintPath>$(Il2CppPath)/$(Il2CppData)/UnityEngine.PhysicsModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.PropertiesModule"><HintPath>$(Il2CppPath)/$(Il2CppData)/UnityEngine.PropertiesModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.RuntimeInitializeOnLoadManagerInitializerModule"><HintPath>$(Il2CppPath)/$(Il2CppData)/UnityEngine.RuntimeInitializeOnLoadManagerInitializerModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.ScreenCaptureModule"><HintPath>$(Il2CppPath)/$(Il2CppData)/UnityEngine.ScreenCaptureModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.SharedInternalsModule"><HintPath>$(Il2CppPath)/$(Il2CppData)/UnityEngine.SharedInternalsModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.SpriteMaskModule"><HintPath>$(Il2CppPath)/$(Il2CppData)/UnityEngine.SpriteMaskModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.SpriteShapeModule"><HintPath>$(Il2CppPath)/$(Il2CppData)/UnityEngine.SpriteShapeModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.StreamingModule"><HintPath>$(Il2CppPath)/$(Il2CppData)/UnityEngine.StreamingModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.SubstanceModule"><HintPath>$(Il2CppPath)/$(Il2CppData)/UnityEngine.SubstanceModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.SubsystemsModule"><HintPath>$(Il2CppPath)/$(Il2CppData)/UnityEngine.SubsystemsModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.TerrainModule"><HintPath>$(Il2CppPath)/$(Il2CppData)/UnityEngine.TerrainModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.TerrainPhysicsModule"><HintPath>$(Il2CppPath)/$(Il2CppData)/UnityEngine.TerrainPhysicsModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.TextCoreFontEngineModule"><HintPath>$(Il2CppPath)/$(Il2CppData)/UnityEngine.TextCoreFontEngineModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.TextCoreTextEngineModule"><HintPath>$(Il2CppPath)/$(Il2CppData)/UnityEngine.TextCoreTextEngineModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.TextRenderingModule"><HintPath>$(Il2CppPath)/$(Il2CppData)/UnityEngine.TextRenderingModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.TilemapModule"><HintPath>$(Il2CppPath)/$(Il2CppData)/UnityEngine.TilemapModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.TLSModule"><HintPath>$(Il2CppPath)/$(Il2CppData)/UnityEngine.TLSModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.UI"><HintPath>$(Il2CppPath)/$(Il2CppData)/UnityEngine.UI.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.UIElementsModule"><HintPath>$(Il2CppPath)/$(Il2CppData)/UnityEngine.UIElementsModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.UIModule"><HintPath>$(Il2CppPath)/$(Il2CppData)/UnityEngine.UIModule.dll</HintPath></Reference>
     </ItemGroup>
 
 	<PropertyGroup>
@@ -231,14 +231,21 @@
 	</ItemGroup>
 
 	<Target Name="PostBuild" AfterTargets="Build">
-		<MakeDir Directories="$(GamePath)/Mods" Condition="'$(TargetPath)' != ''" />
-		<Copy Condition="'$(TargetPath)' != ''" SourceFiles="$(TargetPath)" DestinationFolder="$(GamePath)/Mods" SkipUnchangedFiles="true" />
+		<PropertyGroup>
+			<TargetGamePath Condition="$(Configuration.Contains('IL2CPP'))">$(Il2CppPath)</TargetGamePath>
+			<TargetGamePath Condition="!$(Configuration.Contains('IL2CPP'))">$(GamePath)</TargetGamePath>
+			<TargetGameData Condition="$(Configuration.Contains('IL2CPP'))">$(Il2CppData)</TargetGameData>
+			<TargetGameData Condition="!$(Configuration.Contains('IL2CPP'))">$(GameData)</TargetGameData>
+		</PropertyGroup>
+
+		<MakeDir Directories="$(TargetGamePath)/Mods" Condition="'$(TargetPath)' != ''" />
+		<Copy Condition="'$(TargetPath)' != ''" SourceFiles="$(TargetPath)" DestinationFolder="$(TargetGamePath)/Mods" SkipUnchangedFiles="true" />
 
 		<ItemGroup>
 			<NuGetUserLibs Include="@(ReferenceCopyLocalPaths)"
-				Condition="'%(ReferenceCopyLocalPaths.NuGetPackageId)' != '' And !Exists('$(GamePath)/$(GameData)/Managed/%(ReferenceCopyLocalPaths.Filename)%(ReferenceCopyLocalPaths.Extension)')" />
+				Condition="'%(ReferenceCopyLocalPaths.NuGetPackageId)' != '' And !Exists('$(TargetGamePath)/$(TargetGameData)/Managed/%(ReferenceCopyLocalPaths.Filename)%(ReferenceCopyLocalPaths.Extension)')" />
 			<NuGetUserLibs Include="@(RuntimeTargetsCopyLocalItems)"
-				Condition="'%(RuntimeTargetsCopyLocalItems.NuGetPackageId)' != '' And '%(RuntimeTargetsCopyLocalItems.AssetType)' == 'native' And !Exists('$(GamePath)/$(GameData)/Managed/%(RuntimeTargetsCopyLocalItems.Filename)%(RuntimeTargetsCopyLocalItems.Extension)')" />
+				Condition="'%(RuntimeTargetsCopyLocalItems.NuGetPackageId)' != '' And '%(RuntimeTargetsCopyLocalItems.AssetType)' == 'native' And !Exists('$(TargetGamePath)/$(TargetGameData)/Managed/%(RuntimeTargetsCopyLocalItems.Filename)%(RuntimeTargetsCopyLocalItems.Extension)')" />
 
 			<NuGetUserLibs Remove="@(NuGetUserLibs)"
 				Condition="'%(Filename)' == 'NCalc' Or '%(Filename)' == 'NCalc.Core' Or '%(Filename)' == 'NCalc.Domain' Or '%(Filename)' == 'NCalc.Parser' Or '%(Filename)' == 'Parlot' Or '%(Filename)' == 'System.Collections.Immutable'" />
@@ -251,26 +258,26 @@
 			<NuGetUserLibs Include="@(NativeFileDialogNative)" />
 		</ItemGroup>
 		<Copy SourceFiles="@(NuGetUserLibs)" DestinationFolder="$(TargetDir)" SkipUnchangedFiles="true" />
-		<MakeDir Directories="$(GamePath)/UserLibs" Condition="'@(NuGetUserLibs)' != ''" />
-		<Copy SourceFiles="@(NuGetUserLibs)" DestinationFolder="$(GamePath)/UserLibs" SkipUnchangedFiles="true" />
+		<MakeDir Directories="$(TargetGamePath)/UserLibs" Condition="'@(NuGetUserLibs)' != ''" />
+		<Copy SourceFiles="@(NuGetUserLibs)" DestinationFolder="$(TargetGamePath)/UserLibs" SkipUnchangedFiles="true" />
 
 		<ItemGroup>
 			<ExportFiles Include="Resource/Export/**/*.*" />
 		</ItemGroup>
 
-		<MakeDir Directories="$(GamePath)/UserData/Overlayer" />
-		<Copy SourceFiles="@(ExportFiles)" DestinationFiles="@(ExportFiles->'$(GamePath)/UserData/Overlayer/%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+		<MakeDir Directories="$(TargetGamePath)/UserData/Overlayer" />
+		<Copy SourceFiles="@(ExportFiles)" DestinationFiles="@(ExportFiles->'$(TargetGamePath)/UserData/Overlayer/%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
 
-        <PropertyGroup>
-            <SolutionRoot Condition="'$(SolutionDir)' != ''">$(SolutionDir)</SolutionRoot>
-            <SolutionRoot Condition="'$(SolutionDir)' == ''">$(MSBuildProjectDirectory)\..\</SolutionRoot>
-            <BuildOutputDir>$(SolutionRoot)\.build\$(Configuration)\$(TargetName)</BuildOutputDir>
-        </PropertyGroup>
-        <MakeDir Directories="$(BuildOutputDir)\Mods" Condition="'$(TargetPath)' != ''" />
-        <Copy Condition="'$(TargetPath)' != ''" SourceFiles="$(TargetPath)" DestinationFolder="$(BuildOutputDir)\Mods" SkipUnchangedFiles="true" />
-        <MakeDir Directories="$(BuildOutputDir)\UserLibs" Condition="'@(NuGetUserLibs)' != ''" />
-        <Copy SourceFiles="@(NuGetUserLibs)" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" />
-        <MakeDir Directories="$(BuildOutputDir)\UserData\Overlayer" />
-        <Copy SourceFiles="@(ExportFiles)" DestinationFiles="@(ExportFiles->'$(BuildOutputDir)\UserData\Overlayer\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
-    </Target>
+		<PropertyGroup>
+			<SolutionRoot Condition="'$(SolutionDir)' != ''">$(SolutionDir)</SolutionRoot>
+			<SolutionRoot Condition="'$(SolutionDir)' == ''">$(MSBuildProjectDirectory)\..\</SolutionRoot>
+			<BuildOutputDir>$(SolutionRoot)\.build\$(Configuration)\$(TargetName)</BuildOutputDir>
+		</PropertyGroup>
+		<MakeDir Directories="$(BuildOutputDir)\Mods" Condition="'$(TargetPath)' != ''" />
+		<Copy Condition="'$(TargetPath)' != ''" SourceFiles="$(TargetPath)" DestinationFolder="$(BuildOutputDir)\Mods" SkipUnchangedFiles="true" />
+		<MakeDir Directories="$(BuildOutputDir)\UserLibs" Condition="'@(NuGetUserLibs)' != ''" />
+		<Copy SourceFiles="@(NuGetUserLibs)" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" />
+		<MakeDir Directories="$(BuildOutputDir)\UserData\Overlayer" />
+		<Copy SourceFiles="@(ExportFiles)" DestinationFiles="@(ExportFiles->'$(BuildOutputDir)\UserData\Overlayer\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+	</Target>
 </Project>

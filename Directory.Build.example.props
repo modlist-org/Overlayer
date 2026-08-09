@@ -3,14 +3,20 @@
     <PropertyGroup>
         <!--
             Windows (Steam)
-            C:/Program Files (x86)/Steam/steamapps/common/A Dance of Fire and Ice/
-
+            C:/Program Files (x86)/Steam/steamapps/common/A Dance of Fire and Ice
             Linux (Steam)
-            ~/.local/share/Steam/steamapps/common/A Dance of Fire and Ice/
+            ~/.local/share/Steam/steamapps/common/A Dance of Fire and Ice
         -->
-        <GamePath>/path/to/game/</GamePath>
+        <GamePath>/path/to/game</GamePath>
+        <GameData>game_Data</GameData>
 
-        <!-- On Linux, the GameData folder name must be 'ADanceofFireandIce_Data' -->
-        <GameData>A Dance of Fire and Ice_Data</GameData>
+        <!--
+            IL2CPP Configurations (Optional)
+            Uncomment and specify paths below when building with IL2CPP configurations:
+        -->
+        <!--
+            <Il2CppPath>/path/to/il2cpp/game</Il2CppPath>
+            <Il2CppData>il2cppgame_Data</Il2CppData>
+        -->
     </PropertyGroup>
 </Project>
