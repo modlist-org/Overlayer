@@ -210,24 +210,31 @@ internal static class PageSettings {
         objects[startupToggleTr] = (overlayerText.gameObject, startupRow.gameObject);
 
         var tooltipRow = GenerateUI.Row(content.transform);
-        var tooltipToggle = GenerateUI.Toggle(
-            tooltipRow,
-            defSet.Tooltip,
-            MainCore.Conf.Tooltip,
-            toggle => {
-                Tooltip.Hide();
-                MainCore.Conf.Tooltip = toggle;
-                MainCore.ConfMgr.RequestSave();
-            },
-            "Show Tooltip",
-            "show_tooltip"
-        );
-        tooltipToggle.Rect.AddToolTip(
-            "DESC_SHOW_TOOLTIP",
-            "This is a Tooltip!"
-        );
+        var tooltipToggle = GenerateUI.Toggle(tooltipRow, defSet.Tooltip, MainCore.Conf.Tooltip, null, "Show Tooltip", "show_tooltip");
+        var advTooltipRow = GenerateUI.Row(content.transform);
+        var advTooltipToggle = GenerateUI.Toggle(advTooltipRow, defSet.AdvancedTooltip, MainCore.Conf.AdvancedTooltip, null, "Show Advanced Tooltip", "show_advanced_tooltip");
+        tooltipToggle.OnChanged = toggle => {
+            Tooltip.Hide();
+            MainCore.Conf.Tooltip = toggle;
+            MainCore.ConfMgr.RequestSave();
+
+            advTooltipToggle.SetBlocked(!toggle);
+        };
+        advTooltipToggle.OnChanged = toggle => {
+            Tooltip.Hide();
+            MainCore.Conf.AdvancedTooltip = toggle;
+            MainCore.ConfMgr.RequestSave();
+        };
+        tooltipToggle.Rect.AddToolTip("DESC_SHOW_TOOLTIP", "This is a Tooltip!");
         var tooltipToggleTr = tooltipToggle.Label.gameObject.AddComponent<TextLocalization>().Init("SHOW_TOOLTIP", "Show Tooltip");
         objects[tooltipToggleTr] = (overlayerText.gameObject, tooltipRow.gameObject);
+        advTooltipToggle.Rect.AddToolTip(
+            "DESC_SHOW_ADVANCED_TOOLTIP",
+            "Additionally displays developer-written notes, technical implementation details, and inner mechanics in tooltips.\nRecommended for anyone curious about how features work under the hood."
+        );
+        var advTooltipToggleTr = advTooltipToggle.Label.gameObject.AddComponent<TextLocalization>().Init("SHOW_ADVANCED_TOOLTIP", "Show Advanced Tooltip");
+        objects[advTooltipToggleTr] = (overlayerText.gameObject, advTooltipRow.gameObject);
+        advTooltipToggle.SetBlocked(!MainCore.Conf.Tooltip);
 
         var middleClickRow = GenerateUI.Row(content.transform);
         UIToggle middleClickToggle = GenerateUI.Toggle(

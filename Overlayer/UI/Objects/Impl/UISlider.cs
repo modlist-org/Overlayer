@@ -19,16 +19,16 @@ namespace Overlayer.UI.Objects.Impl;
 
 public class UISlider : UIObject {
     public float DefaultValue { get; private set; }
-    public float Min;
-    public float Max;
+    public float Min { get; set; }
+    public float Max { get; set; }
     public float Value { get; private set; }
     public string Format { get; set; }
     public bool UseInputClamp { get; set; }
     public bool ShowFill { get; set; } = true;
 
-    public Action<float> OnChanged;
-    public Action<float> OnComplete;
-    public Func<float, float> Filter;
+    public Action<float> OnChanged { get; set; }
+    public Action<float> OnComplete { get; set; }
+    public Func<float, float> Filter { get; set; }
     public RectTransform FillRect { get; }
     public Image FillImage { get; }
     public TextMeshProUGUI Label { get; }

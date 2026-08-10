@@ -18,7 +18,7 @@ namespace Overlayer.UI.Objects.Impl;
 public class UIToggle : UIObject {
     public bool DefaultValue { get; }
     public bool Value { get; private set; }
-    public Action<bool> OnChanged { get; }
+    public Action<bool> OnChanged;
     public TextMeshProUGUI Label { get; }
     public Image CircleImage { get; }
     public Image ChangedImage { get; }
