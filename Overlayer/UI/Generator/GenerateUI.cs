@@ -1045,6 +1045,15 @@ public static partial class GenerateUI {
         tr ??= MainCore.Tr;
         return parent.AddToolTipInternal(() => tr.Get(key, def));
     }
+    
+    public static Transform AddToolTipWithAdv(this Transform parent, string key, string def, string advKey, string advDef, Translator tr = null) {
+        tr ??= MainCore.Tr;
+        return parent.AddToolTipInternal(() => 
+            MainCore.Conf.AdvancedTooltip
+                ? $"{tr.Get(key, def)}\n{tr.Get(advKey, advDef)}"
+                : tr.Get(key, def)
+        );
+    }
 
     public static Transform AddToolTip(this Transform parent, string tip)
         => parent.AddToolTipInternal(() => tip);
