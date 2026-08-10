@@ -625,7 +625,7 @@ internal sealed class OvInspectorBuilder(
     private string ComponentText(string key, string fallback) =>
         InspectorText($"COMPONANT_{componentKey}_{key}", InspectorText($"INSPECTOR_{key}", fallback));
 
-    private static string InspectorLabel(string label) {
+    private string InspectorLabel(string label) {
         if(string.IsNullOrEmpty(label)) {
             return label;
         }
