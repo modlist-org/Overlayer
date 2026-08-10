@@ -24,7 +24,7 @@ public class UIDropDown<T> : UIObject {
     public T Value { get; private set; }
     public IReadOnlyList<T> Values { get; private set; }
     public Func<T, string> Display { get; }
-    public Action<T> OnChanged { get; }
+    public Action<T> OnChanged { get; set; }
     public TextMeshProUGUI Label { get; }
     public Image TriangleImage { get; }
     public RectTransform TriangleRect { get; }

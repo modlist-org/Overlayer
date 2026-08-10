@@ -9,6 +9,7 @@ public sealed class CoreSettings : ISettingsFile {
     public bool IsFirstRun = true;
     public bool ShowOnStartup = false;
     public bool Tooltip = true;
+    public bool AdvancedTooltip = false;
     public bool MiddleClickToDefault = true;
     public float UIScale = 1.0f;
     public float SliderSensitivity = 1.0f;
@@ -21,6 +22,7 @@ public sealed class CoreSettings : ISettingsFile {
             [nameof(IsFirstRun)] = IsFirstRun,
             [nameof(ShowOnStartup)] = ShowOnStartup,
             [nameof(Tooltip)] = Tooltip,
+            [nameof(AdvancedTooltip)] = AdvancedTooltip,
             [nameof(MiddleClickToDefault)] = MiddleClickToDefault,
             [nameof(UIScale)] = UIScale,
             [nameof(SliderSensitivity)] = SliderSensitivity,
@@ -34,6 +36,7 @@ public sealed class CoreSettings : ISettingsFile {
         IsFirstRun = IOUtils.Read(token, nameof(IsFirstRun), IsFirstRun);
         ShowOnStartup = IOUtils.Read(token, nameof(ShowOnStartup), ShowOnStartup);
         Tooltip = IOUtils.Read(token, nameof(Tooltip), Tooltip);
+        AdvancedTooltip = IOUtils.Read(token, nameof(AdvancedTooltip), AdvancedTooltip);
         MiddleClickToDefault = IOUtils.Read(token, nameof(MiddleClickToDefault), MiddleClickToDefault);
         UIScale = IOUtils.Read(token, nameof(UIScale), UIScale);
         SliderSensitivity = IOUtils.Read(token, nameof(SliderSensitivity), SliderSensitivity);

@@ -16,8 +16,8 @@ namespace Overlayer.UI.Objects.Impl;
 
 public class UIInputCore {
     public string Value { get; private set; }
-    public Action<string> OnChanged { get; }
-    public Action<string> OnEndEdit { get; }
+    public Action<string> OnChanged { get; set; }
+    public Action<string> OnEndEdit { get; set; }
     public TMP_InputField InputField { get; }
     public TextMeshProUGUI Placeholder { get; }
 
