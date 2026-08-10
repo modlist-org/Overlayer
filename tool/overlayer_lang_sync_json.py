@@ -10,8 +10,9 @@ import json
 import glob
 from datetime import datetime
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-TARGET_DIR = os.path.join(BASE_DIR, "Overlayer", "Resource", "Export", "Lang")
+BASE_DIR = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+OVERLAYER_DIR = os.path.join(BASE_DIR, "Overlayer")
+LANG_DIR = os.path.join(OVERLAYER_DIR, "Resource", "Export", "Lang")
 LOG_DIR = os.path.join(BASE_DIR, ".ktl")
 
 def process_language_files():
@@ -27,13 +28,13 @@ def process_language_files():
         print(message)
 
     log(f"Starting localization JSON synchronization at: {datetime.now()}")
-    log(f"Target directory: {TARGET_DIR}\n")
+    log(f"Target directory: {LANG_DIR}\n")
 
-    if not os.path.exists(TARGET_DIR):
-        log(f"Error: Target directory '{TARGET_DIR}' does not exist.")
+    if not os.path.exists(LANG_DIR):
+        log(f"Error: Target directory '{LANG_DIR}' does not exist.")
         return
 
-    json_files = glob.glob(os.path.join(TARGET_DIR, "*.json"))
+    json_files = glob.glob(os.path.join(LANG_DIR, "*.json"))
     valid_files = {}
 
     for filepath in json_files:
