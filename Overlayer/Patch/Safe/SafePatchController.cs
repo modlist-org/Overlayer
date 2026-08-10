@@ -1,5 +1,4 @@
-﻿#nullable enable
-using Overlayer.Core;
+﻿using Overlayer.Core;
 
 namespace Overlayer.Patch.Safe;
 
@@ -30,14 +29,8 @@ public static class SafePatchController {
         MainCore.Log.Msg($"[{nameof(SafePatchController)}] unloaded patch: {patch.GetType().Name}");
     }
 
-    public static T? Get<T>() where T : SafeConditionalPatch {
-        foreach(var patch in patches) {
-            if(patch is T typed) {
-                return typed;
-            }
-        }
-
-        return null;
+    public static T[] Get<T>() where T : SafeConditionalPatch {
+        return [.. patches.OfType<T>()];
     }
 
     public static void ApplyAll() {
