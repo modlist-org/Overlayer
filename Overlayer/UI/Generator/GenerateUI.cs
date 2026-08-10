@@ -1041,36 +1041,39 @@ public static partial class GenerateUI {
         return obj;
     }
 
-    public static Transform AddToolTip(this Transform parent, string key, string def, Translator tr = null) {
-        tr ??= MainCore.Tr;
-        return parent.AddToolTipInternal(() => tr.Get(key, def));
-    }
-    
-    public static Transform AddToolTipWithAdv(this Transform parent, string key, string def, string advKey, string advDef, Translator tr = null) {
-        tr ??= MainCore.Tr;
-        return parent.AddToolTipInternal(() => 
-            MainCore.Conf.AdvancedTooltip
-                ? $"{tr.Get(key, def)}\n{tr.Get(advKey, advDef)}"
-                : tr.Get(key, def)
-        );
-    }
+    extension(Transform parent)
+    {
+        public Transform AddToolTip(string key, string def, Translator tr = null) {
+            tr ??= MainCore.Tr;
+            return parent.AddToolTipInternal(() => tr.Get(key, def));
+        }
 
-    public static Transform AddToolTip(this Transform parent, string tip)
-        => parent.AddToolTipInternal(() => tip);
+        public Transform AddToolTipWithAdv(string key, string def, string advKey, string advDef, Translator tr = null) {
+            tr ??= MainCore.Tr;
+            return parent.AddToolTipInternal(() => 
+                MainCore.Conf.AdvancedTooltip
+                    ? $"{tr.Get(key, def)}\n{tr.Get(advKey, advDef)}"
+                    : tr.Get(key, def)
+            );
+        }
 
-    public static Transform AddToolTip(this Transform parent, Func<string> getText)
-        => parent.AddToolTipInternal(getText);
+        public Transform AddToolTip(string tip)
+            => parent.AddToolTipInternal(() => tip);
 
-    private static Transform AddToolTipInternal(this Transform parent, Func<string> getText) {
-        EventTrigger trigger = parent.gameObject.GetComponent<EventTrigger>()
-            ?? parent.gameObject.AddComponent<EventTrigger>();
+        public Transform AddToolTip(Func<string> getText)
+            => parent.AddToolTipInternal(getText);
 
-        UnityUtils.AddEvents(trigger,
-            (EventTriggerType.PointerEnter, () => Tooltip.Show(getText())),
-            (EventTriggerType.PointerExit, Tooltip.Hide)
-        );
+        private Transform AddToolTipInternal(Func<string> getText) {
+            EventTrigger trigger = parent.gameObject.GetComponent<EventTrigger>()
+                                   ?? parent.gameObject.AddComponent<EventTrigger>();
 
-        return parent;
+            UnityUtils.AddEvents(trigger,
+                (EventTriggerType.PointerEnter, () => Tooltip.Show(getText())),
+                (EventTriggerType.PointerExit, Tooltip.Hide)
+            );
+
+            return parent;
+        }
     }
 
     public static (RectTransform cardRect, RectTransform contentRect) ComponentCard(
