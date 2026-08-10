@@ -24,7 +24,8 @@ public enum MovingManTarget {
     ScaleX = 1 << 7,
     ScaleY = 1 << 8,
     ScaleZ = 1 << 9,
-    SizeDelta = 1 << 10
+    SizeDeltaX = 1 << 10,
+    SizeDeltaY = 1 << 11
 }
 
 #if ML && IL2CPP
@@ -92,8 +93,11 @@ public sealed class MovingManComponent
         if(Target.HasFlag(MovingManTarget.ScaleZ)) {
             SetScale(2, floatValue);
         }
-        if(Target.HasFlag(MovingManTarget.SizeDelta)) {
-            Rect.sizeDelta = new Vector2(floatValue, floatValue);
+        if(Target.HasFlag(MovingManTarget.SizeDeltaX)) {
+            SetSizeDelta(0, floatValue);
+        }
+        if(Target.HasFlag(MovingManTarget.SizeDeltaY)) {
+            SetSizeDelta(1, floatValue);
         }
     }
 
@@ -113,6 +117,12 @@ public sealed class MovingManComponent
         Vector3 scale = Rect.localScale;
         scale[axis] = value;
         Rect.localScale = scale;
+    }
+
+    private void SetSizeDelta(int axis, float value) {
+        Vector2 sizeDelta = Rect.sizeDelta;
+        sizeDelta[axis] = value;
+        Rect.sizeDelta = sizeDelta;
     }
 }
 

@@ -91,9 +91,20 @@ public sealed class MovingManSettings : UnityComponentSettingsBase, ICopyable<Mo
         var value = token[nameof(Target)];
         if(value?.Type == JTokenType.Integer) {
             int legacyValue = value.Value<int>();
+            if((legacyValue & (1 << 10)) != 0) {
+                return (MovingManTarget)(legacyValue | (1 << 11));
+            }
             if(legacyValue is >= 0 and <= 9) {
                 return (MovingManTarget)(1 << legacyValue);
             }
+        }
+
+        if(value?.Type == JTokenType.String && string.Equals(
+            value.Value<string>(),
+            "SizeDelta",
+            StringComparison.OrdinalIgnoreCase
+        )) {
+            return MovingManTarget.SizeDeltaX | MovingManTarget.SizeDeltaY;
         }
 
         return IOUtils.ReadEnum(token, nameof(Target), fallback);

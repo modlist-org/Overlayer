@@ -39,7 +39,6 @@ public class UIMultiDropDown<T> : UIObject where T : struct, Enum {
 
     private GTween triangleSeq, changeSeq;
     public GTween LayoutSeq { get; set; }
-    private readonly List<GTween> itemHoverTweens = [];
     private readonly List<Image> selectionImages = [];
 
     public UIMultiDropDown(
@@ -163,10 +162,6 @@ public class UIMultiDropDown<T> : UIObject where T : struct, Enum {
             return;
         }
 
-        foreach(var tween in itemHoverTweens) {
-            tween?.Kill();
-        }
-        itemHoverTweens.Clear();
         selectionImages.Clear();
 
         for(int i = ListObject.transform.childCount - 1; i >= 0; i--) {
@@ -206,29 +201,9 @@ public class UIMultiDropDown<T> : UIObject where T : struct, Enum {
             selectionImages.Add(selectedImage);
 
             EventTrigger trigger = row.AddComponent<EventTrigger>();
-            GTween hoverSeq = null;
+            GenerateUI.AddOutlineHover(row, trigger);
 
             UnityUtils.AddEvents(trigger,
-                (EventTriggerType.PointerEnter, (e) => {
-                    hoverSeq?.Kill();
-                    itemHoverTweens.Remove(hoverSeq);
-                    hoverSeq = GTweenSequenceBuilder.New()
-                        .Append(rowImage.GTColor(UIColors.ObjectActive, 0.12f).SetEasing(Easing.OutSine))
-                        .Build();
-                    itemHoverTweens.Add(hoverSeq);
-                    MainCore.TC.Play(hoverSeq);
-                }
-            ),
-                (EventTriggerType.PointerExit, (e) => {
-                    hoverSeq?.Kill();
-                    itemHoverTweens.Remove(hoverSeq);
-                    hoverSeq = GTweenSequenceBuilder.New()
-                        .Append(rowImage.GTColor(Color.clear, 0.12f).SetEasing(Easing.OutSine))
-                        .Build();
-                    itemHoverTweens.Add(hoverSeq);
-                    MainCore.TC.Play(hoverSeq);
-                }
-            ),
                 (EventTriggerType.PointerClick, (e) => {
 #pragma warning disable IDE0019
                     PointerEventData pointerData =
@@ -257,7 +232,7 @@ public class UIMultiDropDown<T> : UIObject where T : struct, Enum {
                 HasFlag(Value, Values[i]) ? UISprite.Circle256 : UISprite.ToggleCircle128
             );
             selectionImages[i].color = HasFlag(Value, Values[i])
-                ? UIColors.ObjectActiveBright
+                ? UIColors.ObjectActive
                 : UIColors.ObjectInactive;
         }
     }
@@ -285,10 +260,6 @@ public class UIMultiDropDown<T> : UIObject where T : struct, Enum {
         changeSeq = null;
         LayoutSeq = null;
         OnLayoutChanged = null;
-        foreach(var tween in itemHoverTweens) {
-            tween?.Kill();
-        }
-        itemHoverTweens.Clear();
         selectionImages.Clear();
         base.Dispose();
     }
