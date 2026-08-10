@@ -48,7 +48,7 @@
     "IMAGE_SELECTED_ADD_IMAGE": "Image selected. Choose Add Image.",
     "IMPORT_FAILED": "Import failed: {0}",
     "INSPECTOR": "Inspector",
-    "COMPONANT_TEXT": "Text",
+    "COMPONANT_TEXT": "Text (TMPro)",
     "COMPONANT_IMAGE": "Image",
     "COMPONANT_MOVING_MAN": "Moving Man",
     "COMPONANT_COLOR_RANGE": "Color Range",
