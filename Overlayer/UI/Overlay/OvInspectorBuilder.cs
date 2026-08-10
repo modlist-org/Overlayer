@@ -531,15 +531,7 @@ internal sealed class OvInspectorBuilder(
         if(obj.Config.TextConfig != null && obj.Config.ColorRangeConfig == null) {
             options.Add("Color Range");
         }
-#if !IL2CPP
-        if(obj.Config.BoxCollider2DConfig == null) {
-            options.Add("Box Collider 2D");
-        }
-
-        if(obj.Config.Rigidbody2DConfig == null) {
-            options.Add("Rigidbody 2D");
-        }
-#endif
+        
         if(obj.Config.ShadowConfig == null) {
             options.Add("Shadow");
         }
