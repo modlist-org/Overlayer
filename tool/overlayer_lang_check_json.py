@@ -15,12 +15,24 @@ BASE_DIR = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file_
 OVERLAYER_DIR = os.path.normpath(os.path.join(BASE_DIR, "Overlayer"))
 LANG_DIR = os.path.normpath(os.path.join(OVERLAYER_DIR, "Resource", "Export", "Lang"))
 LOG_DIR = os.path.normpath(os.path.join(BASE_DIR, ".ktl"))
+IGNORED_KEYS = {"0KTL", "0TRANSLATORS"}
+
+literal_pattern = re.compile(r'(?<![\w])"([A-Za-z0-9_][A-Za-z0-9_ /.\-]*)"')
+code_editor_label_pattern = re.compile(r'\bCodeEditor\(\s*[^,]+,\s*"([^"]+)"')
+vector2_label_pattern = re.compile(r'\bVector2Sliders\(\s*[^,]+,\s*"([^"]+)"')
+component_label_pattern = re.compile(r'\bComponentCard\(\s*"([^"]+)"')
+
+def inspector_key(label):
+    return "INSPECTOR_" + label.replace(" / ", "_").replace(" ", "_").replace(".", "").upper()
+
+def component_key(label):
+    return "COMPONANT_" + label.replace(" ", "_").upper()
 
 def check_language_keys():
     os.makedirs(LOG_DIR, exist_ok=True)
     log_filename = f"ktl_check_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
     log_file_path = os.path.join(LOG_DIR, log_filename)
-    
+
     log_entries = []
     def log(message):
         log_entries.append(message)
@@ -47,14 +59,20 @@ def check_language_keys():
         print("Error: Could not load 'en-US' key baseline from JSON files.")
         return
 
-    valid_en_keys = en_keys - {"0KTL"}
+    valid_en_keys = en_keys - IGNORED_KEYS
 
     cs_files = glob.glob(os.path.join(OVERLAYER_DIR, "**", "*.cs"), recursive=True)
     
     code_referenced_keys = set()
     key_locations = {}  # key -> list of 'filename:line_num'
-    
-    str_pattern = re.compile(r'[$@]*"((?:[^"\\]|\\.)*)"')
+
+    def add_reference(key, location):
+        if key not in valid_en_keys:
+            return
+        code_referenced_keys.add(key)
+        locations = key_locations.setdefault(key, [])
+        if location not in locations:
+            locations.append(location)
 
     for cs_path in cs_files:
         rel_path = os.path.relpath(cs_path, OVERLAYER_DIR)
@@ -65,13 +83,27 @@ def check_language_keys():
                     if stripped.startswith("//") or stripped.startswith("/*"):
                         continue
                     
-                    matches = str_pattern.findall(line)
+                    matches = literal_pattern.findall(line)
+                    generated_keys = []
                     for match in matches:
-                        if match in valid_en_keys:
-                            code_referenced_keys.add(match)
-                            if match not in key_locations:
-                                key_locations[match] = []
-                            key_locations[match].append(f"{rel_path}:{line_idx}")
+                        generated_keys.append(inspector_key(match))
+                        add_reference(match, f"{rel_path}:{line_idx}")
+
+                    if "CodeEditor(" in line:
+                        generated_keys.extend(
+                            inspector_key(f"{label} / tag expression")
+                            for label in code_editor_label_pattern.findall(line)
+                        )
+
+                    if "Vector2Sliders(" in line:
+                        for label in vector2_label_pattern.findall(line):
+                            generated_keys.extend((inspector_key(f"{label} X"), inspector_key(f"{label} Y")))
+
+                    if "ComponentCard(" in line:
+                        generated_keys.extend(component_key(label) for label in component_label_pattern.findall(line))
+
+                    for key in generated_keys:
+                        add_reference(key, f"{rel_path}:{line_idx}")
                             
         except Exception as e:
             log(f"Failed to process CS file '{cs_path}': {e}")
