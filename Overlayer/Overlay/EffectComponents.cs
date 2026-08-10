@@ -11,17 +11,20 @@ using TMPro;
 
 namespace Overlayer.Overlay;
 
+[Flags]
 public enum MovingManTarget {
-    TextSize,
-    PositionX,
-    PositionY,
-    PositionZ,
-    RotationX,
-    RotationY,
-    RotationZ,
-    ScaleX,
-    ScaleY,
-    ScaleZ
+    None = 0,
+    TextSize = 1 << 0,
+    PositionX = 1 << 1,
+    PositionY = 1 << 2,
+    PositionZ = 1 << 3,
+    RotationX = 1 << 4,
+    RotationY = 1 << 5,
+    RotationZ = 1 << 6,
+    ScaleX = 1 << 7,
+    ScaleY = 1 << 8,
+    ScaleZ = 1 << 9,
+    SizeDelta = 1 << 10
 }
 
 #if ML && IL2CPP
@@ -56,39 +59,41 @@ public sealed class MovingManComponent
         }
 
         double value = Effects.MovingMan(TagName, StartSize, EndSize, DefaultSize, Speed, Invert, Ease);
-        switch(Target) {
-            case MovingManTarget.TextSize:
-                Text?.fontSize = Mathf.Max(0f, (float)value);
-                break;
-            case MovingManTarget.PositionX:
-                SetPosition(0, (float)value);
-                break;
-            case MovingManTarget.PositionY:
-                SetPosition(1, (float)value);
-                break;
-            case MovingManTarget.PositionZ:
-                Vector3 position = Rect.anchoredPosition3D;
-                position.z = (float)value;
-                Rect.anchoredPosition3D = position;
-                break;
-            case MovingManTarget.RotationX:
-                SetRotation(0, (float)value);
-                break;
-            case MovingManTarget.RotationY:
-                SetRotation(1, (float)value);
-                break;
-            case MovingManTarget.RotationZ:
-                SetRotation(2, (float)value);
-                break;
-            case MovingManTarget.ScaleX:
-                SetScale(0, (float)value);
-                break;
-            case MovingManTarget.ScaleY:
-                SetScale(1, (float)value);
-                break;
-            case MovingManTarget.ScaleZ:
-                SetScale(2, (float)value);
-                break;
+        float floatValue = (float)value;
+        if(Target.HasFlag(MovingManTarget.TextSize)) {
+            Text?.fontSize = Mathf.Max(0f, floatValue);
+        }
+        if(Target.HasFlag(MovingManTarget.PositionX)) {
+            SetPosition(0, floatValue);
+        }
+        if(Target.HasFlag(MovingManTarget.PositionY)) {
+            SetPosition(1, floatValue);
+        }
+        if(Target.HasFlag(MovingManTarget.PositionZ)) {
+            Vector3 position = Rect.anchoredPosition3D;
+            position.z = floatValue;
+            Rect.anchoredPosition3D = position;
+        }
+        if(Target.HasFlag(MovingManTarget.RotationX)) {
+            SetRotation(0, floatValue);
+        }
+        if(Target.HasFlag(MovingManTarget.RotationY)) {
+            SetRotation(1, floatValue);
+        }
+        if(Target.HasFlag(MovingManTarget.RotationZ)) {
+            SetRotation(2, floatValue);
+        }
+        if(Target.HasFlag(MovingManTarget.ScaleX)) {
+            SetScale(0, floatValue);
+        }
+        if(Target.HasFlag(MovingManTarget.ScaleY)) {
+            SetScale(1, floatValue);
+        }
+        if(Target.HasFlag(MovingManTarget.ScaleZ)) {
+            SetScale(2, floatValue);
+        }
+        if(Target.HasFlag(MovingManTarget.SizeDelta)) {
+            Rect.sizeDelta = new Vector2(floatValue, floatValue);
         }
     }
 

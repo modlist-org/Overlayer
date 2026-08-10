@@ -44,6 +44,7 @@ internal sealed class OvInspectorBuilder(
     private readonly Action save = save;
     private readonly Action rebuild = rebuild;
     private readonly Action hierarchyChanged = hierarchyChanged;
+    private string componentKey;
 
     public void BuildCanvas(OvCanvas canvas, Action<string> nameChanged) {
         var (_, identity) = Card("Canvas", false);
@@ -116,6 +117,7 @@ internal sealed class OvInspectorBuilder(
             BuildMask(obj, obj.Config.MaskConfig);
         }
         if(obj.Config.HasRectMask2D) {
+            componentKey = "RECT_MASK_2D";
             var (_, rectMask) = GenerateUI.ComponentCard(content, InspectorLabel("Rect Mask 2D"), obj.Config.RectMask2DEnabled, value => {
                 obj.Config.RectMask2DEnabled = value;
                 ApplyAndSave();
@@ -124,7 +126,9 @@ internal sealed class OvInspectorBuilder(
                 obj.Config.RectMask2DEnabled = true;
                 RefreshComponents(obj);
             });
-            Label(rectMask, InspectorText("INSPECTOR_RECT_MASK_DESCRIPTION", "Clips child graphics to this object's rectangle."));
+            Label(rectMask, InspectorText(
+                "COMPONANT_RECT_MASK_2D_DESCRIPTION",
+                InspectorText("INSPECTOR_RECT_MASK_DESCRIPTION", "Clips child graphics to this object's rectangle.")));
         }
 #if !IL2CPP
         if(obj.Config.BoxCollider2DConfig != null) {
@@ -366,13 +370,50 @@ internal sealed class OvInspectorBuilder(
         });
 
         Input(card, "Target Tag", null, cfg.TagName, value => cfg.TagName = value, "moving_man_tag");
-        EnumDropDown(card, "Target", MovingManTarget.TextSize, cfg.Target, value => cfg.Target = value, "moving_man_target");
+        MovingManTargets(card, cfg);
         Slider(card, "Start Value", 30f, -10000f, 10000f, (float)cfg.StartSize, value => cfg.StartSize = value, "moving_man_start", "F1", false);
         Slider(card, "End Value", 80f, -10000f, 10000f, (float)cfg.EndSize, value => cfg.EndSize = value, "moving_man_end", "F1", false);
         Slider(card, "Default Value", 30f, -10000f, 10000f, (float)cfg.DefaultSize, value => cfg.DefaultSize = value, "moving_man_default", "F1", false);
         Slider(card, "Speed", 800f, 0f, 10000f, (float)cfg.Speed, value => cfg.Speed = value, "moving_man_speed", "F0");
         Toggle(card, "Invert", false, cfg.Invert, value => cfg.Invert = value, "moving_man_invert");
         EnumDropDown(card, "Ease", Easing.OutExpo, cfg.Ease, value => cfg.Ease = value, "moving_man_ease");
+    }
+
+    private void MovingManTargets(Transform parent, MovingManSettings cfg) {
+        string label = InspectorLabel("Target");
+        var values = Enum.GetValues(typeof(MovingManTarget))
+            .Cast<MovingManTarget>()
+            .Where(value => value != MovingManTarget.None)
+            .ToArray();
+        var row = GenerateUI.Row(parent, 50f);
+        var dropdown = GenerateUI.MultiDropDown(
+            row,
+            MovingManTarget.TextSize,
+            cfg.Target,
+            values,
+            value => $"{label}: {value}",
+            value => $"{label}: {MovingManTargetSummary(value, values)}",
+            newValue => {
+                cfg.Target = newValue;
+                ApplyAndSave();
+            },
+            "moving_man_target"
+        );
+        Track(dropdown);
+    }
+
+    private static string MovingManTargetSummary(MovingManTarget value, IReadOnlyList<MovingManTarget> values) {
+        if(value == MovingManTarget.None) {
+            return "None";
+        }
+
+        var selected = values
+            .Where(option => value.HasFlag(option))
+            .Select(option => option.ToString())
+            .ToArray();
+        return selected.Length <= 2
+            ? string.Join(", ", selected)
+            : $"{selected.Length} selected";
     }
 
     private void BuildColorRange(OvObject obj, ColorRangeSettings cfg) {
@@ -581,6 +622,9 @@ internal sealed class OvInspectorBuilder(
 
     private static string InspectorText(string key, string fallback) => MainCore.Tr.Get(key, fallback);
 
+    private string ComponentText(string key, string fallback) =>
+        InspectorText($"COMPONANT_{componentKey}_{key}", InspectorText($"INSPECTOR_{key}", fallback));
+
     private static string InspectorLabel(string label) {
         if(string.IsNullOrEmpty(label)) {
             return label;
@@ -591,10 +635,15 @@ internal sealed class OvInspectorBuilder(
             .Replace(" ", "_")
             .Replace(".", string.Empty)
             .ToUpperInvariant();
-        return InspectorText($"INSPECTOR_{key}", label);
+        return componentKey == null
+            ? InspectorText($"INSPECTOR_{key}", label)
+            : ComponentText(key, label);
     }
 
-    private (RectTransform Card, RectTransform Content) Card(string title, bool removable, Action remove = null) => GenerateUI.ComponentCard(content, InspectorLabel(title), true, null, remove, removable, showActiveToggle: false);
+    private (RectTransform Card, RectTransform Content) Card(string title, bool removable, Action remove = null) {
+        componentKey = null;
+        return GenerateUI.ComponentCard(content, InspectorLabel(title), true, null, remove, removable, showActiveToggle: false);
+    }
 
     private (RectTransform Card, RectTransform Content) ComponentCard(
         string title,
@@ -602,7 +651,8 @@ internal sealed class OvInspectorBuilder(
         Action remove,
         Action enabledChanged = null
     ) {
-        return GenerateUI.ComponentCard(content, InspectorLabel(title), settings.ComponentEnabled, value => {
+        componentKey = title.Replace(" ", "_").ToUpperInvariant();
+        return GenerateUI.ComponentCard(content, InspectorText($"COMPONANT_{componentKey}", InspectorText($"INSPECTOR_{componentKey}", title)), settings.ComponentEnabled, value => {
             settings.ComponentEnabled = value;
             if(enabledChanged == null) {
                 ApplyAndSave();

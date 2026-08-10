@@ -585,6 +585,166 @@ public static partial class GenerateUI {
         return dropdown;
     }
 
+    public static UIMultiDropDown<T> MultiDropDown<T>(
+        Transform parent,
+        T defaultValue,
+        T value,
+        IReadOnlyList<T> values,
+        Func<T, string> display,
+        Func<T, string> summary,
+        Action<T> onChanged,
+        string id
+    ) where T : struct, Enum {
+        GameObject root = new("MultiDropdown");
+        root.transform.SetParent(parent, false);
+
+        RectTransform rootRect = root.AddComponent<RectTransform>();
+        rootRect.anchorMin = new(0f, 0f);
+        rootRect.anchorMax = new(1f, 1f);
+        rootRect.pivot = new(0.5f, 0.5f);
+        rootRect.offsetMin = Vector2.zero;
+        rootRect.offsetMax = Vector2.zero;
+
+        RectTransform rect = BackGround();
+        rect.SetParent(root.transform, false);
+        rect.pivot = new(rect.pivot.x, 1f);
+        rect.anchorMin = new(rect.anchorMin.x, 1f);
+        rect.anchorMax = new(rect.anchorMax.x, 1f);
+        rect.sizeDelta = new(rect.sizeDelta.x, 50f);
+
+        TextMeshProUGUI tmp = AddText(rect);
+        tmp.text = summary(value);
+
+        GameObject change = AddSmallChangedCircle(rect);
+        Image changeImg = change.GetComponent<Image>();
+
+        GameObject triangle = new("Triangle");
+        triangle.transform.SetParent(rect, false);
+
+        RectTransform triangleRect = triangle.AddComponent<RectTransform>();
+        triangleRect.anchorMin = new(1f, 0.5f);
+        triangleRect.anchorMax = new(1f, 0.5f);
+        triangleRect.pivot = new(0.5f, 0.5f);
+        triangleRect.anchoredPosition = new(-23f, 0f);
+        triangleRect.sizeDelta = new(26f, 26f);
+
+        Image triangleImage = triangle.AddComponent<Image>();
+        triangleImage.sprite = MainCore.Spr.Get(UISprite.Triangle128);
+
+        GameObject list = new("List");
+        list.transform.SetParent(root.transform, false);
+
+        RectTransform listRect = list.AddComponent<RectTransform>();
+        listRect.anchorMin = new(0f, 1f);
+        listRect.anchorMax = new(1f, 1f);
+        listRect.pivot = new(0.5f, 1f);
+        listRect.offsetMin = new(0f, -62f);
+        listRect.offsetMax = new(-250f, -62f);
+
+        Image listBg = list.AddComponent<Image>();
+        listBg.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P2048);
+        listBg.type = Image.Type.Sliced;
+        listBg.color = UIColors.ObjectBG;
+
+        VerticalLayoutGroup layout = list.AddComponent<VerticalLayoutGroup>();
+        layout.spacing = 0f;
+        layout.childControlWidth = true;
+        layout.childControlHeight = false;
+        layout.childForceExpandWidth = true;
+        layout.childForceExpandHeight = false;
+
+        ContentSizeFitter fitter = list.AddComponent<ContentSizeFitter>();
+        fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+        CanvasGroup listCg = list.AddComponent<CanvasGroup>();
+        listCg.alpha = 0f;
+        list.SetActive(false);
+
+        UIMultiDropDown<T> dropdown = new(
+            id,
+            rootRect,
+            tmp,
+            triangleImage,
+            triangleRect,
+            changeImg,
+            list,
+            listRect,
+            listCg,
+            values,
+            display,
+            summary,
+            defaultValue,
+            value,
+            onChanged
+        );
+
+        LayoutElement parentLayout = parent.GetComponent<LayoutElement>();
+        void UpdateHeight() {
+            if(dropdown.IsDisposed) {
+                return;
+            }
+
+            float rowHeight = 50f;
+            float spacing = layout.spacing;
+            float listHeight = (dropdown.Values.Count * rowHeight) + spacing;
+            float targetHeight = dropdown.Expanded ? (62f + listHeight) : 50f;
+            float targetAlpha = dropdown.Expanded ? 1f : 0f;
+
+            dropdown.LayoutSeq?.Kill();
+            dropdown.LayoutSeq = GTweenSequenceBuilder.New()
+                .Join(
+                    GTweenExtensions.Tween(
+                        () => parentLayout ? parentLayout.preferredHeight : targetHeight,
+                        x => {
+                            if(parentLayout) {
+                                parentLayout.preferredHeight = x;
+                            }
+
+                            if(rootRect) {
+                                LayoutRebuilder.ForceRebuildLayoutImmediate(rootRect);
+                            }
+                        },
+                        targetHeight,
+                        0.14f
+                    ).SetEasing(Easing.OutBack)
+                )
+                .Join(
+                    GTweenExtensions.Tween(
+                        () => listCg ? listCg.alpha : targetAlpha,
+                        x => { if(listCg) { listCg.alpha = x; } },
+                        targetAlpha,
+                        0.16f
+                    ).SetEasing(Easing.OutSine)
+                )
+                .Build();
+            MainCore.TC.Play(dropdown.LayoutSeq);
+        }
+
+        dropdown.OnLayoutChanged = UpdateHeight;
+        AddOutlineHover(rect.gameObject, rect.gameObject.AddComponent<EventTrigger>());
+        AddButton(rect.gameObject, btn => {
+            switch(btn) {
+                case InputButton.Left:
+                    dropdown.ToggleExpanded();
+                    UpdateHeight();
+                    LayoutRebuilder.ForceRebuildLayoutImmediate(rootRect);
+                    break;
+                case InputButton.Middle:
+                    if(
+                        MainCore.Conf.MiddleClickToDefault &&
+                        !EqualityComparer<T>.Default.Equals(dropdown.Value, dropdown.DefaultValue)
+                    ) {
+                        dropdown.Reset();
+                    }
+                    break;
+            }
+        });
+
+        dropdown.RebuildList();
+        UpdateHeight();
+        return dropdown;
+    }
+
     public static UIInput Input(
         Transform parent,
         string defaultValue,

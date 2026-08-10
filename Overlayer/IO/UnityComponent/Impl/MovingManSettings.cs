@@ -8,7 +8,7 @@ namespace Overlayer.IO.UnityComponent.Impl;
 
 public sealed class MovingManSettings : UnityComponentSettingsBase, ICopyable<MovingManSettings> {
     public string TagName = string.Empty;
-    public MovingManTarget Target;
+    public MovingManTarget Target = MovingManTarget.TextSize;
     public double StartSize = 30;
     public double EndSize = 80;
     public double DefaultSize = 30;
@@ -66,7 +66,7 @@ public sealed class MovingManSettings : UnityComponentSettingsBase, ICopyable<Mo
     public override void Deserialize(JToken token) {
         DeserializeComponent(token);
         TagName = IOUtils.Read(token, nameof(TagName), TagName);
-        Target = IOUtils.ReadEnum(token, nameof(Target), Target);
+        Target = ReadTarget(token, Target);
         StartSize = IOUtils.Read(token, nameof(StartSize), StartSize);
         EndSize = IOUtils.Read(token, nameof(EndSize), EndSize);
         DefaultSize = IOUtils.Read(token, nameof(DefaultSize), DefaultSize);
@@ -86,4 +86,16 @@ public sealed class MovingManSettings : UnityComponentSettingsBase, ICopyable<Mo
         Invert = Invert,
         Ease = Ease
     };
+
+    private static MovingManTarget ReadTarget(JToken token, MovingManTarget fallback) {
+        var value = token[nameof(Target)];
+        if(value?.Type == JTokenType.Integer) {
+            int legacyValue = value.Value<int>();
+            if(legacyValue is >= 0 and <= 9) {
+                return (MovingManTarget)(1 << legacyValue);
+            }
+        }
+
+        return IOUtils.ReadEnum(token, nameof(Target), fallback);
+    }
 }
