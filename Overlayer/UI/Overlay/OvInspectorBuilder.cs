@@ -127,7 +127,7 @@ internal sealed class OvInspectorBuilder(
                 RefreshComponents(obj);
             });
             Label(rectMask, InspectorText(
-                "COMPONANT_RECT_MASK_2D_DESCRIPTION",
+                "COMPONENT_RECT_MASK_2D_DESCRIPTION",
                 InspectorText("INSPECTOR_RECT_MASK_DESCRIPTION", "Clips child graphics to this object's rectangle.")));
         }
 #if !IL2CPP
@@ -615,7 +615,7 @@ internal sealed class OvInspectorBuilder(
     private static string InspectorText(string key, string fallback) => MainCore.Tr.Get(key, fallback);
 
     private string ComponentText(string key, string fallback) =>
-        InspectorText($"COMPONANT_{componentKey}_{key}", InspectorText($"INSPECTOR_{key}", fallback));
+        InspectorText($"COMPONENT_{componentKey}_{key}", InspectorText($"INSPECTOR_{key}", fallback));
 
     private string InspectorLabel(string label) {
         if(string.IsNullOrEmpty(label)) {
@@ -644,7 +644,7 @@ internal sealed class OvInspectorBuilder(
         Action enabledChanged = null
     ) {
         componentKey = title.Replace(" ", "_").ToUpperInvariant();
-        return GenerateUI.ComponentCard(content, InspectorText($"COMPONANT_{componentKey}", InspectorText($"INSPECTOR_{componentKey}", title)), settings.ComponentEnabled, value => {
+        return GenerateUI.ComponentCard(content, InspectorText($"COMPONENT_{componentKey}", InspectorText($"INSPECTOR_{componentKey}", title)), settings.ComponentEnabled, value => {
             settings.ComponentEnabled = value;
             if(enabledChanged == null) {
                 ApplyAndSave();

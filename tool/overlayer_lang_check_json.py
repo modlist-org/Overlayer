@@ -26,7 +26,7 @@ def inspector_key(label):
     return "INSPECTOR_" + label.replace(" / ", "_").replace(" ", "_").replace(".", "").upper()
 
 def component_key(label):
-    return "COMPONANT_" + label.replace(" ", "_").upper()
+    return "COMPONENT_" + label.replace(" ", "_").upper()
 
 def check_language_keys():
     os.makedirs(LOG_DIR, exist_ok=True)
