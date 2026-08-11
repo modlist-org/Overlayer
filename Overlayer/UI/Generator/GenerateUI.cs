@@ -1052,7 +1052,7 @@ public static partial class GenerateUI {
             tr ??= MainCore.Tr;
             return parent.AddToolTipInternal(() => 
                 MainCore.Conf.AdvancedTooltip
-                    ? $"{tr.Get(key, def)}\n{tr.Get(advKey, advDef)}"
+                    ? $"{tr.Get(key, def)}\n--\n{tr.Get(advKey, advDef)}"
                     : tr.Get(key, def)
             );
         }
