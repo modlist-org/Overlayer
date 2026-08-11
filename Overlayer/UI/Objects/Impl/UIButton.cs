@@ -16,6 +16,7 @@ namespace Overlayer.UI.Objects.Impl;
 public class UIButton : UIObject {
     public Action OnClick { get; set; }
     public TextMeshProUGUI Label { get; }
+    public Image Icon { get; }
     public Image Background { get; }
     public Color NormalColor { get; set; } = UIColors.ObjectButton;
 
@@ -29,6 +30,20 @@ public class UIButton : UIObject {
         Action onClick
     ) : base(id, rect) {
         Label = label;
+        Background = background;
+        OnClick = onClick;
+
+        UpdateVisual(true);
+    }
+
+    public UIButton(
+        string id,
+        RectTransform rect,
+        Image icon,
+        Image background,
+        Action onClick
+    ) : base(id, rect) {
+        Icon = icon;
         Background = background;
         OnClick = onClick;
 

@@ -106,31 +106,49 @@ public static partial class GenerateUI {
         string text,
         string id
     ) {
+        return CreateButton(parent, (rect, setButton) => {
+            TextMeshProUGUI tmp = AddText(rect, true);
+            tmp.text = text;
+            tmp.alignment = TextAlignmentOptions.Center;
+
+            Image bg = rect.GetComponent<Image>();
+            setButton(new UIButton(id, rect, tmp, bg, onClick));
+        });
+    }
+
+    public static UIButton Button(
+        Transform parent,
+        Action onClick,
+        Image icon,
+        string id
+    ) {
+        return CreateButton(parent, (rect, setButton) => {
+            Image bg = rect.GetComponent<Image>();
+            setButton(new UIButton(id, rect, icon, bg, onClick));
+        });
+    }
+
+    private static UIButton CreateButton(
+        Transform parent,
+        Action<RectTransform, Action<UIButton>> setupContent
+    ) {
         RectTransform rect = BackGround();
         rect.SetParent(parent, false);
-
-        TextMeshProUGUI tmp = AddText(rect, true);
-        tmp.text = text;
-        tmp.alignment = TextAlignmentOptions.Center;
 
         Image bg = rect.GetComponent<Image>();
         bg.color = UIColors.ObjectButton;
 
-        UIButton button = new(
-            id,
-            rect,
-            tmp,
-            bg,
-            onClick
-        );
+        UIButton button = null;
+
+        setupContent(rect, createdBtn => button = createdBtn);
 
         var trigger = rect.gameObject.AddComponent<EventTrigger>();
 
         AddOutlineHover(rect.gameObject, trigger);
 
         AddButton(rect.gameObject, btn => {
-            if(btn == InputButton.Left) {
-                button.Click();
+            if (btn == InputButton.Left) {
+                button?.Click();
             }
         });
 
