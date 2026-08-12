@@ -9,9 +9,20 @@ namespace Overlayer.V8.Scripting.Tag;
 
 public class JSTagRegistrationHost(JSScriptLoader loader, string filePath) {
     public const string HostBindingName = "__OverlayerRegisterTag";
-    public const string BindingScript =
-        "globalThis.RegisterTag = function(name, func, options) { " +
-        "__OverlayerRegisterTag(name, func, options, Function.prototype.toString.call(func)); };";
+    public const string BindingScript = @"
+        Object.defineProperty(globalThis, 'RegisterTag', {
+            value: function(name, func, options) {
+                __OverlayerRegisterTag(
+                    name, 
+                    func, 
+                    options, 
+                    Function.prototype.toString.call(func)
+                );
+            },
+            writable: false,
+            configurable: false
+        });
+    ";
 
     private readonly JSScriptLoader _loader = loader;
     public string FilePath { get; } = filePath;
