@@ -307,7 +307,7 @@ internal sealed class OvInspectorBuilder(
             value => cfg.PixelsPerUnitMultiplier = value,
             "image_pixels_per_unit",
             "F2",
-            false,
+            ClampMode.Slider,
             value => Mathf.Max(0f, value)
         );
         fillMethodRow = EnumDropDown(card, "Fill Method", Image.FillMethod.Horizontal, cfg.FillMethod, value => {
@@ -371,10 +371,10 @@ internal sealed class OvInspectorBuilder(
 
         Input(card, "Target Tag", null, cfg.TagName, value => cfg.TagName = value, "moving_man_tag");
         MovingManTargets(card, cfg);
-        Slider(card, "Start Value", 30f, -10000f, 10000f, (float)cfg.StartSize, value => cfg.StartSize = value, "moving_man_start", "F1", false);
-        Slider(card, "End Value", 80f, -10000f, 10000f, (float)cfg.EndSize, value => cfg.EndSize = value, "moving_man_end", "F1", false);
-        Slider(card, "Default Value", 30f, -10000f, 10000f, (float)cfg.DefaultSize, value => cfg.DefaultSize = value, "moving_man_default", "F1", false);
-        Slider(card, "Speed", 800f, 0f, 10000f, (float)cfg.Speed, value => cfg.Speed = value, "moving_man_speed", "F0");
+        Slider(card, "Start Value", 30f, -10000f, 10000f, (float)cfg.StartSize, value => cfg.StartSize = value, "moving_man_start", "F1", ClampMode.Slider);
+        Slider(card, "End Value", 80f, -10000f, 10000f, (float)cfg.EndSize, value => cfg.EndSize = value, "moving_man_end", "F1", ClampMode.Slider);
+        Slider(card, "Default Value", 30f, -10000f, 10000f, (float)cfg.DefaultSize, value => cfg.DefaultSize = value, "moving_man_default", "F1", ClampMode.Slider);
+        Slider(card, "Speed", 800f, 0f, 10000f, (float)cfg.Speed, value => cfg.Speed = value, "moving_man_speed", "F0", ClampMode.Slider);
         Toggle(card, "Invert", false, cfg.Invert, value => cfg.Invert = value, "moving_man_invert");
         EnumDropDown(card, "Ease", Easing.OutExpo, cfg.Ease, value => cfg.Ease = value, "moving_man_ease");
     }
@@ -423,8 +423,8 @@ internal sealed class OvInspectorBuilder(
         });
 
         Input(card, "Target Tag", null, cfg.TagName, value => cfg.TagName = value, "color_range_tag");
-        Slider(card, "Minimum", 0f, -10000f, 10000f, (float)cfg.Minimum, value => cfg.Minimum = value, "color_range_min", "F2", false);
-        Slider(card, "Maximum", 100f, -10000f, 10000f, (float)cfg.Maximum, value => cfg.Maximum = value, "color_range_max", "F2", false);
+        Slider(card, "Minimum", 0f, -10000f, 10000f, (float)cfg.Minimum, value => cfg.Minimum = value, "color_range_min", "F2", ClampMode.Slider);
+        Slider(card, "Maximum", 100f, -10000f, 10000f, (float)cfg.Maximum, value => cfg.Maximum = value, "color_range_max", "F2", ClampMode.Slider);
         GameObject minimumGradientControls = null;
         Toggle(card, "Minimum Gradient", false, !cfg.MinimumColor.SolidColor, value => {
             GradientColor color = cfg.MinimumColor;
@@ -1138,12 +1138,12 @@ internal sealed class OvInspectorBuilder(
         string source
     ) => $"{state}|{source?.GetHashCode() ?? 0}|{string.Join("|", diagnostics.Select(d => d.ToString()))}";
 
-    private RectTransform Slider(Transform parent, string label, float defaultValue, float min, float max, float value, Action<float> changed, string id, string format = "F2") => Slider(parent, label, defaultValue, min, max, value, changed, id, format, true, null);
+    private RectTransform Slider(Transform parent, string label, float defaultValue, float min, float max, float value, Action<float> changed, string id, string format = "F2") => Slider(parent, label, defaultValue, min, max, value, changed, id, format, ClampMode.All, null);
 
-    private RectTransform Slider(Transform parent, string label, float defaultValue, float min, float max, float value, Action<float> changed, string id, string format, bool clamp, Func<float, float> filter = null) {
+    private RectTransform Slider(Transform parent, string label, float defaultValue, float min, float max, float value, Action<float> changed, string id, string format, ClampMode clampMode, Func<float, float> filter = null) {
         label = InspectorLabel(label);
         var row = GenerateUI.Row(parent, 50f);
-        var slider = GenerateUI.Slider(row, defaultValue, min, max, value, format, clamp, filter, newValue => {
+        var slider = GenerateUI.Slider(row, defaultValue, min, max, value, format, clampMode, filter, newValue => {
             changed(newValue);
             apply();
         }, _ => save(), label, id);
@@ -1227,7 +1227,7 @@ internal sealed class OvInspectorBuilder(
             1f,
             get(),
             format,
-            false,
+            ClampMode.None,
             null,
             value => {
                 set(value);

@@ -119,12 +119,27 @@ public static partial class GenerateUI {
     public static UIButton Button(
         Transform parent,
         Action onClick,
-        Image icon,
-        string id
+        Sprite iconSprite,
+        string id,
+        float iconPadding = 5f
     ) {
         return CreateButton(parent, (rect, setButton) => {
+            GameObject iconObj = new GameObject("Icon", typeof(RectTransform), typeof(Image));
+            RectTransform iconRect = iconObj.GetComponent<RectTransform>();
+            Image iconImage = iconObj.GetComponent<Image>();
+
+            iconRect.SetParent(rect, false);
+            iconImage.sprite = iconSprite;
+            iconImage.raycastTarget = false;
+            iconImage.preserveAspect = true;
+
+            iconRect.anchorMin = Vector2.zero;
+            iconRect.anchorMax = Vector2.one;
+            iconRect.offsetMin = new Vector2(iconPadding, iconPadding);
+            iconRect.offsetMax = new Vector2(-iconPadding, -iconPadding);
+
             Image bg = rect.GetComponent<Image>();
-            setButton(new UIButton(id, rect, icon, bg, onClick));
+            setButton(new UIButton(id, rect, iconImage, bg, onClick));
         });
     }
 
@@ -167,7 +182,7 @@ public static partial class GenerateUI {
         float max,
         float value,
         string format,
-        bool useInputClamp,
+        ClampMode clampMode,
         Func<float, float> filter,
         Action<float> onChanged,
         Action<float> onComplete,
@@ -249,7 +264,7 @@ public static partial class GenerateUI {
         UISlider slider = new(
             id, rect, fillRect, fillImg, label, inputField, previewLabel,
             changeImg, changeUpImg, AddOutlineHover(rect.gameObject, trigger), defaultValue, min, max,
-            value, format, useInputClamp, filter, onChanged, onComplete
+            value, format, clampMode, filter, onChanged, onComplete
         ) {
             ShowFill = showFill
         };
@@ -277,7 +292,7 @@ public static partial class GenerateUI {
 
         float Apply(float v) {
             v = filter != null ? filter(v) : v;
-            return useInputClamp ? Math.Clamp(v, min, max) : v;
+            return slider.ClampMode == ClampMode.None ? v : Math.Clamp(v, min, max);
         }
 
         bool isDragging = false;
@@ -324,7 +339,7 @@ public static partial class GenerateUI {
                         float finalPixelWidth = inputRect.rect.width * UICore.Canvas.scaleFactor;
                         cachedValue += mousePixelDelta.x * (slider.Max - slider.Min) * MainCore.Conf.SliderSensitivity / finalPixelWidth;
                     }
-                    if(useInputClamp) {
+                    if(slider.ClampMode != ClampMode.None) {
                         cachedValue = Math.Clamp(cachedValue, min, max);
                     }
                     slider.Set(Apply(cachedValue));

@@ -809,7 +809,7 @@ internal static class PageResources {
             max,
             0f,
             "F0",
-            true,
+            ClampMode.All,
             value => FilterBorderSlider(guide, value),
             value => SetBorderFromSlider(guide, value),
             null,
@@ -1463,22 +1463,22 @@ internal static class PageResources {
             T("SPRITE_EDITOR", "Sprite Editor"),
             "sprite_editor_" + key
         );
-        PlaceRight(spriteEditor.Rect, 134f, 54f, 324f);
+        PlaceRight(spriteEditor.Rect, 134f, 54f, 340f);
         spriteEditor.Label.fontSize = 14f;
         spriteEditor.Label.gameObject.AddComponent<TextLocalization>().Init("SPRITE_EDITOR", "Sprite Editor");
 
         UIButton settings = GenerateUI.Button(card, () => EnterSettingsEdit(key), T("SETTINGS", "Settings"), "settings_" + key);
-        PlaceRight(settings.Rect, 100f, 54f, 216f);
+        PlaceRight(settings.Rect, 100f, 54f, 232f);
         settings.Label.fontSize = 15f;
         settings.Label.gameObject.AddComponent<TextLocalization>().Init("SETTINGS", "Settings");
 
         UIButton rename = GenerateUI.Button(card, () => { }, "Rename", "rename_button_" + key);
-        PlaceRight(rename.Rect, 100f, 54f, 108f);
+        PlaceRight(rename.Rect, 100f, 54f, 124f);
         rename.Label.fontSize = 15f;
         rename.Label.gameObject.AddComponent<TextLocalization>().Init("RENAME", "Rename");
 
         UIButton remove = GenerateUI.Button(card, () => { }, "Remove", "remove_" + key);
-        PlaceRight(remove.Rect, 100f, 54f);
+        PlaceRight(remove.Rect, 100f, 54f, 16f);
         remove.Label.fontSize = 15f;
         remove.Label.gameObject.AddComponent<TextLocalization>().Init("REMOVE", "Remove");
         bool confirm = false;

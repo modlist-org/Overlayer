@@ -147,7 +147,7 @@ public static partial class GenerateUI {
             int channel = i;
             RectTransform row = Row(body, 36f);
             sliders[i] = Slider(
-                row, defaultValue[i], 0f, 1f, value[i], "F2", true, null,
+                row, defaultValue[i], 0f, 1f, value[i], "F2", ClampMode.All, null,
                 next => picker?.SetChannel(channel, next),
                 _ => onComplete?.Invoke(picker.Value),
                 names[i], id + "_" + names[i].ToLowerInvariant()

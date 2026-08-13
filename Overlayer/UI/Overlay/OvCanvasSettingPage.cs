@@ -262,10 +262,7 @@ public class OvCanvasSettingPage : IDisposable {
             RebuildHierarchy();
             RebuildInspector();
             SaveConfig();
-        }, MainCore.Tr.Get("BUTTON_EMPTY", "Empty"), "btn_hier_add_empty");
-
-        btnEmpty.Label.gameObject.AddComponent<TextLocalization>()
-            .Init("BUTTON_EMPTY", "Empty");
+        }, MainCore.Spr.Get(UISprite.Cube128), "btn_hier_add_empty");
 
         btnEmpty.Rect.offsetMax = Vector2.zero;
         permanentUiObjects.Add(btnEmpty);
@@ -295,14 +292,10 @@ public class OvCanvasSettingPage : IDisposable {
             RebuildHierarchy();
             RebuildInspector();
             SaveConfig();
-        }, MainCore.Tr.Get("BUTTON_TEXT", "Text"), "btn_hier_add_text");
-
-        btnText.Label.gameObject.AddComponent<TextLocalization>()
-            .Init("BUTTON_TEXT", "Text");
+        }, MainCore.Spr.Get(UISprite.Text128), "btn_hier_add_text");
 
         btnText.Rect.offsetMax = Vector2.zero;
         permanentUiObjects.Add(btnText);
-
 
         var btnImage = GenerateUI.Button(createRow, () => {
             if(currentCanvas == null) {
@@ -324,20 +317,14 @@ public class OvCanvasSettingPage : IDisposable {
             RebuildHierarchy();
             RebuildInspector();
             SaveConfig();
-        }, MainCore.Tr.Get("BUTTON_IMAGE", "Image"), "btn_hier_add_image");
-
-        btnImage.Label.gameObject.AddComponent<TextLocalization>()
-            .Init("BUTTON_IMAGE", "Image");
+        }, MainCore.Spr.Get(UISprite.Image128), "btn_hier_add_image");
 
         btnImage.Rect.offsetMax = Vector2.zero;
         permanentUiObjects.Add(btnImage);
 
-
         // Hierarchy Control Toolbar
         GameObject hierCtrlToolbar = new("HierarchyControlToolbar");
         hierCtrlToolbar.transform.SetParent(hierarchyCol.transform, false);
-
-        var hierCtrlRect = hierCtrlToolbar.AddComponent<RectTransform>();
 
         var hierCtrlLE = hierCtrlToolbar.AddComponent<LayoutElement>();
         hierCtrlLE.preferredHeight = 36f;
@@ -352,7 +339,6 @@ public class OvCanvasSettingPage : IDisposable {
         ctrlHLayout.childForceExpandWidth = true;
         ctrlHLayout.childForceExpandHeight = true;
 
-
         // Clone
         var btnClone = GenerateUI.Button(hierCtrlToolbar.transform, () => {
             if(selectedObject == null || currentCanvas == null) {
@@ -362,7 +348,9 @@ public class OvCanvasSettingPage : IDisposable {
             OvObject source = selectedObject;
             OvObject clone = source.Clone();
 
-            clone.Config.Name = $"{source.Config.Name} Copy";
+            if (!source.Config.Name.EndsWith(" Copy")) {
+                clone.Config.Name = $"{source.Config.Name} Copy";
+            }
             clone.ApplyConfig();
 
             if(source.Parent != null) {
@@ -386,14 +374,10 @@ public class OvCanvasSettingPage : IDisposable {
             RebuildHierarchy();
             RebuildInspector();
             SaveConfig();
-        }, MainCore.Tr.Get("BUTTON_CLONE", "Clone"), "btn_hier_clone");
-
-        btnClone.Label.gameObject.AddComponent<TextLocalization>()
-            .Init("BUTTON_CLONE", "Clone");
+        }, MainCore.Spr.Get(UISprite.Clone128), "btn_hier_clone");
 
         btnClone.Rect.offsetMax = Vector2.zero;
         permanentUiObjects.Add(btnClone);
-
 
         // Delete
         var btnDel = GenerateUI.Button(hierCtrlToolbar.transform, () => {
@@ -413,21 +397,45 @@ public class OvCanvasSettingPage : IDisposable {
             }
 
             var toDelete = selectedObject;
-            selectedObject = null;
+
+            OvObject nextSelect = null;
+
+            if (toDelete.Parent != null) {
+                var siblings = toDelete.Parent.Children;
+                int index = siblings.IndexOf(toDelete);
+
+                if (index > 0) {
+                    nextSelect = siblings[index - 1];
+                } else if (index + 1 < siblings.Count) {
+                    nextSelect = siblings[index + 1];
+                } else {
+                    nextSelect = toDelete.Parent;
+                }
+            } else if (currentCanvas != null) {
+                var rootObjects = currentCanvas.OvObjects;
+                int index = rootObjects.IndexOf(toDelete);
+
+                if (index > 0) {
+                    nextSelect = rootObjects[index - 1];
+                } else if (index + 1 < rootObjects.Count) {
+                    nextSelect = rootObjects[index + 1];
+                }
+            }
+            // ------------------------------------------
 
             if(toDelete.Parent == null) {
-                currentCanvas.Detach(toDelete);
+                currentCanvas?.Detach(toDelete);
             }
 
             toDelete.Dispose();
 
+            // 탐색한 객체로 선택 변경
+            selectedObject = nextSelect;
+
             RebuildHierarchy();
             RebuildInspector();
             SaveConfig();
-        }, MainCore.Tr.Get("BUTTON_DELETE", "Del"), "btn_hier_del");
-
-        btnDel.Label.gameObject.AddComponent<TextLocalization>()
-            .Init("BUTTON_DELETE", "Del");
+        }, MainCore.Spr.Get(UISprite.X128), "btn_hier_del");
 
         btnDel.Rect.offsetMax = Vector2.zero;
         permanentUiObjects.Add(btnDel);

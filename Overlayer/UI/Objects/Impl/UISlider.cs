@@ -17,13 +17,20 @@ using TMPro;
 
 namespace Overlayer.UI.Objects.Impl;
 
+public enum ClampMode {
+    None,
+    Slider,
+    Input,
+    All,
+}
+
 public class UISlider : UIObject {
     public float DefaultValue { get; private set; }
     public float Min { get; set; }
     public float Max { get; set; }
     public float Value { get; private set; }
     public string Format { get; set; }
-    public bool UseInputClamp { get; set; }
+    public ClampMode ClampMode { get; set; }
     public bool ShowFill { get; set; } = true;
 
     public Action<float> OnChanged { get; set; }
@@ -58,7 +65,7 @@ public class UISlider : UIObject {
         float max,
         float value,
         string format,
-        bool useInputClamp,
+        ClampMode clampMode,
         Func<float, float> filter,
         Action<float> onChanged,
         Action<float> onComplete
@@ -73,9 +80,13 @@ public class UISlider : UIObject {
                     return;
                 }
 
-                var (result, state) = useInputClamp
-                    ? Evaluator<float>.Evaluate(val, Value, Min, Max)
-                    : Evaluator<float>.Evaluate(val, Value);
+                var (result, state) = ClampMode switch {
+                    ClampMode.None => Evaluator<float>.Evaluate(val, Value),
+                    ClampMode.Slider => Evaluator<float>.Evaluate(val, Value),
+                    ClampMode.Input => Evaluator<float>.Evaluate(val, Value, Min, Max),
+                    ClampMode.All => Evaluator<float>.Evaluate(val, Value, Min, Max),
+                    _ => throw new ArgumentOutOfRangeException(nameof(ClampMode), ClampMode, null)
+                };
 
                 LastValidValue = state != EvalState.Error ? ApplyFilter(result) : null;
 
@@ -107,7 +118,7 @@ public class UISlider : UIObject {
                 if(LastValidValue == null) {
                     InputCore.SetValue(Value.ToString(Format), false);
                 } else {
-                    Set(LastValidValue.Value, true, true);
+                    SetFromInput(LastValidValue.Value);
                     OnComplete?.Invoke(Value);
                 }
 
@@ -135,10 +146,10 @@ public class UISlider : UIObject {
         OnChanged = onChanged;
         OnComplete = onComplete;
         Format = format;
-        UseInputClamp = useInputClamp;
+        ClampMode = clampMode;
         Filter = filter;
         Value = ApplyFilter(value);
-        Value = ClampSafe(Value, Min, Max);
+        Value = ClampSafe(Value, Min, Max, ClampMode is ClampMode.Slider or ClampMode.All);
 
         RegisterTick();
         UpdateVisual(true);
@@ -164,11 +175,32 @@ public class UISlider : UIObject {
         if(!noFilter) {
             value = ApplyFilter(value);
         }
-        Value = ClampSafe(value, Min, Max);
+        Value = ClampSafe(value, Min, Max, ClampMode is ClampMode.Slider or ClampMode.All);
 
         if(invoke) {
             OnChanged?.Invoke(Value);
         }
+
+        isUpdatingFromCode = true;
+        InputCore.SetValue(Value.ToString(Format), false);
+        isUpdatingFromCode = false;
+
+        UpdateVisual();
+    }
+
+    private void SetFromInput(float value) {
+        if(IsDisposed || float.IsNaN(value)) {
+            return;
+        }
+
+        Value = ClampSafe(
+            value,
+            Min,
+            Max,
+            ClampMode is ClampMode.Input or ClampMode.All
+        );
+
+        OnChanged?.Invoke(Value);
 
         isUpdatingFromCode = true;
         InputCore.SetValue(Value.ToString(Format), false);
@@ -182,16 +214,16 @@ public class UISlider : UIObject {
             return;
         }
 
-        DefaultValue = ClampSafe(ApplyFilter(value), Min, Max);
+        DefaultValue = ClampSafe(ApplyFilter(value), Min, Max, ClampMode is ClampMode.Slider or ClampMode.All);
         UpdateVisual(noAnimate);
     }
 
-    private float ClampSafe(float value, float min, float max) {
+    private float ClampSafe(float value, float min, float max, bool clamp) {
         if(float.IsNaN(value)) {
             return Value;
         }
 
-        if(!UseInputClamp) {
+        if(!clamp) {
             return value;
         }
 

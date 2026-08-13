@@ -265,7 +265,7 @@ internal static class PageSettings {
             1.6f,
             MainCore.Conf.UIScale,
             "0.00x",
-            true,
+            ClampMode.All,
             value => MathF.Round(value, 2),
             value => MainCore.Conf.UIScale = value,
             value => {
@@ -310,7 +310,7 @@ internal static class PageSettings {
             2.0f,
             MainCore.Conf.SliderSensitivity,
             "0.00x",
-            false,
+            ClampMode.Slider,
             value => MathF.Round(value, 2),
             value => MainCore.Conf.SliderSensitivity = value,
             value => {
