@@ -1,4 +1,5 @@
 using Newtonsoft.Json.Linq;
+using Overlayer.Core;
 using Overlayer.IO.Interface;
 using Overlayer.IO.Overlay;
 using UnityEngine;
@@ -16,6 +17,8 @@ public class OvCanvas : ISettingsFile {
     public readonly GraphicRaycaster GraphicRaycaster;
     public readonly List<OvObject> OvObjects = [];
 
+    private readonly Action<Camera> onCameraChangedHandler;
+    
     public OvCanvasSettings Config = new();
 
     public OvCanvas() {
@@ -26,6 +29,16 @@ public class OvCanvas : ISettingsFile {
         CanvasGroup = GameObject.AddComponent<CanvasGroup>();
         CanvasScaler = GameObject.AddComponent<CanvasScaler>();
         GraphicRaycaster = GameObject.AddComponent<GraphicRaycaster>();
+
+        var mainCam = MainCore.Cam.Camera;
+        if (mainCam != null) {
+            Canvas.worldCamera = mainCam;
+        }
+
+        onCameraChangedHandler = camera => {
+            Canvas?.worldCamera = camera;
+        };
+        MainCore.Cam.OnCameraChanged += onCameraChangedHandler;
 
         ApplyConfig();
     }
@@ -158,6 +171,8 @@ public class OvCanvas : ISettingsFile {
     }
 
     public void Dispose() {
+        MainCore.Cam?.OnCameraChanged -= onCameraChangedHandler;
+
         for(int i = OvObjects.Count - 1; i >= 0; i--) {
             OvObjects[i].Dispose();
         }

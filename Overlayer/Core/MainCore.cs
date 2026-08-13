@@ -34,6 +34,7 @@ public static class MainCore {
     public static GTweensContext TC => Runtime.TweensContext;
     public static V8Manager V8 => Runtime.V8Manager;
     public static ModuleService ModuleService => Runtime.ModuleService;
+    public static CameraManager Cam => Runtime.CameraManager;
     public static bool IsModEnabled => Runtime.State.IsEnabled;
 
     public static void Initialize(IOverlayerHost host) {

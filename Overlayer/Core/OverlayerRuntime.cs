@@ -44,6 +44,8 @@ public sealed class OverlayerRuntime {
 
     public ModuleService ModuleService { get; private set; }
 
+    public CameraManager CameraManager { get; }
+
     public readonly IOverlayerHost Host;
 
     private readonly RuntimeServices services;
@@ -75,6 +77,7 @@ public sealed class OverlayerRuntime {
         );
         Sprite = new SpriteManager(Resource);
         V8Manager = new V8Manager();
+        CameraManager = new CameraManager();
         services = new RuntimeServices();
         ticks = new RuntimeTicks();
         TweensContext = new GTweensContext();
