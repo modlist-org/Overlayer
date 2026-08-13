@@ -640,7 +640,7 @@ public class OvCanvasSettingPage : IDisposable {
         btnImg.type = Image.Type.Sliced;
         btnImg.color = (selectedObject == null) ? UIColors.ObjectActive : UIColors.ObjectBG;
 
-        var tmp = GenerateUI.AddText(itemBtn.transform, true);
+        var tmp = GenerateUI.AddText(itemBtn.transform);
         tmp.text = string.Format(
             MainCore.Tr.Get("CANVAS_ROOT", "Canvas: {0}"),
             currentCanvas.Config.Name
