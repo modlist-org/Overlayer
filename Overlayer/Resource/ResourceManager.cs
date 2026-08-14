@@ -39,6 +39,7 @@ public enum Asset {
     Clone128,
     Plus128,
     Ping128,
+    CodeBlock128,
 }
 
 public sealed class ResourceManager(Assembly assembly, string resourcePath) : IDisposable {
@@ -219,5 +220,6 @@ public sealed class ResourceManager(Assembly assembly, string resourcePath) : ID
         [Asset.Clone128] = "Image.Clone128.png",
         [Asset.Plus128] = "Image.Plus128.png",
         [Asset.Ping128] = "Image.Ping128.png",
+        [Asset.CodeBlock128] = "Image.CodeBlock128.png"
     };
 }
