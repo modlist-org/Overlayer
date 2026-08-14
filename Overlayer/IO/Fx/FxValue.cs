@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Concurrent;
 using Newtonsoft.Json.Linq;
 using Overlayer.IO.Interface;
@@ -19,18 +18,18 @@ public abstract class FxValue {
 public sealed class FxValue<T> : FxValue, ISettingsFile, ICopyable<FxValue<T>>, IDisposable {
     static FxValue() {
         Func<string, T> converter = Type.GetTypeCode(typeof(T)) switch {
-            TypeCode.Byte    => s => byte.TryParse(s, out var v) ? (T)(object)v : default,
-            TypeCode.SByte   => s => sbyte.TryParse(s, out var v) ? (T)(object)v : default,
-            TypeCode.Int16   => s => short.TryParse(s, out var v) ? (T)(object)v : default,
-            TypeCode.UInt16  => s => ushort.TryParse(s, out var v) ? (T)(object)v : default,
-            TypeCode.Int32   => s => int.TryParse(s, out var v) ? (T)(object)v : default,
-            TypeCode.UInt32  => s => uint.TryParse(s, out var v) ? (T)(object)v : default,
-            TypeCode.Int64   => s => long.TryParse(s, out var v) ? (T)(object)v : default,
-            TypeCode.UInt64  => s => ulong.TryParse(s, out var v) ? (T)(object)v : default,
-            TypeCode.Single  => s => float.TryParse(s, out var v) ? (T)(object)v : default,
-            TypeCode.Double  => s => double.TryParse(s, out var v) ? (T)(object)v : default,
-            TypeCode.Decimal => s => decimal.TryParse(s, out var v) ? (T)(object)v : default,
-            TypeCode.Boolean => s => bool.TryParse(s, out var v) ? (T)(object)v : default,
+            TypeCode.Byte    => s => byte.TryParse(s, out var v) ? (T)(object)v : default!,
+            TypeCode.SByte   => s => sbyte.TryParse(s, out var v) ? (T)(object)v : default!,
+            TypeCode.Int16   => s => short.TryParse(s, out var v) ? (T)(object)v : default!,
+            TypeCode.UInt16  => s => ushort.TryParse(s, out var v) ? (T)(object)v : default!,
+            TypeCode.Int32   => s => int.TryParse(s, out var v) ? (T)(object)v : default!,
+            TypeCode.UInt32  => s => uint.TryParse(s, out var v) ? (T)(object)v : default!,
+            TypeCode.Int64   => s => long.TryParse(s, out var v) ? (T)(object)v : default!,
+            TypeCode.UInt64  => s => ulong.TryParse(s, out var v) ? (T)(object)v : default!,
+            TypeCode.Single  => s => float.TryParse(s, out var v) ? (T)(object)v : default!,
+            TypeCode.Double  => s => double.TryParse(s, out var v) ? (T)(object)v : default!,
+            TypeCode.Decimal => s => decimal.TryParse(s, out var v) ? (T)(object)v : default!,
+            TypeCode.Boolean => s => bool.TryParse(s, out var v) ? (T)(object)v : default!,
             TypeCode.String  => s => (T)(object)s,
             _ => null!
         };
@@ -44,7 +43,7 @@ public sealed class FxValue<T> : FxValue, ISettingsFile, ICopyable<FxValue<T>>, 
         Converters[typeof(T)] = s => converter(s)!;
     }
 
-    private T staticValue;
+    private T staticValue = default!;
 
     public T Value {
         get => Evaluate();
@@ -55,6 +54,7 @@ public sealed class FxValue<T> : FxValue, ISettingsFile, ICopyable<FxValue<T>>, 
 
     public bool UseFx { get; set; }
 
+    #region Constructors
     public FxValue() { }
 
     public FxValue(T value, TextEngineCore engine = null, bool useFx = false) {
@@ -62,6 +62,18 @@ public sealed class FxValue<T> : FxValue, ISettingsFile, ICopyable<FxValue<T>>, 
         Engine = engine;
         UseFx = useFx;
     }
+
+    public FxValue(string expression) {
+        UseFx = true;
+        Engine = new TextEngineCore { Text = expression };
+    }
+
+    public FxValue(string expression, TextEngineCore engine, bool useFx = true) {
+        Engine = engine ?? new TextEngineCore();
+        Engine.Text = expression;
+        UseFx = useFx;
+    }
+    #endregion
 
     public T Evaluate() {
         if (!UseFx || Engine == null) {
@@ -130,13 +142,17 @@ public sealed class FxValue<T> : FxValue, ISettingsFile, ICopyable<FxValue<T>>, 
     }
 
     public void Dispose() {
-        Engine.Dispose();
+        Engine?.Dispose();
         Engine = null;
     }
 
+    #region Operators
     public static implicit operator FxValue<T>(T value) => new(value);
 
+    public static implicit operator FxValue<T>(string rawExpression) => new(rawExpression);
+
     public static implicit operator T(FxValue<T> fx) => fx == null ? default! : fx.Value;
+    #endregion
 
     public override string ToString() {
         if (UseFx && Engine != null) {
@@ -146,6 +162,11 @@ public sealed class FxValue<T> : FxValue, ISettingsFile, ICopyable<FxValue<T>>, 
         return staticValue?.ToString() ?? string.Empty;
     }
 
+    #region Factory Methods
     public static FxValue<T> Create(T value, TextEngineCore engine, bool useFx = true)
         => new(value, engine, useFx);
+
+    public static FxValue<T> Create(string expression, TextEngineCore engine, bool useFx = true)
+        => new(expression, engine, useFx);
+    #endregion
 }

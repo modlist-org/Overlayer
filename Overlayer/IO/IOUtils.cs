@@ -1,4 +1,5 @@
 using Newtonsoft.Json.Linq;
+using Overlayer.IO.Fx;
 using UnityEngine;
 
 namespace Overlayer.IO;
@@ -17,6 +18,22 @@ public static class IOUtils {
         } catch {
             return fallback;
         }
+    }
+    #endregion
+    #region Fx
+    public static FxValue<T> Read<T>(JToken token, string key, FxValue<T> fallback) {
+        if (token is not JObject obj || !obj.TryGetValue(key, out var childToken)) {
+            return fallback;
+        }
+
+        var target = fallback ?? new FxValue<T>();
+        target.Deserialize(childToken);
+
+        return target;
+    }
+
+    public static JToken Write<T>(FxValue<T> fxValue) {
+        return fxValue?.Serialize() ?? JValue.CreateNull();
     }
     #endregion
     #region Enum

@@ -1,5 +1,6 @@
 using Overlayer.Core;
 using Overlayer.IO;
+using Overlayer.IO.Fx;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
@@ -21,6 +22,8 @@ public static class OverlayCore {
         if(parent == null || Core != null) {
             return;
         }
+
+        FxConverters.RegisterDefaultConverters();
 
         Core = new GameObject(nameof(OverlayCore));
         Core.transform.SetParent(parent.transform, false);
@@ -119,5 +122,8 @@ public static class OverlayCore {
         GameObject core = Core;
         Core = null;
         Object.Destroy(core);
+
+
+        FxValue.ClearConverters();
     }
 }
