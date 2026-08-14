@@ -289,7 +289,6 @@ public class UISlider : UIObject {
         MainCore.TC.Play(changeSeq);
     }
 
-    public void OnDrag(float normalizedValue) => SetNormalized(normalizedValue, true);
     private void SetStateVisuals(Color targetColor, bool isCalculating, float? value = null) {
         if(IsDisposed) {
             return;
