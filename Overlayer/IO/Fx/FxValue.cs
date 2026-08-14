@@ -6,26 +6,33 @@ using Overlayer.TextEngine.Core;
 
 namespace Overlayer.IO.Fx;
 
-public sealed class FxValue<T> : ISettingsFile, ICopyable<FxValue<T>> {
-    private const string FxKey = "Fx";
-    private static readonly ConcurrentDictionary<Type, Func<string, object>> Converters = new();
+public abstract class FxValue {
+    private protected const string FxKey = "Fx";
 
+    protected static readonly ConcurrentDictionary<Type, Func<string, object>> Converters = new();
+
+    public static void ClearConverters() {
+        Converters.Clear();
+    }
+}
+
+public sealed class FxValue<T> : FxValue, ISettingsFile, ICopyable<FxValue<T>>, IDisposable {
     static FxValue() {
         Func<string, T> converter = Type.GetTypeCode(typeof(T)) switch {
-            TypeCode.Byte    => s => byte.TryParse(s, out var v) ? (T)(object)v : default!,
-            TypeCode.SByte   => s => sbyte.TryParse(s, out var v) ? (T)(object)v : default!,
-            TypeCode.Int16   => s => short.TryParse(s, out var v) ? (T)(object)v : default!,
-            TypeCode.UInt16  => s => ushort.TryParse(s, out var v) ? (T)(object)v : default!,
-            TypeCode.Int32   => s => int.TryParse(s, out var v) ? (T)(object)v : default!,
-            TypeCode.UInt32  => s => uint.TryParse(s, out var v) ? (T)(object)v : default!,
-            TypeCode.Int64   => s => long.TryParse(s, out var v) ? (T)(object)v : default!,
-            TypeCode.UInt64  => s => ulong.TryParse(s, out var v) ? (T)(object)v : default!,
-            TypeCode.Single  => s => float.TryParse(s, out var v) ? (T)(object)v : default!,
-            TypeCode.Double  => s => double.TryParse(s, out var v) ? (T)(object)v : default!,
-            TypeCode.Decimal => s => decimal.TryParse(s, out var v) ? (T)(object)v : default!,
-            TypeCode.Boolean => s => bool.TryParse(s, out var v) ? (T)(object)v : default!,
+            TypeCode.Byte    => s => byte.TryParse(s, out var v) ? (T)(object)v : default,
+            TypeCode.SByte   => s => sbyte.TryParse(s, out var v) ? (T)(object)v : default,
+            TypeCode.Int16   => s => short.TryParse(s, out var v) ? (T)(object)v : default,
+            TypeCode.UInt16  => s => ushort.TryParse(s, out var v) ? (T)(object)v : default,
+            TypeCode.Int32   => s => int.TryParse(s, out var v) ? (T)(object)v : default,
+            TypeCode.UInt32  => s => uint.TryParse(s, out var v) ? (T)(object)v : default,
+            TypeCode.Int64   => s => long.TryParse(s, out var v) ? (T)(object)v : default,
+            TypeCode.UInt64  => s => ulong.TryParse(s, out var v) ? (T)(object)v : default,
+            TypeCode.Single  => s => float.TryParse(s, out var v) ? (T)(object)v : default,
+            TypeCode.Double  => s => double.TryParse(s, out var v) ? (T)(object)v : default,
+            TypeCode.Decimal => s => decimal.TryParse(s, out var v) ? (T)(object)v : default,
+            TypeCode.Boolean => s => bool.TryParse(s, out var v) ? (T)(object)v : default,
             TypeCode.String  => s => (T)(object)s,
-            _ => null
+            _ => null!
         };
 
         if (converter != null) {
@@ -122,7 +129,12 @@ public sealed class FxValue<T> : ISettingsFile, ICopyable<FxValue<T>> {
         }
     }
 
-    public static implicit operator FxValue<T>(T value) => new FxValue<T>(value);
+    public void Dispose() {
+        Engine.Dispose();
+        Engine = null;
+    }
+
+    public static implicit operator FxValue<T>(T value) => new(value);
 
     public static implicit operator T(FxValue<T> fx) => fx == null ? default! : fx.Value;
 
