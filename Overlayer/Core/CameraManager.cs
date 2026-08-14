@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -5,6 +6,8 @@ namespace Overlayer.Core;
 
 public class CameraManager {
     private Camera cachedCamera;
+    
+    public Func<Camera> CustomCameraProvider { get; set; }
 
     public event Action<Camera> OnCameraChanged;
 
@@ -32,7 +35,7 @@ public class CameraManager {
     }
 
     public Camera UpdateCamera() {
-        var found = Camera.main ?? UnityEngine.Object.FindFirstObjectByType<Camera>();
+        var found = (CustomCameraProvider?.Invoke()) ?? Camera.main ?? UnityEngine.Object.FindFirstObjectByType<Camera>();
         SetCamera(found);
         return cachedCamera;
     }
@@ -40,6 +43,7 @@ public class CameraManager {
     public void Reset() {
         SceneManager.sceneLoaded -= OnSceneLoaded;
         cachedCamera = null;
+        CustomCameraProvider = null;
         OnCameraChanged = null;
     }
 }
