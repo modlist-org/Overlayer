@@ -95,7 +95,9 @@ public class Tooltip {
             rect.position,
             target,
             ref velocity,
-            0.02f
+            0.02f,
+            float.PositiveInfinity,
+            Time.unscaledDeltaTime
         );
     }
 
