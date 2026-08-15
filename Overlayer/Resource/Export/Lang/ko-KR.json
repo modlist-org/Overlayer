@@ -160,6 +160,7 @@
     "INSPECTOR_OUTLINE_SOFTNESS": "외곽선 부드러움",
     "INSPECTOR_OUTLINE_WIDTH": "외곽선 너비",
     "INSPECTOR_OVERFLOW": "오버플로",
+    "INSPECTOR_OVERRIDE_SORTING": "정렬 순서 덮어쓰기",
     "INSPECTOR_PIVOT": "중심점",
     "INSPECTOR_PIXELS_PER_UNIT": "단위당 픽셀",
     "INSPECTOR_PIXEL_PERFECT": "픽셀 퍼펙트",

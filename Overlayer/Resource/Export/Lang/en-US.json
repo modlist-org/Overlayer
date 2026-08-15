@@ -160,6 +160,7 @@
     "INSPECTOR_OUTLINE_SOFTNESS": "Outline Softness",
     "INSPECTOR_OUTLINE_WIDTH": "Outline Width",
     "INSPECTOR_OVERFLOW": "Overflow",
+    "INSPECTOR_OVERRIDE_SORTING": "Override Sorting",
     "INSPECTOR_PIVOT": "Pivot",
     "INSPECTOR_PIXELS_PER_UNIT": "Pixels Per Unit",
     "INSPECTOR_PIXEL_PERFECT": "Pixel Perfect",

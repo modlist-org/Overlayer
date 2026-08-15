@@ -64,6 +64,7 @@ internal sealed class OvInspectorBuilder(
         var canvasCfg = canvas.Config.CanvasConfig;
         EnumDropDown(rendering, "Render Mode", RenderMode.ScreenSpaceOverlay, canvasCfg.RenderMode, value => canvasCfg.RenderMode = value, "canvas_render_mode");
         Slider(rendering, "Sorting Order", 32760f, -32768f, 32767f, canvasCfg.SortingOrder, value => canvasCfg.SortingOrder = Mathf.RoundToInt(value), "canvas_sort", "F0");
+        Toggle(rendering, "Override Sorting", true, canvasCfg.OverrideSorting, value => canvasCfg.OverrideSorting = value, "canvas_override_sorting");
         Toggle(rendering, "Pixel Perfect", false, canvasCfg.PixelPerfect, value => canvasCfg.PixelPerfect = value, "canvas_pixel_perfect");
         Toggle(rendering, "Graphic Raycaster", true, canvas.Config.GraphicRaycasterConfig.Enabled, value => canvas.Config.GraphicRaycasterConfig.Enabled = value, "canvas_graphic_raycast");
 

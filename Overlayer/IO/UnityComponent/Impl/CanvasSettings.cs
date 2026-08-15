@@ -8,6 +8,7 @@ public class CanvasSettings : UnityComponentSettingsBase, ICopyable<CanvasSettin
     public RenderMode RenderMode = RenderMode.ScreenSpaceOverlay;
     public int SortingOrder = 32760;
     public bool PixelPerfect = false;
+    public bool OverrideSorting = true;
 
     public override bool ToUnity(GameObject target) {
         var com = target.GetComponent<Canvas>();
@@ -18,6 +19,7 @@ public class CanvasSettings : UnityComponentSettingsBase, ICopyable<CanvasSettin
         com.renderMode = RenderMode;
         com.sortingOrder = SortingOrder;
         com.pixelPerfect = PixelPerfect;
+        com.overrideSorting = OverrideSorting;
 
         return true;
     }
@@ -31,6 +33,7 @@ public class CanvasSettings : UnityComponentSettingsBase, ICopyable<CanvasSettin
         RenderMode = com.renderMode;
         SortingOrder = com.sortingOrder;
         PixelPerfect = com.pixelPerfect;
+        OverrideSorting = com.overrideSorting;
 
         return true;
     }
@@ -40,6 +43,7 @@ public class CanvasSettings : UnityComponentSettingsBase, ICopyable<CanvasSettin
             [nameof(RenderMode)] = IOUtils.WriteEnum(RenderMode),
             [nameof(SortingOrder)] = SortingOrder,
             [nameof(PixelPerfect)] = PixelPerfect,
+            [nameof(OverrideSorting)] = OverrideSorting,
         };
     }
 
@@ -47,13 +51,15 @@ public class CanvasSettings : UnityComponentSettingsBase, ICopyable<CanvasSettin
         RenderMode = IOUtils.ReadEnum(token, nameof(RenderMode), RenderMode);
         SortingOrder = IOUtils.Read(token, nameof(SortingOrder), SortingOrder);
         PixelPerfect = IOUtils.Read(token, nameof(PixelPerfect), PixelPerfect);
+        OverrideSorting = IOUtils.Read(token, nameof(OverrideSorting), OverrideSorting);
     }
 
     public CanvasSettings Copy() {
         return new CanvasSettings {
             RenderMode = RenderMode,
             SortingOrder = SortingOrder,
-            PixelPerfect = PixelPerfect
+            PixelPerfect = PixelPerfect,
+            OverrideSorting = OverrideSorting,
         };
     }
 }
