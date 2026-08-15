@@ -1,7 +1,10 @@
 ﻿using Microsoft.ClearScript.V8;
+using Overlayer.Async;
+using Overlayer.Core;
 using Overlayer.Tag.Core;
 using Overlayer.V8.Scripting.Diagnostic;
 using System.Security.Cryptography;
+using static Overlayer.Overlay.OvObject;
 
 namespace Overlayer.V8.Scripting.Tag;
 
@@ -19,6 +22,7 @@ public class JSScriptLoader {
         }
 
         try {
+            bool hasChanges = false;
             await Task.Run(() => {
                 lock(_syncLock) {
                     Diagnostics.Clear();
@@ -28,6 +32,7 @@ public class JSScriptLoader {
                     var removedFiles = _fileHashes.Keys.Where(f => !currentFiles.Contains(f)).ToList();
                     foreach(var file in removedFiles) {
                         UnloadScript(file);
+                        hasChanges = true;
                     }
 
                     foreach(var file in files) {
@@ -37,7 +42,12 @@ public class JSScriptLoader {
                         }
 
                         UnloadScript(file);
-                        LoadScript(file, currentHash, engine);
+                        LoadScriptInternal(file, currentHash, engine);
+                        hasChanges = true;
+                    }
+
+                    if(hasChanges) {
+                        SyncV8AndRecompile();
                     }
                 }
             });
@@ -49,8 +59,15 @@ public class JSScriptLoader {
     }
 
     public void LoadScript(string filePath, string hash, V8ScriptEngine engine) {
-        UnloadScript(filePath);
+        lock(_syncLock) {
+            UnloadScript(filePath);
+            LoadScriptInternal(filePath, hash, engine);
+            
+            SyncV8AndRecompile();
+        }
+    }
 
+    private void LoadScriptInternal(string filePath, string hash, V8ScriptEngine engine) {
         var host = new JSTagRegistrationHost(this, filePath);
         engine.AddHostType(nameof(TagType), typeof(TagType));
         engine.AddHostObject(
@@ -70,9 +87,18 @@ public class JSScriptLoader {
         }
     }
 
+    private static void SyncV8AndRecompile() {
+        MainCore.V8.GenerateImplJs();
+        MainCore.V8.LoadImplJs();
+        MainThread.Enqueue(TextEngineUpdater.RecompileAll);
+    }
+
     private void UnloadScript(string filePath) {
         if(_fileToTags.TryGetValue(filePath, out var tags)) {
             if(tags != null && tags.Count > 0) {
+                foreach(var tag in tags) {
+                    JSTagManager.Remove(tag);
+                }
                 TagManager.Unregister([.. tags]);
             }
             _fileToTags.Remove(filePath);

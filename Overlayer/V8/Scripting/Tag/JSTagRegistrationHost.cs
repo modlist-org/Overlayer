@@ -19,8 +19,8 @@ public class JSTagRegistrationHost(JSScriptLoader loader, string filePath) {
                     Function.prototype.toString.call(func)
                 );
             },
-            writable: false,
-            configurable: false
+            writable: true,
+            configurable: true
         });
     ";
 
@@ -73,11 +73,6 @@ public class JSTagRegistrationHost(JSScriptLoader loader, string filePath) {
             TagManager.Set(tag);
 
             _loader.RegisterFileTag(FilePath, name);
-
-            MainCore.V8.GenerateImplJs();
-            MainCore.V8.LoadImplJs();
-
-            MainThread.Enqueue(TextEngineUpdater.RecompileAll);
         } catch(Exception) {
             JSTagManager.Remove(name);
             _loader.Diagnostics.Add(new JSDiagnostic(JSTagDiagnosticId.DuplicateName, JSSeverity.Error, FilePath, name));
