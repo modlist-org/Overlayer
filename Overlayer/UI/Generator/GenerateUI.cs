@@ -478,6 +478,9 @@ public static partial class GenerateUI {
 
         TextMeshProUGUI tmp = AddText(rect);
         tmp.text = display(value);
+        tmp.rectTransform.offsetMax = new Vector2(-48f, 0f);
+        tmp.textWrappingMode = TextWrappingModes.NoWrap;
+        tmp.overflowMode = TextOverflowModes.Ellipsis;
 
         GameObject change = AddSmallChangedCircle(rect);
         Image changeImg = change.GetComponent<Image>();
@@ -647,6 +650,9 @@ public static partial class GenerateUI {
 
         TextMeshProUGUI tmp = AddText(rect);
         tmp.text = summary(value);
+        tmp.rectTransform.offsetMax = new Vector2(-48f, 0f);
+        tmp.textWrappingMode = TextWrappingModes.NoWrap;
+        tmp.overflowMode = TextOverflowModes.Ellipsis;
 
         GameObject change = AddSmallChangedCircle(rect);
         Image changeImg = change.GetComponent<Image>();

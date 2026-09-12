@@ -8,25 +8,25 @@ namespace Overlayer.IO.Fx;
 public static class FxConverters {
 
     public static void RegisterDefaultConverters() {
-        // "x, y"
+        // "[x, y]" — each component is a numeric expression
         FxValue<Vector2>.RegisterConverter(ParseVector2);
 
-        // "x, y, z"
+        // "[x, y, z]"
         FxValue<Vector3>.RegisterConverter(ParseVector3);
 
-        // "x, y, z, w"
+        // "[x, y, z, w]"
         FxValue<Vector4>.RegisterConverter(ParseVector4);
 
-        // "x, y, width, height"
+        // "[x, y, width, height]"
         FxValue<Rect>.RegisterConverter(ParseRect);
 
-        // "x, y, z, w" || "x, y, z"
+        // "[x, y, z, w]" || "[x, y, z]" (euler)
         FxValue<Quaternion>.RegisterConverter(ParseQuaternion);
 
-        // "r, g, b, a"
+        // "[r, g, b, a]"
         FxValue<Color>.RegisterConverter(ParseColor);
 
-        // "r1,g1,b1,a1,r2,g2,b2,a2,r3,g3,b3,a3,r4,g4,b4,a4" || "r,g,b,a"
+        // "[r1,g1,b1,a1,...]" (16) || "[r,g,b,a]"
         FxValue<GradientColor>.RegisterConverter(ParseGradientColor);
 
         FxValue<Vector2>.RegisterRawReader(ReadVector2);
@@ -53,83 +53,100 @@ public static class FxConverters {
     #region Parsers
 
     public static Vector2 ParseVector2(string raw) {
-        if (string.IsNullOrWhiteSpace(raw)) return Vector2.zero;
-        var p = Split(raw);
-        return p.Length >= 2 && TryFloat(p[0], out var x) && TryFloat(p[1], out var y)
-            ? new Vector2(x, y)
-            : Vector2.zero;
+        if (TryJsArray(raw, out var a) && a.Length >= 2) {
+            return new Vector2(a[0], a[1]);
+        }
+
+        var p = SplitComponents(raw, 2);
+        return new Vector2(Eval(p[0]), Eval(p[1]));
     }
 
     public static Vector3 ParseVector3(string raw) {
-        if (string.IsNullOrWhiteSpace(raw)) return Vector3.zero;
-        var p = Split(raw);
-        return p.Length >= 3 && TryFloat(p[0], out var x) && TryFloat(p[1], out var y) && TryFloat(p[2], out var z)
-            ? new Vector3(x, y, z)
-            : Vector3.zero;
+        if (TryJsArray(raw, out var a) && a.Length >= 3) {
+            return new Vector3(a[0], a[1], a[2]);
+        }
+
+        var p = SplitComponents(raw, 3);
+        return new Vector3(Eval(p[0]), Eval(p[1]), Eval(p[2]));
     }
 
     public static Vector4 ParseVector4(string raw) {
-        if (string.IsNullOrWhiteSpace(raw)) return Vector4.zero;
-        var p = Split(raw);
-        return p.Length >= 4 && TryFloat(p[0], out var x) && TryFloat(p[1], out var y) && TryFloat(p[2], out var z) && TryFloat(p[3], out var w)
-            ? new Vector4(x, y, z, w)
-            : Vector4.zero;
+        if (TryJsArray(raw, out var a) && a.Length >= 4) {
+            return new Vector4(a[0], a[1], a[2], a[3]);
+        }
+
+        var p = SplitComponents(raw, 4);
+        return new Vector4(Eval(p[0]), Eval(p[1]), Eval(p[2]), Eval(p[3]));
     }
 
     public static Rect ParseRect(string raw) {
-        if (string.IsNullOrWhiteSpace(raw)) return Rect.zero;
-        var p = Split(raw);
-        return p.Length >= 4 && TryFloat(p[0], out var x) && TryFloat(p[1], out var y) && TryFloat(p[2], out var w) && TryFloat(p[3], out var h)
-            ? new Rect(x, y, w, h)
-            : Rect.zero;
+        if (TryJsArray(raw, out var a) && a.Length >= 4) {
+            return new Rect(a[0], a[1], a[2], a[3]);
+        }
+
+        var p = SplitComponents(raw, 4);
+        return new Rect(Eval(p[0]), Eval(p[1]), Eval(p[2]), Eval(p[3]));
     }
 
     public static Quaternion ParseQuaternion(string raw) {
-        if (string.IsNullOrWhiteSpace(raw)) return Quaternion.identity;
-        var p = Split(raw);
+        if (TryJsArray(raw, out var a)) {
+            if (a.Length >= 4) {
+                return new Quaternion(a[0], a[1], a[2], a[3]);
+            }
+
+            if (a.Length == 3) {
+                return Quaternion.Euler(a[0], a[1], a[2]);
+            }
+        }
+
+        var p = SplitComponents(raw, 0);
 
         return p.Length switch {
-            >= 4 when TryFloat(p[0], out var x) && TryFloat(p[1], out var y) && TryFloat(p[2], out var z) &&
-                      TryFloat(p[3], out var w) => new Quaternion(x, y, z, w),
-            
-            3 when TryFloat(p[0], out var ex) && TryFloat(p[1], out var ey) && TryFloat(p[2], out var ez) => Quaternion
-                .Euler(ex, ey, ez),
-            
-            _ => Quaternion.identity
+            >= 4 => new Quaternion(Eval(p[0]), Eval(p[1]), Eval(p[2]), Eval(p[3])),
+            3 => Quaternion.Euler(Eval(p[0]), Eval(p[1]), Eval(p[2])),
+            _ => throw new FormatException("Expected [x, y, z, w] or [x, y, z].")
         };
     }
 
     public static Color ParseColor(string raw) {
-        if (string.IsNullOrWhiteSpace(raw)) return Color.white;
-
-        var p = Split(raw);
-        if (p.Length < 3 || !TryFloat(p[0], out var r) || !TryFloat(p[1], out var g) || !TryFloat(p[2], out var b)) {
-            return Color.white;
+        if (TryJsArray(raw, out var a) && a.Length >= 3) {
+            return new Color(a[0], a[1], a[2], a.Length >= 4 ? a[3] : 1.0f);
         }
 
-        var a = p.Length >= 4 && TryFloat(p[3], out var parsedA) ? parsedA : 1.0f;
-        return new Color(r, g, b, a);
+        var p = SplitComponents(raw, 0);
+        if (p.Length < 3) {
+            throw new FormatException("Expected [r, g, b, a].");
+        }
 
+        var alpha = p.Length >= 4 ? Eval(p[3]) : 1.0f;
+        return new Color(Eval(p[0]), Eval(p[1]), Eval(p[2]), alpha);
     }
 
     public static GradientColor ParseGradientColor(string raw) {
-        if (string.IsNullOrWhiteSpace(raw)) return new GradientColor(Color.white, true);
+        if (TryJsArray(raw, out var a)) {
+            if (a.Length >= 16) {
+                return new GradientColor(
+                    new Color(a[0], a[1], a[2], a[3]),
+                    new Color(a[4], a[5], a[6], a[7]),
+                    new Color(a[8], a[9], a[10], a[11]),
+                    new Color(a[12], a[13], a[14], a[15]));
+            }
 
-        var p = Split(raw);
+            if (a.Length >= 4) {
+                return new GradientColor(new Color(a[0], a[1], a[2], a[3]), true);
+            }
+        }
+
+        var p = SplitComponents(raw, 0);
 
         return p.Length switch {
-            >= 16 when TryFloat(p[0], out var r1) && TryFloat(p[1], out var g1) && TryFloat(p[2], out var b1) &&
-                       TryFloat(p[3], out var a1) && TryFloat(p[4], out var r2) && TryFloat(p[5], out var g2) &&
-                       TryFloat(p[6], out var b2) && TryFloat(p[7], out var a2) && TryFloat(p[8], out var r3) &&
-                       TryFloat(p[9], out var g3) && TryFloat(p[10], out var b3) && TryFloat(p[11], out var a3) &&
-                       TryFloat(p[12], out var r4) && TryFloat(p[13], out var g4) && TryFloat(p[14], out var b4) &&
-                       TryFloat(p[15], out var a4) => new GradientColor(new Color(r1, g1, b1, a1),
-                new Color(r2, g2, b2, a2), new Color(r3, g3, b3, a3), new Color(r4, g4, b4, a4)),
-            
-            >= 4 when TryFloat(p[0], out var sr) && TryFloat(p[1], out var sg) && TryFloat(p[2], out var sb) &&
-                      TryFloat(p[3], out var sa) => new GradientColor(new Color(sr, sg, sb, sa), true),
-            
-            _ => new GradientColor(Color.white, true)
+            >= 16 => new GradientColor(
+                new Color(Eval(p[0]), Eval(p[1]), Eval(p[2]), Eval(p[3])),
+                new Color(Eval(p[4]), Eval(p[5]), Eval(p[6]), Eval(p[7])),
+                new Color(Eval(p[8]), Eval(p[9]), Eval(p[10]), Eval(p[11])),
+                new Color(Eval(p[12]), Eval(p[13]), Eval(p[14]), Eval(p[15]))),
+            >= 4 => new GradientColor(new Color(Eval(p[0]), Eval(p[1]), Eval(p[2]), Eval(p[3])), true),
+            _ => throw new FormatException("Expected [r, g, b, a] or 16 components.")
         };
     }
 
@@ -148,6 +165,73 @@ public static class FxConverters {
     #endregion
 
     #region Helpers
+
+    private static float Eval(string expr) => FxValue.EvaluateNumericComponent(expr);
+
+    private static bool TryJsArray(string raw, out float[] values) {
+        values = null;
+        var text = raw?.Trim();
+        if (string.IsNullOrEmpty(text)) {
+            return false;
+        }
+
+        if (!text.StartsWith('[')) {
+            text = "[" + text + "]";
+        }
+
+        try {
+            if (!FxValue.TryEvaluateJs(text, out var result) || result == null) {
+                return false;
+            }
+
+            if (result is System.Collections.IList list && list.Count > 0 && list.Count <= 64) {
+                var arr = new float[list.Count];
+                for (int i = 0; i < list.Count; i++) {
+                    arr[i] = Convert.ToSingle(list[i], CultureInfo.InvariantCulture);
+                }
+
+                values = arr;
+                return true;
+            }
+        } catch {
+        }
+
+        return false;
+    }
+
+    private static string[] SplitComponents(string input, int expected) {
+        if (string.IsNullOrWhiteSpace(input)) {
+            throw new FormatException("Empty expression.");
+        }
+
+        var text = input.Trim();
+        if (text.StartsWith('[') && text.EndsWith(']')) {
+            text = text[1..^1];
+        }
+
+        var parts = new List<string>();
+        int depth = 0;
+        int start = 0;
+        for (int i = 0; i < text.Length; i++) {
+            char c = text[i];
+            if (c == '(' || c == '[') {
+                depth++;
+            } else if (c == ')' || c == ']') {
+                depth--;
+            } else if ((c == ',' || c == ';') && depth == 0) {
+                parts.Add(text[start..i]);
+                start = i + 1;
+            }
+        }
+        parts.Add(text[start..]);
+
+        var result = parts.Select(p => p.Trim()).Where(p => p.Length > 0).ToArray();
+        if (expected > 0 && result.Length < expected) {
+            throw new FormatException($"Expected at least {expected} components.");
+        }
+
+        return result;
+    }
 
     private static string[] Split(string input) {
         return input.Split([',', ' ', ';'], StringSplitOptions.RemoveEmptyEntries);

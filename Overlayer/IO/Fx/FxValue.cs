@@ -1,5 +1,8 @@
 using System.Collections.Concurrent;
+using System.Globalization;
+using NCalc;
 using Newtonsoft.Json.Linq;
+using Overlayer.Core;
 using Overlayer.IO.Interface;
 using Overlayer.TextEngine.Core;
 
@@ -36,6 +39,37 @@ public abstract class FxValue {
         Converters.Clear();
         RawReaders.Clear();
         RawWriters.Clear();
+    }
+
+    internal static bool TryEvaluateJs(string code, out object result) {
+        result = null;
+        try {
+            var v8 = MainCore.V8;
+            if (v8 == null) {
+                return false;
+            }
+
+            return v8.TryEvaluateFx(code, out result) && result != null;
+        } catch {
+            result = null;
+            return false;
+        }
+    }
+
+    internal static float EvaluateNumericComponent(string expr) {        var text = expr?.Trim() ?? string.Empty;
+        if (float.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var direct)) {
+            return direct;
+        }
+
+        var expression = new Expression(text, ExpressionOptions.IgnoreCaseAtBuiltInFunctions);
+        expression.Parameters["PI"] = Math.PI;
+        expression.Parameters["E"] = Math.E;
+        var value = expression.Evaluate();
+        if (value == null) {
+            throw new FormatException($"Cannot evaluate '{expr}'.");
+        }
+
+        return Convert.ToSingle(value, CultureInfo.InvariantCulture);
     }
 }
 
@@ -169,12 +203,31 @@ public sealed class FxValue<T> : FxValue, IFxValue, ISettingsFile, ICopyable<FxV
             return staticValue;
         }
 
-        var rendered = Engine.Get();
+        var rendered = Engine.Text;
         if (string.IsNullOrEmpty(rendered)) {
             return staticValue;
         }
 
         var targetType = typeof(T);
+        var typeCode = Type.GetTypeCode(targetType);
+        if(!targetType.IsEnum && (typeCode == TypeCode.Boolean || (typeCode >= TypeCode.SByte && typeCode <= TypeCode.Decimal))) {
+            if (TryEvaluateJs(rendered, out var jsResult)) {
+                try {
+                    return (T)Convert.ChangeType(jsResult, targetType, CultureInfo.InvariantCulture);
+                } catch {
+                }
+            }
+            try {
+                var expression = new Expression(rendered, ExpressionOptions.IgnoreCaseAtBuiltInFunctions);
+                expression.Parameters["PI"] = Math.PI;
+                expression.Parameters["E"] = Math.E;
+                var value = expression.Evaluate();
+                if(value == null) return staticValue;
+                return (T)Convert.ChangeType(value, targetType, CultureInfo.InvariantCulture);
+            } catch {
+                return staticValue;
+            }
+        }
 
         if (!Converters.TryGetValue(targetType, out var converter))
             throw new InvalidOperationException(
@@ -198,6 +251,7 @@ public sealed class FxValue<T> : FxValue, IFxValue, ISettingsFile, ICopyable<FxV
 
     public JToken Serialize() {
         if (!UseFx) {
+            if(typeof(T).IsEnum) return new JValue(staticValue.ToString());
             try {
                 if (RawWriters.TryGetValue(typeof(T), out var writer)) {
                     return writer(staticValue);

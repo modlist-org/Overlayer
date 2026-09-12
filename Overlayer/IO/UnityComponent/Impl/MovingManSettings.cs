@@ -151,6 +151,9 @@ public sealed class MovingManSettings : UnityComponentSettingsBase, ICopyable<Mo
         var value = token[nameof(Target)];
         if(value?.Type == JTokenType.Integer) {
             int legacyValue = value.Value<int>();
+            if(token[nameof(Ease)]?.Type == JTokenType.Integer) {
+                return (MovingManTarget)legacyValue;
+            }
             if((legacyValue & (1 << 10)) != 0) {
                 return (MovingManTarget)(legacyValue | (1 << 11));
             }

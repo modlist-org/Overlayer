@@ -85,6 +85,7 @@ public class V8Manager : IRuntimeService {
 
     public void Reset() {
         lock(_engineLock) {
+            ClearFxScriptCache();
             _engine?.Dispose();
             _engine = new V8ScriptEngine();
             _engine.AddHostObject("TagAccessHelper", new TagAccessHelper());
@@ -94,6 +95,7 @@ public class V8Manager : IRuntimeService {
 
     public async Task ReloadScriptsAsync() {
         lock(_engineLock) {
+            ClearFxScriptCache();
             _engine.Dispose();
             _engine = new V8ScriptEngine();
             BindEngine(_engine);
@@ -194,8 +196,60 @@ public class V8Manager : IRuntimeService {
         return "any";
     }
 
-    public void LoadImplJs() {
+    private readonly Dictionary<string, (V8ScriptEngine Engine, V8Script Script)> _fxScriptCache = new();
+
+    public bool TryEvaluateFx(string code, out object result) {
+        result = null;
+        if (string.IsNullOrWhiteSpace(code)) {
+            return false;
+        }
+
         lock(_engineLock) {
+            if (_engine == null) {
+                return false;
+            }
+
+            try {
+                if (!_fxScriptCache.TryGetValue(code, out var entry) || !ReferenceEquals(entry.Engine, _engine)) {
+                    V8Script script = null;
+                    try {
+                        script = _engine.Compile(code);
+                    } catch {
+                    }
+
+                    if (_fxScriptCache.Count > 256) {
+                        ClearFxScriptCache();
+                    }
+
+                    entry = (_engine, script);
+                    _fxScriptCache[code] = entry;
+                }
+
+                if (entry.Script == null) {
+                    return false;
+                }
+
+                result = _engine.Evaluate(entry.Script);
+                return result != null;
+            } catch {
+                result = null;
+                return false;
+            }
+        }
+    }
+
+    private void ClearFxScriptCache() {
+        foreach(var entry in _fxScriptCache.Values) {
+            try {
+                entry.Script?.Dispose();
+            } catch {
+            }
+        }
+
+        _fxScriptCache.Clear();
+    }
+
+    public void LoadImplJs() {        lock(_engineLock) {
             if(File.Exists(ImplFilePath)) {
                 try {
                     _engine.Execute(File.ReadAllText(ImplFilePath));
@@ -225,6 +279,7 @@ public class V8Manager : IRuntimeService {
 
     public void Dispose() {
         lock(_engineLock) {
+            ClearFxScriptCache();
             _watcher?.Dispose();
             _engine?.Dispose();
             _engine = null;

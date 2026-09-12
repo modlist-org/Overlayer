@@ -151,9 +151,9 @@ internal sealed class OvInspectorBuilder(
             refreshPositionFields?.Invoke();
             refreshPivotFields?.Invoke();
         });
-        refreshPositionFields = BuildRectPositionFields(rectLayout, obj);
-
-        FxSwitch(basic, "Position XY", cfg.AnchoredPosition, "rect_position_xy");
+        refreshPositionFields = () => { };
+        FxBlock(rectLayout, "Position", cfg.AnchoredPosition,
+            group => refreshPositionFields = BuildRectPositionFields(group, obj), "rect_position_xy");
         FxFloatRow(basic, "Position", cfg.AnchoredPositionZ, 0f, "Z", "rect_position_z", "F1");
         FxNumericRow(basic, "Rotation XY", cfg.RotationXY, [
             ("X", 0f, () => cfg.RotationXY.Value.x, value => { var v = cfg.RotationXY.Value; v.x = value; cfg.RotationXY.Value = v; }, "rect_rotation_x"),
@@ -191,9 +191,9 @@ internal sealed class OvInspectorBuilder(
             refreshPositionFields?.Invoke();
             refreshPivotFields?.Invoke();
         });
-        refreshPositionFields = BuildRectPositionFields(rectLayout, cfg);
-
-        FxSwitch(basic, "Position XY", cfg.AnchoredPosition, "canvas_rect_position_xy");
+        refreshPositionFields = () => { };
+        FxBlock(rectLayout, "Position", cfg.AnchoredPosition,
+            group => refreshPositionFields = BuildRectPositionFields(group, cfg), "canvas_rect_position_xy");
         FxFloatRow(basic, "Position", cfg.AnchoredPositionZ, 0f, "Z", "canvas_rect_position_z", "F1");
         FxNumericRow(basic, "Rotation XY", cfg.RotationXY, [
             ("X", 0f, () => cfg.RotationXY.Value.x, value => { var v = cfg.RotationXY.Value; v.x = value; cfg.RotationXY.Value = v; }, "canvas_rect_rotation_x"),
@@ -355,27 +355,13 @@ internal sealed class OvInspectorBuilder(
     }
 
     private void MovingManTargets(Transform parent, MovingManSettings cfg) {
-        Toggle(parent, "Target Fx", false, cfg.Target.UseFx, value => {
-            cfg.Target.UseFx = value;
-            if(value) {
-                cfg.Target.EnsureEngine();
-            }
-            ApplyAndSave();
-            rebuild();
-        }, "moving_man_target_use_fx");
-        if(cfg.Target.UseFx) {
-            Input(parent, "Target Expr", "", cfg.Target.Expression, value => {
-                cfg.Target.Expression = value;
-                apply();
-            }, "moving_man_target_fx");
-            return;
-        }
+        FxBlock(parent, "Target", cfg.Target, group => {
         string label = InspectorLabel("Target");
         var values = Enum.GetValues(typeof(MovingManTarget))
             .Cast<MovingManTarget>()
             .Where(value => value != MovingManTarget.None)
             .ToArray();
-        var row = GenerateUI.Row(parent, 50f);
+        var row = GenerateUI.Row(group, 50f);
         var dropdown = GenerateUI.MultiDropDown(
             row,
             MovingManTarget.TextSize,
@@ -390,6 +376,7 @@ internal sealed class OvInspectorBuilder(
             "moving_man_target"
         );
         Track(dropdown);
+        }, "moving_man_target", dropdown: true);
     }
 
     private static string MovingManTargetSummary(MovingManTarget value, IReadOnlyList<MovingManTarget> values) {
@@ -626,7 +613,33 @@ internal sealed class OvInspectorBuilder(
                 enabledChanged();
             }
         }, remove);
-        FxSwitch(built.contentRect, "Enabled", settings.ComponentEnabled, "comp_enabled_" + componentKey);
+        var header = built.cardRect.Find("Header");
+        var enabledFx = settings.ComponentEnabled;
+        var fxButton = GenerateUI.Button(header, () => {
+            enabledFx.UseFx = !enabledFx.UseFx;
+            if(enabledFx.UseFx) enabledFx.EnsureEngine();
+            ApplyAndSave();
+            rebuild();
+        }, MainCore.Spr.Get(UISprite.F128), "comp_enabled_" + componentKey, 5f);
+        fxButton.Rect.SetSiblingIndex(1);
+        var fxLayout = fxButton.Rect.gameObject.AddComponent<LayoutElement>();
+        fxLayout.preferredWidth = 26f;
+        fxLayout.preferredHeight = 30f;
+        fxButton.NormalColor = enabledFx.UseFx ? UIColors.FxOn : UIColors.FxOff;
+        fxButton.UpdateVisual(true);
+        controls.Add(fxButton);
+        if(enabledFx.UseFx) {
+            var expressionRow = GenerateUI.Row(header, 30f);
+            expressionRow.SetSiblingIndex(2);
+            var expressionLayout = expressionRow.GetComponent<LayoutElement>();
+            expressionLayout.preferredWidth = 160f;
+            expressionLayout.flexibleWidth = 1f;
+            var input = GenerateUI.Input(expressionRow, "", enabledFx.Expression, value => {
+                enabledFx.Expression = value;
+                apply();
+            }, "Enabled", null, "comp_enabled_expr_" + componentKey, _ => save(), monospace: true);
+            Track(input);
+        }
         return built;
     }
 
@@ -1154,24 +1167,90 @@ internal sealed class OvInspectorBuilder(
         return row;
     }
 
-    private RectTransform FxBlock<T>(Transform parent, string label, FxValue<T> fx, Action<Transform> staticUI, string id) {
-        var group = VerticalGroup(parent, 2f);
-        Toggle(group, label + " Fx", false, fx.UseFx, value => {
-            fx.UseFx = value;
-            if(value) {
-                fx.EnsureEngine();
-            }
-            ApplyAndSave();
-            rebuild();
-        }, id + "_use_fx");
+    private static string transitioningFxId;
+
+    private RectTransform FxBlock<T>(Transform parent, string label, FxValue<T> fx, Action<Transform> staticUI, string id, bool dropdown = false) {
+        var group = CompactRow(parent, 50f, -10f);
+        group.GetComponent<LayoutElement>().flexibleWidth = 1f;
+        group.GetComponent<LayoutElement>().minWidth = 0f;
+        group.GetComponent<HorizontalLayoutGroup>().reverseArrangement = true;
+        group.GetComponent<HorizontalLayoutGroup>().childForceExpandHeight = false;
+        group.GetComponent<HorizontalLayoutGroup>().childAlignment = TextAnchor.UpperLeft;
+        if(dropdown) group.GetComponent<HorizontalLayoutGroup>().padding.right = 230;
+        group.GetComponent<LayoutElement>().preferredHeight = -1f;
+        var editor = VerticalGroup(group, 0f);
+        editor.GetComponent<LayoutElement>().minWidth = 0f;
         if(fx.UseFx) {
-            Input(group, label + " Expr", "", fx.Expression, value => {
+            var row = GenerateUI.Row(editor, 50f);
+            var input = GenerateUI.Input(row, "", fx.Expression, value => {
                 fx.Expression = value;
                 apply();
-            }, id + "_fx");
+            }, InspectorLabel(label), null, id + "_fx", _ => save(), monospace: true);
+            Track(input);
         } else {
-            staticUI(group);
+            staticUI(editor);
         }
+        if(dropdown && !fx.UseFx) {
+            foreach(var rect in editor.GetComponentsInChildren<RectTransform>(true)) {
+                if(rect.name != "Bg" || (rect.parent.name != "Dropdown" && rect.parent.name != "MultiDropdown")) continue;
+                rect.sizeDelta = new Vector2(0f, 50f);
+                rect.anchoredPosition = Vector2.zero;
+            }
+        }
+        foreach(var image in editor.GetComponentsInChildren<Image>(true)) {
+            if(image.color.Equals(UIColors.ObjectBG)) image.color = UIColors.FxField;
+        }
+        var fade = group.gameObject.AddComponent<CanvasGroup>();
+        GTween transition = null;
+        bool switching = false;
+        if(transitioningFxId == id) {
+            transitioningFxId = null;
+            fade.alpha = 0f;
+            transition = fade.GTFade(1f, 0.12f).SetEasing(Easing.OutSine);
+            MainCore.TC.Play(transition);
+        }
+        var buttonSlot = GenerateUI.Row(group, 50f);
+        buttonSlot.SetAsFirstSibling();
+        var slotLayout = buttonSlot.GetComponent<LayoutElement>();
+        slotLayout.minWidth = 30f;
+        slotLayout.preferredWidth = 30f;
+        slotLayout.flexibleWidth = 0f;
+        slotLayout.flexibleHeight = 0f;
+        var button = GenerateUI.Button(buttonSlot, () => {
+            if(switching) return;
+            switching = true;
+            fade.interactable = false;
+            transition?.Kill();
+            transition = fade.GTFade(0f, 0.08f).SetEasing(Easing.OutSine).OnComplete(() => {
+                fx.UseFx = !fx.UseFx;
+                if(fx.UseFx) fx.EnsureEngine();
+                ApplyAndSave();
+                transitioningFxId = id;
+                group.gameObject.SetActive(false);
+                rebuild();
+            });
+            MainCore.TC.Play(transition);
+        }, MainCore.Spr.Get(UISprite.F128), id + "_use_fx", 4f);
+        button.Rect.anchorMin = new Vector2(0f, 1f);
+        button.Rect.anchorMax = new Vector2(1f, 1f);
+        button.Rect.pivot = new Vector2(0.5f, 1f);
+        button.Rect.anchoredPosition = Vector2.zero;
+        button.Rect.sizeDelta = new Vector2(0f, 50f);
+        var width = button.Rect.gameObject.AddComponent<LayoutElement>();
+        width.minWidth = 30f;
+        width.preferredWidth = 30f;
+        width.flexibleWidth = 0f;
+        width.minHeight = 50f;
+        width.preferredHeight = 50f;
+        button.NormalColor = fx.UseFx ? UIColors.FxOn : UIColors.FxOff;
+        button.Icon.color = Color.white;
+        button.Icon.rectTransform.offsetMin = new Vector2(12f, 10f);
+        button.Icon.rectTransform.offsetMax = new Vector2(-2f, -10f);
+        button.UpdateVisual(true);
+        button.OnDisposed += () => {
+            transition?.Kill();
+        };
+        controls.Add(button);
         return group;
     }
 
@@ -1203,15 +1282,26 @@ internal sealed class OvInspectorBuilder(
     }
 
     private RectTransform FxEnum<T>(Transform parent, string label, FxValue<T> fx, T defaultValue, string id, Action completed = null) where T : struct, Enum {
-        return FxBlock(parent, label, fx, g => EnumDropDown(g, label, defaultValue, fx.Value, value => fx.Value = value, id, completed), id);
+        return FxBlock(parent, label, fx, g => EnumDropDown(g, label, defaultValue, fx.Value, value => fx.Value = value, id, completed), id, dropdown: true);
     }
 
     private RectTransform FxEnumMapped<TEnum>(Transform parent, string label, FxValue<int> fx, int defaultValue, string id, Func<int, TEnum> toEnum, Func<TEnum, int> fromEnum, Action completed = null) where TEnum : struct, Enum {
-        return FxBlock(parent, label, fx, g => EnumDropDown(g, label, toEnum(defaultValue), toEnum(fx.Value), value => fx.Value = fromEnum(value), id, completed), id);
+        return FxBlock(parent, label, fx, g => EnumDropDown(g, label, toEnum(defaultValue), toEnum(fx.Value), value => fx.Value = fromEnum(value), id, completed), id, dropdown: true);
     }
 
     private RectTransform FxVector2(Transform parent, string label, FxValue<Vector2> fx, Vector2 defaults, float min, float max, string id, string format = "F2") {
-        return FxBlock(parent, label, fx, g => Vector2Sliders(g, label, defaults, min, max, () => fx.Value, value => fx.Value = value, id, format), id);
+        return FxBlock(parent, label, fx, g => NumericPropertyRow(g, label, [
+            ("X", defaults.x, () => fx.StaticValue.x, value => {
+                var vector = fx.StaticValue;
+                vector.x = Mathf.Clamp(value, min, max);
+                fx.StaticValue = vector;
+            }, id + "_x"),
+            ("Y", defaults.y, () => fx.StaticValue.y, value => {
+                var vector = fx.StaticValue;
+                vector.y = Mathf.Clamp(value, min, max);
+                fx.StaticValue = vector;
+            }, id + "_y")
+        ], format), id);
     }
 
     private RectTransform FxColor(Transform parent, string label, FxValue<Color> fx, Color defaults, string id) {
@@ -1240,38 +1330,11 @@ internal sealed class OvInspectorBuilder(
     }
 
     private void FxCodeEditor(Transform parent, string label, string id, FxValue<string> fx, Action<string> changed, Func<TextEngineCore> getEngine) {
-        Toggle(parent, label + " Fx", false, fx.UseFx, value => {
-            fx.UseFx = value;
-            if(value) {
-                fx.EnsureEngine();
-            }
-            ApplyAndSave();
-            rebuild();
-        }, id + "_use_fx");
-        if(fx.UseFx) {
-            Input(parent, label + " Expr", "", fx.Expression, value => {
-                fx.Expression = value;
-                apply();
-            }, id + "_fx");
-        }
-        CodeEditor(parent, fx.UseFx ? label + " Preview" : label, id, fx.Value, changed, getEngine);
+        FxBlock(parent, label, fx, group => CodeEditor(group, label, id, fx.StaticValue, changed, getEngine), id);
     }
 
     private void FxSwitch<T>(Transform parent, string label, FxValue<T> fx, string id) {
-        Toggle(parent, label + " Fx", false, fx.UseFx, value => {
-            fx.UseFx = value;
-            if(value) {
-                fx.EnsureEngine();
-            }
-            ApplyAndSave();
-            rebuild();
-        }, id + "_use_fx");
-        if(fx.UseFx) {
-            Input(parent, label + " Expr", "", fx.Expression, value => {
-                fx.Expression = value;
-                apply();
-            }, id + "_fx");
-        }
+        FxBlock(parent, label, fx, group => Label(group, InspectorLabel(label)), id);
     }
 
     private Action FxNumericRow(
@@ -1282,11 +1345,9 @@ internal sealed class OvInspectorBuilder(
         string format,
         string id
     ) {
-        FxSwitch(parent, label, fx, id);
-        if(fx.UseFx) {
-            return () => { };
-        }
-        return NumericPropertyRow(parent, label, fields, format);
+        Action refresh = () => { };
+        FxBlock(parent, label, fx, group => refresh = NumericPropertyRow(group, label, fields, format), id);
+        return refresh;
     }
 
     private Action FxNumericRow3(
@@ -1297,20 +1358,17 @@ internal sealed class OvInspectorBuilder(
         string format,
         string id
     ) {
-        FxSwitch(parent, label, fx, id);
-        if(fx.UseFx) {
-            return () => { };
-        }
-        return NumericPropertyRow(parent, label, fields, format);
+        Action refresh = () => { };
+        FxBlock(parent, label, fx, group => refresh = NumericPropertyRow(group, label, fields, format), id);
+        return refresh;
     }
 
     private void FxFloatRow(Transform parent, string label, FxValue<float> fx, float defaultValue, string fieldLabel, string id, string format) {
-        FxSwitch(parent, label, fx, id);
-        if(!fx.UseFx) {
-            NumericPropertyRow(parent, label, [
+        FxBlock(parent, label, fx, group => {
+            NumericPropertyRow(group, label, [
                 (fieldLabel, defaultValue, () => fx.Value, value => fx.Value = value, id)
             ], format);
-        }
+        }, id);
     }
 
     private void Vector2Sliders(Transform parent, string label, Vector2 defaults, float min, float max, Func<Vector2> get, Action<Vector2> set, string id, string format = "F2") {
@@ -1491,11 +1549,12 @@ internal sealed class OvInspectorBuilder(
 
         bool drivenX = DrivenX();
         bool drivenY = DrivenY();
-        bool posFx = cfg.AnchoredPosition.UseFx || cfg.SizeDelta.UseFx;
-        Field.SetBlocked((drivenX && StretchX()) || posFx, true);
-        secondX.Field.SetBlocked(drivenX || posFx, true);
-        firstY.Field.SetBlocked((drivenY && StretchY()) || posFx, true);
-        secondY.Field.SetBlocked(drivenY || posFx, true);
+        bool posFx = cfg.AnchoredPosition.UseFx;
+        bool sizeFx = cfg.SizeDelta.UseFx;
+        Field.SetBlocked((drivenX && StretchX()) || posFx || (StretchX() && sizeFx), true);
+        secondX.Field.SetBlocked(drivenX || sizeFx || (StretchX() && posFx), true);
+        firstY.Field.SetBlocked((drivenY && StretchY()) || posFx || (StretchY() && sizeFx), true);
+        secondY.Field.SetBlocked(drivenY || sizeFx || (StretchY() && posFx), true);
         RefreshValues();
 
         if(drivenX || drivenY || posFx) {
@@ -1567,11 +1626,12 @@ internal sealed class OvInspectorBuilder(
             SetDisplayedValue(secondY.Field, secondY.Get());
         }
 
-        bool posFx = cfg.AnchoredPosition.UseFx || cfg.SizeDelta.UseFx;
-        Field.SetBlocked(posFx, true);
-        secondX.Field.SetBlocked(posFx, true);
-        firstY.Field.SetBlocked(posFx, true);
-        secondY.Field.SetBlocked(posFx, true);
+        bool posFx = cfg.AnchoredPosition.UseFx;
+        bool sizeFx = cfg.SizeDelta.UseFx;
+        Field.SetBlocked(posFx || (StretchX() && sizeFx), true);
+        secondX.Field.SetBlocked(sizeFx || (StretchX() && posFx), true);
+        firstY.Field.SetBlocked(posFx || (StretchY() && sizeFx), true);
+        secondY.Field.SetBlocked(sizeFx || (StretchY() && posFx), true);
         RefreshValues();
         if(posFx) {
             controls.Add(new UIWatcher("rect_transform_driven", fields, RefreshValues));
@@ -2382,27 +2442,14 @@ internal sealed class OvInspectorBuilder(
         options.Insert(0, none);
 
         string current = string.IsNullOrEmpty(cfg.SpriteKey.Value) ? none : cfg.SpriteKey.Value;
-        Toggle(parent, "Sprite Fx", false, cfg.SpriteKey.UseFx, value => {
-            cfg.SpriteKey.UseFx = value;
-            if(value) {
-                cfg.SpriteKey.EnsureEngine();
-            }
-            ApplyAndSave();
-            rebuild();
-        }, "image_sprite_use_fx");
-        if(cfg.SpriteKey.UseFx) {
-            Input(parent, "Sprite Expr", "", cfg.SpriteKey.Expression, value => {
-                cfg.SpriteKey.Expression = value;
-                apply();
-            }, "image_sprite_fx");
-            return;
-        }
-        var row = GenerateUI.Row(parent, 50f);
+        FxBlock(parent, "Sprite", cfg.SpriteKey, group => {
+        var row = GenerateUI.Row(group, 50f);
         var dropdown = GenerateUI.DropDown(row, none, current, options, option => $"{InspectorLabel("Sprite")}: {InspectorLabel(option)}", selected => {
             cfg.SpriteKey.Value = selected == none ? null : selected;
             ApplyAndSave();
         }, "image_sprite");
         Track(dropdown);
+        }, "image_sprite", dropdown: true);
     }
 
     private void FontDropDown(Transform parent, TextMeshProUGUISettings cfg) {
@@ -2414,27 +2461,14 @@ internal sealed class OvInspectorBuilder(
         options.Insert(0, none);
 
         string current = string.IsNullOrEmpty(cfg.FontKey.Value) ? none : cfg.FontKey.Value;
-        Toggle(parent, "Font Fx", false, cfg.FontKey.UseFx, value => {
-            cfg.FontKey.UseFx = value;
-            if(value) {
-                cfg.FontKey.EnsureEngine();
-            }
-            ApplyAndSave();
-            rebuild();
-        }, "text_font_use_fx");
-        if(cfg.FontKey.UseFx) {
-            Input(parent, "Font Expr", "", cfg.FontKey.Expression, value => {
-                cfg.FontKey.Expression = value;
-                apply();
-            }, "text_font_fx");
-            return;
-        }
-        var row = GenerateUI.Row(parent, 50f);
+        FxBlock(parent, "Font", cfg.FontKey, group => {
+        var row = GenerateUI.Row(group, 50f);
         var dropdown = GenerateUI.DropDown(row, none, current, options, option => $"{InspectorLabel("Font")}: {InspectorLabel(option)}", selected => {
             cfg.FontKey.Value = selected == none ? null : selected;
             ApplyAndSave();
         }, "text_font");
         Track(dropdown);
+        }, "text_font", dropdown: true);
     }
 
     private void ColorSliders(Transform parent, string label, Color defaults, Func<Color> get, Action<Color> set, string id) {

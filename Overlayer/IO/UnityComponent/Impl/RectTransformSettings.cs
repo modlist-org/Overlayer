@@ -131,25 +131,31 @@ public class RectTransformSettings : UnityComponentSettingsBase, ICopyable<RectT
             return;
         }
 
-        FxUtil.ApplyIfChanged(ref _lastAnchorMin, AnchorMin.Value, v => com.anchorMin = v);
-        FxUtil.ApplyIfChanged(ref _lastAnchorMax, AnchorMax.Value, v => com.anchorMax = v);
-        FxUtil.ApplyIfChanged(ref _lastPivot, Pivot.Value, v => com.pivot = v);
-        bool posChanged = !EqualityComparer<Vector2>.Default.Equals(_lastAnchoredPosition, AnchoredPosition.Value);
-        bool zChanged = !EqualityComparer<float>.Default.Equals(_lastAnchoredPositionZ, AnchoredPositionZ.Value);
+        if(AnchorMin.HasFx) FxUtil.ApplyIfChanged(ref _lastAnchorMin, AnchorMin.Value, v => com.anchorMin = v);
+        if(AnchorMax.HasFx) FxUtil.ApplyIfChanged(ref _lastAnchorMax, AnchorMax.Value, v => com.anchorMax = v);
+        if(Pivot.HasFx) FxUtil.ApplyIfChanged(ref _lastPivot, Pivot.Value, v => com.pivot = v);
+        var position = com.anchoredPosition3D;
+        var xy = AnchoredPosition.HasFx ? AnchoredPosition.Value : new Vector2(position.x, position.y);
+        var z = AnchoredPositionZ.HasFx ? AnchoredPositionZ.Value : position.z;
+        bool posChanged = AnchoredPosition.HasFx && !_lastAnchoredPosition.Equals(xy);
+        bool zChanged = AnchoredPositionZ.HasFx && !_lastAnchoredPositionZ.Equals(z);
         if(posChanged || zChanged) {
-            _lastAnchoredPosition = AnchoredPosition.Value;
-            _lastAnchoredPositionZ = AnchoredPositionZ.Value;
+            _lastAnchoredPosition = xy;
+            _lastAnchoredPositionZ = z;
             com.anchoredPosition3D = new Vector3(_lastAnchoredPosition.x, _lastAnchoredPosition.y, _lastAnchoredPositionZ);
         }
-        FxUtil.ApplyIfChanged(ref _lastSizeDelta, SizeDelta.Value, v => com.sizeDelta = v);
-        bool rotChanged = !EqualityComparer<Vector2>.Default.Equals(_lastRotationXY, RotationXY.Value);
-        bool rotZChanged = !EqualityComparer<float>.Default.Equals(_lastRotation, Rotation.Value);
+        if(SizeDelta.HasFx) FxUtil.ApplyIfChanged(ref _lastSizeDelta, SizeDelta.Value, v => com.sizeDelta = v);
+        var angles = com.localEulerAngles;
+        var rotationXY = RotationXY.HasFx ? RotationXY.Value : new Vector2(angles.x, angles.y);
+        var rotationZ = Rotation.HasFx ? Rotation.Value : angles.z;
+        bool rotChanged = RotationXY.HasFx && !_lastRotationXY.Equals(rotationXY);
+        bool rotZChanged = Rotation.HasFx && !_lastRotation.Equals(rotationZ);
         if(rotChanged || rotZChanged) {
-            _lastRotationXY = RotationXY.Value;
-            _lastRotation = Rotation.Value;
+            _lastRotationXY = rotationXY;
+            _lastRotation = rotationZ;
             com.localEulerAngles = new Vector3(_lastRotationXY.x, _lastRotationXY.y, _lastRotation);
         }
-        FxUtil.ApplyIfChanged(ref _lastScale, Scale.Value, v => com.localScale = v);
+        if(Scale.HasFx) FxUtil.ApplyIfChanged(ref _lastScale, Scale.Value, v => com.localScale = v);
     }
 
     public override JToken Serialize() {

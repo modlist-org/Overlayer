@@ -3,6 +3,9 @@
 namespace Overlayer.UI;
 
 public static class UIColors {
+    public static readonly Color FxField = new Color32(61, 60, 74, 255);
+    public static readonly Color FxOff = new Color32(101, 101, 144, 255);
+    public static readonly Color FxOn = new Color32(148, 148, 255, 255);
     public static readonly Color PanelBG = new(0.165f, 0.161f, 0.196f, 1f);
 
     public static readonly Color TopBar = new(0.255f, 0.259f, 0.333f, 1f);
