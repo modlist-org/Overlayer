@@ -474,7 +474,8 @@ public static partial class GenerateUI {
         rect.pivot = new(rect.pivot.x, 1f);
         rect.anchorMin = new(rect.anchorMin.x, 1f);
         rect.anchorMax = new(rect.anchorMax.x, 1f);
-        rect.sizeDelta = new(rect.sizeDelta.x, 50f);
+        rect.sizeDelta = new(0f, 50f);
+        rect.anchoredPosition = Vector2.zero;
 
         TextMeshProUGUI tmp = AddText(rect);
         tmp.text = display(value);
@@ -506,7 +507,7 @@ public static partial class GenerateUI {
         listRect.anchorMax = new(1f, 1f);
         listRect.pivot = new(0.5f, 1f);
         listRect.offsetMin = new(0f, -62f);
-        listRect.offsetMax = new(-250f, -62f);
+        listRect.offsetMax = new(0f, -62f);
 
         Image listBg = list.AddComponent<Image>();
         listBg.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P2048);
@@ -646,7 +647,8 @@ public static partial class GenerateUI {
         rect.pivot = new(rect.pivot.x, 1f);
         rect.anchorMin = new(rect.anchorMin.x, 1f);
         rect.anchorMax = new(rect.anchorMax.x, 1f);
-        rect.sizeDelta = new(rect.sizeDelta.x, 50f);
+        rect.sizeDelta = new(0f, 50f);
+        rect.anchoredPosition = Vector2.zero;
 
         TextMeshProUGUI tmp = AddText(rect);
         tmp.text = summary(value);
@@ -678,7 +680,7 @@ public static partial class GenerateUI {
         listRect.anchorMax = new(1f, 1f);
         listRect.pivot = new(0.5f, 1f);
         listRect.offsetMin = new(0f, -62f);
-        listRect.offsetMax = new(-250f, -62f);
+        listRect.offsetMax = new(0f, -62f);
 
         Image listBg = list.AddComponent<Image>();
         listBg.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P2048);
@@ -1151,7 +1153,7 @@ public static partial class GenerateUI {
         var headerImg = headerGo.AddComponent<Image>();
         headerImg.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P2048);
         headerImg.type = Image.Type.Sliced;
-        headerImg.color = UIColors.MenuBG;
+        headerImg.color = UIColors.ComponentHeader;
 
         var headerHLayout = headerGo.AddComponent<HorizontalLayoutGroup>();
         headerHLayout.padding = new RectOffset {

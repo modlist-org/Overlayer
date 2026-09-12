@@ -602,6 +602,8 @@ internal sealed class OvInspectorBuilder(
         return GenerateUI.ComponentCard(content, InspectorLabel(title), true, null, remove, removable, showActiveToggle: false);
     }
 
+    private static IFxValue openingEnabledFx;
+
     private (RectTransform Card, RectTransform Content) ComponentCard(
         string title,
         UnityComponentSettingsBase settings,
@@ -619,30 +621,89 @@ internal sealed class OvInspectorBuilder(
         }, remove);
         var header = built.cardRect.Find("Header");
         var enabledFx = settings.ComponentEnabled;
-        var fxButton = GenerateUI.Button(header, () => {
+        RectTransform expressionPanel = null;
+        GTween enabledTransition = null;
+        bool switchingEnabled = false;
+        void FinishToggle() {
             enabledFx.UseFx = !enabledFx.UseFx;
-            if(enabledFx.UseFx) enabledFx.EnsureEngine();
+            if(enabledFx.UseFx) {
+                enabledFx.EnsureEngine();
+                openingEnabledFx = enabledFx;
+            }
             ApplyAndSave();
             rebuild();
+        }
+        var fxButton = GenerateUI.Button(header, () => {
+            if(switchingEnabled) return;
+            switchingEnabled = true;
+            if(expressionPanel == null) {
+                FinishToggle();
+                return;
+            }
+            var size = expressionPanel.GetComponent<LayoutElement>();
+            size.minHeight = 0f;
+            size.preferredHeight = expressionPanel.rect.height;
+            var fade = expressionPanel.GetComponent<CanvasGroup>();
+            fade.interactable = false;
+            expressionPanel.GetComponent<RectMask2D>().enabled = true;
+            enabledTransition = GTweenSequenceBuilder.New()
+                .Join(fade.GTFade(0f, 0.12f).SetEasing(Easing.InSine))
+                .Join(GTweens.Extensions.GTweenExtensions.Tween(
+                    () => size.preferredHeight, height => {
+                        size.preferredHeight = height;
+                        LayoutRebuilder.MarkLayoutForRebuild(built.cardRect);
+                    }, 0f, 0.22f).SetEasing(Easing.InOutCubic))
+                .Build().OnComplete(FinishToggle);
+            MainCore.TC.Play(enabledTransition);
         }, MainCore.Spr.Get(UISprite.F128), "comp_enabled_" + componentKey, 5f);
         fxButton.Rect.SetSiblingIndex(1);
         var fxLayout = fxButton.Rect.gameObject.AddComponent<LayoutElement>();
         fxLayout.preferredWidth = 26f;
         fxLayout.preferredHeight = 30f;
-        fxButton.NormalColor = enabledFx.UseFx ? UIColors.FxOn : UIColors.FxOff;
+        fxButton.NormalColor = enabledFx.UseFx ? UIColors.FxOn : UIColors.ComponentFxOff;
+        fxButton.Icon.color = Color.white;
         fxButton.UpdateVisual(true);
         controls.Add(fxButton);
+        fxButton.OnDisposed += () => enabledTransition?.Kill();
         if(enabledFx.UseFx) {
-            var expressionRow = GenerateUI.Row(header, 30f);
-            expressionRow.SetSiblingIndex(2);
-            var expressionLayout = expressionRow.GetComponent<LayoutElement>();
-            expressionLayout.preferredWidth = 160f;
-            expressionLayout.flexibleWidth = 1f;
-            var input = GenerateUI.Input(expressionRow, "", enabledFx.Expression, value => {
-                enabledFx.Expression = value;
-                apply();
-            }, "Enabled", null, "comp_enabled_expr_" + componentKey, _ => save(), monospace: true);
-            Track(input);
+            expressionPanel = VerticalGroup(built.cardRect, 0f);
+            expressionPanel.SetSiblingIndex(header.GetSiblingIndex() + 1);
+            var panelLayout = expressionPanel.GetComponent<VerticalLayoutGroup>();
+            panelLayout.padding = new RectOffset(8, 8, 8, 8);
+            var background = expressionPanel.gameObject.AddComponent<Image>();
+            background.color = UIColors.ComponentFxEditor;
+            background.raycastTarget = false;
+            JsCodeEditor(expressionPanel, "Enabled", "comp_enabled_expr_" + componentKey, enabledFx, false);
+            var fade = expressionPanel.gameObject.AddComponent<CanvasGroup>();
+            var mask = expressionPanel.gameObject.AddComponent<RectMask2D>();
+            mask.enabled = false;
+            if(ReferenceEquals(openingEnabledFx, enabledFx)) {
+                openingEnabledFx = null;
+                LayoutRebuilder.ForceRebuildLayoutImmediate(expressionPanel);
+                float targetHeight = LayoutUtility.GetPreferredHeight(expressionPanel);
+                var size = expressionPanel.GetComponent<LayoutElement>();
+                size.minHeight = 0f;
+                size.preferredHeight = 0f;
+                fade.alpha = 0f;
+                fade.interactable = false;
+                mask.enabled = true;
+                switchingEnabled = true;
+                enabledTransition = GTweenSequenceBuilder.New()
+                    .Join(GTweens.Extensions.GTweenExtensions.Tween(
+                        () => size.preferredHeight, height => {
+                            size.preferredHeight = height;
+                            LayoutRebuilder.MarkLayoutForRebuild(built.cardRect);
+                        }, targetHeight, 0.26f).SetEasing(Easing.OutCubic))
+                    .Join(fade.GTFade(1f, 0.22f).SetEasing(Easing.OutSine))
+                    .Build().OnComplete(() => {
+                        size.preferredHeight = -1f;
+                        fade.interactable = true;
+                        mask.enabled = false;
+                        switchingEnabled = false;
+                        LayoutRebuilder.MarkLayoutForRebuild(built.cardRect);
+                    });
+                MainCore.TC.Play(enabledTransition);
+            }
         }
         return built;
     }
@@ -1211,7 +1272,6 @@ internal sealed class OvInspectorBuilder(
         group.GetComponent<LayoutElement>().minWidth = 0f;
         group.GetComponent<HorizontalLayoutGroup>().childForceExpandHeight = false;
         group.GetComponent<HorizontalLayoutGroup>().childAlignment = TextAnchor.UpperLeft;
-        if(dropdown) group.GetComponent<HorizontalLayoutGroup>().padding.right = 208;
         group.GetComponent<LayoutElement>().preferredHeight = -1f;
         var editor = VerticalGroup(group, 0f);
         editor.GetComponent<LayoutElement>().minWidth = 0f;
