@@ -1201,7 +1201,7 @@ internal sealed class OvInspectorBuilder(
         var editor = VerticalGroup(group, 0f);
         editor.GetComponent<LayoutElement>().minWidth = 0f;
         if(fx.UseFx) {
-            JsCodeEditor(editor, label, id + "_fx", fx, IsFxArrayForm(typeof(T)));
+            JsCodeEditor(editor, label, id + "_fx", fx);
         } else {
             staticUI(editor);
         }
@@ -1372,10 +1372,10 @@ internal sealed class OvInspectorBuilder(
         }, idPrefix);
     }
 
-    private void JsCodeEditor<T>(Transform parent, string label, string id, FxValue<T> fx, bool arrayForm) {
+    private void JsCodeEditor<T>(Transform parent, string label, string id, FxValue<T> fx) {
         var language = new CodeEditorLanguage {
             Highlight = JsSyntaxHighlighter.GetSpans,
-            Diagnose = source => (GetFxDiagnostics(fx, source, arrayForm), TextEngineState.Ready),
+            Diagnose = source => (GetFxDiagnostics(fx, source), TextEngineState.Ready),
             TagCompletion = false,
             LabelSuffix = "js expression"
         };
@@ -1383,6 +1383,40 @@ internal sealed class OvInspectorBuilder(
             fx.Expression = value;
             apply();
         }, null, language);
+    }
+
+    private static CompileDiagnostic[] GetFxDiagnostics<T>(FxValue<T> fx, string source) {
+        if (string.IsNullOrWhiteSpace(source)) {
+            return [];
+        }
+
+        var targetType = typeof(T);
+        if (targetType == typeof(string)) {
+            return [];
+        }
+
+        string check = FxValue.WrapJsBlock(source);
+        string jsError = MainCore.V8?.GetFxCompileError(check);
+        if (jsError == null && MainCore.V8 != null) {
+            return [];
+        }
+
+        bool fallbackOk = targetType.IsEnum
+            ? FxValue.TryConvertEnum(targetType, source.Trim())
+            : IsFxArrayForm(targetType)
+                ? FxValue.TryConvertRegistered(targetType, source)
+                : FxValue.TryConvertScalar(targetType, source);
+
+        if (fallbackOk) {
+            return [];
+        }
+
+        int? errorIndex = null;
+        if (!JsSyntaxHighlighter.TryParse(check, out int parsedIndex) && parsedIndex >= 0) {
+            errorIndex = Math.Max(0, parsedIndex - FxValue.JsBlockPrefixLength);
+        }
+
+        return [MakeJsErrorDiagnostic(source, jsError ?? "Invalid expression.", errorIndex)];
     }
 
     private static bool IsFxArrayForm(Type type) {
@@ -1393,49 +1427,6 @@ internal sealed class OvInspectorBuilder(
             || type == typeof(Quaternion)
             || type == typeof(Color)
             || type == typeof(GradientColor);
-    }
-
-    private static CompileDiagnostic[] GetFxDiagnostics<T>(FxValue<T> fx, string source, bool arrayForm) {
-        if (string.IsNullOrWhiteSpace(source)) {
-            return [];
-        }
-
-        var targetType = typeof(T);
-        if (targetType == typeof(string)) {
-            return [];
-        }
-
-        string check = source;
-        int wrapOffset = 0;
-        if (arrayForm) {
-            var trimmed = source.Trim();
-            if (!trimmed.StartsWith('[')) {
-                check = "[" + source + "]";
-                wrapOffset = 1;
-            }
-        }
-
-        string jsError = MainCore.V8?.GetFxCompileError(check);
-        if (jsError == null && MainCore.V8 != null) {
-            return [];
-        }
-
-        bool fallbackOk = targetType.IsEnum
-            ? FxValue.TryConvertEnum(targetType, source.Trim())
-            : arrayForm
-                ? FxValue.TryConvertRegistered(targetType, source)
-                : FxValue.TryConvertScalar(targetType, source);
-
-        if (fallbackOk) {
-            return [];
-        }
-
-        int? errorIndex = null;
-        if (!JsSyntaxHighlighter.TryParse(check, out int parsedIndex) && parsedIndex >= 0) {
-            errorIndex = parsedIndex - wrapOffset;
-        }
-
-        return [MakeJsErrorDiagnostic(source, jsError ?? "Invalid expression.", errorIndex)];
     }
 
     private static CompileDiagnostic MakeJsErrorDiagnostic(string source, string message, int? errorIndex) {

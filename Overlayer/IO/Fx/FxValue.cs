@@ -41,6 +41,10 @@ public abstract class FxValue {
         RawWriters.Clear();
     }
 
+    internal static string WrapJsBlock(string code) => "{\n" + (code ?? string.Empty) + "\n}";
+
+    internal static int JsBlockPrefixLength => 2;
+
     internal static bool TryEvaluateJs(string code, out object result) {
         result = null;
         try {
@@ -254,7 +258,7 @@ public sealed class FxValue<T> : FxValue, IFxValue, ISettingsFile, ICopyable<FxV
         var targetType = typeof(T);
         var typeCode = Type.GetTypeCode(targetType);
         if(!targetType.IsEnum && (typeCode == TypeCode.Boolean || (typeCode >= TypeCode.SByte && typeCode <= TypeCode.Decimal))) {
-            if (TryEvaluateJs(rendered, out var jsResult)) {
+            if (TryEvaluateJs(WrapJsBlock(rendered), out var jsResult)) {
                 try {
                     return (T)Convert.ChangeType(jsResult, targetType, CultureInfo.InvariantCulture);
                 } catch {

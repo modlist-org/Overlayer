@@ -175,12 +175,8 @@ public static class FxConverters {
             return false;
         }
 
-        if (!text.StartsWith('[')) {
-            text = "[" + text + "]";
-        }
-
         try {
-            if (!FxValue.TryEvaluateJs(text, out var result) || result == null) {
+            if (!FxValue.TryEvaluateJs(FxValue.WrapJsBlock(text), out var result) || result == null) {
                 return false;
             }
 
