@@ -57,5 +57,10 @@ public enum DiagnosticId {
     /// <summary>
     /// An error originating from an advanced tag rather than a standard tag, indicating a non-basic exception.
     /// </summary>
-    AdvancedTagException
+    AdvancedTagException,
+
+    /// JavaScript expression compilation or evaluation failure in an Fx field.
+    /// Data: [0] (string) : The underlying engine error message.
+    /// </summary>
+    JsError
 }

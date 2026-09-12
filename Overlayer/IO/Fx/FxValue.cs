@@ -56,6 +56,49 @@ public abstract class FxValue {
         }
     }
 
+        internal static bool TryConvertScalar(Type targetType, string rendered) {
+        try {
+            var expression = new Expression(rendered, ExpressionOptions.IgnoreCaseAtBuiltInFunctions);
+            expression.Parameters["PI"] = Math.PI;
+            expression.Parameters["E"] = Math.E;
+            var value = expression.Evaluate();
+            if (value == null) {
+                return false;
+            }
+
+            Convert.ChangeType(value, targetType, CultureInfo.InvariantCulture);
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
+    internal static bool TryConvertRegistered(Type targetType, string rendered) {
+        try {
+            if (!Converters.TryGetValue(targetType, out var converter)) {
+                return false;
+            }
+
+            converter(rendered);
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
+    internal static bool TryConvertEnum(Type enumType, string rendered) {
+        var text = rendered?.Trim();
+        if (string.IsNullOrEmpty(text)) {
+            return false;
+        }
+
+        if (int.TryParse(text, out _)) {
+            return true;
+        }
+
+        return Enum.TryParse(enumType, text, true, out _);
+    }
+
     internal static float EvaluateNumericComponent(string expr) {        var text = expr?.Trim() ?? string.Empty;
         if (float.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var direct)) {
             return direct;

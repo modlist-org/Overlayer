@@ -222,6 +222,7 @@
 	  <PackageReference Include="Microsoft.ClearScript.V8.Native.linux-x64" Version="$(ClearScriptVersion)" />
 	  <PackageReference Include="Microsoft.ClearScript.V8.Native.win-x64" Version="$(ClearScriptVersion)" />
 	  <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
+	  <PackageReference Include="Esprima" Version="3.0.5" />
 	  <PackageReference Include="ncalc" Version="$(NCalcVersion)" />
 	  <PackageReference Include="NativeFileDialog.Extended" Version="$(NativeFileDialogVersion)" />
 	</ItemGroup>

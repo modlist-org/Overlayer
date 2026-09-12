@@ -196,7 +196,46 @@ public class V8Manager : IRuntimeService {
         return "any";
     }
 
-    private readonly Dictionary<string, (V8ScriptEngine Engine, V8Script Script)> _fxScriptCache = new();
+    private readonly Dictionary<string, (V8ScriptEngine Engine, V8Script Script, string Error)> _fxScriptCache = new();
+
+    private (V8Script Script, string Error) CompileFx(string code) {
+        if (_fxScriptCache.TryGetValue(code, out var cached) && ReferenceEquals(cached.Engine, _engine)) {
+            return (cached.Script, cached.Error);
+        }
+
+        V8Script script = null;
+        string error = null;
+        try {
+            script = _engine.Compile(code);
+        } catch (Exception ex) {
+            error = ex.Message;
+        }
+
+        if (_fxScriptCache.Count > 256) {
+            ClearFxScriptCache();
+        }
+
+        _fxScriptCache[code] = (_engine, script, error);
+        return (script, error);
+    }
+
+    public string GetFxCompileError(string code) {
+        if (string.IsNullOrWhiteSpace(code)) {
+            return null;
+        }
+
+        lock(_engineLock) {
+            if (_engine == null) {
+                return null;
+            }
+
+            try {
+                return CompileFx(code).Error;
+            } catch {
+                return null;
+            }
+        }
+    }
 
     public bool TryEvaluateFx(string code, out object result) {
         result = null;
@@ -210,26 +249,12 @@ public class V8Manager : IRuntimeService {
             }
 
             try {
-                if (!_fxScriptCache.TryGetValue(code, out var entry) || !ReferenceEquals(entry.Engine, _engine)) {
-                    V8Script script = null;
-                    try {
-                        script = _engine.Compile(code);
-                    } catch {
-                    }
-
-                    if (_fxScriptCache.Count > 256) {
-                        ClearFxScriptCache();
-                    }
-
-                    entry = (_engine, script);
-                    _fxScriptCache[code] = entry;
-                }
-
-                if (entry.Script == null) {
+                var compiled = CompileFx(code);
+                if (compiled.Script == null) {
                     return false;
                 }
 
-                result = _engine.Evaluate(entry.Script);
+                result = _engine.Evaluate(compiled.Script);
                 return result != null;
             } catch {
                 result = null;

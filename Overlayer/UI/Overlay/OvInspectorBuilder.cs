@@ -657,13 +657,21 @@ internal sealed class OvInspectorBuilder(
         Track(input);
     }
 
+    private sealed class CodeEditorLanguage {
+        public Func<string, TagSyntaxSpan[]> Highlight;
+        public Func<string, (CompileDiagnostic[] Diagnostics, TextEngineState State)?> Diagnose;
+        public bool TagCompletion = true;
+        public string LabelSuffix = "tag expression";
+    }
+
     private void CodeEditor(
         Transform parent,
         string label,
         string id,
         string value,
         Action<string> changed,
-        Func<TextEngineCore> getEngine
+        Func<TextEngineCore> getEngine,
+        CodeEditorLanguage language = null
     ) {
         const float editorHeight = 132f;
         const float diagnosticsLineHeight = 20f;
@@ -676,11 +684,17 @@ internal sealed class OvInspectorBuilder(
         bool? hoverComposing = null;
         CompileDiagnostic[] displayedDiagnostics = [];
         bool diagnosticsCompiling = false;
-        TagSyntaxSpan[] syntaxSpans = TagSyntaxHighlighter.GetSpans(displayedText);
+        language ??= new CodeEditorLanguage {
+            Highlight = TagSyntaxHighlighter.GetSpans,
+            Diagnose = null,
+            TagCompletion = true,
+            LabelSuffix = "tag expression"
+        };
+        TagSyntaxSpan[] syntaxSpans = language.Highlight(displayedText);
 
         void OnTextChanged(string text) {
             displayedText = text ?? string.Empty;
-            syntaxSpans = TagSyntaxHighlighter.GetSpans(displayedText);
+            syntaxSpans = language.Highlight(displayedText);
             diagnosticsKey = null;
             UpdateLineNumbers(lineNumbers, displayedText);
             changed(text);
@@ -691,7 +705,7 @@ internal sealed class OvInspectorBuilder(
             null,
             value,
             OnTextChanged,
-            InspectorLabel($"{label} / tag expression"),
+            InspectorLabel($"{label} / {language.LabelSuffix}"),
             null,
             id,
             _ => save(),
@@ -792,8 +806,11 @@ internal sealed class OvInspectorBuilder(
         follower.Source = text.rectTransform;
         follower.LineNumbers = numbersRect;
 
-        var completionPopup = new TagCompletionPopup(codeInput, text);
-        codeInput.HandleKey = completionPopup.HandleKey;
+        TagCompletionPopup completionPopup = null;
+        if (language.TagCompletion) {
+            completionPopup = new TagCompletionPopup(codeInput, text);
+            codeInput.HandleKey = completionPopup.HandleKey;
+        }
 
         var diagnosticHoverRoot = new GameObject("DiagnosticHoverTargets");
         diagnosticHoverRoot.transform.SetParent(text.transform, false);
@@ -817,7 +834,7 @@ internal sealed class OvInspectorBuilder(
                 );
             }
             ApplySyntaxHighlighting(sourceText, composing ? null : displayedText, composing ? [] : syntaxSpans);
-            completionPopup.Refresh(composing);
+            completionPopup?.Refresh(composing);
         };
 
         void SetDiagnosticsHeight(int diagnosticCount) {
@@ -836,26 +853,36 @@ internal sealed class OvInspectorBuilder(
 
         void RefreshDiagnostics() {
             var engine = getEngine?.Invoke();
-            var state = engine?.State ?? TextEngineState.Idle;
-            if(state == TextEngineState.Compiling) {
-                if(!diagnosticsCompiling) {
-                    diagnosticsCompiling = true;
-                    hoverGeometryKey = null;
+            var baseState = engine?.State ?? TextEngineState.Idle;
+            var custom = language.Diagnose?.Invoke(displayedText);
+            TextEngineState state;
+            CompileDiagnostic[] diagnostics;
+            if (custom.HasValue) {
+                diagnostics = custom.Value.Diagnostics;
+                state = custom.Value.State;
+                diagnosticsCompiling = false;
+            } else {
+                if(baseState == TextEngineState.Compiling) {
+                    if(!diagnosticsCompiling) {
+                        diagnosticsCompiling = true;
+                        hoverGeometryKey = null;
+                    }
+                    return;
                 }
-                return;
-            }
 
-            diagnosticsCompiling = false;
-            var diagnostics = state is TextEngineState.Ready or TextEngineState.Error
-                ? engine.GetDiagnostics()
-                : [];
+                diagnosticsCompiling = false;
+                diagnostics = baseState is TextEngineState.Ready or TextEngineState.Error
+                    ? engine.GetDiagnostics()
+                    : [];
+                state = baseState;
+            }
             string key = BuildDiagnosticsKey(state, diagnostics, displayedText);
             bool diagnosticsChanged = key != diagnosticsKey;
 
             if(diagnosticsChanged) {
                 diagnosticsKey = key;
                 displayedDiagnostics = diagnostics;
-                syntaxSpans = TagSyntaxHighlighter.GetSpans(displayedText);
+                syntaxSpans = language.Highlight(displayedText);
                 hoverGeometryKey = null;
                 SetDiagnosticsHeight(diagnostics.Length);
                 UpdateLineNumbers(lineNumbers, displayedText, diagnostics);
@@ -1066,6 +1093,10 @@ internal sealed class OvInspectorBuilder(
         TagSyntaxKind.Argument => new Color32(255, 213, 128, 255),
         TagSyntaxKind.Format => new Color32(130, 210, 206, 255),
         TagSyntaxKind.Separator => new Color32(137, 144, 179, 255),
+        TagSyntaxKind.JsKeyword => new Color32(201, 166, 255, 255),
+        TagSyntaxKind.JsString => new Color32(157, 230, 168, 255),
+        TagSyntaxKind.JsNumber => new Color32(138, 210, 206, 255),
+        TagSyntaxKind.JsComment => new Color32(120, 125, 150, 255),
         _ => new Color32(255, 255, 255, 255)
     };
 
@@ -1096,6 +1127,7 @@ internal sealed class OvInspectorBuilder(
             DiagnosticId.ArgTooMany => string.Format(InspectorText("INSPECTOR_DIAG_ARG_TOO_MANY", "Expected at most {0} arguments; got {1}"), Data(0), Data(1)),
             DiagnosticId.FormatFail => string.Format(InspectorText("INSPECTOR_DIAG_FORMAT", "Invalid format '{0}'"), Data(0)),
             DiagnosticId.AdvancedTagException => Data(0, InspectorText("INSPECTOR_DIAG_ADVANCED_TAG", "Advanced tag failed")),
+            DiagnosticId.JsError => Data(0, "JavaScript error"),
             DiagnosticId.InternalError => InspectorText("INSPECTOR_DIAG_INTERNAL", "Internal compiler error"),
             _ => diagnostic.Id.ToString()
         };
@@ -1171,26 +1203,20 @@ internal sealed class OvInspectorBuilder(
         return row;
     }
 
-    private static string transitioningFxId;
+    private static (IFxValue Value, float Height)? transitioningFx;
 
     private RectTransform FxBlock<T>(Transform parent, string label, FxValue<T> fx, Action<Transform> staticUI, string id, bool dropdown = false) {
-        var group = CompactRow(parent, 50f, -10f);
+        var group = CompactRow(parent, 50f, 6f);
         group.GetComponent<LayoutElement>().flexibleWidth = 1f;
         group.GetComponent<LayoutElement>().minWidth = 0f;
-        group.GetComponent<HorizontalLayoutGroup>().reverseArrangement = true;
         group.GetComponent<HorizontalLayoutGroup>().childForceExpandHeight = false;
         group.GetComponent<HorizontalLayoutGroup>().childAlignment = TextAnchor.UpperLeft;
-        if(dropdown) group.GetComponent<HorizontalLayoutGroup>().padding.right = 230;
+        if(dropdown) group.GetComponent<HorizontalLayoutGroup>().padding.right = 208;
         group.GetComponent<LayoutElement>().preferredHeight = -1f;
         var editor = VerticalGroup(group, 0f);
         editor.GetComponent<LayoutElement>().minWidth = 0f;
         if(fx.UseFx) {
-            var row = GenerateUI.Row(editor, 50f);
-            var input = GenerateUI.Input(row, "", fx.Expression, value => {
-                fx.Expression = value;
-                apply();
-            }, InspectorLabel(label), null, id + "_fx", _ => save(), monospace: true);
-            Track(input);
+            JsCodeEditor(editor, label, id + "_fx", fx, IsFxArrayForm(typeof(T)));
         } else {
             staticUI(editor);
         }
@@ -1207,17 +1233,10 @@ internal sealed class OvInspectorBuilder(
         var fade = group.gameObject.AddComponent<CanvasGroup>();
         GTween transition = null;
         bool switching = false;
-        if(transitioningFxId == id) {
-            transitioningFxId = null;
-            fade.alpha = 0f;
-            transition = fade.GTFade(1f, 0.12f).SetEasing(Easing.OutSine);
-            MainCore.TC.Play(transition);
-        }
         var buttonSlot = GenerateUI.Row(group, 50f);
-        buttonSlot.SetAsFirstSibling();
         var slotLayout = buttonSlot.GetComponent<LayoutElement>();
-        slotLayout.minWidth = 30f;
-        slotLayout.preferredWidth = 30f;
+        slotLayout.minWidth = 36f;
+        slotLayout.preferredWidth = 36f;
         slotLayout.flexibleWidth = 0f;
         slotLayout.flexibleHeight = 0f;
         var button = GenerateUI.Button(buttonSlot, () => {
@@ -1225,11 +1244,15 @@ internal sealed class OvInspectorBuilder(
             switching = true;
             fade.interactable = false;
             transition?.Kill();
-            transition = fade.GTFade(0f, 0.08f).SetEasing(Easing.OutSine).OnComplete(() => {
+            float previousHeight = group.rect.height;
+            transition = GTweenSequenceBuilder.New()
+                .Join(fade.GTFade(0f, 0.1f).SetEasing(Easing.InSine))
+                .Join(editor.GTScale(new Vector3(0.985f, 0.985f, 1f), 0.1f).SetEasing(Easing.InQuad))
+                .Build().OnComplete(() => {
                 fx.UseFx = !fx.UseFx;
                 if(fx.UseFx) fx.EnsureEngine();
                 ApplyAndSave();
-                transitioningFxId = id;
+                transitioningFx = (fx, previousHeight);
                 group.gameObject.SetActive(false);
                 rebuild();
             });
@@ -1241,16 +1264,47 @@ internal sealed class OvInspectorBuilder(
         button.Rect.anchoredPosition = Vector2.zero;
         button.Rect.sizeDelta = new Vector2(0f, 50f);
         var width = button.Rect.gameObject.AddComponent<LayoutElement>();
-        width.minWidth = 30f;
-        width.preferredWidth = 30f;
+        width.minWidth = 36f;
+        width.preferredWidth = 36f;
         width.flexibleWidth = 0f;
         width.minHeight = 50f;
         width.preferredHeight = 50f;
         button.NormalColor = fx.UseFx ? UIColors.FxOn : UIColors.FxOff;
         button.Icon.color = Color.white;
-        button.Icon.rectTransform.offsetMin = new Vector2(12f, 10f);
-        button.Icon.rectTransform.offsetMax = new Vector2(-2f, -10f);
+        button.Icon.rectTransform.offsetMin = new Vector2(8f, 10f);
+        button.Icon.rectTransform.offsetMax = new Vector2(-8f, -10f);
         button.UpdateVisual(true);
+        if(transitioningFx is { } pending && ReferenceEquals(pending.Value, fx)) {
+            transitioningFx = null;
+            LayoutRebuilder.ForceRebuildLayoutImmediate(group);
+            float targetHeight = Mathf.Max(50f, LayoutUtility.GetPreferredHeight(group));
+            var size = group.GetComponent<LayoutElement>();
+            size.minHeight = 0f;
+            size.preferredHeight = Mathf.Max(50f, pending.Height);
+            var transitionMask = group.gameObject.AddComponent<RectMask2D>();
+            fade.alpha = 0f;
+            fade.interactable = false;
+            switching = true;
+            editor.localScale = new Vector3(0.985f, 0.985f, 1f);
+            transition = GTweenSequenceBuilder.New()
+                .Join(GTweens.Extensions.GTweenExtensions.Tween(
+                    () => size.preferredHeight,
+                    height => {
+                        size.preferredHeight = height;
+                        LayoutRebuilder.MarkLayoutForRebuild(group);
+                    }, targetHeight, 0.24f).SetEasing(Easing.OutCubic))
+                .Join(fade.GTFade(1f, 0.2f).SetEasing(Easing.OutSine))
+                .Join(editor.GTScale(Vector3.one, 0.24f).SetEasing(Easing.OutCubic))
+                .Build().OnComplete(() => {
+                    size.minHeight = 50f;
+                    size.preferredHeight = -1f;
+                    transitionMask.enabled = false;
+                    fade.interactable = true;
+                    switching = false;
+                    LayoutRebuilder.MarkLayoutForRebuild(group);
+                });
+            MainCore.TC.Play(transition);
+        }
         button.OnDisposed += () => {
             transition?.Kill();
         };
@@ -1331,6 +1385,115 @@ internal sealed class OvInspectorBuilder(
                 GradientColorSliders(g, () => fx.Value, value => fx.Value = value, idPrefix, defaults);
             }
         }, idPrefix);
+    }
+
+    private void JsCodeEditor<T>(Transform parent, string label, string id, FxValue<T> fx, bool arrayForm) {
+        var language = new CodeEditorLanguage {
+            Highlight = JsSyntaxHighlighter.GetSpans,
+            Diagnose = source => (GetFxDiagnostics(fx, source, arrayForm), TextEngineState.Ready),
+            TagCompletion = false,
+            LabelSuffix = "js expression"
+        };
+        CodeEditor(parent, label, id, fx.Expression, value => {
+            fx.Expression = value;
+            apply();
+        }, null, language);
+    }
+
+    private static bool IsFxArrayForm(Type type) {
+        return type == typeof(Vector2)
+            || type == typeof(Vector3)
+            || type == typeof(Vector4)
+            || type == typeof(Rect)
+            || type == typeof(Quaternion)
+            || type == typeof(Color)
+            || type == typeof(GradientColor);
+    }
+
+    private static CompileDiagnostic[] GetFxDiagnostics<T>(FxValue<T> fx, string source, bool arrayForm) {
+        if (string.IsNullOrWhiteSpace(source)) {
+            return [];
+        }
+
+        var targetType = typeof(T);
+        if (targetType == typeof(string)) {
+            return [];
+        }
+
+        string check = source;
+        int wrapOffset = 0;
+        if (arrayForm) {
+            var trimmed = source.Trim();
+            if (!trimmed.StartsWith('[')) {
+                check = "[" + source + "]";
+                wrapOffset = 1;
+            }
+        }
+
+        string jsError = MainCore.V8?.GetFxCompileError(check);
+        if (jsError == null && MainCore.V8 != null) {
+            return [];
+        }
+
+        bool fallbackOk = targetType.IsEnum
+            ? FxValue.TryConvertEnum(targetType, source.Trim())
+            : arrayForm
+                ? FxValue.TryConvertRegistered(targetType, source)
+                : FxValue.TryConvertScalar(targetType, source);
+
+        if (fallbackOk) {
+            return [];
+        }
+
+        int? errorIndex = null;
+        if (!JsSyntaxHighlighter.TryParse(check, out int parsedIndex) && parsedIndex >= 0) {
+            errorIndex = parsedIndex - wrapOffset;
+        }
+
+        return [MakeJsErrorDiagnostic(source, jsError ?? "Invalid expression.", errorIndex)];
+    }
+
+    private static CompileDiagnostic MakeJsErrorDiagnostic(string source, string message, int? errorIndex) {
+        source ??= string.Empty;
+        int index = 0;
+        int length = Math.Max(1, source.Length);
+        if (errorIndex.HasValue && errorIndex.Value >= 0) {
+            index = Math.Min(errorIndex.Value, source.Length);
+            int lineEnd = source.IndexOf('\n', index);
+            if (lineEnd < 0) {
+                lineEnd = source.Length;
+            }
+
+            length = Math.Max(1, lineEnd - index);
+        } else {
+            var match = System.Text.RegularExpressions.Regex.Match(
+                message ?? string.Empty, @"[Ll]ine\s+(\d+)|\((\d+)\s*[:,]\s*\d+\)");
+            if (match.Success) {
+                var group = match.Groups[1].Success ? match.Groups[1] : match.Groups[2];
+                if (int.TryParse(group.Value, out int lineOneBased)) {
+                    int line = Math.Max(0, lineOneBased - 1);
+                    index = 0;
+                    for (int i = 0; i < line && index < source.Length; i++) {
+                        int newline = source.IndexOf('\n', index);
+                        index = newline < 0 ? source.Length : newline + 1;
+                    }
+
+                    int lineEnd = source.IndexOf('\n', index);
+                    if (lineEnd < 0) {
+                        lineEnd = source.Length;
+                    }
+
+                    index = Math.Min(index, source.Length);
+                    length = Math.Max(1, lineEnd - index);
+                }
+            }
+        }
+
+        return new CompileDiagnostic(
+            DiagnosticId.JsError,
+            CompileSeverity.Error,
+            new DiagnosticContext(null, index, length),
+            [message]);
     }
 
     private void FxSwitch<T>(Transform parent, string label, FxValue<T> fx, string id) {

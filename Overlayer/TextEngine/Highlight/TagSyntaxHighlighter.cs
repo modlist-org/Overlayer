@@ -9,7 +9,11 @@ public enum TagSyntaxKind {
     UnknownTag,
     Argument,
     Format,
-    Separator
+    Separator,
+    JsKeyword,
+    JsString,
+    JsNumber,
+    JsComment
 }
 
 public readonly struct TagSyntaxSpan(int index, int length, TagSyntaxKind kind) {
@@ -53,13 +57,36 @@ public static class TagSyntaxHighlighter {
                     spans.Add(new(argsEnd, 1, TagSyntaxKind.Delimiter));
                 }
             }
+
+            if (parsed.Name.Equals("JSExpr", StringComparison.OrdinalIgnoreCase)) {
+                AddJsInterior(spans, source, parsed.Index + 1 + parsed.Name.Length, end - 1);
+            }
         }
         AddIncompleteTag(spans, source);
         return [.. spans];
     }
 
-    private static void AddIncompleteTag(List<TagSyntaxSpan> spans, string source) {
-        int opening = source.LastIndexOf('{');
+    private static void AddJsInterior(List<TagSyntaxSpan> spans, string source, int cursor, int end) {
+        if (cursor >= end - 1 || (source[cursor] != ':' && source[cursor] != '(')) {
+            return;
+        }
+
+        int innerStart = cursor + 1;
+        int innerEnd = end;
+        if (source[cursor] == '(' && innerEnd - 1 >= innerStart && source[innerEnd - 1] == ')') {
+            innerEnd--;
+        }
+
+        if (innerEnd <= innerStart) {
+            return;
+        }
+
+        foreach (var span in JsSyntaxHighlighter.GetSpans(source.Substring(innerStart, innerEnd - innerStart))) {
+            spans.Add(new(span.Index + innerStart, span.Length, span.Kind));
+        }
+    }
+
+    private static void AddIncompleteTag(List<TagSyntaxSpan> spans, string source) {        int opening = source.LastIndexOf('{');
         int closing = source.LastIndexOf('}');
         if(opening <= closing) {
             return;
