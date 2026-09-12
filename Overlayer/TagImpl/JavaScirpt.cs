@@ -75,26 +75,14 @@ public static class JavaScirpt {
             return () => parsed.Raw;
         }
 
-        string lastLoggedError = null;
-        bool isDuplicateLogged = false;
-
         return () => {
             try {
-                var result = v8Manager.Engine.Evaluate(compiledScript);
-                return result?.ToString() ?? string.Empty;
-            } catch(Exception runtimeEx) {
-                string errorMessage = $"[{nameof(JavaScirpt)}] Runtime error, Tag '{parsed.Raw}': {runtimeEx.Message}";
-
-                if(errorMessage == lastLoggedError) {
-                    if(!isDuplicateLogged) {
-                        MainCore.Log.Wrn($"[{nameof(JavaScirpt)}] (Duplicated Log)");
-                        isDuplicateLogged = true;
-                    }
-                } else {
-                    lastLoggedError = errorMessage;
-                    isDuplicateLogged = false;
-                    MainCore.Log.Wrn(errorMessage);
+                if (v8Manager.TryEvaluateFx(restoredJsCode, out var result)) {
+                    return result?.ToString() ?? string.Empty;
                 }
+
+                return parsed.Raw;
+            } catch {
                 return parsed.Raw;
             }
         };

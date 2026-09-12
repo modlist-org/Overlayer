@@ -10,6 +10,9 @@ using System.Text;
 namespace Overlayer.V8;
 
 public class V8Manager : IRuntimeService {
+    public const int FxScriptTimeoutMilliseconds = 500;
+    public const int FxScriptBackoffMilliseconds = 5000;
+
     private readonly object _engineLock = new();
     private V8ScriptEngine _engine;
 
@@ -198,6 +201,7 @@ public class V8Manager : IRuntimeService {
 
     private readonly Dictionary<string, (V8ScriptEngine Engine, V8Script Script, string Error)> _fxScriptCache = new();
     private readonly Dictionary<string, string> _fxRuntimeErrors = new();
+    private readonly Dictionary<string, long> _fxTimeoutBackoff = new();
 
     private (V8Script Script, string Error) CompileFx(string code) {
         if (_fxScriptCache.TryGetValue(code, out var cached) && ReferenceEquals(cached.Engine, _engine)) {
@@ -250,37 +254,113 @@ public class V8Manager : IRuntimeService {
             }
 
             try {
+                if (IsBackedOff(code)) {
+                    return false;
+                }
+
                 var compiled = CompileFx(code);
                 if (compiled.Script == null) {
                     return false;
                 }
 
-                result = _engine.Evaluate(compiled.Script);
-                _fxRuntimeErrors.Remove(code);
-                return result != null;
-            } catch (Exception ex) {
+                var engine = _engine;
+                return RunGuarded(code, engine, () => engine.Evaluate(compiled.Script), out result);
+            } catch {
                 result = null;
-                try {
-                    string message = ex.Message ?? "error";
-                    int newline = message.IndexOf('\n');
-                    if (newline >= 0) {
-                        message = message[..newline];
-                    }
-
-                    if (message.Length > 200) {
-                        message = message[..200];
-                    }
-
-                    if (_fxRuntimeErrors.Count > 256) {
-                        _fxRuntimeErrors.Clear();
-                    }
-
-                    _fxRuntimeErrors[code] = message;
-                } catch {
-                }
-
                 return false;
             }
+        }
+    }
+
+    private bool IsBackedOff(string code) {
+        if (_fxTimeoutBackoff.TryGetValue(code, out var bannedUntil)
+            && DateTime.UtcNow.Ticks < bannedUntil) {
+            return true;
+        }
+
+        _fxTimeoutBackoff.Remove(code);
+        return false;
+    }
+
+    private bool RunGuarded(string code, V8ScriptEngine engine, Func<object> run, out object result) {
+        result = null;
+        int running = 1;
+        bool timedOut = false;
+        using var timeout = new CancellationTokenSource();
+        Task.Delay(FxScriptTimeoutMilliseconds, timeout.Token).ContinueWith(task => {
+            if (!task.IsCanceled && Interlocked.CompareExchange(ref running, 0, 1) == 1) {
+                timedOut = true;
+                try {
+                    engine.Interrupt();
+                } catch {
+                }
+            }
+        }, TaskScheduler.Default);
+
+        try {
+            result = run();
+        } catch (Exception ex) {
+            result = null;
+            if (timedOut) {
+                RecordTimeout(code);
+            } else {
+                RecordRuntimeError(code, ex.Message);
+            }
+
+            return false;
+        } finally {
+            timeout.Cancel();
+            Interlocked.Exchange(ref running, 0);
+        }
+
+        if (timedOut) {
+            result = null;
+            RecordTimeout(code);
+            return false;
+        }
+
+        _fxTimeoutBackoff.Remove(code);
+        _fxRuntimeErrors.Remove(code);
+        return result != null;
+    }
+
+    private void RecordRuntimeError(string code, string message) {
+        try {
+            message ??= "error";
+            int newline = message.IndexOf('\n');
+            if (newline >= 0) {
+                message = message[..newline];
+            }
+
+            if (message.Length > 200) {
+                message = message[..200];
+            }
+
+            if (_fxRuntimeErrors.Count > 256) {
+                _fxRuntimeErrors.Clear();
+            }
+
+            _fxRuntimeErrors[code] = message;
+        } catch {
+        }
+    }
+
+    private void RecordTimeout(string code) {
+        try {
+            _fxTimeoutBackoff[code] = DateTime.UtcNow.Ticks + FxScriptBackoffMilliseconds * 10000L;
+            if (_fxTimeoutBackoff.Count > 256) {
+                _fxTimeoutBackoff.Clear();
+            }
+
+            string preview = code.Replace('\n', ' ');
+            if (preview.Length > 120) {
+                preview = preview[..120];
+            }
+
+            _fxRuntimeErrors[code] =
+                $"Script timed out after {FxScriptTimeoutMilliseconds}ms.";
+            MainCore.Log.Wrn($"[{nameof(V8Manager)}] Fx script timed out after {FxScriptTimeoutMilliseconds}ms, cooling down: {preview}");
+        } catch {
         }
     }
 
@@ -311,6 +391,7 @@ public class V8Manager : IRuntimeService {
 
         _fxScriptCache.Clear();
         _fxRuntimeErrors.Clear();
+        _fxTimeoutBackoff.Clear();
     }
 
     public void LoadImplJs() {        lock(_engineLock) {

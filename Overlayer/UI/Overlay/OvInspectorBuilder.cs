@@ -785,10 +785,15 @@ internal sealed class OvInspectorBuilder(
         follower.Source = text.rectTransform;
         follower.LineNumbers = numbersRect;
 
-        TagCompletionPopup completionPopup = null;
+        ICodeCompletion completionPopup;
         if (language.TagCompletion) {
-            completionPopup = new TagCompletionPopup(codeInput, text);
-            codeInput.HandleKey = completionPopup.HandleKey;
+            var tagPopup = new TagCompletionPopup(codeInput, text);
+            codeInput.HandleKey = tagPopup.HandleKey;
+            completionPopup = tagPopup;
+        } else {
+            var jsPopup = new JsCompletionPopup(codeInput, text);
+            codeInput.HandleKey = jsPopup.HandleKey;
+            completionPopup = jsPopup;
         }
 
         var diagnosticHoverRoot = new GameObject("DiagnosticHoverTargets");
