@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Globalization;
+using System.Text;
 using NCalc;
 using Newtonsoft.Json.Linq;
 using Overlayer.Core;
@@ -45,6 +46,33 @@ public abstract class FxValue {
 
     internal static int JsBlockPrefixLength => 2;
 
+    internal static string SanitizeJsExpression(string code) {
+        if (string.IsNullOrEmpty(code)) {
+            return code;
+        }
+
+        bool dirty = false;
+        foreach (char c in code) {
+            if (c == '\u200B' || c == '\u200C' || c == '\u200D' || c == '\uFEFF') {
+                dirty = true;
+                break;
+            }
+        }
+
+        if (!dirty) {
+            return code;
+        }
+
+        var sb = new StringBuilder(code.Length);
+        foreach (char c in code) {
+            if (c != '\u200B' && c != '\u200C' && c != '\u200D' && c != '\uFEFF') {
+                sb.Append(c);
+            }
+        }
+
+        return sb.ToString();
+    }
+
     internal static bool TryEvaluateJs(string code, out object result) {
         result = null;
         try {
@@ -53,7 +81,7 @@ public abstract class FxValue {
                 return false;
             }
 
-            return v8.TryEvaluateFx(code, out result) && result != null;
+            return v8.TryEvaluateFx(SanitizeJsExpression(code), out result) && result != null;
         } catch {
             result = null;
             return false;
@@ -103,7 +131,8 @@ public abstract class FxValue {
         return Enum.TryParse(enumType, text, true, out _);
     }
 
-    internal static float EvaluateNumericComponent(string expr) {        var text = expr?.Trim() ?? string.Empty;
+    internal static float EvaluateNumericComponent(string expr) {
+        var text = SanitizeJsExpression(expr)?.Trim() ?? string.Empty;
         if (float.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var direct)) {
             return direct;
         }
@@ -253,6 +282,13 @@ public sealed class FxValue<T> : FxValue, IFxValue, ISettingsFile, ICopyable<FxV
         var rendered = Engine.Text;
         if (string.IsNullOrEmpty(rendered)) {
             return staticValue;
+        }
+
+        if (typeof(T) != typeof(string)) {
+            rendered = SanitizeJsExpression(rendered);
+            if (string.IsNullOrEmpty(rendered)) {
+                return staticValue;
+            }
         }
 
         var targetType = typeof(T);

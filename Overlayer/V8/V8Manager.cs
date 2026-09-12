@@ -197,6 +197,7 @@ public class V8Manager : IRuntimeService {
     }
 
     private readonly Dictionary<string, (V8ScriptEngine Engine, V8Script Script, string Error)> _fxScriptCache = new();
+    private readonly Dictionary<string, string> _fxRuntimeErrors = new();
 
     private (V8Script Script, string Error) CompileFx(string code) {
         if (_fxScriptCache.TryGetValue(code, out var cached) && ReferenceEquals(cached.Engine, _engine)) {
@@ -255,11 +256,48 @@ public class V8Manager : IRuntimeService {
                 }
 
                 result = _engine.Evaluate(compiled.Script);
+                _fxRuntimeErrors.Remove(code);
                 return result != null;
-            } catch {
+            } catch (Exception ex) {
                 result = null;
+                try {
+                    string message = ex.Message ?? "error";
+                    int newline = message.IndexOf('\n');
+                    if (newline >= 0) {
+                        message = message[..newline];
+                    }
+
+                    if (message.Length > 200) {
+                        message = message[..200];
+                    }
+
+                    if (_fxRuntimeErrors.Count > 256) {
+                        _fxRuntimeErrors.Clear();
+                    }
+
+                    _fxRuntimeErrors[code] = message;
+                } catch {
+                }
+
                 return false;
             }
+        }
+    }
+
+    public string GetFxRuntimeError(string code) {
+        if (string.IsNullOrWhiteSpace(code)) {
+            return null;
+        }
+
+        lock(_engineLock) {
+            try {
+                if (_fxRuntimeErrors.TryGetValue(code, out var message)) {
+                    return message;
+                }
+            } catch {
+            }
+
+            return null;
         }
     }
 
@@ -272,6 +310,7 @@ public class V8Manager : IRuntimeService {
         }
 
         _fxScriptCache.Clear();
+        _fxRuntimeErrors.Clear();
     }
 
     public void LoadImplJs() {        lock(_engineLock) {

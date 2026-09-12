@@ -800,7 +800,54 @@ internal sealed class OvInspectorBuilder(
         diagnosticHoverRect.offsetMin = Vector2.zero;
         diagnosticHoverRect.offsetMax = Vector2.zero;
 
+        string hoverTipKey = null;
+        bool textComposing = false;
+
+        void PollDiagnosticHover() {
+            string tip = null;
+            string key = null;
+            if (!textComposing && !diagnosticsCompiling
+                && RectTransformUtility.RectangleContainsScreenPoint(
+                    text.rectTransform, OVC_Input.MousePosition, null)) {
+                text.ForceMeshUpdate();
+                int charIndex = TMP_TextUtilities.FindIntersectingCharacter(
+                    text, OVC_Input.MousePosition, null, true);
+
+                if (charIndex >= 0 && charIndex < text.textInfo.characterCount) {
+                    int stringIndex = text.textInfo.characterInfo[charIndex].index;
+                    var covering = displayedDiagnostics
+                        .Where(d => {
+                            int start = Math.Clamp(d.Context.Index, 0, displayedText.Length);
+                            int end = Math.Clamp(start + Math.Max(1, d.Context.Length), start, displayedText.Length);
+                            return stringIndex >= start && stringIndex < end;
+                        })
+                        .OrderByDescending(d => d.Severity)
+                        .ToArray();
+
+                    if (covering.Length > 0) {
+                        tip = string.Join("\n", covering.Select(d =>
+                            $"{InspectorText("INSPECTOR_LINE", "Line")} {GetLine(displayedText, d.Context.Index) + 1} [{d.Severity}] {FormatDiagnostic(d)}"));
+                        key = string.Join("|", covering.Select(d => d.ToString()));
+                    }
+                }
+            }
+
+            if (key == hoverTipKey) {
+                return;
+            }
+
+            hoverTipKey = key;
+            if (key == null) {
+                Tooltip.Hide();
+            } else {
+                Tooltip.Show(tip);
+            }
+        }
+
+        controls.Add(new UIWatcher(id + "_diaghover", text.rectTransform, PollDiagnosticHover));
+
         codeInput.AfterLabelUpdate = (sourceText, composing) => {
+            textComposing = composing;
             int geometryKey = BuildTextGeometryKey(sourceText);
             if(hoverGeometryKey != geometryKey || hoverComposing != composing) {
                 hoverGeometryKey = geometryKey;
@@ -960,12 +1007,16 @@ internal sealed class OvInspectorBuilder(
             .GroupBy(d => (d.Context.Index, d.Context.Length))
             .ToArray();
 
+        float rootWidth = root.rect.width;
+        float rootHeight = root.rect.height;
+        float boundMinX = -root.pivot.x * rootWidth;
+        float boundMaxX = boundMinX + rootWidth;
+        float boundMinY = -root.pivot.y * rootHeight;
+        float boundMaxY = boundMinY + rootHeight;
+
         foreach(var group in groups) {
             int start = Math.Clamp(group.Key.Index, 0, source.Length);
             int end = Math.Clamp(start + Math.Max(1, group.Key.Length), start, source.Length);
-            string tooltip = string.Join("\n", group
-                .OrderByDescending(d => d.Severity)
-                .Select(d => $"{InspectorText("INSPECTOR_LINE", "Line")} {GetLine(source, d.Context.Index) + 1} [{d.Severity}] {FormatDiagnostic(d)}"));
             Color underlineColor = SeverityUnityColor(group.Max(d => d.Severity));
             var characters = sourceText.textInfo.characterInfo
                 .Take(sourceText.textInfo.characterCount)
@@ -973,12 +1024,16 @@ internal sealed class OvInspectorBuilder(
                 .GroupBy(c => c.lineNumber);
 
             foreach(var line in characters) {
-                float left = line.Min(c => c.bottomLeft.x) - 2f;
-                float right = line.Max(c => c.topRight.x) + 2f;
-                float bottom = line.Min(c => c.descender) - 3f;
-                float top = line.Max(c => c.ascender) + 2f;
+                float left = Math.Max(boundMinX, line.Min(c => c.bottomLeft.x) - 2f);
+                float right = Math.Min(boundMaxX, line.Max(c => c.topRight.x) + 2f);
+                float bottom = Math.Max(boundMinY, line.Min(c => c.descender) - 3f);
+                float top = Math.Min(boundMaxY, line.Max(c => c.ascender) + 2f);
 
-                var target = new GameObject("DiagnosticHover");
+                if (right <= left || top <= bottom) {
+                    continue;
+                }
+
+                var target = new GameObject("DiagnosticUnderline");
                 target.transform.SetParent(root, false);
                 var rect = target.AddComponent<RectTransform>();
                 rect.anchorMin = root.pivot;
@@ -986,9 +1041,6 @@ internal sealed class OvInspectorBuilder(
                 rect.pivot = Vector2.zero;
                 rect.anchoredPosition = new Vector2(left, bottom);
                 rect.sizeDelta = new Vector2(right - left, top - bottom);
-                var image = target.AddComponent<Image>();
-                image.color = Color.clear;
-                image.raycastTarget = true;
 
                 var underline = new GameObject("Underline");
                 underline.transform.SetParent(target.transform, false);
@@ -1001,7 +1053,6 @@ internal sealed class OvInspectorBuilder(
                 var underlineImage = underline.AddComponent<Image>();
                 underlineImage.color = underlineColor;
                 underlineImage.raycastTarget = false;
-                target.transform.AddToolTip(tooltip);
             }
         }
     }
@@ -1395,17 +1446,23 @@ internal sealed class OvInspectorBuilder(
             return [];
         }
 
-        string check = FxValue.WrapJsBlock(source);
+        string clean = FxValue.SanitizeJsExpression(source);
+        string check = FxValue.WrapJsBlock(clean);
         string jsError = MainCore.V8?.GetFxCompileError(check);
         if (jsError == null && MainCore.V8 != null) {
-            return [];
+            string runtimeError = MainCore.V8.GetFxRuntimeError(check);
+            if (runtimeError == null) {
+                return [];
+            }
+
+            return [MakeJsErrorDiagnostic(source, runtimeError, null)];
         }
 
         bool fallbackOk = targetType.IsEnum
-            ? FxValue.TryConvertEnum(targetType, source.Trim())
+            ? FxValue.TryConvertEnum(targetType, clean.Trim())
             : IsFxArrayForm(targetType)
-                ? FxValue.TryConvertRegistered(targetType, source)
-                : FxValue.TryConvertScalar(targetType, source);
+                ? FxValue.TryConvertRegistered(targetType, clean)
+                : FxValue.TryConvertScalar(targetType, clean);
 
         if (fallbackOk) {
             return [];
