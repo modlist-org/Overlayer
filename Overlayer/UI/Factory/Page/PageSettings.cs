@@ -159,6 +159,7 @@ internal static class PageSettings {
             },
             "language_dropdown"
         );
+        languageDropdown.Rect.offsetMax = new Vector2(-122f, 0f);
         var langBtn = GenerateUI.Button(
             langRow,
             () => { },

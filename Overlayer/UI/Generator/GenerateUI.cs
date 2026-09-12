@@ -1314,7 +1314,7 @@ public static partial class GenerateUI {
         var contentImg = contentGo.AddComponent<Image>();
         contentImg.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P2048);
         contentImg.type = Image.Type.Sliced;
-        contentImg.color = UIColors.ObjectBG;
+        contentImg.color = UIColors.ComponentPanel;
         contentGo.AddComponent<RectMask2D>();
 
         contentCanvasGroup = contentGo.AddComponent<CanvasGroup>();

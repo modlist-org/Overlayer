@@ -4,6 +4,7 @@ namespace Overlayer.UI;
 
 public static class UIColors {
     public static readonly Color ComponentHeader = new Color32(76, 77, 102, 255);
+    public static readonly Color ComponentPanel = new Color32(47, 46, 58, 255);
     public static readonly Color ComponentFxOff = new Color32(43, 44, 61, 255);
     public static readonly Color ComponentFxEditor = new Color32(39, 40, 54, 255);
     public static readonly Color FxField = new Color32(61, 60, 74, 255);

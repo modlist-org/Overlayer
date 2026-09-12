@@ -151,6 +151,9 @@ internal sealed class OvInspectorBuilder(
         Action refreshPositionFields = null;
         Action refreshPivotFields = null;
         RectTransform rectLayout = CompactRow(basic, 92f, 6f);
+        rectLayout.GetComponent<LayoutElement>().preferredHeight = -1f;
+        rectLayout.GetComponent<HorizontalLayoutGroup>().childForceExpandHeight = false;
+        rectLayout.GetComponent<HorizontalLayoutGroup>().childAlignment = TextAnchor.UpperLeft;
         Action refreshAnchor = AnchorPresetControl(rectLayout, obj, () => {
             refreshPositionFields?.Invoke();
             refreshPivotFields?.Invoke();
@@ -191,6 +194,9 @@ internal sealed class OvInspectorBuilder(
         Action refreshPositionFields = null;
         Action refreshPivotFields = null;
         RectTransform rectLayout = CompactRow(basic, 92f, 6f);
+        rectLayout.GetComponent<LayoutElement>().preferredHeight = -1f;
+        rectLayout.GetComponent<HorizontalLayoutGroup>().childForceExpandHeight = false;
+        rectLayout.GetComponent<HorizontalLayoutGroup>().childAlignment = TextAnchor.UpperLeft;
         Action refreshAnchor = AnchorPresetControl(rectLayout, cfg, canvas.RectTransform, () => {
             refreshPositionFields?.Invoke();
             refreshPivotFields?.Invoke();
