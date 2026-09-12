@@ -11,9 +11,16 @@ public enum TagSyntaxKind {
     Format,
     Separator,
     JsKeyword,
+    JsControl,
     JsString,
     JsNumber,
-    JsComment
+    JsComment,
+    JsFunction,
+    JsProperty,
+    JsType,
+    JsConstant,
+    JsRegexp,
+    JsEscape
 }
 
 public readonly struct TagSyntaxSpan(int index, int length, TagSyntaxKind kind) {
@@ -46,19 +53,24 @@ public static class TagSyntaxHighlighter {
             }
 
             char separator = source[cursor];
+            bool jsExpr = parsed.Name.Equals("JSExpr", StringComparison.OrdinalIgnoreCase);
             if(separator == ':') {
                 spans.Add(new(cursor, 1, TagSyntaxKind.Separator));
-                AddArguments(spans, source, cursor + 1, end - 1, tag, parsed.Args.Length);
+                if (!jsExpr) {
+                    AddArguments(spans, source, cursor + 1, end - 1, tag, parsed.Args.Length);
+                }
             } else if(separator == '(') {
                 spans.Add(new(cursor, 1, TagSyntaxKind.Delimiter));
                 int argsEnd = source[end - 2] == ')' ? end - 2 : end - 1;
-                AddArguments(spans, source, cursor + 1, argsEnd, tag, parsed.Args.Length);
+                if (!jsExpr) {
+                    AddArguments(spans, source, cursor + 1, argsEnd, tag, parsed.Args.Length);
+                }
                 if(argsEnd == end - 2) {
                     spans.Add(new(argsEnd, 1, TagSyntaxKind.Delimiter));
                 }
             }
 
-            if (parsed.Name.Equals("JSExpr", StringComparison.OrdinalIgnoreCase)) {
+            if (jsExpr) {
                 AddJsInterior(spans, source, parsed.Index + 1 + parsed.Name.Length, end - 1);
             }
         }

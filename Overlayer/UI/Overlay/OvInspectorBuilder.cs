@@ -1066,10 +1066,17 @@ internal sealed class OvInspectorBuilder(
         TagSyntaxKind.Argument => new Color32(255, 213, 128, 255),
         TagSyntaxKind.Format => new Color32(130, 210, 206, 255),
         TagSyntaxKind.Separator => new Color32(137, 144, 179, 255),
-        TagSyntaxKind.JsKeyword => new Color32(201, 166, 255, 255),
-        TagSyntaxKind.JsString => new Color32(157, 230, 168, 255),
-        TagSyntaxKind.JsNumber => new Color32(138, 210, 206, 255),
-        TagSyntaxKind.JsComment => new Color32(120, 125, 150, 255),
+        TagSyntaxKind.JsKeyword => new Color32(86, 156, 214, 255),
+        TagSyntaxKind.JsControl => new Color32(197, 134, 192, 255),
+        TagSyntaxKind.JsString => new Color32(206, 145, 120, 255),
+        TagSyntaxKind.JsNumber => new Color32(181, 206, 168, 255),
+        TagSyntaxKind.JsComment => new Color32(106, 153, 85, 255),
+        TagSyntaxKind.JsFunction => new Color32(220, 220, 170, 255),
+        TagSyntaxKind.JsProperty => new Color32(156, 220, 254, 255),
+        TagSyntaxKind.JsType => new Color32(78, 201, 176, 255),
+        TagSyntaxKind.JsConstant => new Color32(79, 193, 255, 255),
+        TagSyntaxKind.JsRegexp => new Color32(209, 105, 105, 255),
+        TagSyntaxKind.JsEscape => new Color32(215, 186, 125, 255),
         _ => new Color32(255, 255, 255, 255)
     };
 
