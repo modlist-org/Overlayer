@@ -49,10 +49,11 @@ internal sealed class OvInspectorBuilder(
 
     public void BuildCanvas(OvCanvas canvas, Action<string> nameChanged) {
         var (_, identity) = Card("Canvas", false);
-        FxInput(identity, "Canvas Name", canvas.Config.Name, "", "canvas_name", value => {
+        Input(identity, "Canvas Name", "", canvas.Config.Name.Value, value => {
+            canvas.Config.Name.Value = value;
             canvas.ApplyConfig();
             nameChanged(value);
-        }, hierarchyChanged);
+        }, "canvas_name", hierarchyChanged);
 
         var group = canvas.Config.CanvasGroupConfig;
         FxSlider(identity, "Opacity", group.Alpha, 1f, 0f, 1f, "canvas_alpha");
@@ -80,7 +81,10 @@ internal sealed class OvInspectorBuilder(
 
     public void BuildObject(OvObject obj) {
         var (_, identity) = Card("Object", false);
-        FxInput(identity, "Object Name", obj.Config.Name, "OvObject", "obj_name", _ => apply(), hierarchyChanged);
+        Input(identity, "Object Name", "OvObject", obj.Config.Name.Value, value => {
+            obj.Config.Name.Value = value;
+            apply();
+        }, "obj_name", hierarchyChanged);
         FxToggle(identity, "Visible", obj.Config.Enabled, true, "obj_visible");
 
         var group = obj.Config.CanvasGroupConfig;
@@ -229,12 +233,12 @@ internal sealed class OvInspectorBuilder(
             obj.Config.ColorRangeConfig = null;
             RefreshComponents(obj);
         });
-        FxCodeEditor(card, "Playing Text", "text_playing", textCfg.PlayingText, value => {
+        CodeEditor(card, "Playing Text", "text_playing", textCfg.PlayingText.Value, value => {
             textCfg.PlayingText.Value = value;
             cfg.Text.Value = value;
             apply();
         }, () => obj.TextUpdater?.PlayingEngine);
-        FxCodeEditor(card, "Not Playing Text", "text_not_playing", textCfg.NotPlayingText, value => {
+        CodeEditor(card, "Not Playing Text", "text_not_playing", textCfg.NotPlayingText.Value, value => {
             textCfg.NotPlayingText.Value = value;
             apply();
         }, () => obj.TextUpdater?.NotPlayingEngine);
@@ -1327,10 +1331,6 @@ internal sealed class OvInspectorBuilder(
                 GradientColorSliders(g, () => fx.Value, value => fx.Value = value, idPrefix, defaults);
             }
         }, idPrefix);
-    }
-
-    private void FxCodeEditor(Transform parent, string label, string id, FxValue<string> fx, Action<string> changed, Func<TextEngineCore> getEngine) {
-        FxBlock(parent, label, fx, group => CodeEditor(group, label, id, fx.StaticValue, changed, getEngine), id);
     }
 
     private void FxSwitch<T>(Transform parent, string label, FxValue<T> fx, string id) {
