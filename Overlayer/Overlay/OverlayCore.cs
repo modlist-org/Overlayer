@@ -73,6 +73,10 @@ public static class OverlayCore {
     public static void RequestLayoutRefresh() => pendingLayoutRefreshes = Math.Max(pendingLayoutRefreshes, 3);
 
     public static void Tick() {
+        foreach(var canvas in Canvases) {
+            canvas?.RefreshFx();
+        }
+
         if(pendingLayoutRefreshes <= 0 || Core == null) {
             return;
         }

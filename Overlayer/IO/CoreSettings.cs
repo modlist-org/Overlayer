@@ -1,45 +1,46 @@
 using Newtonsoft.Json.Linq;
+using Overlayer.IO.Fx;
 using Overlayer.IO.Interface;
 
 namespace Overlayer.IO;
 
 public sealed class CoreSettings : ISettingsFile {
-    public bool Active = true;
-    public string Language = "en-US";
-    public bool IsFirstRun = true;
-    public bool ShowOnStartup = false;
-    public bool Tooltip = true;
-    public bool AdvancedTooltip = false;
-    public bool MiddleClickToDefault = true;
-    public float UIScale = 1.0f;
-    public float SliderSensitivity = 1.0f;
-    public bool EnableJSScriptWatcher = true;
+    public FxValue<bool> Active = new(true);
+    public FxValue<string> Language = FxValue<string>.FromValue("en-US");
+    public FxValue<bool> IsFirstRun = new(true);
+    public FxValue<bool> ShowOnStartup = new(false);
+    public FxValue<bool> Tooltip = new(true);
+    public FxValue<bool> AdvancedTooltip = new(false);
+    public FxValue<bool> MiddleClickToDefault = new(true);
+    public FxValue<float> UIScale = new(1.0f);
+    public FxValue<float> SliderSensitivity = new(1.0f);
+    public FxValue<bool> EnableJSScriptWatcher = new(true);
 
     public JToken Serialize() {
         return new JObject {
-            [nameof(Active)] = Active,
-            [nameof(Language)] = Language,
-            [nameof(IsFirstRun)] = IsFirstRun,
-            [nameof(ShowOnStartup)] = ShowOnStartup,
-            [nameof(Tooltip)] = Tooltip,
-            [nameof(AdvancedTooltip)] = AdvancedTooltip,
-            [nameof(MiddleClickToDefault)] = MiddleClickToDefault,
-            [nameof(UIScale)] = UIScale,
-            [nameof(SliderSensitivity)] = SliderSensitivity,
-            [nameof(EnableJSScriptWatcher)] = EnableJSScriptWatcher
+            [nameof(Active)] = IOUtils.WriteFx(Active),
+            [nameof(Language)] = IOUtils.WriteFx(Language),
+            [nameof(IsFirstRun)] = IOUtils.WriteFx(IsFirstRun),
+            [nameof(ShowOnStartup)] = IOUtils.WriteFx(ShowOnStartup),
+            [nameof(Tooltip)] = IOUtils.WriteFx(Tooltip),
+            [nameof(AdvancedTooltip)] = IOUtils.WriteFx(AdvancedTooltip),
+            [nameof(MiddleClickToDefault)] = IOUtils.WriteFx(MiddleClickToDefault),
+            [nameof(UIScale)] = IOUtils.WriteFx(UIScale),
+            [nameof(SliderSensitivity)] = IOUtils.WriteFx(SliderSensitivity),
+            [nameof(EnableJSScriptWatcher)] = IOUtils.WriteFx(EnableJSScriptWatcher)
         };
     }
 
     public void Deserialize(JToken token) {
-        Active = IOUtils.Read(token, nameof(Active), Active);
-        Language = IOUtils.Read(token, nameof(Language), Language);
-        IsFirstRun = IOUtils.Read(token, nameof(IsFirstRun), IsFirstRun);
-        ShowOnStartup = IOUtils.Read(token, nameof(ShowOnStartup), ShowOnStartup);
-        Tooltip = IOUtils.Read(token, nameof(Tooltip), Tooltip);
-        AdvancedTooltip = IOUtils.Read(token, nameof(AdvancedTooltip), AdvancedTooltip);
-        MiddleClickToDefault = IOUtils.Read(token, nameof(MiddleClickToDefault), MiddleClickToDefault);
-        UIScale = IOUtils.Read(token, nameof(UIScale), UIScale);
-        SliderSensitivity = IOUtils.Read(token, nameof(SliderSensitivity), SliderSensitivity);
-        EnableJSScriptWatcher = IOUtils.Read(token, nameof(EnableJSScriptWatcher), EnableJSScriptWatcher);
+        Active = IOUtils.ReadFx(token, nameof(Active), Active);
+        Language = IOUtils.ReadFx(token, nameof(Language), Language);
+        IsFirstRun = IOUtils.ReadFx(token, nameof(IsFirstRun), IsFirstRun);
+        ShowOnStartup = IOUtils.ReadFx(token, nameof(ShowOnStartup), ShowOnStartup);
+        Tooltip = IOUtils.ReadFx(token, nameof(Tooltip), Tooltip);
+        AdvancedTooltip = IOUtils.ReadFx(token, nameof(AdvancedTooltip), AdvancedTooltip);
+        MiddleClickToDefault = IOUtils.ReadFx(token, nameof(MiddleClickToDefault), MiddleClickToDefault);
+        UIScale = IOUtils.ReadFx(token, nameof(UIScale), UIScale);
+        SliderSensitivity = IOUtils.ReadFx(token, nameof(SliderSensitivity), SliderSensitivity);
+        EnableJSScriptWatcher = IOUtils.ReadFx(token, nameof(EnableJSScriptWatcher), EnableJSScriptWatcher);
     }
 }

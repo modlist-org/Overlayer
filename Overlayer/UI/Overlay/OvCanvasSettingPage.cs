@@ -348,8 +348,8 @@ public class OvCanvasSettingPage : IDisposable {
             OvObject source = selectedObject;
             OvObject clone = source.Clone();
 
-            if (!source.Config.Name.EndsWith(" Copy")) {
-                clone.Config.Name = $"{source.Config.Name} Copy";
+            if (!source.Config.Name.Value.EndsWith(" Copy")) {
+                clone.Config.Name.Value = $"{source.Config.Name.Value} Copy";
             }
             clone.ApplyConfig();
 

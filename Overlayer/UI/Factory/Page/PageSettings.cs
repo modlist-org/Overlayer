@@ -85,7 +85,7 @@ internal static class PageSettings {
 
                 string normalizedQuery = StringUtils.Normalize(value);
 
-                if(MainCore.Conf.Language == "ko-KR") {
+                if(MainCore.Conf.Language.Value == "ko-KR") {
                     normalizedQuery = StringUtils.NormalizeToHangulChosung(normalizedQuery);
                 }
 
@@ -97,7 +97,7 @@ internal static class PageSettings {
                     }
 
                     string normalizedTarget = labelLoc != null ? StringUtils.Normalize(labelLoc.Value) : string.Empty;
-                    if(MainCore.Conf.Language == "ko-KR" && !string.IsNullOrEmpty(normalizedTarget)) {
+                    if(MainCore.Conf.Language.Value == "ko-KR" && !string.IsNullOrEmpty(normalizedTarget)) {
                         normalizedTarget = StringUtils.NormalizeToHangulChosung(normalizedTarget);
                     }
 
@@ -234,7 +234,7 @@ internal static class PageSettings {
         );
         var advTooltipToggleTr = advTooltipToggle.Label.gameObject.AddComponent<TextLocalization>().Init("SHOW_ADVANCED_TOOLTIP", "Show Advanced Tooltip");
         objects[advTooltipToggleTr] = (overlayerText.gameObject, advTooltipRow.gameObject);
-        advTooltipToggle.SetBlocked(!MainCore.Conf.Tooltip);
+        advTooltipToggle.SetBlocked(!MainCore.Conf.Tooltip.Value);
 
         var middleClickRow = GenerateUI.Row(content.transform);
         UIToggle middleClickToggle = GenerateUI.Toggle(

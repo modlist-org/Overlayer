@@ -281,7 +281,7 @@ public static partial class GenerateUI {
         AddButton(rect.gameObject, e => {
             switch(e) {
                 case InputButton.Middle:
-                    if(!MainCore.Conf.MiddleClickToDefault) {
+                    if(!MainCore.Conf.MiddleClickToDefault.Value) {
                         break;
                     }
                     slider.Set(Apply(slider.DefaultValue));

@@ -1,11 +1,12 @@
 ﻿using Newtonsoft.Json.Linq;
+using Overlayer.IO.Fx;
 using Overlayer.IO.Interface;
 using Overlayer.IO.UnityComponent.Impl;
 namespace Overlayer.IO.Overlay;
 
 public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings> {
-    public string Name = "OvObject";
-    public bool Enabled = true;
+    public FxValue<string> Name = FxValue<string>.FromValue("OvObject");
+    public FxValue<bool> Enabled = new(true);
 
     public RectTransformSettings RectTransformConfig = new();
     public CanvasGroupSettings CanvasGroupConfig = new();
@@ -19,25 +20,47 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
     public MaskSettings MaskConfig = null;
     public ShadowSettings ShadowConfig = null;
     public OutlineSettings OutlineConfig = null;
-    public bool HasRectMask2D = false;
-    public bool RectMask2DEnabled = true;
+    public FxValue<bool> HasRectMask2D = new(false);
+    public FxValue<bool> RectMask2DEnabled = new(true);
 #if !IL2CPP
     public BoxCollider2DSettings BoxCollider2DConfig = null;
     public Rigidbody2DSettings Rigidbody2DConfig = null;
 #endif
 
+    public bool HasAnyFx => FxUtil.HasFx(Name)
+        || FxUtil.HasFx(Enabled)
+        || (RectTransformConfig?.HasAnyFx ?? false)
+        || (CanvasGroupConfig?.HasAnyFx ?? false)
+        || (ContentSizeFitterConfig?.HasAnyFx ?? false)
+        || (TextConfig?.HasAnyFx ?? false)
+        || FxUtil.HasFx(TextEngineConfig?.PlayingText)
+        || FxUtil.HasFx(TextEngineConfig?.NotPlayingText)
+        || (MovingManConfig?.HasAnyFx ?? false)
+        || (ColorRangeConfig?.HasAnyFx ?? false)
+        || (ImageConfig?.HasAnyFx ?? false)
+        || (MaskConfig?.HasAnyFx ?? false)
+        || (ShadowConfig?.HasAnyFx ?? false)
+        || (OutlineConfig?.HasAnyFx ?? false)
+        || FxUtil.HasFx(HasRectMask2D)
+        || FxUtil.HasFx(RectMask2DEnabled)
+#if !IL2CPP
+        || (BoxCollider2DConfig?.HasAnyFx ?? false)
+        || (Rigidbody2DConfig?.HasAnyFx ?? false)
+#endif
+        ;
+
     public JToken Serialize() {
         var obj = new JObject {
-            [nameof(Name)] = Name,
+            [nameof(Name)] = IOUtils.WriteFx(Name),
             [nameof(RectTransformConfig)] = RectTransformConfig?.Serialize(),
             [nameof(CanvasGroupConfig)] = CanvasGroupConfig?.Serialize(),
         };
-        if(!Enabled) {
-            obj[nameof(Enabled)] = false;
+        if(Enabled.UseFx || !Enabled.Value) {
+            obj[nameof(Enabled)] = IOUtils.WriteFx(Enabled);
         }
         if(TextConfig != null) {
             obj[nameof(TextConfig)] = TextConfig.Serialize();
-            obj[nameof(TextEngineConfig)] = (TextEngineConfig ?? OvTextSettings.FromLegacy(TextConfig.Text)).Serialize();
+            obj[nameof(TextEngineConfig)] = (TextEngineConfig ?? OvTextSettings.FromLegacy(TextConfig.Text.Value)).Serialize();
         }
         if(MovingManConfig != null) {
             obj[nameof(MovingManConfig)] = MovingManConfig.Serialize();
@@ -68,10 +91,10 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
         if(OutlineConfig != null) {
             obj[nameof(OutlineConfig)] = OutlineConfig.Serialize();
         }
-        if(HasRectMask2D) {
-            obj[nameof(HasRectMask2D)] = true;
-            if(!RectMask2DEnabled) {
-                obj[nameof(RectMask2DEnabled)] = false;
+        if(HasRectMask2D.UseFx || HasRectMask2D.Value) {
+            obj[nameof(HasRectMask2D)] = IOUtils.WriteFx(HasRectMask2D);
+            if(RectMask2DEnabled.UseFx || !RectMask2DEnabled.Value) {
+                obj[nameof(RectMask2DEnabled)] = IOUtils.WriteFx(RectMask2DEnabled);
             }
         }
         return obj;
@@ -82,8 +105,8 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
             return;
         }
 
-        Name = IOUtils.Read(obj, nameof(Name), Name);
-        Enabled = IOUtils.Read(obj, nameof(Enabled), Enabled);
+        Name = IOUtils.ReadFx(obj, nameof(Name), Name);
+        Enabled = IOUtils.ReadFx(obj, nameof(Enabled), Enabled);
         var rect = obj[nameof(RectTransformConfig)];
         if(rect != null) {
             RectTransformConfig ??= new RectTransformSettings();
@@ -105,7 +128,7 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
         TextConfig = ReadConfig<TextMeshProUGUISettings>(obj, nameof(TextConfig));
         TextEngineConfig = ReadConfig<OvTextSettings>(obj, nameof(TextEngineConfig));
         if(TextConfig != null) {
-            TextEngineConfig ??= OvTextSettings.FromLegacy(TextConfig.Text);
+            TextEngineConfig ??= OvTextSettings.FromLegacy(TextConfig.Text.Value);
         } else {
             TextEngineConfig = null;
         }
@@ -119,14 +142,14 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
         MaskConfig = ReadConfig<MaskSettings>(obj, nameof(MaskConfig));
         ShadowConfig = ReadConfig<ShadowSettings>(obj, nameof(ShadowConfig));
         OutlineConfig = ReadConfig<OutlineSettings>(obj, nameof(OutlineConfig));
-        HasRectMask2D = IOUtils.Read(obj, nameof(HasRectMask2D), HasRectMask2D);
-        RectMask2DEnabled = IOUtils.Read(obj, nameof(RectMask2DEnabled), RectMask2DEnabled);
+        HasRectMask2D = IOUtils.ReadFx(obj, nameof(HasRectMask2D), HasRectMask2D);
+        RectMask2DEnabled = IOUtils.ReadFx(obj, nameof(RectMask2DEnabled), RectMask2DEnabled);
     }
 
     public OvObjectSettings Copy() {
         return new OvObjectSettings {
-            Name = Name,
-            Enabled = Enabled,
+            Name = Name?.Copy(),
+            Enabled = Enabled?.Copy(),
             RectTransformConfig = RectTransformConfig?.Copy(),
             CanvasGroupConfig = CanvasGroupConfig?.Copy(),
             ContentSizeFitterConfig = ContentSizeFitterConfig?.Copy(),
@@ -142,8 +165,8 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
             MaskConfig = MaskConfig?.Copy(),
             ShadowConfig = ShadowConfig?.Copy(),
             OutlineConfig = OutlineConfig?.Copy(),
-            HasRectMask2D = HasRectMask2D,
-            RectMask2DEnabled = RectMask2DEnabled
+            HasRectMask2D = HasRectMask2D?.Copy(),
+            RectMask2DEnabled = RectMask2DEnabled?.Copy()
         };
     }
 

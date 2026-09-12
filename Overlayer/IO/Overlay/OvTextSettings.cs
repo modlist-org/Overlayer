@@ -1,29 +1,30 @@
 using Newtonsoft.Json.Linq;
+using Overlayer.IO.Fx;
 using Overlayer.IO.Interface;
 
 namespace Overlayer.IO.Overlay;
 
 public sealed class OvTextSettings : ISettingsFile, ICopyable<OvTextSettings> {
-    public string PlayingText = "Text";
-    public string NotPlayingText = "Text";
+    public FxValue<string> PlayingText = FxValue<string>.FromValue("Text");
+    public FxValue<string> NotPlayingText = FxValue<string>.FromValue("Text");
 
     public JToken Serialize() => new JObject {
-        [nameof(PlayingText)] = PlayingText,
-        [nameof(NotPlayingText)] = NotPlayingText
+        [nameof(PlayingText)] = IOUtils.WriteFx(PlayingText),
+        [nameof(NotPlayingText)] = IOUtils.WriteFx(NotPlayingText)
     };
 
     public void Deserialize(JToken token) {
-        PlayingText = IOUtils.Read(token, nameof(PlayingText), PlayingText);
-        NotPlayingText = IOUtils.Read(token, nameof(NotPlayingText), NotPlayingText);
+        PlayingText = IOUtils.ReadFx(token, nameof(PlayingText), PlayingText);
+        NotPlayingText = IOUtils.ReadFx(token, nameof(NotPlayingText), NotPlayingText);
     }
 
     public OvTextSettings Copy() => new() {
-        PlayingText = PlayingText,
-        NotPlayingText = NotPlayingText
+        PlayingText = PlayingText?.Copy(),
+        NotPlayingText = NotPlayingText?.Copy()
     };
 
     public static OvTextSettings FromLegacy(string text) => new() {
-        PlayingText = text ?? string.Empty,
-        NotPlayingText = text ?? string.Empty
+        PlayingText = FxValue<string>.FromValue(text ?? string.Empty),
+        NotPlayingText = FxValue<string>.FromValue(text ?? string.Empty)
     };
 }

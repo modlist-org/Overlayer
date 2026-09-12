@@ -72,7 +72,7 @@ public class Tooltip {
     }
 
     public static void Tick() {
-        if(!MainCore.Conf.Tooltip || !visible || obj == null) {
+        if(!MainCore.Conf.Tooltip.Value || !visible || obj == null) {
             return;
         }
 
@@ -104,7 +104,7 @@ public class Tooltip {
     private static GTween seq;
 
     public static void Show(string tip) {
-        if(!MainCore.Conf.Tooltip || obj == null) {
+        if(!MainCore.Conf.Tooltip.Value || obj == null) {
             return;
         }
 
@@ -137,7 +137,7 @@ public class Tooltip {
     }
 
     public static void Hide() {
-        if(!MainCore.Conf.Tooltip || obj == null) {
+        if(!MainCore.Conf.Tooltip.Value || obj == null) {
             return;
         }
 

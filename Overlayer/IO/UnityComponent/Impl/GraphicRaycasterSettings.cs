@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json.Linq;
+using Overlayer.IO.Fx;
 using Overlayer.IO.Interface;
 using UnityEngine;
 using UnityEngine.UI;
@@ -6,7 +7,11 @@ using UnityEngine.UI;
 namespace Overlayer.IO.UnityComponent.Impl;
 
 public class GraphicRaycasterSettings : UnityComponentSettingsBase, ICopyable<GraphicRaycasterSettings> {
-    public bool Enabled = true;
+    public FxValue<bool> Enabled = new(true);
+
+    private bool _lastEnabled = true;
+
+    public override bool HasAnyFx => base.HasAnyFx || FxUtil.HasFx(Enabled);
 
     public override bool ToUnity(GameObject target) {
         var com = target.GetComponent<GraphicRaycaster>();
@@ -14,7 +19,8 @@ public class GraphicRaycasterSettings : UnityComponentSettingsBase, ICopyable<Gr
             return false;
         }
 
-        com.enabled = Enabled;
+        _lastEnabled = Enabled.Value;
+        com.enabled = _lastEnabled;
 
         return true;
     }
@@ -25,23 +31,38 @@ public class GraphicRaycasterSettings : UnityComponentSettingsBase, ICopyable<Gr
             return false;
         }
 
-        Enabled = com.enabled;
+        Enabled.Value = com.enabled;
+        _lastEnabled = com.enabled;
 
         return true;
     }
 
+    public override void RefreshFx(GameObject target) {
+        if(!HasAnyFx) {
+            return;
+        }
+
+        var com = target.GetComponent<GraphicRaycaster>();
+        if(com == null) {
+            return;
+        }
+
+        FxUtil.ApplyIfChanged(ref _lastEnabled, Enabled.Value, v => com.enabled = v);
+    }
+
     public override JToken Serialize() {
         return new JObject {
-            [nameof(Enabled)] = Enabled,
+            [nameof(Enabled)] = IOUtils.WriteFx(Enabled),
         };
     }
 
     public override void Deserialize(JToken token)
-        => Enabled = IOUtils.Read(token, nameof(Enabled), Enabled);
+        => Enabled = IOUtils.ReadFx(token, nameof(Enabled), Enabled);
 
     public GraphicRaycasterSettings Copy() {
         return new GraphicRaycasterSettings {
-            Enabled = Enabled
+            ComponentEnabled = ComponentEnabled?.Copy(),
+            Enabled = Enabled?.Copy()
         };
     }
 }

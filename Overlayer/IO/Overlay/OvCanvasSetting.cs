@@ -1,4 +1,5 @@
 using Newtonsoft.Json.Linq;
+using Overlayer.IO.Fx;
 using Overlayer.IO.Interface;
 using Overlayer.IO.UnityComponent.Impl;
 using UnityEngine;
@@ -6,7 +7,7 @@ using UnityEngine;
 namespace Overlayer.IO.Overlay;
 
 public sealed class OvCanvasSettings : ISettingsFile, ICopyable<OvCanvasSettings> {
-    public string Name = "OvCanvas";
+    public FxValue<string> Name = FxValue<string>.FromValue("OvCanvas");
     public RectTransformSettings RectTransformConfig = new() {
         AnchorMin = Vector2.zero,
         AnchorMax = Vector2.one,
@@ -21,9 +22,16 @@ public sealed class OvCanvasSettings : ISettingsFile, ICopyable<OvCanvasSettings
     public CanvasScalerSettings CanvasScalerConfig = new();
     public GraphicRaycasterSettings GraphicRaycasterConfig = new();
 
+    public bool HasAnyFx => FxUtil.HasFx(Name)
+        || (RectTransformConfig?.HasAnyFx ?? false)
+        || (CanvasGroupConfig?.HasAnyFx ?? false)
+        || (CanvasConfig?.HasAnyFx ?? false)
+        || (CanvasScalerConfig?.HasAnyFx ?? false)
+        || (GraphicRaycasterConfig?.HasAnyFx ?? false);
+
     public JToken Serialize() {
         return new JObject {
-            [nameof(Name)] = Name,
+            [nameof(Name)] = IOUtils.WriteFx(Name),
             [nameof(RectTransformConfig)] = RectTransformConfig.Serialize(),
             [nameof(CanvasGroupConfig)] = CanvasGroupConfig.Serialize(),
             [nameof(CanvasConfig)] = CanvasConfig.Serialize(),
@@ -37,7 +45,7 @@ public sealed class OvCanvasSettings : ISettingsFile, ICopyable<OvCanvasSettings
             return;
         }
 
-        Name = IOUtils.Read(obj, nameof(Name), Name);
+        Name = IOUtils.ReadFx(obj, nameof(Name), Name);
         RectTransformConfig.Deserialize(obj[nameof(RectTransformConfig)]);
         if(obj[nameof(CanvasGroupConfig)] != null) {
             CanvasGroupConfig.Deserialize(obj[nameof(CanvasGroupConfig)]);
@@ -49,7 +57,7 @@ public sealed class OvCanvasSettings : ISettingsFile, ICopyable<OvCanvasSettings
 
     public OvCanvasSettings Copy() {
         return new OvCanvasSettings {
-            Name = Name,
+            Name = Name?.Copy(),
             RectTransformConfig = RectTransformConfig?.Copy(),
             CanvasGroupConfig = CanvasGroupConfig?.Copy(),
             CanvasConfig = CanvasConfig?.Copy(),

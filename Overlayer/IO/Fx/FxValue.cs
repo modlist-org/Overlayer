@@ -5,18 +5,51 @@ using Overlayer.TextEngine.Core;
 
 namespace Overlayer.IO.Fx;
 
+public interface IFxValue {
+    Type ValueType { get; }
+
+    bool UseFx { get; set; }
+
+    string Expression { get; set; }
+
+    bool HasFx { get; }
+
+    object EvaluateObject();
+
+    IFxValue CopyFx();
+
+    JToken SerializeFx();
+
+    void DeserializeFx(JToken token);
+}
+
 public abstract class FxValue {
     private protected const string FxKey = "Fx";
 
     protected static readonly ConcurrentDictionary<Type, Func<string, object>> Converters = new();
 
+    protected static readonly ConcurrentDictionary<Type, Func<JToken, object>> RawReaders = new();
+
+    protected static readonly ConcurrentDictionary<Type, Func<object, JToken>> RawWriters = new();
+
     public static void ClearConverters() {
         Converters.Clear();
+        RawReaders.Clear();
+        RawWriters.Clear();
     }
 }
 
-public sealed class FxValue<T> : FxValue, ISettingsFile, ICopyable<FxValue<T>>, IDisposable {
+public sealed class FxValue<T> : FxValue, IFxValue, ISettingsFile, ICopyable<FxValue<T>>, IDisposable {
     static FxValue() {
+        if (typeof(T).IsEnum) {
+            RegisterConverter(raw => {
+                if (string.IsNullOrWhiteSpace(raw)) return default!;
+                if (int.TryParse(raw, out var intVal)) return (T)Enum.ToObject(typeof(T), intVal);
+                return Enum.TryParse(typeof(T), raw, true, out var parsed) ? (T)parsed : default!;
+            });
+            return;
+        }
+
         Func<string, T> converter = Type.GetTypeCode(typeof(T)) switch {
             TypeCode.Byte    => s => byte.TryParse(s, out var v) ? (T)(object)v : default!,
             TypeCode.SByte   => s => sbyte.TryParse(s, out var v) ? (T)(object)v : default!,
@@ -43,6 +76,14 @@ public sealed class FxValue<T> : FxValue, ISettingsFile, ICopyable<FxValue<T>>, 
         Converters[typeof(T)] = s => converter(s)!;
     }
 
+    public static void RegisterRawReader(Func<JToken, T> reader) {
+        RawReaders[typeof(T)] = t => reader(t)!;
+    }
+
+    public static void RegisterRawWriter(Func<T, JToken> writer) {
+        RawWriters[typeof(T)] = o => writer((T)o);
+    }
+
     private T staticValue = default!;
 
     public T Value {
@@ -50,9 +91,57 @@ public sealed class FxValue<T> : FxValue, ISettingsFile, ICopyable<FxValue<T>>, 
         set => staticValue = value;
     }
 
+    public T StaticValue {
+        get => staticValue;
+        set => staticValue = value;
+    }
+
     public TextEngineCore Engine { get; set; }
 
     public bool UseFx { get; set; }
+
+    public bool HasFx => UseFx && Engine != null;
+
+    public string Expression {
+        get => Engine?.Text ?? string.Empty;
+        set {
+            Engine ??= new TextEngineCore();
+            Engine.Text = value ?? string.Empty;
+        }
+    }
+
+    #region IFxValue
+    Type IFxValue.ValueType => typeof(T);
+
+    string IFxValue.Expression {
+        get => Expression;
+        set => Expression = value;
+    }
+
+    object IFxValue.EvaluateObject() => Evaluate()!;
+
+    IFxValue IFxValue.CopyFx() => Copy();
+
+    JToken IFxValue.SerializeFx() => Serialize();
+
+    void IFxValue.DeserializeFx(JToken token) => Deserialize(token);
+    #endregion
+
+    #region Mode helpers
+    public void SetStatic(T value) {
+        staticValue = value;
+        UseFx = false;
+    }
+
+    public void SetExpression(string expression) {
+        Expression = expression ?? string.Empty;
+        UseFx = true;
+    }
+
+    public void DisableFx() => UseFx = false;
+
+    public void EnsureEngine() => Engine ??= new TextEngineCore();
+    #endregion
 
     #region Constructors
     public FxValue() { }
@@ -109,9 +198,19 @@ public sealed class FxValue<T> : FxValue, ISettingsFile, ICopyable<FxValue<T>>, 
 
     public JToken Serialize() {
         if (!UseFx) {
+            try {
+                if (RawWriters.TryGetValue(typeof(T), out var writer)) {
+                    return writer(staticValue);
+                }
+                if (staticValue is ISettingsFile file) {
+                    return file.Serialize();
+                }
+            } catch {
+                return JValue.CreateNull();
+            }
             return staticValue != null ? JToken.FromObject(staticValue) : JValue.CreateNull();
         }
-        
+
         return new JObject {
             [FxKey] = Engine?.Text ?? string.Empty
         };
@@ -134,6 +233,13 @@ public sealed class FxValue<T> : FxValue, ISettingsFile, ICopyable<FxValue<T>>, 
         else {
             UseFx = false;
             try {
+                if (RawReaders.TryGetValue(typeof(T), out var raw)) {
+                    var r = raw(token);
+                    if (r is T typed) {
+                        staticValue = typed;
+                        return;
+                    }
+                }
                 staticValue = token.ToObject<T>()!;
             } catch {
                 staticValue = default!;
@@ -149,8 +255,6 @@ public sealed class FxValue<T> : FxValue, ISettingsFile, ICopyable<FxValue<T>>, 
     #region Operators
     public static implicit operator FxValue<T>(T value) => new(value);
 
-    public static implicit operator FxValue<T>(string rawExpression) => new(rawExpression);
-
     public static implicit operator T(FxValue<T> fx) => fx == null ? default! : fx.Value;
     #endregion
 
@@ -163,10 +267,42 @@ public sealed class FxValue<T> : FxValue, ISettingsFile, ICopyable<FxValue<T>>, 
     }
 
     #region Factory Methods
+    public static FxValue<T> FromValue(T value) => new(value);
+
+    public static FxValue<T> FromExpression(string expression) => new(expression);
+
     public static FxValue<T> Create(T value, TextEngineCore engine, bool useFx = true)
         => new(value, engine, useFx);
 
     public static FxValue<T> Create(string expression, TextEngineCore engine, bool useFx = true)
         => new(expression, engine, useFx);
     #endregion
+}
+
+public static class FxUtil {
+    public static bool ApplyIfChanged<T>(ref T cache, T current, Action<T> apply) {
+        if (EqualityComparer<T>.Default.Equals(cache, current)) {
+            return false;
+        }
+
+        cache = current;
+        apply(current);
+        return true;
+    }
+
+    public static bool HasFx(IFxValue fx) => fx != null && fx.HasFx;
+
+    public static bool HasAnyFx(IEnumerable<IFxValue> values) {
+        if (values == null) {
+            return false;
+        }
+
+        foreach (var v in values) {
+            if (v != null && v.HasFx) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }

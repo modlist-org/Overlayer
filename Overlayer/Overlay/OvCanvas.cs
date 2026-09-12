@@ -1,5 +1,6 @@
 using Newtonsoft.Json.Linq;
 using Overlayer.Core;
+using Overlayer.IO.Fx;
 using Overlayer.IO.Interface;
 using Overlayer.IO.Overlay;
 using UnityEngine;
@@ -20,6 +21,10 @@ public class OvCanvas : ISettingsFile {
     private readonly Action<Camera> onCameraChangedHandler;
     
     public OvCanvasSettings Config = new();
+
+    public bool HasAnyFx => Config?.HasAnyFx ?? false;
+
+    private string _lastName;
 
     public OvCanvas() {
         GameObject = new GameObject("OvCanvas");
@@ -50,12 +55,29 @@ public class OvCanvas : ISettingsFile {
     }
 
     public void ApplyConfig() {
-        GameObject.name = Config.Name;
+        _lastName = Config.Name.Value;
+        GameObject.name = _lastName;
         Config.RectTransformConfig.ToUnity(GameObject);
         Config.CanvasGroupConfig.ToUnity(GameObject);
         Config.CanvasConfig.ToUnity(GameObject);
         Config.CanvasScalerConfig.ToUnity(GameObject);
         Config.GraphicRaycasterConfig.ToUnity(GameObject);
+    }
+
+    public void RefreshFx() {
+        if(Config == null) {
+            return;
+        }
+
+        FxUtil.ApplyIfChanged(ref _lastName, Config.Name.Value, v => GameObject.name = v);
+        Config.RectTransformConfig?.RefreshFx(GameObject);
+        Config.CanvasGroupConfig?.RefreshFx(GameObject);
+        Config.CanvasConfig?.RefreshFx(GameObject);
+        Config.CanvasScalerConfig?.RefreshFx(GameObject);
+        Config.GraphicRaycasterConfig?.RefreshFx(GameObject);
+        foreach(var obj in OvObjects) {
+            obj?.RefreshFx();
+        }
     }
 
     public void Attach(OvObject obj) {

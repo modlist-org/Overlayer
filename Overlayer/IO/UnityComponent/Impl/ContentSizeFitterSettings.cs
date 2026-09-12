@@ -1,4 +1,5 @@
 using Newtonsoft.Json.Linq;
+using Overlayer.IO.Fx;
 using Overlayer.IO.Interface;
 using UnityEngine;
 using UnityEngine.UI;
@@ -6,8 +7,15 @@ using UnityEngine.UI;
 namespace Overlayer.IO.UnityComponent.Impl;
 
 public class ContentSizeFitterSettings : UnityComponentSettingsBase, ICopyable<ContentSizeFitterSettings> {
-    public ContentSizeFitter.FitMode HorizontalFit = ContentSizeFitter.FitMode.PreferredSize;
-    public ContentSizeFitter.FitMode VerticalFit = ContentSizeFitter.FitMode.PreferredSize;
+    public FxValue<ContentSizeFitter.FitMode> HorizontalFit = new(ContentSizeFitter.FitMode.PreferredSize);
+    public FxValue<ContentSizeFitter.FitMode> VerticalFit = new(ContentSizeFitter.FitMode.PreferredSize);
+
+    private ContentSizeFitter.FitMode _lastHorizontalFit = ContentSizeFitter.FitMode.PreferredSize;
+    private ContentSizeFitter.FitMode _lastVerticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+    public override bool HasAnyFx => base.HasAnyFx
+        || FxUtil.HasFx(HorizontalFit)
+        || FxUtil.HasFx(VerticalFit);
 
     public override bool ToUnity(GameObject target) {
         var component = target.GetComponent<ContentSizeFitter>();
@@ -15,8 +23,10 @@ public class ContentSizeFitterSettings : UnityComponentSettingsBase, ICopyable<C
             return false;
         }
 
-        component.horizontalFit = HorizontalFit;
-        component.verticalFit = VerticalFit;
+        _lastHorizontalFit = HorizontalFit.Value;
+        _lastVerticalFit = VerticalFit.Value;
+        component.horizontalFit = _lastHorizontalFit;
+        component.verticalFit = _lastVerticalFit;
         ToUnity(component);
         LayoutRebuilder.MarkLayoutForRebuild(target.GetComponent<RectTransform>());
         return true;
@@ -28,16 +38,37 @@ public class ContentSizeFitterSettings : UnityComponentSettingsBase, ICopyable<C
             return false;
         }
 
-        HorizontalFit = component.horizontalFit;
-        VerticalFit = component.verticalFit;
+        HorizontalFit.Value = component.horizontalFit;
+        VerticalFit.Value = component.verticalFit;
+        _lastHorizontalFit = component.horizontalFit;
+        _lastVerticalFit = component.verticalFit;
         FromUnity(component);
         return true;
     }
 
+    public override void RefreshFx(GameObject target) {
+        if(!HasAnyFx) {
+            return;
+        }
+
+        var component = target.GetComponent<ContentSizeFitter>();
+        if(component == null) {
+            return;
+        }
+
+        RefreshEnabled(component);
+        bool changed = false;
+        changed |= FxUtil.ApplyIfChanged(ref _lastHorizontalFit, HorizontalFit.Value, v => component.horizontalFit = v);
+        changed |= FxUtil.ApplyIfChanged(ref _lastVerticalFit, VerticalFit.Value, v => component.verticalFit = v);
+        if(changed) {
+            LayoutRebuilder.MarkLayoutForRebuild(target.GetComponent<RectTransform>());
+        }
+    }
+
     public override JToken Serialize() {
         return SerializeComponent(new JObject {
-            [nameof(HorizontalFit)] = IOUtils.WriteEnum(HorizontalFit),
-            [nameof(VerticalFit)] = IOUtils.WriteEnum(VerticalFit)
+            [nameof(HorizontalFit)] = IOUtils.WriteFx(HorizontalFit),
+            [nameof(VerticalFit)] = IOUtils.WriteFx(VerticalFit)
         });
     }
 
@@ -47,15 +78,15 @@ public class ContentSizeFitterSettings : UnityComponentSettingsBase, ICopyable<C
         }
 
         DeserializeComponent(token);
-        HorizontalFit = IOUtils.ReadEnum(token, nameof(HorizontalFit), HorizontalFit);
-        VerticalFit = IOUtils.ReadEnum(token, nameof(VerticalFit), VerticalFit);
+        HorizontalFit = IOUtils.ReadFx(token, nameof(HorizontalFit), HorizontalFit);
+        VerticalFit = IOUtils.ReadFx(token, nameof(VerticalFit), VerticalFit);
     }
 
     public ContentSizeFitterSettings Copy() {
         return new ContentSizeFitterSettings {
-            ComponentEnabled = ComponentEnabled,
-            HorizontalFit = HorizontalFit,
-            VerticalFit = VerticalFit
+            ComponentEnabled = ComponentEnabled?.Copy(),
+            HorizontalFit = HorizontalFit?.Copy(),
+            VerticalFit = VerticalFit?.Copy()
         };
     }
 }

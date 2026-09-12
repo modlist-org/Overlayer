@@ -1,3 +1,4 @@
+using Overlayer.IO.Fx;
 using Overlayer.IO.UnityComponent.Impl;
 using Overlayer.IO.UnityComponent;
 using Overlayer.IO.Overlay;
@@ -48,48 +49,44 @@ internal sealed class OvInspectorBuilder(
 
     public void BuildCanvas(OvCanvas canvas, Action<string> nameChanged) {
         var (_, identity) = Card("Canvas", false);
-        Input(identity, "Canvas Name", "", canvas.Config.Name, value => {
-            canvas.Config.Name = value;
+        FxInput(identity, "Canvas Name", canvas.Config.Name, "", "canvas_name", value => {
             canvas.ApplyConfig();
             nameChanged(value);
-        }, "canvas_name", hierarchyChanged);
+        }, hierarchyChanged);
 
         var group = canvas.Config.CanvasGroupConfig;
-        Slider(identity, "Opacity", 1f, 0f, 1f, group.Alpha, value => group.Alpha = value, "canvas_alpha");
-        Toggle(identity, "Interactable", false, group.Interactable, value => group.Interactable = value, "canvas_interactable");
-        Toggle(identity, "Blocks Raycasts", true, group.BlocksRaycasts, value => group.BlocksRaycasts = value, "canvas_raycast");
-        Toggle(identity, "Ignore Parent Groups", false, group.IgnoreParentGroups, value => group.IgnoreParentGroups = value, "canvas_ignore_parent");
+        FxSlider(identity, "Opacity", group.Alpha, 1f, 0f, 1f, "canvas_alpha");
+        FxToggle(identity, "Interactable", group.Interactable, false, "canvas_interactable");
+        FxToggle(identity, "Blocks Raycasts", group.BlocksRaycasts, true, "canvas_raycast");
+        FxToggle(identity, "Ignore Parent Groups", group.IgnoreParentGroups, false, "canvas_ignore_parent");
 
         var (_, rendering) = Card("Rendering", false);
         var canvasCfg = canvas.Config.CanvasConfig;
-        EnumDropDown(rendering, "Render Mode", RenderMode.ScreenSpaceOverlay, canvasCfg.RenderMode, value => canvasCfg.RenderMode = value, "canvas_render_mode");
-        Slider(rendering, "Sorting Order", 32760f, -32768f, 32767f, canvasCfg.SortingOrder, value => canvasCfg.SortingOrder = Mathf.RoundToInt(value), "canvas_sort", "F0");
-        Toggle(rendering, "Override Sorting", true, canvasCfg.OverrideSorting, value => canvasCfg.OverrideSorting = value, "canvas_override_sorting");
-        Toggle(rendering, "Pixel Perfect", false, canvasCfg.PixelPerfect, value => canvasCfg.PixelPerfect = value, "canvas_pixel_perfect");
-        Toggle(rendering, "Graphic Raycaster", true, canvas.Config.GraphicRaycasterConfig.Enabled, value => canvas.Config.GraphicRaycasterConfig.Enabled = value, "canvas_graphic_raycast");
+        FxEnum(rendering, "Render Mode", canvasCfg.RenderMode, RenderMode.ScreenSpaceOverlay, "canvas_render_mode");
+        FxIntSlider(rendering, "Sorting Order", canvasCfg.SortingOrder, 32760, -32768f, 32767f, "canvas_sort");
+        FxToggle(rendering, "Override Sorting", canvasCfg.OverrideSorting, true, "canvas_override_sorting");
+        FxToggle(rendering, "Pixel Perfect", canvasCfg.PixelPerfect, false, "canvas_pixel_perfect");
+        FxToggle(rendering, "Graphic Raycaster", canvas.Config.GraphicRaycasterConfig.Enabled, true, "canvas_graphic_raycast");
 
         var (_, scaling) = Card("Scaling", false);
         var scale = canvas.Config.CanvasScalerConfig;
-        EnumDropDown(scaling, "Scale Mode", CanvasScaler.ScaleMode.ScaleWithScreenSize, scale.UiScaleMode, value => scale.UiScaleMode = value, "canvas_scale_mode");
-        Vector2Sliders(scaling, "Reference", new Vector2(1920, 1080), 1f, 8192f, () => scale.ReferenceResolution, value => scale.ReferenceResolution = value, "canvas_reference", "F0");
-        Slider(scaling, "Match Width / Height", 0.5f, 0f, 1f, scale.MatchWidthOrHeight, value => scale.MatchWidthOrHeight = value, "canvas_match");
-        Slider(scaling, "Scale Factor", 1f, 0.01f, 10f, scale.ScaleFactor, value => scale.ScaleFactor = value, "canvas_scale_factor");
+        FxEnum(scaling, "Scale Mode", scale.UiScaleMode, CanvasScaler.ScaleMode.ScaleWithScreenSize, "canvas_scale_mode");
+        FxVector2(scaling, "Reference", scale.ReferenceResolution, new Vector2(1920, 1080), 1f, 8192f, "canvas_reference", "F0");
+        FxSlider(scaling, "Match Width / Height", scale.MatchWidthOrHeight, 0.5f, 0f, 1f, "canvas_match");
+        FxSlider(scaling, "Scale Factor", scale.ScaleFactor, 1f, 0.01f, 10f, "canvas_scale_factor");
 
         BuildCanvasRectTransform(canvas);
     }
 
     public void BuildObject(OvObject obj) {
         var (_, identity) = Card("Object", false);
-        Input(identity, "Object Name", "OvObject", obj.Config.Name, value => {
-            obj.Config.Name = value;
-            apply();
-        }, "obj_name", hierarchyChanged);
-        Toggle(identity, "Visible", true, obj.Config.Enabled, value => obj.Config.Enabled = value, "obj_visible");
+        FxInput(identity, "Object Name", obj.Config.Name, "OvObject", "obj_name", _ => apply(), hierarchyChanged);
+        FxToggle(identity, "Visible", obj.Config.Enabled, true, "obj_visible");
 
         var group = obj.Config.CanvasGroupConfig;
-        Slider(identity, "Opacity", 1f, 0f, 1f, group.Alpha, value => group.Alpha = value, "obj_alpha");
-        Toggle(identity, "Interactable", false, group.Interactable, value => group.Interactable = value, "obj_interactable");
-        Toggle(identity, "Blocks Raycasts", false, group.BlocksRaycasts, value => group.BlocksRaycasts = value, "obj_raycast");
+        FxSlider(identity, "Opacity", group.Alpha, 1f, 0f, 1f, "obj_alpha");
+        FxToggle(identity, "Interactable", group.Interactable, false, "obj_interactable");
+        FxToggle(identity, "Blocks Raycasts", group.BlocksRaycasts, false, "obj_raycast");
 
         BuildTransform(obj);
 
@@ -117,19 +114,20 @@ internal sealed class OvInspectorBuilder(
         if(obj.Config.MaskConfig != null) {
             BuildMask(obj, obj.Config.MaskConfig);
         }
-        if(obj.Config.HasRectMask2D) {
+        if(obj.Config.HasRectMask2D.Value) {
             componentKey = "RECT_MASK_2D";
-            var (_, rectMask) = GenerateUI.ComponentCard(content, InspectorLabel("Rect Mask 2D"), obj.Config.RectMask2DEnabled, value => {
-                obj.Config.RectMask2DEnabled = value;
+            var (_, rectMask) = GenerateUI.ComponentCard(content, InspectorLabel("Rect Mask 2D"), obj.Config.RectMask2DEnabled.Value, value => {
+                obj.Config.RectMask2DEnabled.Value = value;
                 ApplyAndSave();
             }, () => {
-                obj.Config.HasRectMask2D = false;
-                obj.Config.RectMask2DEnabled = true;
+                obj.Config.HasRectMask2D.Value = false;
+                obj.Config.RectMask2DEnabled.Value = true;
                 RefreshComponents(obj);
             });
             Label(rectMask, InspectorText(
                 "COMPONENT_RECT_MASK_2D_DESCRIPTION",
                 InspectorText("INSPECTOR_RECT_MASK_DESCRIPTION", "Clips child graphics to this object's rectangle.")));
+            FxToggle(rectMask, "Enabled Fx", obj.Config.RectMask2DEnabled, true, "rect_mask_enabled");
         }
 #if !IL2CPP
         if(obj.Config.BoxCollider2DConfig != null) {
@@ -155,33 +153,32 @@ internal sealed class OvInspectorBuilder(
         });
         refreshPositionFields = BuildRectPositionFields(rectLayout, obj);
 
-        NumericPropertyRow(basic, "Position", [
-            ("Z", 0f, () => cfg.AnchoredPositionZ, value => cfg.AnchoredPositionZ = value, "rect_position_z")
-        ], "F1");
-        NumericPropertyRow(basic, "Rotation", [
-            ("X", 0f, () => cfg.RotationXY.x, value => cfg.RotationXY.x = value, "rect_rotation_x"),
-            ("Y", 0f, () => cfg.RotationXY.y, value => cfg.RotationXY.y = value, "rect_rotation_y"),
-            ("Z", 0f, () => cfg.Rotation, value => cfg.Rotation = value, "rect_rotation_z")
-        ], "F1");
-        NumericPropertyRow(basic, "Scale", [
-            ("X", 1f, () => cfg.Scale.x, value => cfg.Scale.x = value, "rect_scale_x"),
-            ("Y", 1f, () => cfg.Scale.y, value => cfg.Scale.y = value, "rect_scale_y"),
-            ("Z", 1f, () => cfg.Scale.z, value => cfg.Scale.z = value, "rect_scale_z")
-        ], "F2");
-        refreshPivotFields = NumericPropertyRow(basic, "Pivot", [
-            ("X", 0.5f, () => cfg.Pivot.x, value => cfg.Pivot.x = value, "rect_pivot_x"),
-            ("Y", 0.5f, () => cfg.Pivot.y, value => cfg.Pivot.y = value, "rect_pivot_y")
-        ], "F2");
+        FxSwitch(basic, "Position XY", cfg.AnchoredPosition, "rect_position_xy");
+        FxFloatRow(basic, "Position", cfg.AnchoredPositionZ, 0f, "Z", "rect_position_z", "F1");
+        FxNumericRow(basic, "Rotation XY", cfg.RotationXY, [
+            ("X", 0f, () => cfg.RotationXY.Value.x, value => { var v = cfg.RotationXY.Value; v.x = value; cfg.RotationXY.Value = v; }, "rect_rotation_x"),
+            ("Y", 0f, () => cfg.RotationXY.Value.y, value => { var v = cfg.RotationXY.Value; v.y = value; cfg.RotationXY.Value = v; }, "rect_rotation_y")
+        ], "F1", "rect_rotation_xy");
+        FxFloatRow(basic, "Rotation Z", cfg.Rotation, 0f, "Z", "rect_rotation_z", "F1");
+        FxNumericRow3(basic, "Scale", cfg.Scale, [
+            ("X", 1f, () => cfg.Scale.Value.x, value => { var v = cfg.Scale.Value; v.x = value; cfg.Scale.Value = v; }, "rect_scale_x"),
+            ("Y", 1f, () => cfg.Scale.Value.y, value => { var v = cfg.Scale.Value; v.y = value; cfg.Scale.Value = v; }, "rect_scale_y"),
+            ("Z", 1f, () => cfg.Scale.Value.z, value => { var v = cfg.Scale.Value; v.z = value; cfg.Scale.Value = v; }, "rect_scale_z")
+        ], "F2", "rect_scale");
+        refreshPivotFields = FxNumericRow(basic, "Pivot", cfg.Pivot, [
+            ("X", 0.5f, () => cfg.Pivot.Value.x, value => { var v = cfg.Pivot.Value; v.x = value; cfg.Pivot.Value = v; }, "rect_pivot_x"),
+            ("Y", 0.5f, () => cfg.Pivot.Value.y, value => { var v = cfg.Pivot.Value; v.y = value; cfg.Pivot.Value = v; }, "rect_pivot_y")
+        ], "F2", "rect_pivot");
 
         var (_, anchors) = Card("Anchors", false);
-        NumericPropertyRow(anchors, "Min", [
-            ("X", 0f, () => cfg.AnchorMin.x, value => { cfg.AnchorMin.x = value; refreshAnchor(); refreshPositionFields(); }, "transform_anchor_min_x"),
-            ("Y", 0f, () => cfg.AnchorMin.y, value => { cfg.AnchorMin.y = value; refreshAnchor(); refreshPositionFields(); }, "transform_anchor_min_y")
-        ], "F2");
-        NumericPropertyRow(anchors, "Max", [
-            ("X", 1f, () => cfg.AnchorMax.x, value => { cfg.AnchorMax.x = value; refreshAnchor(); refreshPositionFields(); }, "transform_anchor_max_x"),
-            ("Y", 1f, () => cfg.AnchorMax.y, value => { cfg.AnchorMax.y = value; refreshAnchor(); refreshPositionFields(); }, "transform_anchor_max_y")
-        ], "F2");
+        FxNumericRow(anchors, "Min", cfg.AnchorMin, [
+            ("X", 0f, () => cfg.AnchorMin.Value.x, value => { var v = cfg.AnchorMin.Value; v.x = value; cfg.AnchorMin.Value = v; refreshAnchor(); refreshPositionFields(); }, "transform_anchor_min_x"),
+            ("Y", 0f, () => cfg.AnchorMin.Value.y, value => { var v = cfg.AnchorMin.Value; v.y = value; cfg.AnchorMin.Value = v; refreshAnchor(); refreshPositionFields(); }, "transform_anchor_min_y")
+        ], "F2", "transform_anchor_min");
+        FxNumericRow(anchors, "Max", cfg.AnchorMax, [
+            ("X", 1f, () => cfg.AnchorMax.Value.x, value => { var v = cfg.AnchorMax.Value; v.x = value; cfg.AnchorMax.Value = v; refreshAnchor(); refreshPositionFields(); }, "transform_anchor_max_x"),
+            ("Y", 1f, () => cfg.AnchorMax.Value.y, value => { var v = cfg.AnchorMax.Value; v.y = value; cfg.AnchorMax.Value = v; refreshAnchor(); refreshPositionFields(); }, "transform_anchor_max_y")
+        ], "F2", "transform_anchor_max");
     }
 
     private void BuildCanvasRectTransform(OvCanvas canvas) {
@@ -196,82 +193,73 @@ internal sealed class OvInspectorBuilder(
         });
         refreshPositionFields = BuildRectPositionFields(rectLayout, cfg);
 
-        NumericPropertyRow(basic, "Position", [
-            ("Z", 0f, () => cfg.AnchoredPositionZ, value => cfg.AnchoredPositionZ = value, "canvas_rect_position_z")
-        ], "F1");
-        NumericPropertyRow(basic, "Rotation", [
-            ("X", 0f, () => cfg.RotationXY.x, value => cfg.RotationXY.x = value, "canvas_rect_rotation_x"),
-            ("Y", 0f, () => cfg.RotationXY.y, value => cfg.RotationXY.y = value, "canvas_rect_rotation_y"),
-            ("Z", 0f, () => cfg.Rotation, value => cfg.Rotation = value, "canvas_rect_rotation_z")
-        ], "F1");
-        NumericPropertyRow(basic, "Scale", [
-            ("X", 1f, () => cfg.Scale.x, value => cfg.Scale.x = value, "canvas_rect_scale_x"),
-            ("Y", 1f, () => cfg.Scale.y, value => cfg.Scale.y = value, "canvas_rect_scale_y"),
-            ("Z", 1f, () => cfg.Scale.z, value => cfg.Scale.z = value, "canvas_rect_scale_z")
-        ], "F2");
-        refreshPivotFields = NumericPropertyRow(basic, "Pivot", [
-            ("X", 0.5f, () => cfg.Pivot.x, value => cfg.Pivot.x = value, "canvas_rect_pivot_x"),
-            ("Y", 0.5f, () => cfg.Pivot.y, value => cfg.Pivot.y = value, "canvas_rect_pivot_y")
-        ], "F2");
+        FxSwitch(basic, "Position XY", cfg.AnchoredPosition, "canvas_rect_position_xy");
+        FxFloatRow(basic, "Position", cfg.AnchoredPositionZ, 0f, "Z", "canvas_rect_position_z", "F1");
+        FxNumericRow(basic, "Rotation XY", cfg.RotationXY, [
+            ("X", 0f, () => cfg.RotationXY.Value.x, value => { var v = cfg.RotationXY.Value; v.x = value; cfg.RotationXY.Value = v; }, "canvas_rect_rotation_x"),
+            ("Y", 0f, () => cfg.RotationXY.Value.y, value => { var v = cfg.RotationXY.Value; v.y = value; cfg.RotationXY.Value = v; }, "canvas_rect_rotation_y")
+        ], "F1", "canvas_rect_rotation_xy");
+        FxFloatRow(basic, "Rotation Z", cfg.Rotation, 0f, "Z", "canvas_rect_rotation_z", "F1");
+        FxNumericRow3(basic, "Scale", cfg.Scale, [
+            ("X", 1f, () => cfg.Scale.Value.x, value => { var v = cfg.Scale.Value; v.x = value; cfg.Scale.Value = v; }, "canvas_rect_scale_x"),
+            ("Y", 1f, () => cfg.Scale.Value.y, value => { var v = cfg.Scale.Value; v.y = value; cfg.Scale.Value = v; }, "canvas_rect_scale_y"),
+            ("Z", 1f, () => cfg.Scale.Value.z, value => { var v = cfg.Scale.Value; v.z = value; cfg.Scale.Value = v; }, "canvas_rect_scale_z")
+        ], "F2", "canvas_rect_scale");
+        refreshPivotFields = FxNumericRow(basic, "Pivot", cfg.Pivot, [
+            ("X", 0.5f, () => cfg.Pivot.Value.x, value => { var v = cfg.Pivot.Value; v.x = value; cfg.Pivot.Value = v; }, "canvas_rect_pivot_x"),
+            ("Y", 0.5f, () => cfg.Pivot.Value.y, value => { var v = cfg.Pivot.Value; v.y = value; cfg.Pivot.Value = v; }, "canvas_rect_pivot_y")
+        ], "F2", "canvas_rect_pivot");
 
         var (_, anchors) = Card("Anchors", false);
-        NumericPropertyRow(anchors, "Min", [
-            ("X", 0f, () => cfg.AnchorMin.x, value => { cfg.AnchorMin.x = value; refreshAnchor(); refreshPositionFields(); }, "canvas_transform_anchor_min_x"),
-            ("Y", 0f, () => cfg.AnchorMin.y, value => { cfg.AnchorMin.y = value; refreshAnchor(); refreshPositionFields(); }, "canvas_transform_anchor_min_y")
-        ], "F2");
-        NumericPropertyRow(anchors, "Max", [
-            ("X", 1f, () => cfg.AnchorMax.x, value => { cfg.AnchorMax.x = value; refreshAnchor(); refreshPositionFields(); }, "canvas_transform_anchor_max_x"),
-            ("Y", 1f, () => cfg.AnchorMax.y, value => { cfg.AnchorMax.y = value; refreshAnchor(); refreshPositionFields(); }, "canvas_transform_anchor_max_y")
-        ], "F2");
+        FxNumericRow(anchors, "Min", cfg.AnchorMin, [
+            ("X", 0f, () => cfg.AnchorMin.Value.x, value => { var v = cfg.AnchorMin.Value; v.x = value; cfg.AnchorMin.Value = v; refreshAnchor(); refreshPositionFields(); }, "canvas_transform_anchor_min_x"),
+            ("Y", 0f, () => cfg.AnchorMin.Value.y, value => { var v = cfg.AnchorMin.Value; v.y = value; cfg.AnchorMin.Value = v; refreshAnchor(); refreshPositionFields(); }, "canvas_transform_anchor_min_y")
+        ], "F2", "canvas_transform_anchor_min");
+        FxNumericRow(anchors, "Max", cfg.AnchorMax, [
+            ("X", 1f, () => cfg.AnchorMax.Value.x, value => { var v = cfg.AnchorMax.Value; v.x = value; cfg.AnchorMax.Value = v; refreshAnchor(); refreshPositionFields(); }, "canvas_transform_anchor_max_x"),
+            ("Y", 1f, () => cfg.AnchorMax.Value.y, value => { var v = cfg.AnchorMax.Value; v.y = value; cfg.AnchorMax.Value = v; refreshAnchor(); refreshPositionFields(); }, "canvas_transform_anchor_max_y")
+        ], "F2", "canvas_transform_anchor_max");
     }
 
     private void BuildText(OvObject obj, TextMeshProUGUISettings cfg) {
-        OvTextSettings textCfg = obj.Config.TextEngineConfig ??= OvTextSettings.FromLegacy(cfg.Text);
+        OvTextSettings textCfg = obj.Config.TextEngineConfig ??= OvTextSettings.FromLegacy(cfg.Text.Value);
         var (_, card) = ComponentCard("Text", cfg, () => {
             obj.Config.TextConfig = null;
             obj.Config.TextEngineConfig = null;
             obj.Config.ColorRangeConfig = null;
             RefreshComponents(obj);
         });
-        CodeEditor(card, "Playing Text", "text_playing", textCfg.PlayingText, value => {
-            textCfg.PlayingText = value;
-            cfg.Text = value;
+        FxCodeEditor(card, "Playing Text", "text_playing", textCfg.PlayingText, value => {
+            textCfg.PlayingText.Value = value;
+            cfg.Text.Value = value;
             apply();
         }, () => obj.TextUpdater?.PlayingEngine);
-        CodeEditor(card, "Not Playing Text", "text_not_playing", textCfg.NotPlayingText, value => {
-            textCfg.NotPlayingText = value;
+        FxCodeEditor(card, "Not Playing Text", "text_not_playing", textCfg.NotPlayingText, value => {
+            textCfg.NotPlayingText.Value = value;
             apply();
         }, () => obj.TextUpdater?.NotPlayingEngine);
         FontDropDown(card, cfg);
-        Slider(card, "Font Size", 48f, 1f, 512f, cfg.FontSize, value => cfg.FontSize = value, "text_size", "F1");
-        Toggle(card, "Rich Text", true, cfg.RichText, value => cfg.RichText = value, "text_rich");
-        Toggle(card, "Auto Size", false, cfg.AutoSize, value => cfg.AutoSize = value, "text_auto_size");
-        Vector2Sliders(card, "Font Range", new Vector2(16, 64), 1f, 512f, () => cfg.FontSizeRange, value => cfg.FontSizeRange = value, "text_font_range", "F1");
-        EnumDropDown(card, "Alignment", TextAlignmentOptions.Center, cfg.Alignment, value => cfg.Alignment = value, "text_alignment");
-        EnumDropDown(card, "Wrapping", TextWrappingModes.Normal, cfg.TextWrappingMode, value => cfg.TextWrappingMode = value, "text_wrapping");
-        EnumDropDown(card, "Overflow", TextOverflowModes.Overflow, cfg.OverFlowMode, value => cfg.OverFlowMode = value, "text_overflow");
-        Slider(card, "Line Spacing", 0f, -100f, 100f, cfg.LineSpacing, value => cfg.LineSpacing = value, "text_line_spacing", "F1");
-        Slider(card, "Character Spacing", 0f, -100f, 100f, cfg.CharacterSpacing, value => cfg.CharacterSpacing = value, "text_char_spacing", "F1");
-        Slider(card, "Word Spacing", 0f, -100f, 100f, cfg.WordSpacing, value => cfg.WordSpacing = value, "text_word_spacing", "F1");
-        GameObject textGradientControls = null;
-        Toggle(card, "Text Gradient", false, !cfg.Color.SolidColor, value => {
-            GradientColor color = cfg.Color;
-            color.SolidColor = !value;
-            cfg.Color = color;
-            textGradientControls?.SetActive(value);
-        }, "text_gradient");
-        textGradientControls = GradientColorSliders(card, () => cfg.Color, value => cfg.Color = value, "text_gradient", Color.white);
-        textGradientControls.SetActive(!cfg.Color.SolidColor);
-        Toggle(card, "Material Outline", false, cfg.EnableOutline, value => cfg.EnableOutline = value, "text_outline");
-        Slider(card, "Outline Width", 0.05f, 0f, 0.25f, cfg.OutlineWidth, value => cfg.OutlineWidth = value, "text_outline_width");
-        Slider(card, "Outline Softness", 0f, 0f, 1f, cfg.OutlineSoftness, value => cfg.OutlineSoftness = value, "text_outline_softness");
-        Slider(card, "Face Dilate", 0f, -1f, 1f, cfg.FaceDilate, value => cfg.FaceDilate = value, "text_face_dilate");
-        ColorSliders(card, "Outline", Color.black, () => cfg.OutlineColor, value => cfg.OutlineColor = value, "text_outline_color");
-        Toggle(card, "Material Shadow", true, cfg.EnableShadow, value => cfg.EnableShadow = value, "text_shadow");
-        Vector2Sliders(card, "Shadow Offset", new Vector2(0.75f, -0.75f), -1f, 1f, () => cfg.ShadowOffset, value => cfg.ShadowOffset = value, "text_shadow_offset", "F2");
-        Slider(card, "Shadow Dilate", 1f, 0f, 1f, cfg.ShadowDilate, value => cfg.ShadowDilate = value, "text_shadow_dilate");
-        Slider(card, "Shadow Softness", 0.5f, 0f, 1f, cfg.ShadowSoftness, value => cfg.ShadowSoftness = value, "text_shadow_softness");
-        ColorSliders(card, "Shadow", new Color(0f, 0f, 0f, 0.5f), () => cfg.ShadowColor, value => cfg.ShadowColor = value, "text_shadow_color");
+        FxSlider(card, "Font Size", cfg.FontSize, 48f, 1f, 512f, "text_size", "F1");
+        FxToggle(card, "Rich Text", cfg.RichText, true, "text_rich");
+        FxToggle(card, "Auto Size", cfg.AutoSize, false, "text_auto_size");
+        FxVector2(card, "Font Range", cfg.FontSizeRange, new Vector2(16, 64), 1f, 512f, "text_font_range", "F1");
+        FxEnum(card, "Alignment", cfg.Alignment, TextAlignmentOptions.Center, "text_alignment");
+        FxEnum(card, "Wrapping", cfg.TextWrappingMode, TextWrappingModes.Normal, "text_wrapping");
+        FxEnum(card, "Overflow", cfg.OverFlowMode, TextOverflowModes.Overflow, "text_overflow");
+        FxSlider(card, "Line Spacing", cfg.LineSpacing, 0f, -100f, 100f, "text_line_spacing", "F1");
+        FxSlider(card, "Character Spacing", cfg.CharacterSpacing, 0f, -100f, 100f, "text_char_spacing", "F1");
+        FxSlider(card, "Word Spacing", cfg.WordSpacing, 0f, -100f, 100f, "text_word_spacing", "F1");
+        FxGradient(card, cfg.Color, Color.white, "text_color_fx");
+        FxToggle(card, "Material Outline", cfg.EnableOutline, false, "text_outline");
+        FxSlider(card, "Outline Width", cfg.OutlineWidth, 0.05f, 0f, 0.25f, "text_outline_width");
+        FxSlider(card, "Outline Softness", cfg.OutlineSoftness, 0f, 0f, 1f, "text_outline_softness");
+        FxSlider(card, "Face Dilate", cfg.FaceDilate, 0f, -1f, 1f, "text_face_dilate");
+        FxColor(card, "Outline", cfg.OutlineColor, Color.black, "text_outline_color");
+        FxToggle(card, "Material Shadow", cfg.EnableShadow, true, "text_shadow");
+        FxVector2(card, "Shadow Offset", cfg.ShadowOffset, new Vector2(0.75f, -0.75f), -1f, 1f, "text_shadow_offset", "F2");
+        FxSlider(card, "Shadow Dilate", cfg.ShadowDilate, 1f, 0f, 1f, "text_shadow_dilate");
+        FxSlider(card, "Shadow Softness", cfg.ShadowSoftness, 0.5f, 0f, 1f, "text_shadow_softness");
+        FxColor(card, "Shadow", cfg.ShadowColor, new Color(0f, 0f, 0f, 0.5f), "text_shadow_color");
     }
 
     private void BuildImage(OvObject obj, ImageSettings cfg) {
@@ -281,8 +269,8 @@ internal sealed class OvInspectorBuilder(
         });
 
         SpriteDropDown(card, cfg);
-        ColorSliders(card, "Color", Color.white, () => cfg.Color, value => cfg.Color = value, "image_color");
-        Toggle(card, "Raycast Target", true, cfg.RaycastTarget, value => cfg.RaycastTarget = value, "image_raycast");
+        FxColor(card, "Color", cfg.Color, Color.white, "image_color");
+        FxToggle(card, "Raycast Target", cfg.RaycastTarget, true, "image_raycast");
         RectTransform preserveAspectRow = null;
         RectTransform useSpriteMeshRow = null;
         RectTransform fillCenterRow = null;
@@ -291,58 +279,44 @@ internal sealed class OvInspectorBuilder(
         RectTransform fillAmountRow = null;
         RectTransform fillOriginRow = null;
         RectTransform fillClockwiseRow = null;
-        EnumDropDown(card, "Image Type", Image.Type.Simple, cfg.Type, value => {
-            cfg.Type = value;
-            RefreshImageTypeOptions(value);
-        }, "image_type");
-        preserveAspectRow = Toggle(card, "Preserve Aspect", false, cfg.PreserveAspect, value => cfg.PreserveAspect = value, "image_aspect");
-        useSpriteMeshRow = Toggle(card, "Use Sprite Mesh", false, cfg.UseSpriteMesh, value => cfg.UseSpriteMesh = value, "image_sprite_mesh");
-        fillCenterRow = Toggle(card, "Fill Center", true, cfg.FillCenter, value => cfg.FillCenter = value, "image_fill_center");
-        pixelsPerUnitRow = Slider(
-            card,
-            "Pixels Per Unit",
-            1f,
-            0f,
-            10f,
-            cfg.PixelsPerUnitMultiplier,
-            value => cfg.PixelsPerUnitMultiplier = value,
-            "image_pixels_per_unit",
-            "F2",
-            ClampMode.Slider,
-            value => Mathf.Max(0f, value)
-        );
-        fillMethodRow = EnumDropDown(card, "Fill Method", Image.FillMethod.Horizontal, cfg.FillMethod, value => {
-            cfg.FillMethod = value;
-            cfg.FillOrigin = 0;
-        }, "image_fill_method", () => {
+        FxEnum(card, "Image Type", cfg.Type, Image.Type.Simple, "image_type", () => {
+            RefreshImageTypeOptions(cfg.Type.Value);
+            ApplyAndSave();
+        });
+        preserveAspectRow = FxToggle(card, "Preserve Aspect", cfg.PreserveAspect, false, "image_aspect");
+        useSpriteMeshRow = FxToggle(card, "Use Sprite Mesh", cfg.UseSpriteMesh, false, "image_sprite_mesh");
+        fillCenterRow = FxToggle(card, "Fill Center", cfg.FillCenter, true, "image_fill_center");
+        pixelsPerUnitRow = FxSlider(card, "Pixels Per Unit", cfg.PixelsPerUnitMultiplier, 1f, 0f, 10f, "image_pixels_per_unit", "F2", ClampMode.Slider, value => Mathf.Max(0f, value));
+        fillMethodRow = FxEnum(card, "Fill Method", cfg.FillMethod, Image.FillMethod.Horizontal, "image_fill_method", () => {
+            cfg.FillOrigin.Value = 0;
             ApplyAndSave();
             rebuild();
         });
-        fillAmountRow = Slider(card, "Fill Amount", 1f, 0f, 1f, cfg.FillAmount, value => cfg.FillAmount = value, "image_fill_amount");
-        cfg.FillOrigin = Mathf.Clamp(cfg.FillOrigin, 0, cfg.FillMethod is Image.FillMethod.Horizontal or Image.FillMethod.Vertical ? 1 : 3);
+        fillAmountRow = FxSlider(card, "Fill Amount", cfg.FillAmount, 1f, 0f, 1f, "image_fill_amount");
+        cfg.FillOrigin.Value = Mathf.Clamp(cfg.FillOrigin.Value, 0, cfg.FillMethod.Value is Image.FillMethod.Horizontal or Image.FillMethod.Vertical ? 1 : 3);
         fillOriginRow = CreateFillOriginRow();
-        fillClockwiseRow = Toggle(card, "Fill Clockwise", true, cfg.FillClockwise, value => cfg.FillClockwise = value, "image_fill_clockwise");
+        fillClockwiseRow = FxToggle(card, "Fill Clockwise", cfg.FillClockwise, true, "image_fill_clockwise");
 
-        RectTransform CreateFillOriginRow() => cfg.FillMethod switch {
-            Image.FillMethod.Horizontal => EnumDropDown(
-                card, "Fill Origin", Image.OriginHorizontal.Left, (Image.OriginHorizontal)cfg.FillOrigin,
-                value => cfg.FillOrigin = (int)value, "image_fill_origin"
+        RectTransform CreateFillOriginRow() => cfg.FillMethod.Value switch {
+            Image.FillMethod.Horizontal => FxEnumMapped(
+                card, "Fill Origin", cfg.FillOrigin, (int)Image.OriginHorizontal.Left, "image_fill_origin",
+                v => (Image.OriginHorizontal)v, v => (int)v
             ),
-            Image.FillMethod.Vertical => EnumDropDown(
-                card, "Fill Origin", Image.OriginVertical.Bottom, (Image.OriginVertical)cfg.FillOrigin,
-                value => cfg.FillOrigin = (int)value, "image_fill_origin"
+            Image.FillMethod.Vertical => FxEnumMapped(
+                card, "Fill Origin", cfg.FillOrigin, (int)Image.OriginVertical.Bottom, "image_fill_origin",
+                v => (Image.OriginVertical)v, v => (int)v
             ),
-            Image.FillMethod.Radial90 => EnumDropDown(
-                card, "Fill Origin", Image.Origin90.BottomLeft, (Image.Origin90)cfg.FillOrigin,
-                value => cfg.FillOrigin = (int)value, "image_fill_origin"
+            Image.FillMethod.Radial90 => FxEnumMapped(
+                card, "Fill Origin", cfg.FillOrigin, (int)Image.Origin90.BottomLeft, "image_fill_origin",
+                v => (Image.Origin90)v, v => (int)v
             ),
-            Image.FillMethod.Radial180 => EnumDropDown(
-                card, "Fill Origin", Image.Origin180.Bottom, (Image.Origin180)cfg.FillOrigin,
-                value => cfg.FillOrigin = (int)value, "image_fill_origin"
+            Image.FillMethod.Radial180 => FxEnumMapped(
+                card, "Fill Origin", cfg.FillOrigin, (int)Image.Origin180.Bottom, "image_fill_origin",
+                v => (Image.Origin180)v, v => (int)v
             ),
-            _ => EnumDropDown(
-                card, "Fill Origin", Image.Origin360.Bottom, (Image.Origin360)cfg.FillOrigin,
-                value => cfg.FillOrigin = (int)value, "image_fill_origin"
+            _ => FxEnumMapped(
+                card, "Fill Origin", cfg.FillOrigin, (int)Image.Origin360.Bottom, "image_fill_origin",
+                v => (Image.Origin360)v, v => (int)v
             )
         };
 
@@ -358,10 +332,10 @@ internal sealed class OvInspectorBuilder(
             fillMethodRow.gameObject.SetActive(filled);
             fillAmountRow.gameObject.SetActive(filled);
             fillOriginRow.gameObject.SetActive(filled);
-            fillClockwiseRow.gameObject.SetActive(filled && cfg.FillMethod is not Image.FillMethod.Horizontal and not Image.FillMethod.Vertical);
+            fillClockwiseRow.gameObject.SetActive(filled && cfg.FillMethod.Value is not Image.FillMethod.Horizontal and not Image.FillMethod.Vertical);
         }
 
-        RefreshImageTypeOptions(cfg.Type);
+        RefreshImageTypeOptions(cfg.Type.Value);
     }
 
     private void BuildMovingMan(OvObject obj, MovingManSettings cfg) {
@@ -370,17 +344,32 @@ internal sealed class OvInspectorBuilder(
             RefreshComponents(obj);
         });
 
-        Input(card, "Target Tag", null, cfg.TagName, value => cfg.TagName = value, "moving_man_tag");
+        FxInput(card, "Target Tag", cfg.TagName, null, "moving_man_tag");
         MovingManTargets(card, cfg);
-        Slider(card, "Start Value", 30f, -10000f, 10000f, (float)cfg.StartSize, value => cfg.StartSize = value, "moving_man_start", "F1", ClampMode.Slider);
-        Slider(card, "End Value", 80f, -10000f, 10000f, (float)cfg.EndSize, value => cfg.EndSize = value, "moving_man_end", "F1", ClampMode.Slider);
-        Slider(card, "Default Value", 30f, -10000f, 10000f, (float)cfg.DefaultSize, value => cfg.DefaultSize = value, "moving_man_default", "F1", ClampMode.Slider);
-        Slider(card, "Speed", 800f, 0f, 10000f, (float)cfg.Speed, value => cfg.Speed = value, "moving_man_speed", "F0", ClampMode.Slider);
-        Toggle(card, "Invert", false, cfg.Invert, value => cfg.Invert = value, "moving_man_invert");
-        EnumDropDown(card, "Ease", Easing.OutExpo, cfg.Ease, value => cfg.Ease = value, "moving_man_ease");
+        FxDoubleSlider(card, "Start Value", cfg.StartSize, 30, -10000f, 10000f, "moving_man_start", "F1");
+        FxDoubleSlider(card, "End Value", cfg.EndSize, 80, -10000f, 10000f, "moving_man_end", "F1");
+        FxDoubleSlider(card, "Default Value", cfg.DefaultSize, 30, -10000f, 10000f, "moving_man_default", "F1");
+        FxDoubleSlider(card, "Speed", cfg.Speed, 800, 0f, 10000f, "moving_man_speed", "F0");
+        FxToggle(card, "Invert", cfg.Invert, false, "moving_man_invert");
+        FxEnum(card, "Ease", cfg.Ease, Easing.OutExpo, "moving_man_ease");
     }
 
     private void MovingManTargets(Transform parent, MovingManSettings cfg) {
+        Toggle(parent, "Target Fx", false, cfg.Target.UseFx, value => {
+            cfg.Target.UseFx = value;
+            if(value) {
+                cfg.Target.EnsureEngine();
+            }
+            ApplyAndSave();
+            rebuild();
+        }, "moving_man_target_use_fx");
+        if(cfg.Target.UseFx) {
+            Input(parent, "Target Expr", "", cfg.Target.Expression, value => {
+                cfg.Target.Expression = value;
+                apply();
+            }, "moving_man_target_fx");
+            return;
+        }
         string label = InspectorLabel("Target");
         var values = Enum.GetValues(typeof(MovingManTarget))
             .Cast<MovingManTarget>()
@@ -390,12 +379,12 @@ internal sealed class OvInspectorBuilder(
         var dropdown = GenerateUI.MultiDropDown(
             row,
             MovingManTarget.TextSize,
-            cfg.Target,
+            cfg.Target.Value,
             values,
             value => $"{label}: {value}",
             value => $"{label}: {MovingManTargetSummary(value, values)}",
             newValue => {
-                cfg.Target = newValue;
+                cfg.Target.Value = newValue;
                 ApplyAndSave();
             },
             "moving_man_target"
@@ -423,28 +412,12 @@ internal sealed class OvInspectorBuilder(
             RefreshComponents(obj);
         });
 
-        Input(card, "Target Tag", null, cfg.TagName, value => cfg.TagName = value, "color_range_tag");
-        Slider(card, "Minimum", 0f, -10000f, 10000f, (float)cfg.Minimum, value => cfg.Minimum = value, "color_range_min", "F2", ClampMode.Slider);
-        Slider(card, "Maximum", 100f, -10000f, 10000f, (float)cfg.Maximum, value => cfg.Maximum = value, "color_range_max", "F2", ClampMode.Slider);
-        GameObject minimumGradientControls = null;
-        Toggle(card, "Minimum Gradient", false, !cfg.MinimumColor.SolidColor, value => {
-            GradientColor color = cfg.MinimumColor;
-            color.SolidColor = !value;
-            cfg.MinimumColor = color;
-            minimumGradientControls?.SetActive(value);
-        }, "color_range_min_gradient");
-        minimumGradientControls = GradientColorSliders(card, () => cfg.MinimumColor, value => cfg.MinimumColor = value, "color_range_min_gradient", Color.black);
-        minimumGradientControls.SetActive(!cfg.MinimumColor.SolidColor);
-        GameObject maximumGradientControls = null;
-        Toggle(card, "Maximum Gradient", false, !cfg.MaximumColor.SolidColor, value => {
-            GradientColor color = cfg.MaximumColor;
-            color.SolidColor = !value;
-            cfg.MaximumColor = color;
-            maximumGradientControls?.SetActive(value);
-        }, "color_range_max_gradient");
-        maximumGradientControls = GradientColorSliders(card, () => cfg.MaximumColor, value => cfg.MaximumColor = value, "color_range_max_gradient", Color.white);
-        maximumGradientControls.SetActive(!cfg.MaximumColor.SolidColor);
-        EnumDropDown(card, "Ease", Easing.Linear, cfg.Ease, value => cfg.Ease = value, "color_range_ease");
+        FxInput(card, "Target Tag", cfg.TagName, null, "color_range_tag");
+        FxDoubleSlider(card, "Minimum", cfg.Minimum, 0, -10000f, 10000f, "color_range_min", "F2");
+        FxDoubleSlider(card, "Maximum", cfg.Maximum, 100, -10000f, 10000f, "color_range_max", "F2");
+        FxGradient(card, cfg.MinimumColor, Color.black, "color_range_min_fx");
+        FxGradient(card, cfg.MaximumColor, Color.white, "color_range_max_fx");
+        FxEnum(card, "Ease", cfg.Ease, Easing.Linear, "color_range_ease");
     }
 
     private void BuildContentSizeFitter(OvObject obj, ContentSizeFitterSettings cfg) {
@@ -452,8 +425,8 @@ internal sealed class OvInspectorBuilder(
             obj.Config.ContentSizeFitterConfig = null;
             RefreshComponents(obj);
         }, () => RefreshDrivenLayout(obj));
-        EnumDropDown(card, "Horizontal Fit", ContentSizeFitter.FitMode.PreferredSize, cfg.HorizontalFit, value => cfg.HorizontalFit = value, "content_size_horizontal", () => RefreshDrivenLayout(obj));
-        EnumDropDown(card, "Vertical Fit", ContentSizeFitter.FitMode.PreferredSize, cfg.VerticalFit, value => cfg.VerticalFit = value, "content_size_vertical", () => RefreshDrivenLayout(obj));
+        FxEnum(card, "Horizontal Fit", cfg.HorizontalFit, ContentSizeFitter.FitMode.PreferredSize, "content_size_horizontal", () => RefreshDrivenLayout(obj));
+        FxEnum(card, "Vertical Fit", cfg.VerticalFit, ContentSizeFitter.FitMode.PreferredSize, "content_size_vertical", () => RefreshDrivenLayout(obj));
     }
 
     private void BuildShadow(OvObject obj, ShadowSettings cfg) {
@@ -461,9 +434,9 @@ internal sealed class OvInspectorBuilder(
             obj.Config.ShadowConfig = null;
             RefreshComponents(obj);
         });
-        Vector2Sliders(card, "Distance", new Vector2(6, -6), -100f, 100f, () => cfg.EffectDistance, value => cfg.EffectDistance = value, "shadow_distance", "F1");
-        ColorSliders(card, "Color", Color.black, () => cfg.EffectColor, value => cfg.EffectColor = value, "shadow_color");
-        Toggle(card, "Use Graphic Alpha", true, cfg.UseGraphicAlpha, value => cfg.UseGraphicAlpha = value, "shadow_alpha");
+        FxVector2(card, "Distance", cfg.EffectDistance, new Vector2(6, -6), -100f, 100f, "shadow_distance", "F1");
+        FxColor(card, "Color", cfg.EffectColor, Color.black, "shadow_color");
+        FxToggle(card, "Use Graphic Alpha", cfg.UseGraphicAlpha, true, "shadow_alpha");
     }
 
     private void BuildOutline(OvObject obj, OutlineSettings cfg) {
@@ -471,16 +444,16 @@ internal sealed class OvInspectorBuilder(
             obj.Config.OutlineConfig = null;
             RefreshComponents(obj);
         });
-        Vector2Sliders(card, "Distance", new Vector2(1, -1), -100f, 100f, () => cfg.EffectDistance, value => cfg.EffectDistance = value, "outline_distance", "F1");
-        ColorSliders(card, "Color", Color.red, () => cfg.EffectColor, value => cfg.EffectColor = value, "outline_color");
-        Toggle(card, "Use Graphic Alpha", true, cfg.UseGraphicAlpha, value => cfg.UseGraphicAlpha = value, "outline_alpha");
+        FxVector2(card, "Distance", cfg.EffectDistance, new Vector2(1, -1), -100f, 100f, "outline_distance", "F1");
+        FxColor(card, "Color", cfg.EffectColor, Color.red, "outline_color");
+        FxToggle(card, "Use Graphic Alpha", cfg.UseGraphicAlpha, true, "outline_alpha");
     }
     private void BuildMask(OvObject obj, MaskSettings cfg) {
         var (_, card) = ComponentCard("Mask", cfg, () => {
             obj.Config.MaskConfig = null;
             RefreshComponents(obj);
         });
-        Toggle(card, "Show Mask Graphic", true, cfg.ShowMaskGraphic, value => cfg.ShowMaskGraphic = value, "mask_graphic");
+        FxToggle(card, "Show Mask Graphic", cfg.ShowMaskGraphic, true, "mask_graphic");
     }
 
 #if !IL2CPP
@@ -490,12 +463,12 @@ internal sealed class OvInspectorBuilder(
             RefreshComponents(obj);
         });
 
-        Vector2Sliders(card, "Size", Vector2.one, 0f, 1024f, () => cfg.Size, value => cfg.Size = value, "box_collider_size", "F1");
-        Vector2Sliders(card, "Offset", Vector2.zero, -1024f, 1024f, () => cfg.Offset, value => cfg.Offset = value, "box_collider_offset", "F1");
-        Toggle(card, "Is Trigger", false, cfg.IsTrigger, value => cfg.IsTrigger = value, "box_collider_trigger");
-        Toggle(card, "Used By Effector", false, cfg.UsedByEffector, value => cfg.UsedByEffector = value, "box_collider_effector");
-        EnumDropDown(card, "Composite Operation", Collider2D.CompositeOperation.None, cfg.CompositeOperation, value => cfg.CompositeOperation = value, "box_collider_composite");
-        Slider(card, "Edge Radius", 0f, 0f, 100f, cfg.EdgeRadius, value => cfg.EdgeRadius = value, "box_collider_edge_radius", "F2");
+        FxVector2(card, "Size", cfg.Size, Vector2.one, 0f, 1024f, "box_collider_size", "F1");
+        FxVector2(card, "Offset", cfg.Offset, Vector2.zero, -1024f, 1024f, "box_collider_offset", "F1");
+        FxToggle(card, "Is Trigger", cfg.IsTrigger, false, "box_collider_trigger");
+        FxToggle(card, "Used By Effector", cfg.UsedByEffector, false, "box_collider_effector");
+        FxEnum(card, "Composite Operation", cfg.CompositeOperation, Collider2D.CompositeOperation.None, "box_collider_composite");
+        FxSlider(card, "Edge Radius", cfg.EdgeRadius, 0f, 0f, 100f, "box_collider_edge_radius", "F2");
     }
 
     private void BuildRigidbody2D(OvObject obj, Rigidbody2DSettings cfg) {
@@ -504,18 +477,18 @@ internal sealed class OvInspectorBuilder(
             RefreshComponents(obj);
         });
 
-        EnumDropDown(card, "Body Type", RigidbodyType2D.Dynamic, cfg.BodyType, value => cfg.BodyType = value, "rigidbody2d_body_type");
-        Toggle(card, "Simulated", true, cfg.Simulated, value => cfg.Simulated = value, "rigidbody2d_simulated");
-        Toggle(card, "Use Auto Mass", false, cfg.UseAutoMass, value => cfg.UseAutoMass = value, "rigidbody2d_auto_mass");
-        Slider(card, "Mass", 1f, 0.01f, 1000f, cfg.Mass, value => cfg.Mass = value, "rigidbody2d_mass", "F2");
-        Slider(card, "Linear Damping", 0f, 0f, 100f, cfg.LinearDamping, value => cfg.LinearDamping = value, "rigidbody2d_linear_damping", "F2");
-        Slider(card, "Angular Damping", 0.05f, 0f, 100f, cfg.AngularDamping, value => cfg.AngularDamping = value, "rigidbody2d_angular_damping", "F2");
-        Slider(card, "Gravity Scale", 1f, -100f, 100f, cfg.GravityScale, value => cfg.GravityScale = value, "rigidbody2d_gravity_scale", "F2");
-        EnumDropDown(card, "Collision Detection", CollisionDetectionMode2D.Discrete, cfg.CollisionDetectionMode, value => cfg.CollisionDetectionMode = value, "rigidbody2d_collision");
-        EnumDropDown(card, "Sleep Mode", RigidbodySleepMode2D.StartAwake, cfg.SleepMode, value => cfg.SleepMode = value, "rigidbody2d_sleep_mode");
-        EnumDropDown(card, "Interpolation", RigidbodyInterpolation2D.None, cfg.Interpolation, value => cfg.Interpolation = value, "rigidbody2d_interpolation");
-        EnumDropDown(card, "Constraints", RigidbodyConstraints2D.None, cfg.Constraints, value => cfg.Constraints = value, "rigidbody2d_constraints");
-        Toggle(card, "Freeze Rotation", false, cfg.FreezeRotation, value => cfg.FreezeRotation = value, "rigidbody2d_freeze_rotation");
+        FxEnum(card, "Body Type", cfg.BodyType, RigidbodyType2D.Dynamic, "rigidbody2d_body_type");
+        FxToggle(card, "Simulated", cfg.Simulated, true, "rigidbody2d_simulated");
+        FxToggle(card, "Use Auto Mass", cfg.UseAutoMass, false, "rigidbody2d_auto_mass");
+        FxSlider(card, "Mass", cfg.Mass, 1f, 0.01f, 1000f, "rigidbody2d_mass", "F2");
+        FxSlider(card, "Linear Damping", cfg.LinearDamping, 0f, 0f, 100f, "rigidbody2d_linear_damping", "F2");
+        FxSlider(card, "Angular Damping", cfg.AngularDamping, 0.05f, 0f, 100f, "rigidbody2d_angular_damping", "F2");
+        FxSlider(card, "Gravity Scale", cfg.GravityScale, 1f, -100f, 100f, "rigidbody2d_gravity_scale", "F2");
+        FxEnum(card, "Collision Detection", cfg.CollisionDetectionMode, CollisionDetectionMode2D.Discrete, "rigidbody2d_collision");
+        FxEnum(card, "Sleep Mode", cfg.SleepMode, RigidbodySleepMode2D.StartAwake, "rigidbody2d_sleep_mode");
+        FxEnum(card, "Interpolation", cfg.Interpolation, RigidbodyInterpolation2D.None, "rigidbody2d_interpolation");
+        FxEnum(card, "Constraints", cfg.Constraints, RigidbodyConstraints2D.None, "rigidbody2d_constraints");
+        FxToggle(card, "Freeze Rotation", cfg.FreezeRotation, false, "rigidbody2d_freeze_rotation");
     }
 #endif
 
@@ -549,7 +522,7 @@ internal sealed class OvInspectorBuilder(
             options.Add("Content Size Fitter");
         }
 
-        if(!obj.Config.HasRectMask2D) {
+        if(!obj.Config.HasRectMask2D.Value) {
             options.Add("Rect Mask 2D");
         }
 #if !IL2CPP
@@ -594,8 +567,8 @@ internal sealed class OvInspectorBuilder(
                     obj.Config.ContentSizeFitterConfig = new ContentSizeFitterSettings();
                     break;
                 case "Rect Mask 2D":
-                    obj.Config.HasRectMask2D = true;
-                    obj.Config.RectMask2DEnabled = true;
+                    obj.Config.HasRectMask2D.Value = true;
+                    obj.Config.RectMask2DEnabled.Value = true;
                     break;
 #if !IL2CPP
                 case "Box Collider 2D":
@@ -645,14 +618,16 @@ internal sealed class OvInspectorBuilder(
         Action enabledChanged = null
     ) {
         componentKey = title.Replace(" ", "_").ToUpperInvariant();
-        return GenerateUI.ComponentCard(content, InspectorText($"COMPONENT_{componentKey}", InspectorText($"INSPECTOR_{componentKey}", title)), settings.ComponentEnabled, value => {
-            settings.ComponentEnabled = value;
+        var built = GenerateUI.ComponentCard(content, InspectorText($"COMPONENT_{componentKey}", InspectorText($"INSPECTOR_{componentKey}", title)), settings.ComponentEnabled.Value, value => {
+            settings.ComponentEnabled.Value = value;
             if(enabledChanged == null) {
                 ApplyAndSave();
             } else {
                 enabledChanged();
             }
         }, remove);
+        FxSwitch(built.contentRect, "Enabled", settings.ComponentEnabled, "comp_enabled_" + componentKey);
+        return built;
     }
 
     private void Input(Transform parent, string label, string defaultValue, string value, Action<string> changed, string id, Action finished = null) {
@@ -1179,6 +1154,165 @@ internal sealed class OvInspectorBuilder(
         return row;
     }
 
+    private RectTransform FxBlock<T>(Transform parent, string label, FxValue<T> fx, Action<Transform> staticUI, string id) {
+        var group = VerticalGroup(parent, 2f);
+        Toggle(group, label + " Fx", false, fx.UseFx, value => {
+            fx.UseFx = value;
+            if(value) {
+                fx.EnsureEngine();
+            }
+            ApplyAndSave();
+            rebuild();
+        }, id + "_use_fx");
+        if(fx.UseFx) {
+            Input(group, label + " Expr", "", fx.Expression, value => {
+                fx.Expression = value;
+                apply();
+            }, id + "_fx");
+        } else {
+            staticUI(group);
+        }
+        return group;
+    }
+
+    private RectTransform FxSlider(Transform parent, string label, FxValue<float> fx, float defaultValue, float min, float max, string id, string format = "F2") {
+        return FxBlock(parent, label, fx, g => Slider(g, label, defaultValue, min, max, fx.Value, value => fx.Value = value, id, format), id);
+    }
+
+    private RectTransform FxSlider(Transform parent, string label, FxValue<float> fx, float defaultValue, float min, float max, string id, string format, ClampMode clampMode, Func<float, float> filter = null) {
+        return FxBlock(parent, label, fx, g => Slider(g, label, defaultValue, min, max, fx.Value, value => fx.Value = value, id, format, clampMode, filter), id);
+    }
+
+    private RectTransform FxIntSlider(Transform parent, string label, FxValue<int> fx, int defaultValue, float min, float max, string id, string format = "F0") {
+        return FxBlock(parent, label, fx, g => Slider(g, label, defaultValue, min, max, fx.Value, value => fx.Value = Mathf.RoundToInt(value), id, format), id);
+    }
+
+    private RectTransform FxDoubleSlider(Transform parent, string label, FxValue<double> fx, double defaultValue, float min, float max, string id, string format = "F1") {
+        return FxBlock(parent, label, fx, g => Slider(g, label, (float)defaultValue, min, max, (float)fx.Value, value => fx.Value = value, id, format, ClampMode.Slider), id);
+    }
+
+    private RectTransform FxToggle(Transform parent, string label, FxValue<bool> fx, bool defaultValue, string id) {
+        return FxBlock(parent, label, fx, g => Toggle(g, label, defaultValue, fx.Value, value => fx.Value = value, id), id);
+    }
+
+    private RectTransform FxInput(Transform parent, string label, FxValue<string> fx, string defaultValue, string id, Action<string> onChanged = null, Action finished = null) {
+        return FxBlock(parent, label, fx, g => Input(g, label, defaultValue, fx.Value, value => {
+            fx.Value = value;
+            onChanged?.Invoke(value);
+        }, id, finished), id);
+    }
+
+    private RectTransform FxEnum<T>(Transform parent, string label, FxValue<T> fx, T defaultValue, string id, Action completed = null) where T : struct, Enum {
+        return FxBlock(parent, label, fx, g => EnumDropDown(g, label, defaultValue, fx.Value, value => fx.Value = value, id, completed), id);
+    }
+
+    private RectTransform FxEnumMapped<TEnum>(Transform parent, string label, FxValue<int> fx, int defaultValue, string id, Func<int, TEnum> toEnum, Func<TEnum, int> fromEnum, Action completed = null) where TEnum : struct, Enum {
+        return FxBlock(parent, label, fx, g => EnumDropDown(g, label, toEnum(defaultValue), toEnum(fx.Value), value => fx.Value = fromEnum(value), id, completed), id);
+    }
+
+    private RectTransform FxVector2(Transform parent, string label, FxValue<Vector2> fx, Vector2 defaults, float min, float max, string id, string format = "F2") {
+        return FxBlock(parent, label, fx, g => Vector2Sliders(g, label, defaults, min, max, () => fx.Value, value => fx.Value = value, id, format), id);
+    }
+
+    private RectTransform FxColor(Transform parent, string label, FxValue<Color> fx, Color defaults, string id) {
+        return FxBlock(parent, label, fx, g => ColorSliders(g, label, defaults, () => fx.Value, value => fx.Value = value, id), id);
+    }
+
+    private RectTransform FxGradient(Transform parent, FxValue<GradientColor> fx, Color defaults, string idPrefix) {
+        return FxBlock(parent, "Gradient", fx, g => {
+            Toggle(g, "Gradient", false, !fx.Value.SolidColor, value => {
+                var color = fx.Value;
+                color.SolidColor = !value;
+                fx.Value = color;
+                ApplyAndSave();
+                rebuild();
+            }, idPrefix);
+            if(fx.Value.SolidColor) {
+                ColorSliders(g, "Color", defaults, () => fx.Value.TL, value => {
+                    var color = fx.Value;
+                    color.TL = value;
+                    fx.Value = color;
+                }, idPrefix + "_solid");
+            } else {
+                GradientColorSliders(g, () => fx.Value, value => fx.Value = value, idPrefix, defaults);
+            }
+        }, idPrefix);
+    }
+
+    private void FxCodeEditor(Transform parent, string label, string id, FxValue<string> fx, Action<string> changed, Func<TextEngineCore> getEngine) {
+        Toggle(parent, label + " Fx", false, fx.UseFx, value => {
+            fx.UseFx = value;
+            if(value) {
+                fx.EnsureEngine();
+            }
+            ApplyAndSave();
+            rebuild();
+        }, id + "_use_fx");
+        if(fx.UseFx) {
+            Input(parent, label + " Expr", "", fx.Expression, value => {
+                fx.Expression = value;
+                apply();
+            }, id + "_fx");
+        }
+        CodeEditor(parent, fx.UseFx ? label + " Preview" : label, id, fx.Value, changed, getEngine);
+    }
+
+    private void FxSwitch<T>(Transform parent, string label, FxValue<T> fx, string id) {
+        Toggle(parent, label + " Fx", false, fx.UseFx, value => {
+            fx.UseFx = value;
+            if(value) {
+                fx.EnsureEngine();
+            }
+            ApplyAndSave();
+            rebuild();
+        }, id + "_use_fx");
+        if(fx.UseFx) {
+            Input(parent, label + " Expr", "", fx.Expression, value => {
+                fx.Expression = value;
+                apply();
+            }, id + "_fx");
+        }
+    }
+
+    private Action FxNumericRow(
+        Transform parent,
+        string label,
+        FxValue<Vector2> fx,
+        (string Label, float Default, Func<float> Get, Action<float> Set, string Id)[] fields,
+        string format,
+        string id
+    ) {
+        FxSwitch(parent, label, fx, id);
+        if(fx.UseFx) {
+            return () => { };
+        }
+        return NumericPropertyRow(parent, label, fields, format);
+    }
+
+    private Action FxNumericRow3(
+        Transform parent,
+        string label,
+        FxValue<Vector3> fx,
+        (string Label, float Default, Func<float> Get, Action<float> Set, string Id)[] fields,
+        string format,
+        string id
+    ) {
+        FxSwitch(parent, label, fx, id);
+        if(fx.UseFx) {
+            return () => { };
+        }
+        return NumericPropertyRow(parent, label, fields, format);
+    }
+
+    private void FxFloatRow(Transform parent, string label, FxValue<float> fx, float defaultValue, string fieldLabel, string id, string format) {
+        FxSwitch(parent, label, fx, id);
+        if(!fx.UseFx) {
+            NumericPropertyRow(parent, label, [
+                (fieldLabel, defaultValue, () => fx.Value, value => fx.Value = value, id)
+            ], format);
+        }
+    }
+
     private void Vector2Sliders(Transform parent, string label, Vector2 defaults, float min, float max, Func<Vector2> get, Action<Vector2> set, string id, string format = "F2") {
         Slider(parent, $"{label} X", defaults.x, min, max, get().x, value => set(new Vector2(value, get().y)), id + "_x", format);
         Slider(parent, $"{label} Y", defaults.y, min, max, get().y, value => set(new Vector2(get().x, value)), id + "_y", format);
@@ -1289,16 +1423,16 @@ internal sealed class OvInspectorBuilder(
 
     private Action BuildRectPositionFields(Transform parent, OvObject obj) {
         RectTransformSettings cfg = obj.Config.RectTransformConfig;
-        bool StretchX() => !Mathf.Approximately(cfg.AnchorMin.x, cfg.AnchorMax.x);
-        bool StretchY() => !Mathf.Approximately(cfg.AnchorMin.y, cfg.AnchorMax.y);
-        bool DrivenX() => obj.Config.ContentSizeFitterConfig?.ComponentEnabled == true
-            && obj.Config.ContentSizeFitterConfig.HorizontalFit != ContentSizeFitter.FitMode.Unconstrained;
-        bool DrivenY() => obj.Config.ContentSizeFitterConfig?.ComponentEnabled == true
-            && obj.Config.ContentSizeFitterConfig.VerticalFit != ContentSizeFitter.FitMode.Unconstrained;
-        float PositionX() => DrivenX() ? obj.RectTransform.anchoredPosition.x : cfg.AnchoredPosition.x;
-        float PositionY() => DrivenY() ? obj.RectTransform.anchoredPosition.y : cfg.AnchoredPosition.y;
-        float SizeX() => DrivenX() ? obj.RectTransform.sizeDelta.x : cfg.SizeDelta.x;
-        float SizeY() => DrivenY() ? obj.RectTransform.sizeDelta.y : cfg.SizeDelta.y;
+        bool StretchX() => !Mathf.Approximately(cfg.AnchorMin.Value.x, cfg.AnchorMax.Value.x);
+        bool StretchY() => !Mathf.Approximately(cfg.AnchorMin.Value.y, cfg.AnchorMax.Value.y);
+        bool DrivenX() => obj.Config.ContentSizeFitterConfig?.ComponentEnabled.Value == true
+            && obj.Config.ContentSizeFitterConfig.HorizontalFit.Value != ContentSizeFitter.FitMode.Unconstrained;
+        bool DrivenY() => obj.Config.ContentSizeFitterConfig?.ComponentEnabled.Value == true
+            && obj.Config.ContentSizeFitterConfig.VerticalFit.Value != ContentSizeFitter.FitMode.Unconstrained;
+        float PositionX() => DrivenX() ? obj.RectTransform.anchoredPosition.x : cfg.AnchoredPosition.Value.x;
+        float PositionY() => DrivenY() ? obj.RectTransform.anchoredPosition.y : cfg.AnchoredPosition.Value.y;
+        float SizeX() => DrivenX() ? obj.RectTransform.sizeDelta.x : cfg.SizeDelta.Value.x;
+        float SizeY() => DrivenY() ? obj.RectTransform.sizeDelta.y : cfg.SizeDelta.Value.y;
         float Left() => DrivenX() ? obj.RectTransform.offsetMin.x : cfg.GetOffsetMin(0);
         float Right() => DrivenX() ? -obj.RectTransform.offsetMax.x : -cfg.GetOffsetMax(0);
         float Top() => DrivenY() ? -obj.RectTransform.offsetMax.y : -cfg.GetOffsetMax(1);
@@ -1311,28 +1445,36 @@ internal sealed class OvInspectorBuilder(
             if(StretchX()) {
                 cfg.SetOffsetMin(0, value);
             } else {
-                cfg.AnchoredPosition.x = value;
+                var v = cfg.AnchoredPosition.Value;
+                v.x = value;
+                cfg.AnchoredPosition.Value = v;
             }
         }, "transform_rect_x1", "F1");
         var firstY = NumericField(firstRow, "", 0f, () => StretchY() ? Top() : PositionY(), value => {
             if(StretchY()) {
                 cfg.SetOffsetMax(1, -value);
             } else {
-                cfg.AnchoredPosition.y = value;
+                var v = cfg.AnchoredPosition.Value;
+                v.y = value;
+                cfg.AnchoredPosition.Value = v;
             }
         }, "transform_rect_y1", "F1");
         var secondX = NumericField(secondRow, "", 200f, () => StretchX() ? Right() : SizeX(), value => {
             if(StretchX()) {
                 cfg.SetOffsetMax(0, -value);
             } else {
-                cfg.SizeDelta.x = value;
+                var v = cfg.SizeDelta.Value;
+                v.x = value;
+                cfg.SizeDelta.Value = v;
             }
         }, "transform_rect_x2", "F1");
         var secondY = NumericField(secondRow, "", 200f, () => StretchY() ? Bottom() : SizeY(), value => {
             if(StretchY()) {
                 cfg.SetOffsetMin(1, value);
             } else {
-                cfg.SizeDelta.y = value;
+                var v = cfg.SizeDelta.Value;
+                v.y = value;
+                cfg.SizeDelta.Value = v;
             }
         }, "transform_rect_y2", "F1");
 
@@ -1349,25 +1491,26 @@ internal sealed class OvInspectorBuilder(
 
         bool drivenX = DrivenX();
         bool drivenY = DrivenY();
-        Field.SetBlocked(drivenX && StretchX(), true);
-        secondX.Field.SetBlocked(drivenX, true);
-        firstY.Field.SetBlocked(drivenY && StretchY(), true);
-        secondY.Field.SetBlocked(drivenY, true);
+        bool posFx = cfg.AnchoredPosition.UseFx || cfg.SizeDelta.UseFx;
+        Field.SetBlocked((drivenX && StretchX()) || posFx, true);
+        secondX.Field.SetBlocked(drivenX || posFx, true);
+        firstY.Field.SetBlocked((drivenY && StretchY()) || posFx, true);
+        secondY.Field.SetBlocked(drivenY || posFx, true);
         RefreshValues();
 
-        if(drivenX || drivenY) {
+        if(drivenX || drivenY || posFx) {
             controls.Add(new UIWatcher("rect_transform_driven", fields, RefreshValues));
         }
         return RefreshValues;
     }
 
     private Action BuildRectPositionFields(Transform parent, RectTransformSettings cfg) {
-        bool StretchX() => !Mathf.Approximately(cfg.AnchorMin.x, cfg.AnchorMax.x);
-        bool StretchY() => !Mathf.Approximately(cfg.AnchorMin.y, cfg.AnchorMax.y);
-        float PositionX() => cfg.AnchoredPosition.x;
-        float PositionY() => cfg.AnchoredPosition.y;
-        float SizeX() => cfg.SizeDelta.x;
-        float SizeY() => cfg.SizeDelta.y;
+        bool StretchX() => !Mathf.Approximately(cfg.AnchorMin.Value.x, cfg.AnchorMax.Value.x);
+        bool StretchY() => !Mathf.Approximately(cfg.AnchorMin.Value.y, cfg.AnchorMax.Value.y);
+        float PositionX() => cfg.AnchoredPosition.Value.x;
+        float PositionY() => cfg.AnchoredPosition.Value.y;
+        float SizeX() => cfg.SizeDelta.Value.x;
+        float SizeY() => cfg.SizeDelta.Value.y;
         float Left() => cfg.GetOffsetMin(0);
         float Right() => -cfg.GetOffsetMax(0);
         float Top() => -cfg.GetOffsetMax(1);
@@ -1380,28 +1523,36 @@ internal sealed class OvInspectorBuilder(
             if(StretchX()) {
                 cfg.SetOffsetMin(0, value);
             } else {
-                cfg.AnchoredPosition.x = value;
+                var v = cfg.AnchoredPosition.Value;
+                v.x = value;
+                cfg.AnchoredPosition.Value = v;
             }
         }, "transform_rect_x1", "F1");
         var firstY = NumericField(firstRow, "", 0f, () => StretchY() ? Top() : PositionY(), value => {
             if(StretchY()) {
                 cfg.SetOffsetMax(1, -value);
             } else {
-                cfg.AnchoredPosition.y = value;
+                var v = cfg.AnchoredPosition.Value;
+                v.y = value;
+                cfg.AnchoredPosition.Value = v;
             }
         }, "transform_rect_y1", "F1");
         var secondX = NumericField(secondRow, "", 200f, () => StretchX() ? Right() : SizeX(), value => {
             if(StretchX()) {
                 cfg.SetOffsetMax(0, -value);
             } else {
-                cfg.SizeDelta.x = value;
+                var v = cfg.SizeDelta.Value;
+                v.x = value;
+                cfg.SizeDelta.Value = v;
             }
         }, "transform_rect_x2", "F1");
         var secondY = NumericField(secondRow, "", 200f, () => StretchY() ? Bottom() : SizeY(), value => {
             if(StretchY()) {
                 cfg.SetOffsetMin(1, value);
             } else {
-                cfg.SizeDelta.y = value;
+                var v = cfg.SizeDelta.Value;
+                v.y = value;
+                cfg.SizeDelta.Value = v;
             }
         }, "transform_rect_y2", "F1");
 
@@ -1416,7 +1567,15 @@ internal sealed class OvInspectorBuilder(
             SetDisplayedValue(secondY.Field, secondY.Get());
         }
 
+        bool posFx = cfg.AnchoredPosition.UseFx || cfg.SizeDelta.UseFx;
+        Field.SetBlocked(posFx, true);
+        secondX.Field.SetBlocked(posFx, true);
+        firstY.Field.SetBlocked(posFx, true);
+        secondY.Field.SetBlocked(posFx, true);
         RefreshValues();
+        if(posFx) {
+            controls.Add(new UIWatcher("rect_transform_driven", fields, RefreshValues));
+        }
         return RefreshValues;
     }
 
@@ -2099,8 +2258,8 @@ internal sealed class OvInspectorBuilder(
     private static float PivotOffset(AnchorMode mode, float size) => mode switch { AnchorMode.Min => size * -0.5f, AnchorMode.Max => size * 0.5f, _ => 0f };
 
     private static AnchorMode ModeForAxis(RectTransformSettings cfg, int axis) {
-        float min = cfg.AnchorMin[axis];
-        float max = cfg.AnchorMax[axis];
+        float min = cfg.AnchorMin.Value[axis];
+        float max = cfg.AnchorMax.Value[axis];
         if(Mathf.Approximately(min, 0f) && Mathf.Approximately(max, 0f)) {
             return AnchorMode.Min;
         }
@@ -2159,29 +2318,45 @@ internal sealed class OvInspectorBuilder(
             return;
         }
 
-        float oldMin = cfg.AnchorMin[axis];
-        float oldMax = cfg.AnchorMax[axis];
-        float oldPivot = cfg.Pivot[axis];
+        float oldMin = cfg.AnchorMin.Value[axis];
+        float oldMax = cfg.AnchorMax.Value[axis];
+        float oldPivot = cfg.Pivot.Value[axis];
         float newMin = mode == AnchorMode.Stretch ? 0f : mode switch { AnchorMode.Min => 0f, AnchorMode.Middle => 0.5f, _ => 1f };
         float newMax = mode == AnchorMode.Stretch ? 1f : newMin;
         float oldReference = Mathf.Lerp(oldMin, oldMax, oldPivot);
         float newReference = Mathf.Lerp(newMin, newMax, oldPivot);
 
-        cfg.AnchoredPosition[axis] += (oldReference - newReference) * parentSize;
-        cfg.SizeDelta[axis] += (oldMax - oldMin - (newMax - newMin)) * parentSize;
-        cfg.AnchorMin[axis] = newMin;
-        cfg.AnchorMax[axis] = newMax;
+        var anchoredPosition = cfg.AnchoredPosition.Value;
+        anchoredPosition[axis] += (oldReference - newReference) * parentSize;
+        cfg.AnchoredPosition.Value = anchoredPosition;
+        var sizeDelta = cfg.SizeDelta.Value;
+        sizeDelta[axis] += (oldMax - oldMin - (newMax - newMin)) * parentSize;
+        cfg.SizeDelta.Value = sizeDelta;
+        var anchorMin = cfg.AnchorMin.Value;
+        anchorMin[axis] = newMin;
+        cfg.AnchorMin.Value = anchorMin;
+        var anchorMax = cfg.AnchorMax.Value;
+        anchorMax[axis] = newMax;
+        cfg.AnchorMax.Value = anchorMax;
 
         if(setPivot) {
             float newPivot = mode switch { AnchorMode.Min => 0f, AnchorMode.Max => 1f, _ => 0.5f };
-            float rectSize = (parentSize * (newMax - newMin)) + cfg.SizeDelta[axis];
-            cfg.AnchoredPosition[axis] += (newPivot - oldPivot) * rectSize;
-            cfg.Pivot[axis] = newPivot;
+            float rectSize = (parentSize * (newMax - newMin)) + cfg.SizeDelta.Value[axis];
+            anchoredPosition = cfg.AnchoredPosition.Value;
+            anchoredPosition[axis] += (newPivot - oldPivot) * rectSize;
+            cfg.AnchoredPosition.Value = anchoredPosition;
+            var pivot = cfg.Pivot.Value;
+            pivot[axis] = newPivot;
+            cfg.Pivot.Value = pivot;
         }
 
         if(setPosition) {
-            cfg.AnchoredPosition[axis] = 0f;
-            cfg.SizeDelta[axis] = mode == AnchorMode.Stretch ? 0f : visibleSize;
+            anchoredPosition = cfg.AnchoredPosition.Value;
+            anchoredPosition[axis] = 0f;
+            cfg.AnchoredPosition.Value = anchoredPosition;
+            sizeDelta = cfg.SizeDelta.Value;
+            sizeDelta[axis] = mode == AnchorMode.Stretch ? 0f : visibleSize;
+            cfg.SizeDelta.Value = sizeDelta;
         }
     }
 
@@ -2201,15 +2376,30 @@ internal sealed class OvInspectorBuilder(
     private void SpriteDropDown(Transform parent, ImageSettings cfg) {
         const string none = "None";
         var options = UserResourceManager.Spr.Keys.OrderBy(key => key).ToList();
-        if(!string.IsNullOrEmpty(cfg.SpriteKey) && !options.Contains(cfg.SpriteKey)) {
-            options.Insert(0, cfg.SpriteKey);
+        if(!string.IsNullOrEmpty(cfg.SpriteKey.Value) && !options.Contains(cfg.SpriteKey.Value)) {
+            options.Insert(0, cfg.SpriteKey.Value);
         }
         options.Insert(0, none);
 
-        string current = string.IsNullOrEmpty(cfg.SpriteKey) ? none : cfg.SpriteKey;
+        string current = string.IsNullOrEmpty(cfg.SpriteKey.Value) ? none : cfg.SpriteKey.Value;
+        Toggle(parent, "Sprite Fx", false, cfg.SpriteKey.UseFx, value => {
+            cfg.SpriteKey.UseFx = value;
+            if(value) {
+                cfg.SpriteKey.EnsureEngine();
+            }
+            ApplyAndSave();
+            rebuild();
+        }, "image_sprite_use_fx");
+        if(cfg.SpriteKey.UseFx) {
+            Input(parent, "Sprite Expr", "", cfg.SpriteKey.Expression, value => {
+                cfg.SpriteKey.Expression = value;
+                apply();
+            }, "image_sprite_fx");
+            return;
+        }
         var row = GenerateUI.Row(parent, 50f);
         var dropdown = GenerateUI.DropDown(row, none, current, options, option => $"{InspectorLabel("Sprite")}: {InspectorLabel(option)}", selected => {
-            cfg.SpriteKey = selected == none ? null : selected;
+            cfg.SpriteKey.Value = selected == none ? null : selected;
             ApplyAndSave();
         }, "image_sprite");
         Track(dropdown);
@@ -2218,15 +2408,30 @@ internal sealed class OvInspectorBuilder(
     private void FontDropDown(Transform parent, TextMeshProUGUISettings cfg) {
         const string none = "Default";
         var options = UserResourceManager.Fnt.Keys.OrderBy(key => key).ToList();
-        if(!string.IsNullOrEmpty(cfg.FontKey) && !options.Contains(cfg.FontKey)) {
-            options.Insert(0, cfg.FontKey);
+        if(!string.IsNullOrEmpty(cfg.FontKey.Value) && !options.Contains(cfg.FontKey.Value)) {
+            options.Insert(0, cfg.FontKey.Value);
         }
         options.Insert(0, none);
 
-        string current = string.IsNullOrEmpty(cfg.FontKey) ? none : cfg.FontKey;
+        string current = string.IsNullOrEmpty(cfg.FontKey.Value) ? none : cfg.FontKey.Value;
+        Toggle(parent, "Font Fx", false, cfg.FontKey.UseFx, value => {
+            cfg.FontKey.UseFx = value;
+            if(value) {
+                cfg.FontKey.EnsureEngine();
+            }
+            ApplyAndSave();
+            rebuild();
+        }, "text_font_use_fx");
+        if(cfg.FontKey.UseFx) {
+            Input(parent, "Font Expr", "", cfg.FontKey.Expression, value => {
+                cfg.FontKey.Expression = value;
+                apply();
+            }, "text_font_fx");
+            return;
+        }
         var row = GenerateUI.Row(parent, 50f);
         var dropdown = GenerateUI.DropDown(row, none, current, options, option => $"{InspectorLabel("Font")}: {InspectorLabel(option)}", selected => {
-            cfg.FontKey = selected == none ? null : selected;
+            cfg.FontKey.Value = selected == none ? null : selected;
             ApplyAndSave();
         }, "text_font");
         Track(dropdown);

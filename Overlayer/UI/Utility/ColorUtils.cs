@@ -1,17 +1,9 @@
-﻿using UnityEngine;
-
-namespace Overlayer.UI.Utility;
+﻿namespace Overlayer.UI.Utility;
 
 internal static class ColorUtils {
-    public static string ToHtmlStringRGB(Color color) {
-        Color32 c = color;
+    public static string ToHtmlStringRGB(UnityEngine.Color color)
+        => IO.Utility.ColorUtils.ToHtmlStringRGB(color);
 
-        return $"{c.r:X2}{c.g:X2}{c.b:X2}";
-    }
-
-    public static string ToHtmlStringRGBA(Color color) {
-        Color32 c = color;
-
-        return $"{c.r:X2}{c.g:X2}{c.b:X2}{c.a:X2}";
-    }
+    public static string ToHtmlStringRGBA(UnityEngine.Color color)
+        => IO.Utility.ColorUtils.ToHtmlStringRGBA(color);
 }

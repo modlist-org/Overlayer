@@ -1,8 +1,8 @@
 ﻿using Newtonsoft.Json.Linq;
 using Overlayer.IO;
 using Overlayer.IO.Interface;
+using Overlayer.IO.Utility;
 using UnityEngine;
-using Overlayer.UI.Utility;
 
 #if ML && IL2CPP
 using Il2CppTMPro;
@@ -10,10 +10,7 @@ using Il2CppTMPro;
 using TMPro;
 #endif
 
-/// <summary>
-/// Represents a color that supports either a solid color mode or a 4-corner vertex gradient mode.
-/// </summary>
-public struct GradientColor : ISettingsFile, ICopyable<GradientColor> {
+public struct GradientColor : ISettingsFile, ICopyable<GradientColor>, IEquatable<GradientColor> {
     private bool solidColor;
 
     private VertexGradient data;
@@ -37,10 +34,6 @@ public struct GradientColor : ISettingsFile, ICopyable<GradientColor> {
         BRHex = ColorUtils.ToHtmlStringRGBA(BottomRight);
     }
 
-    /// <summary>
-    /// Gets or sets whether this color is treated as a solid uniform color.
-    /// When enabled, all vertex colors are forced to match the top-left color.
-    /// </summary>
     public bool SolidColor {
         readonly get => solidColor;
         set {
@@ -55,9 +48,6 @@ public struct GradientColor : ISettingsFile, ICopyable<GradientColor> {
         }
     }
 
-    /// <summary>
-    /// Gets or sets the top-left vertex color.
-    /// </summary>
     public Color TL {
         readonly get => data.topLeft;
         set {
@@ -69,9 +59,6 @@ public struct GradientColor : ISettingsFile, ICopyable<GradientColor> {
         }
     }
 
-    /// <summary>
-    /// Gets or sets the top-right vertex color.
-    /// </summary>
     public Color TR {
         readonly get => solidColor ? data.topLeft : data.topRight;
         set {
@@ -83,9 +70,6 @@ public struct GradientColor : ISettingsFile, ICopyable<GradientColor> {
         }
     }
 
-    /// <summary>
-    /// Gets or sets the bottom-left vertex color.
-    /// </summary>
     public Color BL { // ㅗㅜㅑ
         readonly get => solidColor ? data.topLeft : data.bottomLeft;
         set {
@@ -97,9 +81,6 @@ public struct GradientColor : ISettingsFile, ICopyable<GradientColor> {
         }
     }
 
-    /// <summary>
-    /// Gets or sets the bottom-right vertex color.
-    /// </summary>
     public Color BR {
         readonly get => solidColor ? data.topLeft : data.bottomRight;
         set {
@@ -111,29 +92,14 @@ public struct GradientColor : ISettingsFile, ICopyable<GradientColor> {
         }
     }
 
-    /// <summary>
-    /// Gets the cached hexadecimal representation of the top-left color.
-    /// </summary>
     public string TLHex { get; private set; }
 
-    /// <summary>
-    /// Gets the cached hexadecimal representation of the top-right color.
-    /// </summary>
     public string TRHex { get; private set; }
 
-    /// <summary>
-    /// Gets the cached hexadecimal representation of the bottom-left color.
-    /// </summary>
     public string BLHex { get; private set; }
 
-    /// <summary>
-    /// Gets the cached hexadecimal representation of the bottom-right color.
-    /// </summary>
     public string BRHex { get; private set; }
 
-    /// <summary>
-    /// Rebuilds cached hexadecimal color values from the current VertexGradient data.
-    /// </summary>
     private void RebuildCache() {
         TLHex = ColorUtils.ToHtmlStringRGBA(data.topLeft);
         TRHex = ColorUtils.ToHtmlStringRGBA(data.topRight);
@@ -211,6 +177,26 @@ public struct GradientColor : ISettingsFile, ICopyable<GradientColor> {
             BRHex = BRHex
         };
     }
+
+    #region Equality
+    public readonly bool Equals(GradientColor other) {
+        return solidColor == other.solidColor
+            && data.topLeft.Equals(other.data.topLeft)
+            && data.topRight.Equals(other.data.topRight)
+            && data.bottomLeft.Equals(other.data.bottomLeft)
+            && data.bottomRight.Equals(other.data.bottomRight);
+    }
+
+    public override readonly bool Equals(object obj)
+        => obj is GradientColor other && Equals(other);
+
+    public override readonly int GetHashCode()
+        => HashCode.Combine(solidColor, data.topLeft, data.topRight, data.bottomLeft, data.bottomRight);
+
+    public static bool operator ==(GradientColor a, GradientColor b) => a.Equals(b);
+
+    public static bool operator !=(GradientColor a, GradientColor b) => !a.Equals(b);
+    #endregion
 
     public static implicit operator Color(GradientColor color) => color.data.topLeft;
 

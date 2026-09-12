@@ -1,4 +1,5 @@
 using Newtonsoft.Json.Linq;
+using Overlayer.IO.Fx;
 using Overlayer.IO.Interface;
 using Overlayer.IO.Overlay;
 using Overlayer.ModuleAPI;
@@ -27,6 +28,15 @@ public sealed class OvObject : ISettingsFile {
     public readonly List<OvObject> Children = [];
 
     public OvObjectSettings Config = new();
+
+    public bool HasAnyFx => Config?.HasAnyFx ?? false;
+
+    private string _lastName;
+    private bool _lastEnabled;
+    private bool _lastHasRectMask2D;
+    private bool _lastRectMask2DEnabled;
+    private string _lastPlayingText;
+    private string _lastNotPlayingText;
 
     public OvObject() {
         GameObject = new GameObject("OvObject");
@@ -57,8 +67,10 @@ public sealed class OvObject : ISettingsFile {
     }
 
     public void ApplyConfig() {
-        GameObject.name = Config.Name;
-        GameObject.SetActive(Config.Enabled);
+        _lastName = Config.Name.Value;
+        _lastEnabled = Config.Enabled.Value;
+        GameObject.name = _lastName;
+        GameObject.SetActive(_lastEnabled);
         Config.RectTransformConfig.ToUnity(GameObject);
         Config.CanvasGroupConfig.ToUnity(GameObject);
         if(Config.TextConfig != null) {
@@ -71,11 +83,10 @@ public sealed class OvObject : ISettingsFile {
             }
 
             Config.TextConfig.ToUnity(GameObject);
-            Config.TextEngineConfig ??= OvTextSettings.FromLegacy(Config.TextConfig.Text);
-            TextUpdater?.SetText(
-                Config.TextEngineConfig.PlayingText,
-                Config.TextEngineConfig.NotPlayingText
-            );
+            Config.TextEngineConfig ??= OvTextSettings.FromLegacy(Config.TextConfig.Text.Value);
+            _lastPlayingText = Config.TextEngineConfig.PlayingText.Value;
+            _lastNotPlayingText = Config.TextEngineConfig.NotPlayingText.Value;
+            TextUpdater?.SetText(_lastPlayingText, _lastNotPlayingText);
         }
         Config.MovingManConfig?.ToUnity(GameObject);
         Config.ColorRangeConfig?.ToUnity(GameObject);
@@ -89,6 +100,47 @@ public sealed class OvObject : ISettingsFile {
         Config.BoxCollider2DConfig?.ToUnity(GameObject);
         Config.Rigidbody2DConfig?.ToUnity(GameObject);
 #endif
+        _lastHasRectMask2D = Config.HasRectMask2D.Value;
+        _lastRectMask2DEnabled = Config.RectMask2DEnabled.Value;
+    }
+
+    public void RefreshFx() {
+        if(!HasAnyFx || GameObject == null) {
+            return;
+        }
+
+        FxUtil.ApplyIfChanged(ref _lastName, Config.Name.Value, v => GameObject.name = v);
+        FxUtil.ApplyIfChanged(ref _lastEnabled, Config.Enabled.Value, v => GameObject.SetActive(v));
+        Config.RectTransformConfig?.RefreshFx(GameObject);
+        Config.CanvasGroupConfig?.RefreshFx(GameObject);
+        Config.TextConfig?.RefreshFx(GameObject);
+        if(Config.TextEngineConfig != null && TextUpdater != null) {
+            FxUtil.ApplyIfChanged(ref _lastPlayingText, Config.TextEngineConfig.PlayingText.Value, v => TextUpdater.PlayingEngine.Text = v);
+            FxUtil.ApplyIfChanged(ref _lastNotPlayingText, Config.TextEngineConfig.NotPlayingText.Value, v => TextUpdater.NotPlayingEngine.Text = v);
+        }
+        Config.MovingManConfig?.RefreshFx(GameObject);
+        Config.ColorRangeConfig?.RefreshFx(GameObject);
+        Config.ImageConfig?.RefreshFx(GameObject);
+        Config.MaskConfig?.RefreshFx(GameObject);
+        Config.ShadowConfig?.RefreshFx(GameObject);
+        Config.OutlineConfig?.RefreshFx(GameObject);
+        Config.ContentSizeFitterConfig?.RefreshFx(GameObject);
+#if !IL2CPP
+        Config.BoxCollider2DConfig?.RefreshFx(GameObject);
+        Config.Rigidbody2DConfig?.RefreshFx(GameObject);
+#endif
+        bool rectMaskChanged = FxUtil.ApplyIfChanged(ref _lastHasRectMask2D, Config.HasRectMask2D.Value, _ => { });
+        if(rectMaskChanged) {
+            ApplyComponent();
+            ApplyConfig();
+            return;
+        }
+        if(Config.HasRectMask2D.Value) {
+            var rectMask = GameObject.GetComponent<RectMask2D>();
+            if(rectMask != null) {
+                FxUtil.ApplyIfChanged(ref _lastRectMask2DEnabled, Config.RectMask2DEnabled.Value, v => rectMask.enabled = v);
+            }
+        }
     }
 
     public void ApplyComponent() {
@@ -134,8 +186,8 @@ public sealed class OvObject : ISettingsFile {
         EnsureComponent<Mask>(Config.MaskConfig != null);
         EnsureComponent<Shadow>(Config.ShadowConfig != null);
 
-        var rectMask = EnsureComponent<RectMask2D>(Config.HasRectMask2D);
-        rectMask?.enabled = Config.RectMask2DEnabled;
+        var rectMask = EnsureComponent<RectMask2D>(Config.HasRectMask2D.Value);
+        rectMask?.enabled = Config.RectMask2DEnabled.Value;
 
         EnsureComponent<Outline>(Config.OutlineConfig != null);
 

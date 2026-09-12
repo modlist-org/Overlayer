@@ -347,7 +347,7 @@ public static class UICore {
             new Action(
 #endif
             () => {
-                bool enable = MainCore.Conf.Active = !MainCore.Conf.Active;
+                bool enable = MainCore.Conf.Active.Value = !MainCore.Conf.Active.Value;
                 MainCore.SetModEnabled(enable);
 
                 Color target = enable

@@ -21,7 +21,7 @@ public static class IOUtils {
     }
     #endregion
     #region Fx
-    public static FxValue<T> Read<T>(JToken token, string key, FxValue<T> fallback) {
+    public static FxValue<T> ReadFx<T>(JToken token, string key, FxValue<T> fallback) {
         if (token is not JObject obj || !obj.TryGetValue(key, out var childToken)) {
             return fallback;
         }
@@ -32,7 +32,7 @@ public static class IOUtils {
         return target;
     }
 
-    public static JToken Write<T>(FxValue<T> fxValue) {
+    public static JToken WriteFx<T>(FxValue<T> fxValue) {
         return fxValue?.Serialize() ?? JValue.CreateNull();
     }
     #endregion

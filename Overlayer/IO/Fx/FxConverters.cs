@@ -1,4 +1,6 @@
 using System.Globalization;
+using Newtonsoft.Json.Linq;
+using Overlayer.IO;
 using UnityEngine;
 
 namespace Overlayer.IO.Fx;
@@ -26,6 +28,22 @@ public static class FxConverters {
 
         // "r1,g1,b1,a1,r2,g2,b2,a2,r3,g3,b3,a3,r4,g4,b4,a4" || "r,g,b,a"
         FxValue<GradientColor>.RegisterConverter(ParseGradientColor);
+
+        FxValue<Vector2>.RegisterRawReader(ReadVector2);
+        FxValue<Vector3>.RegisterRawReader(ReadVector3);
+        FxValue<Vector4>.RegisterRawReader(ReadVector4);
+        FxValue<Rect>.RegisterRawReader(ReadRect);
+        FxValue<Quaternion>.RegisterRawReader(ReadQuaternion);
+        FxValue<Color>.RegisterRawReader(ReadColor);
+        FxValue<GradientColor>.RegisterRawReader(ReadGradientColor);
+
+        FxValue<Vector2>.RegisterRawWriter(v => new JArray(v.x, v.y));
+        FxValue<Vector3>.RegisterRawWriter(v => new JArray(v.x, v.y, v.z));
+        FxValue<Vector4>.RegisterRawWriter(v => new JArray(v.x, v.y, v.z, v.w));
+        FxValue<Rect>.RegisterRawWriter(r => new JArray(r.x, r.y, r.width, r.height));
+        FxValue<Quaternion>.RegisterRawWriter(q => new JArray(q.x, q.y, q.z, q.w));
+        FxValue<Color>.RegisterRawWriter(c => new JArray(c.r, c.g, c.b, c.a));
+        FxValue<GradientColor>.RegisterRawWriter(g => g.Serialize());
     }
 
     public static void RegisterEnumConverter<TEnum>() where TEnum : struct, Enum {
@@ -137,6 +155,69 @@ public static class FxConverters {
 
     private static bool TryFloat(string s, out float result) {
         return float.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out result);
+    }
+
+    private static float Num(JToken t, float fallback = 0f) {
+        try {
+            return t == null ? fallback : t.Value<float>();
+        } catch {
+            return fallback;
+        }
+    }
+
+    public static Vector2 ReadVector2(JToken token) {
+        if (token is JArray arr && arr.Count >= 2) {
+            return new Vector2(Num(arr[0]), Num(arr[1]));
+        }
+
+        return Vector2.zero;
+    }
+
+    public static Vector3 ReadVector3(JToken token) {
+        if (token is JArray arr && arr.Count >= 3) {
+            return new Vector3(Num(arr[0]), Num(arr[1]), Num(arr[2]));
+        }
+
+        return Vector3.zero;
+    }
+
+    public static Vector4 ReadVector4(JToken token) {
+        if (token is JArray arr && arr.Count >= 4) {
+            return new Vector4(Num(arr[0]), Num(arr[1]), Num(arr[2]), Num(arr[3]));
+        }
+
+        return Vector4.zero;
+    }
+
+    public static Rect ReadRect(JToken token) {
+        if (token is JArray arr && arr.Count >= 4) {
+            return new Rect(Num(arr[0]), Num(arr[1]), Num(arr[2]), Num(arr[3]));
+        }
+
+        return Rect.zero;
+    }
+
+    public static Quaternion ReadQuaternion(JToken token) {
+        if (token is JArray arr && arr.Count >= 4) {
+            return new Quaternion(Num(arr[0]), Num(arr[1]), Num(arr[2]), Num(arr[3]));
+        }
+
+        return Quaternion.identity;
+    }
+
+    public static Color ReadColor(JToken token) {
+        if (token is JArray arr && arr.Count >= 3) {
+            return new Color(Num(arr[0]), Num(arr[1]), Num(arr[2]), arr.Count >= 4 ? Num(arr[3], 1f) : 1f);
+        }
+
+        return Color.white;
+    }
+
+    public static GradientColor ReadGradientColor(JToken token) {
+        var g = new GradientColor();
+        g.Deserialize(token);
+
+        return g;
     }
 
     #endregion
