@@ -23,6 +23,7 @@ public enum UISprite {
     Plus128,
     Ping128,
     CodeBlock128,
+    F128,
 }
 
 public enum UISliceSprite {
@@ -175,6 +176,7 @@ public sealed class SpriteManager(ResourceManager resource) : IDisposable {
         [UISprite.Plus128] = Asset.Plus128,
         [UISprite.Ping128] = Asset.Ping128,
         [UISprite.CodeBlock128] = Asset.CodeBlock128,
+        [UISprite.F128] = Asset.F128,
     };
 
     private readonly Dictionary<UISliceSprite, (Asset asset, float ppui)> sliceMap = new() {
