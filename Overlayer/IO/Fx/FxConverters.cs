@@ -6,8 +6,17 @@ using UnityEngine;
 namespace Overlayer.IO.Fx;
 
 public static class FxConverters {
+    private static bool _defaultsRegistered;
+
+    internal static void MarkUnregistered() => _defaultsRegistered = false;
 
     public static void RegisterDefaultConverters() {
+        // Idempotent: Initialize can run again after Dispose.
+        if(_defaultsRegistered) {
+            return;
+        }
+        _defaultsRegistered = true;
+
         // "[x, y]" — each component is a numeric expression
         FxValue<Vector2>.RegisterConverter(ParseVector2);
 

@@ -127,7 +127,11 @@ public static class OverlayCore {
         Core = null;
         Object.Destroy(core);
 
-
-        FxValue.ClearConverters();
+        // NOTE: Do NOT clear Fx converters here. They are stateless pure
+        // functions, and settings can still be saved after dispose
+        // (e.g. UserResources). Without the raw writers, serializing Unity
+        // structs like Rect/Vector2 falls back to JToken.FromObject and
+        // crashes with a self-referencing loop (Rect.position ->
+        // Vector2.normalized -> ...).
     }
 }

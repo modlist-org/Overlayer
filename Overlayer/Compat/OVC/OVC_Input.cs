@@ -130,6 +130,16 @@ public static class OVC_Input {
         }
     }
 
+    public static Vector2 MouseDelta {
+        get {
+            EnsureInitialized();
+            if(t_Mouse != null) {
+                try { return (Vector2)m_ReadV2.Invoke(p_mouseDelta.GetValue(p_mouseCurrent.GetValue(null)), null); } catch { return Vector2.zero; }
+            }
+            return Vector2.zero;
+        }
+    }
+
     public static Vector2 MouseScrollDelta {
         get {
             EnsureInitialized();

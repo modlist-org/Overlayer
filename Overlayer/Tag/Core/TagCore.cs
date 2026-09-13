@@ -133,7 +133,15 @@ public class TagCore {
 
     public object Invoke(params object[] args) {
         if(IsJS) {
-            return JSFunction.Invoke(false, args);
+            // The V8 engine is disposed and recreated on script reload.
+            // Calls racing the reload (or via stale compiled placeholders)
+            // throw ObjectDisposedException; treat as "no value" so the
+            // caller falls back instead of spamming warnings every frame.
+            try {
+                return JSFunction.Invoke(false, args);
+            } catch(ObjectDisposedException) {
+                return null;
+            }
         }
 
         if(MemberType == TagMemberType.Unknown || Member == null) {
