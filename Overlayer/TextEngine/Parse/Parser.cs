@@ -83,11 +83,6 @@ public static class Parser {
         int i = start;
         while (i < input.Length) {
             char c = input[i];
-            if (c == '\'' || c == '"' || c == '`') {
-                i = SkipJsString(input, i);
-                continue;
-            }
-
             if (c == '/' && i + 1 < input.Length && input[i + 1] == '/') {
                 while (i < input.Length && input[i] != '\n') {
                     i++;
@@ -103,6 +98,11 @@ public static class Parser {
                 }
 
                 i = Math.Min(input.Length, i + 2);
+                continue;
+            }
+
+            if (c == '\'' || c == '"' || c == '`') {
+                i = SkipJsString(input, i);
                 continue;
             }
 

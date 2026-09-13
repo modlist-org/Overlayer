@@ -132,6 +132,8 @@ internal static class PageSettings {
         var langTextTr = langText.gameObject.AddComponent<TextLocalization>().Init("LANGUAGE", "Language");
 
         string[] langs = [.. MainCore.Tr.GetLanguages().OrderBy(x => x, StringComparer.OrdinalIgnoreCase)];
+        const float languageReloadWidth = 240f;
+        const float languageControlSpacing = 8f;
         var langRow = GenerateUI.Row(content.transform);
         languageDropdown = GenerateUI.DropDown(
             langRow,
@@ -159,7 +161,7 @@ internal static class PageSettings {
             },
             "language_dropdown"
         );
-        languageDropdown.Rect.offsetMax = new Vector2(-122f, 0f);
+        languageDropdown.Rect.offsetMax = new Vector2(-(languageReloadWidth + languageControlSpacing), 0f);
         var langBtn = GenerateUI.Button(
             langRow,
             () => { },
@@ -185,8 +187,8 @@ internal static class PageSettings {
             br.pivot = new(1f, 1f);
             br.anchorMin = new(1f, 1f);
             br.anchorMax = new(1f, 1f);
-            br.sizeDelta = new(114f, 50f);
-            br.offsetMax = Vector2.zero;
+            br.anchoredPosition = Vector2.zero;
+            br.sizeDelta = new(languageReloadWidth, 50f);
         }
         langBtn.Label.gameObject.AddComponent<TextLocalization>().Init("RELOAD", "Reload");
 

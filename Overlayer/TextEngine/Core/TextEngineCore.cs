@@ -10,6 +10,7 @@ namespace Overlayer.TextEngine.Core;
 public sealed class TextEngineCore {
     private readonly object _lock = new();
     private Task _compileTask;
+    private long compileGeneration;
 
     private volatile CompiledSegment[] segments = [];
     private volatile TextEngineState state;
@@ -49,13 +50,15 @@ public sealed class TextEngineCore {
             state = TextEngineState.Compiling;
             engineDiagnostic = null;
 
-            _compileTask = Task.Run(CompileInternal);
+            long generation = ++compileGeneration;
+            string snapshot = Text;
+            _compileTask = Task.Run(() => CompileInternal(snapshot, generation));
         }
     }
 
-    private async void CompileInternal() {
+    private async void CompileInternal(string snapshot, long generation) {
         try {
-            var tags = Parser.Parse(Text);
+            var tags = Parser.Parse(snapshot);
             var newSegments = tags.Count > 0 ? new CompiledSegment[tags.Count] : [];
 
             for(int i = 0; i < tags.Count; i++) {
@@ -71,6 +74,14 @@ public sealed class TextEngineCore {
 
             CompiledSegment[] oldSegments;
             lock(_lock) {
+                if(generation != compileGeneration) {
+                    foreach(var seg in newSegments) {
+                        seg.Replacer.Dispose();
+                    }
+
+                    return;
+                }
+
                 oldSegments = segments;
                 segments = newSegments;
                 state = TextEngineState.Ready;
@@ -83,9 +94,13 @@ public sealed class TextEngineCore {
             }
         } catch(Exception e) {
             lock(_lock) {
+                if(generation != compileGeneration) {
+                    return;
+                }
+
                 state = TextEngineState.Error;
 
-                var context = new DiagnosticContext(null, 0, Text.Length);
+                var context = new DiagnosticContext(null, 0, snapshot.Length);
                 engineDiagnostic = new CompileDiagnostic(
                     DiagnosticId.InternalError,
                     CompileSeverity.Error,
