@@ -115,7 +115,7 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
         _lastOverFlowMode = OverFlowMode.Value;
         _lastAutoSize = AutoSize.Value;
         _lastFontSizeRange = FontSizeRange.Value;
-        ApplyTextValues(com);
+        ApplyTextValues(com, true);
         ToUnity(com);
         com.UpdateMeshPadding();
         com.SetMaterialDirty();
@@ -125,8 +125,10 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
         return true;
     }
 
-    private void ApplyTextValues(TextMeshProUGUI com) {
-        com.text = _lastText;
+    private void ApplyTextValues(TextMeshProUGUI com, bool includeText) {
+        if (includeText) {
+            com.text = _lastText;
+        }
         com.color = UnityEngine.Color.white;
         com.colorGradient = _lastColor;
         if(!string.IsNullOrEmpty(_lastFontKey) && UserResourceManager.Fnt.TryGet(_lastFontKey, out var fontAsset)) {
@@ -249,7 +251,7 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
 
         RefreshEnabled(com);
         bool changed = false;
-        changed |= FxUtil.ApplyIfChanged(ref _lastText, Text.Value, _ => { });
+        _lastText = Text.Value;
         changed |= FxUtil.ApplyIfChanged(ref _lastColor, Color.Value, _ => { });
         changed |= FxUtil.ApplyIfChanged(ref _lastFontKey, FontKey.Value, _ => { });
         changed |= FxUtil.ApplyIfChanged(ref _lastFontSize, FontSize.Value, _ => { });
@@ -276,7 +278,7 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
             return;
         }
 
-        ApplyTextValues(com);
+        ApplyTextValues(com, false);
         com.SetMaterialDirty();
         com.SetVerticesDirty();
         com.SetLayoutDirty();
