@@ -26,6 +26,7 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
     private readonly RectTransform popupRect;
     private readonly CompletionRow[] rows;
     private readonly List<JsItem> matches = [];
+    private readonly bool textMode;
 
     private int selectedIndex;
     private int windowStart;
@@ -69,9 +70,15 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
         ("parse", true), ("stringify", true)
     ];
 
-    public JsCompletionPopup(UICodeInputField input, TMP_Text sourceText) {
+    private static readonly (string Name, bool Callable)[] StoreMembers = [
+        ("Set", true), ("Get", true), ("Has", true),
+        ("Remove", true), ("Clear", true), ("Keys", true), ("Count", false)
+    ];
+
+    public JsCompletionPopup(UICodeInputField input, TMP_Text sourceText, bool textMode = false) {
         this.input = input;
         this.sourceText = sourceText;
+        this.textMode = textMode;
 
         canvasRect = sourceText.canvas?.rootCanvas?.GetComponent<RectTransform>()
             ?? UICore.CanvasObj?.GetComponent<RectTransform>();
@@ -157,7 +164,11 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
             }
         }
 
-        if(!TryGetContext(text, caret, out string query, out int start, out string qualifier)) {
+        bool hasContext = textMode
+            ? TryGetJsExprContext(text, caret, out string query, out int start, out string qualifier)
+            : TryGetContext(text, caret, out query, out start, out qualifier);
+
+        if(!hasContext) {
             Hide();
             return;
         }
@@ -331,10 +342,19 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
                 yield break;
             }
 
+            if(qualifier == "Store") {
+                foreach(var (name, callable) in StoreMembers) {
+                    yield return new JsItem(name, "Store", callable);
+                }
+
+                yield break;
+            }
+
             yield break;
         }
 
         yield return new JsItem("Tag", "namespace", false);
+        yield return new JsItem("Store", "global store", false);
         yield return new JsItem("Math", "namespace", false);
         yield return new JsItem("JSON", "namespace", false);
 
@@ -554,6 +574,65 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
         if(i >= 0 && text[i] == '.') {
             int j = i - 1;
             while(j >= 0 && IsWordChar(text[j])) {
+                j--;
+            }
+
+            if(j + 1 > i - 1) {
+                return false;
+            }
+
+            qualifier = text[(j + 1)..i];
+        }
+
+        return true;
+    }
+
+    private static bool TryGetJsExprContext(string text, int caret, out string query, out int start, out string qualifier) {
+        query = string.Empty;
+        start = caret;
+        qualifier = null;
+        if(caret <= 0 || caret > text.Length) {
+            return false;
+        }
+
+        int open = text.LastIndexOf('{', caret - 1);
+        if(open < 0) {
+            return false;
+        }
+
+        const string tag = "JSExpr";
+        int p = open + 1;
+        if(p + tag.Length + 1 > caret
+            || !text.Substring(p, tag.Length).Equals(tag, StringComparison.OrdinalIgnoreCase)) {
+            return false;
+        }
+
+        p += tag.Length;
+        if(text[p] != ':' && text[p] != '(') {
+            return false;
+        }
+
+        int close = text.LastIndexOf('}', caret - 1);
+        if(close > open) {
+            return false;
+        }
+
+        int end = caret;
+        int i = end - 1;
+        while(i > p && IsWordChar(text[i])) {
+            i--;
+        }
+
+        start = i + 1;
+        if(start >= end || start <= p) {
+            return false;
+        }
+
+        query = text[start..end];
+
+        if(text[i] == '.') {
+            int j = i - 1;
+            while(j > p && IsWordChar(text[j])) {
                 j--;
             }
 

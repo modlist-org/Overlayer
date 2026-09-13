@@ -161,6 +161,10 @@ internal sealed class OvInspectorBuilder(
         refreshPositionFields = () => { };
         FxBlock(rectLayout, "Position", cfg.AnchoredPosition,
             group => refreshPositionFields = BuildRectPositionFields(group, obj), "rect_position_xy");
+        FxNumericRow(basic, "Size", cfg.SizeDelta, [
+            ("X", 200f, () => cfg.SizeDelta.Value.x, value => { var v = cfg.SizeDelta.Value; v.x = value; cfg.SizeDelta.Value = v; refreshPositionFields(); }, "rect_size_x"),
+            ("Y", 200f, () => cfg.SizeDelta.Value.y, value => { var v = cfg.SizeDelta.Value; v.y = value; cfg.SizeDelta.Value = v; refreshPositionFields(); }, "rect_size_y")
+        ], "F1", "rect_size");
         FxFloatRow(basic, "Position", cfg.AnchoredPositionZ, 0f, "Z", "rect_position_z", "F1");
         FxNumericRow(basic, "Rotation XY", cfg.RotationXY, [
             ("X", 0f, () => cfg.RotationXY.Value.x, value => { var v = cfg.RotationXY.Value; v.x = value; cfg.RotationXY.Value = v; }, "rect_rotation_x"),
@@ -204,6 +208,10 @@ internal sealed class OvInspectorBuilder(
         refreshPositionFields = () => { };
         FxBlock(rectLayout, "Position", cfg.AnchoredPosition,
             group => refreshPositionFields = BuildRectPositionFields(group, cfg), "canvas_rect_position_xy");
+        FxNumericRow(basic, "Size", cfg.SizeDelta, [
+            ("X", 200f, () => cfg.SizeDelta.Value.x, value => { var v = cfg.SizeDelta.Value; v.x = value; cfg.SizeDelta.Value = v; refreshPositionFields(); }, "canvas_rect_size_x"),
+            ("Y", 200f, () => cfg.SizeDelta.Value.y, value => { var v = cfg.SizeDelta.Value; v.y = value; cfg.SizeDelta.Value = v; refreshPositionFields(); }, "canvas_rect_size_y")
+        ], "F1", "canvas_rect_size");
         FxFloatRow(basic, "Position", cfg.AnchoredPositionZ, 0f, "Z", "canvas_rect_position_z", "F1");
         FxNumericRow(basic, "Rotation XY", cfg.RotationXY, [
             ("X", 0f, () => cfg.RotationXY.Value.x, value => { var v = cfg.RotationXY.Value; v.x = value; cfg.RotationXY.Value = v; }, "canvas_rect_rotation_x"),
@@ -786,10 +794,12 @@ internal sealed class OvInspectorBuilder(
         follower.LineNumbers = numbersRect;
 
         ICodeCompletion completionPopup;
+        JsCompletionPopup jsTextPopup = null;
         if (language.TagCompletion) {
             var tagPopup = new TagCompletionPopup(codeInput, text);
-            codeInput.HandleKey = tagPopup.HandleKey;
-            completionPopup = tagPopup;
+            jsTextPopup = new JsCompletionPopup(codeInput, text, true);
+            codeInput.HandleKey = key => tagPopup.HandleKey(key) || jsTextPopup.HandleKey(key);
+            completionPopup = new CompositeCompletion(tagPopup, jsTextPopup);
         } else {
             var jsPopup = new JsCompletionPopup(codeInput, text);
             codeInput.HandleKey = jsPopup.HandleKey;
@@ -1758,7 +1768,7 @@ internal sealed class OvInspectorBuilder(
         secondY.Field.SetBlocked(drivenY || sizeFx || (StretchY() && posFx), true);
         RefreshValues();
 
-        if(drivenX || drivenY || posFx) {
+        if(drivenX || drivenY || posFx || sizeFx) {
             controls.Add(new UIWatcher("rect_transform_driven", fields, RefreshValues));
         }
         return RefreshValues;
@@ -1834,7 +1844,7 @@ internal sealed class OvInspectorBuilder(
         firstY.Field.SetBlocked(posFx || (StretchY() && sizeFx), true);
         secondY.Field.SetBlocked(sizeFx || (StretchY() && posFx), true);
         RefreshValues();
-        if(posFx) {
+        if(posFx || sizeFx) {
             controls.Add(new UIWatcher("rect_transform_driven", fields, RefreshValues));
         }
         return RefreshValues;

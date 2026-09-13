@@ -1,5 +1,6 @@
 ﻿using Microsoft.ClearScript.V8;
 using Overlayer.Core;
+using Overlayer.IO.Fx;
 using Overlayer.Tag.Core;
 using Overlayer.Tag.Diagnostics;
 using Overlayer.TextEngine.Parse;
@@ -77,7 +78,7 @@ public static class JavaScirpt {
 
         return () => {
             try {
-                if (v8Manager.TryEvaluateFx(restoredJsCode, out var result)) {
+                if (v8Manager.TryEvaluateFx(FxValue.WrapJsBlock(restoredJsCode), out var result)) {
                     return result?.ToString() ?? string.Empty;
                 }
 

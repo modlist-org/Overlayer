@@ -58,7 +58,12 @@ public class V8Manager : IRuntimeService {
         UpdateWatcher();
     }
 
-    private void BindEngine(V8ScriptEngine engine) => engine.AddHostObject(nameof(TagAccessHelper), new TagAccessHelper());
+    private void BindEngine(V8ScriptEngine engine) {
+        engine.AddHostObject(nameof(TagAccessHelper), new TagAccessHelper());
+        engine.AddHostObject(nameof(Store), Store);
+    }
+
+    public FxStore Store { get; } = new();
 
     private async Task ExecuteAllScriptsInEngine() {
         var files = Directory.GetFiles(ScriptFolderPath, "*.js");
@@ -91,7 +96,7 @@ public class V8Manager : IRuntimeService {
             ClearFxScriptCache();
             _engine?.Dispose();
             _engine = new V8ScriptEngine();
-            _engine.AddHostObject("TagAccessHelper", new TagAccessHelper());
+            BindEngine(_engine);
         }
         LoadImplJs();
     }
@@ -158,6 +163,11 @@ public class V8Manager : IRuntimeService {
         sb.AppendLine(" * @param {string} [options.Desc] - Description of the tag.");
         sb.AppendLine(" */");
         sb.AppendLine("globalThis.RegisterTag = function(name, func, options) {};\n");
+
+        sb.AppendLine("/* Global Store: share values between Fx expressions. */");
+        sb.AppendLine("/* Store.Set(key, value): save a value, returns it. */");
+        sb.AppendLine("/* Store.Get(key, fallback): value or fallback. */");
+        sb.AppendLine("/* Store.Has(key) / Store.Remove(key) / Store.Clear() / Store.Keys() / Store.Count. */\n");
 
         sb.AppendLine("/* Tags */\n");
 
