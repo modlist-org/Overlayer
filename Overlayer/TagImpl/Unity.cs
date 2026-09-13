@@ -72,12 +72,6 @@ public static class Unity {
     [Tag(Desc = "[Unity] Unity engine version")]
     public static string UnityVersion => UnityEngine.Application.unityVersion;
 
-    [Tag(Desc = "[Unity] Current mouse X position in screen coordinates")]
-    public static float MouseX => UnityEngine.Input.mousePosition.x;
-
-    [Tag(Desc = "[Unity] Current mouse Y position in screen coordinates")]
-    public static float MouseY => UnityEngine.Input.mousePosition.y;
-
     [Tag(Desc = "[Unity] Returns true if the mouse cursor is currently visible")]
     public static bool IsCursorVisible => UnityEngine.Cursor.visible;
 

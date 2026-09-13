@@ -1,4 +1,5 @@
 ﻿using Overlayer.Core;
+using Overlayer.IO.Fx;
 using Overlayer.IO.User.Impl;
 
 namespace Overlayer.IO.User;
@@ -11,6 +12,10 @@ public static class UserResourceManager {
 
     public static void Initialize() {
         try {
+            // Must run before Config.Load(): sprite/texture settings
+            // deserialize through the raw readers (Rect/Vector2/...).
+            // (Idempotent; OverlayCore also registers on its own init.)
+            FxConverters.RegisterDefaultConverters();
             Config.Load();
             MainCore.Log.Msg($"[{nameof(UserResourceManager)}] Initialized");
         } catch(Exception e) {

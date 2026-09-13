@@ -40,6 +40,7 @@ public abstract class FxValue {
         Converters.Clear();
         RawReaders.Clear();
         RawWriters.Clear();
+        FxConverters.MarkUnregistered();
     }
 
     internal static string WrapJsBlock(string code) => "{\n" + (code ?? string.Empty) + "\n}";
@@ -335,6 +336,17 @@ public sealed class FxValue<T> : FxValue, IFxValue, ISettingsFile, ICopyable<FxV
         }
     }
 
+    // Last-resort guard: JToken.FromObject on Unity structs (Rect, Vector2,
+    // ...) recurses forever (Rect.position -> Vector2.normalized -> ...).
+    // Raw writers should handle those, but never let a save crash here.
+    private static JToken SafeFromObject(object value) {
+        try {
+            return value != null ? JToken.FromObject(value) : JValue.CreateNull();
+        } catch {
+            return JValue.CreateNull();
+        }
+    }
+
     public FxValue<T> Copy() {
         TextEngineCore newEngine = null;
         if (Engine != null) {
@@ -357,7 +369,7 @@ public sealed class FxValue<T> : FxValue, IFxValue, ISettingsFile, ICopyable<FxV
             } catch {
                 return JValue.CreateNull();
             }
-            return staticValue != null ? JToken.FromObject(staticValue) : JValue.CreateNull();
+            return SafeFromObject(staticValue);
         }
 
         return new JObject {

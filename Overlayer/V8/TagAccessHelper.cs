@@ -10,7 +10,13 @@ public class TagAccessHelper {
             try {
                 var result = tag.Invoke(args);
                 return result;
+            } catch(ObjectDisposedException) {
+                // Engine was disposed by a concurrent script reload; quiet fallback.
+                return null;
             } catch(TargetInvocationException tie) {
+                if(tie.InnerException is ObjectDisposedException) {
+                    return null;
+                }
                 MainCore.Log.Wrn($"[{nameof(TagAccessHelper)}] Target error in {tagName}: {tie.InnerException?.Message}");
             } catch(Exception ex) {
                 MainCore.Log.Wrn($"[{nameof(TagAccessHelper)}] Error invoking {tagName}: {ex.GetType().Name} - {ex.Message}");
