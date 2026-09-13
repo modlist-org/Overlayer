@@ -293,6 +293,18 @@ public sealed class FxValue<T> : FxValue, IFxValue, ISettingsFile, ICopyable<FxV
 
         var targetType = typeof(T);
         var typeCode = Type.GetTypeCode(targetType);
+        if(targetType == typeof(string)) {
+            try {
+                if (TryEvaluateJs(WrapJsBlock(rendered), out var jsResult) && jsResult != null) {
+                    var text = Convert.ToString(jsResult, CultureInfo.InvariantCulture);
+                    if (!string.IsNullOrEmpty(text)) {  
+                        return (T)(object)text;
+                    }
+                }
+            } catch {
+            }
+            return (T)(object)(Engine.Get() ?? rendered);
+        }
         if(!targetType.IsEnum && (typeCode == TypeCode.Boolean || (typeCode >= TypeCode.SByte && typeCode <= TypeCode.Decimal))) {
             if (TryEvaluateJs(WrapJsBlock(rendered), out var jsResult)) {
                 try {
