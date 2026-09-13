@@ -1692,20 +1692,21 @@ internal sealed class OvInspectorBuilder(
 
     private Action BuildRectPositionFields(Transform parent, OvObject obj) {
         RectTransformSettings cfg = obj.Config.RectTransformConfig;
+        bool Alive() => obj != null && obj.GameObject != null && obj.RectTransform != null;
         bool StretchX() => !Mathf.Approximately(cfg.AnchorMin.Value.x, cfg.AnchorMax.Value.x);
         bool StretchY() => !Mathf.Approximately(cfg.AnchorMin.Value.y, cfg.AnchorMax.Value.y);
         bool DrivenX() => obj.Config.ContentSizeFitterConfig?.ComponentEnabled.Value == true
             && obj.Config.ContentSizeFitterConfig.HorizontalFit.Value != ContentSizeFitter.FitMode.Unconstrained;
         bool DrivenY() => obj.Config.ContentSizeFitterConfig?.ComponentEnabled.Value == true
             && obj.Config.ContentSizeFitterConfig.VerticalFit.Value != ContentSizeFitter.FitMode.Unconstrained;
-        float PositionX() => DrivenX() ? obj.RectTransform.anchoredPosition.x : cfg.AnchoredPosition.Value.x;
-        float PositionY() => DrivenY() ? obj.RectTransform.anchoredPosition.y : cfg.AnchoredPosition.Value.y;
-        float SizeX() => DrivenX() ? obj.RectTransform.sizeDelta.x : cfg.SizeDelta.Value.x;
-        float SizeY() => DrivenY() ? obj.RectTransform.sizeDelta.y : cfg.SizeDelta.Value.y;
-        float Left() => DrivenX() ? obj.RectTransform.offsetMin.x : cfg.GetOffsetMin(0);
-        float Right() => DrivenX() ? -obj.RectTransform.offsetMax.x : -cfg.GetOffsetMax(0);
-        float Top() => DrivenY() ? -obj.RectTransform.offsetMax.y : -cfg.GetOffsetMax(1);
-        float Bottom() => DrivenY() ? obj.RectTransform.offsetMin.y : cfg.GetOffsetMin(1);
+        float PositionX() => DrivenX() && Alive() ? obj.RectTransform.anchoredPosition.x : cfg.AnchoredPosition.Value.x;
+        float PositionY() => DrivenY() && Alive() ? obj.RectTransform.anchoredPosition.y : cfg.AnchoredPosition.Value.y;
+        float SizeX() => DrivenX() && Alive() ? obj.RectTransform.sizeDelta.x : cfg.SizeDelta.Value.x;
+        float SizeY() => DrivenY() && Alive() ? obj.RectTransform.sizeDelta.y : cfg.SizeDelta.Value.y;
+        float Left() => DrivenX() && Alive() ? obj.RectTransform.offsetMin.x : cfg.GetOffsetMin(0);
+        float Right() => DrivenX() && Alive() ? -obj.RectTransform.offsetMax.x : -cfg.GetOffsetMax(0);
+        float Top() => DrivenY() && Alive() ? -obj.RectTransform.offsetMax.y : -cfg.GetOffsetMax(1);
+        float Bottom() => DrivenY() && Alive() ? obj.RectTransform.offsetMin.y : cfg.GetOffsetMin(1);
 
         RectTransform fields = VerticalGroup(parent, 2f);
         var firstRow = CompactRow(fields, 44f, 6f);
@@ -1748,6 +1749,10 @@ internal sealed class OvInspectorBuilder(
         }, "transform_rect_y2", "F1");
 
         void RefreshValues() {
+            if (!Alive()) {
+                return;
+            }
+
             Field.Label.text = InspectorLabel(StretchX() ? "Left" : "Pos X");
             SetDisplayedValue(Field, Get());
             secondX.Field.Label.text = InspectorLabel(StretchX() ? "Right" : "Width");
@@ -2025,6 +2030,10 @@ internal sealed class OvInspectorBuilder(
 
                 cell.Rect.AddToolTip(AnchorCellName(horizontal, vertical));
                 cell.OnClick = () => {
+                    if(obj == null || obj.GameObject == null || obj.RectTransform == null) {
+                        return;
+                    }
+
                     bool setPivot = OVC_Input.GetKey(KeyCode.LeftShift) || OVC_Input.GetKey(KeyCode.RightShift);
                     bool setPosition = OVC_Input.GetKey(KeyCode.LeftAlt) || OVC_Input.GetKey(KeyCode.RightAlt);
                     ApplyAnchorModes(obj, horizontal, vertical, setPivot, setPosition);
@@ -2774,6 +2783,10 @@ internal sealed class OvInspectorBuilder(
     }
 
     private void RefreshDrivenLayout(OvObject obj) {
+        if(obj == null || obj.GameObject == null || obj.RectTransform == null) {
+            return;
+        }
+
         obj.ApplyConfig();
         Canvas.ForceUpdateCanvases();
         LayoutRebuilder.ForceRebuildLayoutImmediate(obj.RectTransform);

@@ -1,6 +1,7 @@
 using FuzzySharp;
 using Overlayer.Compat.OVC;
 using Overlayer.Tag.Core;
+using Overlayer.TextEngine.Highlight;
 using Overlayer.UI.Generator;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -292,6 +293,21 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
 
             if(string.IsNullOrEmpty(query) || score >= 45) {
                 matches.Add(item);
+            }
+        }
+
+        if(qualifier == null) {
+            foreach(var (name, detail, callable) in JsScopeAnalyzer.GetDeclared(input.text ?? string.Empty)) {
+                matches.RemoveAll(m => m.Name == name);
+                int score = string.IsNullOrEmpty(query)
+                    ? 0
+                    : name.StartsWith(query, StringComparison.OrdinalIgnoreCase)
+                        ? 1000 - name.Length
+                        : Fuzz.WeightedRatio(query, name);
+
+                if(string.IsNullOrEmpty(query) || score >= 45) {
+                    matches.Add(new JsItem(name, detail, callable));
+                }
             }
         }
 
