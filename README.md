@@ -48,7 +48,7 @@ Overlayer v5 utilizes runtime-loaded modules to support specific game features a
 - Overlayer is not affiliated with, endorsed by, or associated with Google or the V8 project.
 
 ### Third-Party Code
-- **[O5Kit](../O5Kit)**: UI + input toolkit (settings controls, tooltip, unified input). Referenced as a project dependency and shipped to `UserLibs`
+- **[O5Kit](https://github.com/modlist-org/O5Kit)**: UI + input toolkit (settings controls, tooltip, unified input). Referenced as a project dependency and shipped to `UserLibs`
   - License: [LGPL-3.0-only](../O5Kit/LICENCE.md)
 - **[GTweens](https://github.com/Guillemsc/GTweens/tree/95debddfe122e5058c9be146083e1cd3397d53a4)**: Cloned directly as-is and embedded inside [`Overlayer/GTweens`](https://github.com/modlist-org/Overlayer/tree/main/Overlayer/GTweens)
   - License: [MIT](https://github.com/modlist-org/Overlayer/blob/main/Overlayer/GTweens/LICENSE)
