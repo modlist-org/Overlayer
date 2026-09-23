@@ -1,11 +1,12 @@
-﻿using Overlayer.Async;
+using Overlayer.Async;
+using O5Kit.Core;
 using Overlayer.Core;
 using Overlayer.Localization;
 using Overlayer.Resource;
 using Overlayer.UI.Factory;
 using Overlayer.UI.Factory.Page;
-using Overlayer.UI.Objects;
-using Overlayer.UI.Utility;
+using O5Kit.Control;
+using O5Kit.Behaviour;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -14,7 +15,7 @@ using GTweens.Tweens;
 using GTweens.Builders;
 using Overlayer.Tween;
 using GTweens.Easings;
-using Overlayer.Compat.OVC;
+using O5Kit.Input;
 using GTweenExtensions = GTweens.Extensions.GTweenExtensions;
 
 #if ML && IL2CPP
@@ -66,7 +67,8 @@ public static class UICore {
 
         CreatePanel();
         ResizeHandle.CreateResizeHandles(Panel, CanvasObj.GetComponent<RectTransform>());
-        Tooltip.Initialize(CanvasObj.transform);
+        O5Kit.Core.O5Tooltip.Initialize(CanvasObj.transform);
+        RegisterToggleShortcut();
 
         _onPageSettings = state => {
             if(state == TranslationFailState.Success) {
@@ -540,8 +542,24 @@ public static class UICore {
         }
     }
 
-    private static float holdStartTime = 0f;
-    private static bool holdingToggle = false;
+    private const string ToggleShortcutId = "overlayer.toggle_panel";
+    private const float ToggleHoldSeconds = 0.4f;
+
+    private static void RegisterToggleShortcut() {
+        O5ShortcutManager.Unregister(ToggleShortcutId);
+
+        KeyCode modifier = Application.platform == RuntimePlatform.LinuxPlayer
+            ? KeyCode.LeftControl
+            : KeyCode.LeftAlt;
+
+        O5ShortcutManager.Register(
+            ToggleShortcutId,
+            new O5KeyCombo(O5Kit.Core.O5Boot.Config.ToggleKey, modifier),
+            ToggleHoldSeconds,
+            onPressed: _ => Toggle(),
+            onHeld: _ => ResetScalePosition(!isOpen)
+        );
+    }
 
     private static GTween panelTweener;
     private static GTween resetSequence;
@@ -556,50 +574,15 @@ public static class UICore {
         Math.Min(720f / MainCore.Conf.UIScale, Screen.height / MainCore.Conf.UIScale)
     );
 
-    private static bool IsToggleModifierPressed() {
-        if(Application.platform == RuntimePlatform.LinuxPlayer) {
-            return OVC_Input.GetKey(KeyCode.LeftControl);
-        }
-
-        return OVC_Input.GetKey(KeyCode.LeftAlt);
-    }
-
-    private const KeyCode ToggleKey = KeyCode.BackQuote;
-
     public static void HandleUpdate() {
         if(CanvasObj == null) {
             return;
         }
 
-        if(!UIInputBlocker.IsEditing) {
-            bool pressed = IsToggleModifierPressed() && OVC_Input.GetKey(ToggleKey);
+        O5ShortcutManager.HandleUpdate();
 
-            // key down
-            if(IsToggleModifierPressed() && OVC_Input.GetKeyDown(ToggleKey)) {
-                Toggle();
-
-                holdStartTime = Time.unscaledTime;
-                holdingToggle = true;
-            }
-
-            // hold reset
-            if(holdingToggle && pressed) {
-                if(Time.unscaledTime - holdStartTime >= 0.4f) {
-                    ResetScalePosition(!isOpen);
-                    holdingToggle = false;
-                }
-            }
-
-            // key up
-            if(OVC_Input.GetKeyUp(ToggleKey)) {
-                holdingToggle = false;
-            }
-        } else {
-            holdingToggle = false;
-        }
-
-        UIObject.TickAll();
-        Tooltip.Tick();
+        O5Object.TickAll();
+        O5Kit.Core.O5Tooltip.Tick();
     }
 
     private static Vector2 GetRandomOffscreenPosition() {
@@ -799,9 +782,10 @@ public static class UICore {
     }
 
     public static void Dispose() {
+        O5ShortcutManager.Unregister(ToggleShortcutId);
         MainCore.Tr.OnLoadEnd -= _onPageSettings;
         MainCore.Tr.OnLoadEnd -= _onRefresh;
-        Tooltip.Dispose();
+        O5Kit.Core.O5Tooltip.Dispose();
         UnityEngine.Object.Destroy(CanvasObj);
         CanvasObj = null;
     }

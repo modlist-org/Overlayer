@@ -1,6 +1,6 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
-using Overlayer.Compat.OVC;
+using O5Kit.Input;
 
 #if ML && IL2CPP
 using Il2CppInterop.Runtime;
@@ -116,12 +116,12 @@ public sealed class UICodeInputField
 
     public override void OnUpdateSelected(BaseEventData eventData) {
         if(isFocused && string.IsNullOrEmpty(Input.compositionString)) {
-            KeyCode key = OVC_Input.GetKeyDown(KeyCode.Tab) ? KeyCode.Tab
-                : OVC_Input.GetKeyDown(KeyCode.Return) ? KeyCode.Return
-                : OVC_Input.GetKeyDown(KeyCode.KeypadEnter) ? KeyCode.KeypadEnter
-                : OVC_Input.GetKeyDown(KeyCode.UpArrow) ? KeyCode.UpArrow
-                : OVC_Input.GetKeyDown(KeyCode.DownArrow) ? KeyCode.DownArrow
-                : OVC_Input.GetKeyDown(KeyCode.Escape) ? KeyCode.Escape
+            KeyCode key = O5Input.GetKeyDown(KeyCode.Tab) ? KeyCode.Tab
+                : O5Input.GetKeyDown(KeyCode.Return) ? KeyCode.Return
+                : O5Input.GetKeyDown(KeyCode.KeypadEnter) ? KeyCode.KeypadEnter
+                : O5Input.GetKeyDown(KeyCode.UpArrow) ? KeyCode.UpArrow
+                : O5Input.GetKeyDown(KeyCode.DownArrow) ? KeyCode.DownArrow
+                : O5Input.GetKeyDown(KeyCode.Escape) ? KeyCode.Escape
                 : KeyCode.None;
 
             if(key != KeyCode.None && HandleKey?.Invoke(key) == true) {
@@ -135,7 +135,7 @@ public sealed class UICodeInputField
     private void Update() {
         if(hoveredField == null && textViewport != null && RectTransformUtility.RectangleContainsScreenPoint(
             textViewport,
-            OVC_Input.MousePosition,
+            O5Input.MousePosition,
             null
         )) {
             hoveredField = this;
@@ -145,7 +145,7 @@ public sealed class UICodeInputField
             return;
         }
 
-        Vector2 delta = OVC_Input.MouseScrollDelta;
+        Vector2 delta = O5Input.MouseScrollDelta;
         float wheel = Mathf.Abs(delta.y) > 0.01f ? delta.y : delta.x;
         if(Mathf.Abs(wheel) > 0.0001f) {
             ScrollHorizontal(wheel * 32f);
@@ -158,7 +158,7 @@ public sealed class UICodeInputField
     }
 
     private static bool IsShiftHeld()
-        => OVC_Input.GetKey(KeyCode.LeftShift) || OVC_Input.GetKey(KeyCode.RightShift);
+        => O5Input.GetKey(KeyCode.LeftShift) || O5Input.GetKey(KeyCode.RightShift);
 
     public void Undo() {
         if(!isFocused || undoHistory.Count == 0) {

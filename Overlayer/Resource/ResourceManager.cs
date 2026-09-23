@@ -2,7 +2,7 @@
 using System.Reflection;
 using UnityEngine;
 using Object = UnityEngine.Object;
-using Overlayer.Compat.OVC;
+using O5Kit.Compat;
 
 #if ML && IL2CPP
 using Il2CppTMPro;
@@ -94,7 +94,7 @@ public sealed class ResourceManager(Assembly assembly, string resourcePath) : ID
 
         Texture2D texture = new(2, 2, TextureFormat.RGBA32, false, false);
 
-        if(!OVC_Texture2D.LoadImage(texture, data)) {
+        if(!O5Texture.LoadImage(texture, data)) {
             Object.Destroy(texture);
             return null;
         }

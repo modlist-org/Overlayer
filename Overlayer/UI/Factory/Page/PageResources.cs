@@ -5,9 +5,11 @@ using Overlayer.IO.User.Impl;
 using Overlayer.Localization;
 using Overlayer.Overlay;
 using Overlayer.Resource;
-using Overlayer.UI.Generator;
-using Overlayer.UI.Objects.Impl;
+using O5Kit.Factory;
+using O5Kit.Control;
+using O5Kit.Behaviour;
 using Overlayer.UI.Utility;
+using O5Kit.Control;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -22,33 +24,16 @@ using TMPro;
 namespace Overlayer.UI.Factory.Page;
 
 internal static class PageResources {
-    private static UIInput pathInput;
-    private static UIInput keyInput;
-    private static UIButton modeButton;
-    private static UIInput searchInput;
-    private static UIToggle mipChainToggle;
-    private static UIToggle linearToggle;
+    private static O5InputField pathInput;
+    private static O5InputField keyInput;
+    private static O5Button modeButton;
+    private static O5InputField searchInput;
+    private static O5Toggle mipChainToggle;
+    private static O5Toggle linearToggle;
     private static RectTransform imageSettingsRow;
-    private static RectTransform spriteEditorPanel;
-    private static GameObject spriteEditorBlocker;
-    private static TextMeshProUGUI spriteEditorTitle;
-    private static RectTransform spriteEditorPreview;
-    private static RectTransform spriteEditorGuideOverlay;
-    private static RectTransform spriteEditorFieldRow;
-    private static RawImage spriteEditorImage;
-    private static TextMeshProUGUI spriteEditorHint;
-    private static UISlider spriteEditorLeftInput;
-    private static UISlider spriteEditorRightInput;
-    private static UISlider spriteEditorBottomInput;
-    private static UISlider spriteEditorTopInput;
-    private static RectTransform spriteEditorLeftGuide;
-    private static RectTransform spriteEditorRightGuide;
-    private static RectTransform spriteEditorBottomGuide;
-    private static RectTransform spriteEditorTopGuide;
-    private static Vector4 spriteEditorBorder;
-    private static Texture2D spriteEditorTexture;
-    private static UIButton browseButton;
-    private static UIButton addButton;
+    private static O5SpriteEditor spriteEditor;
+    private static O5Button browseButton;
+    private static O5Button addButton;
     private static TextMeshProUGUI statusLabel;
     private static TextMeshProUGUI titleLabel;
     private static RectTransform listContent;
@@ -78,7 +63,7 @@ internal static class PageResources {
         titleLabel.raycastTarget = true;
         titleLabel.gameObject.AddComponent<TextLocalization>().Init("IMAGE_RESOURCES", "Image Resources");
 
-        modeButton = GenerateUI.Button(titleRow, ToggleMode, T("RESOURCE_MODE_IMAGES", "Images"), "resource_mode");
+        modeButton = O5Factory.Button(titleRow, ToggleMode, T("RESOURCE_MODE_IMAGES", "Images"), "resource_mode");
         PlaceRight(modeButton.Rect, 174f);
         modeButton.Label.gameObject.AddComponent<TextLocalization>().Init("RESOURCE_MODE_IMAGES", "Images");
 
@@ -89,7 +74,7 @@ internal static class PageResources {
         importCard.offsetMax = new Vector2(-12f, -78f);
 
         RectTransform pathRow = CreateRow(importCard, 8f);
-        pathInput = GenerateUI.Input(
+        pathInput = O5Factory.Input(
             pathRow,
             string.Empty,
             string.Empty,
@@ -99,18 +84,18 @@ internal static class PageResources {
             "resource_image_path"
         );
         pathInput.Placeholder.gameObject.AddComponent<TextLocalization>().Init("IMAGE_PATH", "Image path");
-        pathInput.Rect.AddToolTip(
+        pathInput.Rect.AddToolTip(() => MainCore.Tr.Get(
             "IMAGE_PATH_TOOLTIP",
             "Select image file to import."
-        );
+        ));
         ResizeInput(pathInput.Rect, 190f);
 
-        browseButton = GenerateUI.Button(pathRow, BeginBrowse, T("BROWSE", "Browse"), "resource_browse");
+        browseButton = O5Factory.Button(pathRow, BeginBrowse, T("BROWSE", "Browse"), "resource_browse");
         PlaceRight(browseButton.Rect, 174f);
         browseButton.Label.gameObject.AddComponent<TextLocalization>().Init("BROWSE", "Browse");
 
         RectTransform keyRow = CreateRow(importCard, 66f);
-        keyInput = GenerateUI.Input(
+        keyInput = O5Factory.Input(
             keyRow,
             string.Empty,
             string.Empty,
@@ -120,19 +105,19 @@ internal static class PageResources {
             "resource_image_name"
         );
         keyInput.Placeholder.gameObject.AddComponent<TextLocalization>().Init("RESOURCE_NAME", "Resource name");
-        keyInput.Rect.AddToolTip(
+        keyInput.Rect.AddToolTip(() => MainCore.Tr.Get(
             "RESOURCE_NAME_TOOLTIP",
             "Name used by Image components to reference this resource."
-        );
+        ));
         ResizeInput(keyInput.Rect, 190f);
 
-        addButton = GenerateUI.Button(keyRow, BeginImport, T("ADD_IMAGE", "Add Image"), "resource_add");
+        addButton = O5Factory.Button(keyRow, BeginImport, T("ADD_IMAGE", "Add Image"), "resource_add");
         PlaceRight(addButton.Rect, 174f);
         addButton.Label.gameObject.AddComponent<TextLocalization>().Init("ADD_IMAGE", "Add Image");
 
         RectTransform settingsRow = CreateRow(importCard, 124f);
         imageSettingsRow = settingsRow;
-        mipChainToggle = GenerateUI.Toggle(
+        mipChainToggle = O5Factory.Toggle(
             settingsRow,
             false,
             false,
@@ -141,13 +126,13 @@ internal static class PageResources {
             "resource_mip_chain"
         );
         PlaceHalf(mipChainToggle.Rect, false);
-        mipChainToggle.Rect.AddToolTip(
+        mipChainToggle.Rect.AddToolTip(() => MainCore.Tr.Get(
             "MIP_CHAIN_TOOLTIP",
             "Create mip levels for smoother minified rendering."
-        );
+        ));
         mipChainToggle.Label.gameObject.AddComponent<TextLocalization>().Init("MIP_CHAIN", "Mip Chain");
 
-        linearToggle = GenerateUI.Toggle(
+        linearToggle = O5Factory.Toggle(
             settingsRow,
             false,
             false,
@@ -156,10 +141,10 @@ internal static class PageResources {
             "resource_linear"
         );
         PlaceHalf(linearToggle.Rect, true);
-        linearToggle.Rect.AddToolTip(
+        linearToggle.Rect.AddToolTip(() => MainCore.Tr.Get(
             "LINEAR_TOOLTIP",
             "Load texture data as linear color instead of sRGB."
-        );
+        ));
         linearToggle.Label.gameObject.AddComponent<TextLocalization>().Init("LINEAR", "Linear");
 
         statusLabel = CreateText(root, T("READY", "Ready"), 15f, TextAlignmentOptions.Left);
@@ -174,7 +159,7 @@ internal static class PageResources {
         searchRow.anchorMax = new Vector2(1f, 1f);
         searchRow.offsetMin = new Vector2(18f, -352f);
         searchRow.offsetMax = new Vector2(-18f, -302f);
-        searchInput = GenerateUI.Input(
+        searchInput = O5Factory.Input(
             searchRow,
             string.Empty,
             string.Empty,
@@ -184,10 +169,10 @@ internal static class PageResources {
             "resource_search"
         );
         searchInput.Placeholder.gameObject.AddComponent<TextLocalization>().Init("SEARCH_RESOURCE", "Search resources");
-        searchInput.Rect.AddToolTip(
+        searchInput.Rect.AddToolTip(() => MainCore.Tr.Get(
             "SEARCH_RESOURCE_TOOLTIP",
             "Filter resources by name."
-        );
+        ));
         searchInput.Rect.offsetMax = Vector2.zero;
 
         GameObject viewportObject = new("ImageViewport");
@@ -219,7 +204,6 @@ internal static class PageResources {
         ContentSizeFitter fitter = contentObject.AddComponent<ContentSizeFitter>();
         fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
         root.gameObject.AddComponent<UIScrollController>().SetContent(listContent, listViewport);
-        CreateSpriteEditor(UICore.CanvasObj.transform);
 
         CreateDisabledPanel(root);
         MainCore.OnModEnabledChanged += (isEnabled, isDispose) => {
@@ -486,225 +470,22 @@ internal static class PageResources {
         addButton.Label.text = currentMode == ResourceMode.Images ? T("ADD_IMAGE", "Add Image") : T("ADD_FONT", "Add Font");
     }
 
-    private enum SpriteGuide { Left, Right, Bottom, Top }
+    private static void EnsureSpriteEditor() {
+        if(spriteEditor != null) {
+            return;
+        }
 
-    private static RectTransform CreateSpriteEditor(Transform parent) {
-        spriteEditorBlocker = new GameObject("SpriteEditorBlocker");
-        spriteEditorBlocker.transform.SetParent(parent, false);
-        RectTransform blockerRect = spriteEditorBlocker.AddComponent<RectTransform>();
-        blockerRect.anchorMin = Vector2.zero;
-        blockerRect.anchorMax = Vector2.one;
-        blockerRect.offsetMin = Vector2.zero;
-        blockerRect.offsetMax = Vector2.zero;
-        Image blockerImage = spriteEditorBlocker.AddComponent<Image>();
-        blockerImage.color = new Color(0f, 0f, 0f, 0.58f);
-        blockerImage.raycastTarget = true;
-        GenerateUI.AddButton(spriteEditorBlocker, button => {
-            if(button == PointerEventData.InputButton.Left) {
-                CloseSpriteEditor();
-            }
+        spriteEditor = O5SpriteEditor.Create(UICore.CanvasObj.transform, new O5SpriteEditorOptions {
+            HintEmpty = T("SPRITE_EDITOR_HINT", "Drag the green guides to set 9-slice borders."),
+            ValuesFormat = MainCore.Tr.Get("SPRITE_EDITOR_VALUES", "L {0}  R {1}  B {2}  T {3}"),
+            LeftLabel = T("SPRITE_BORDER_LEFT", "Left"),
+            RightLabel = T("SPRITE_BORDER_RIGHT", "Right"),
+            BottomLabel = T("SPRITE_BORDER_BOTTOM", "Bottom"),
+            TopLabel = T("SPRITE_BORDER_TOP", "Top"),
+            CancelLabel = T("CANCEL", "Cancel"),
+            ApplyLabel = T("APPLY_SETTINGS", "Apply Settings"),
         });
-
-        GameObject panelObject = new("SpriteEditor");
-        panelObject.transform.SetParent(parent, false);
-        spriteEditorPanel = panelObject.AddComponent<RectTransform>();
-        spriteEditorPanel.anchorMin = new Vector2(0.5f, 0.5f);
-        spriteEditorPanel.anchorMax = new Vector2(0.5f, 0.5f);
-        spriteEditorPanel.pivot = new Vector2(0.5f, 0.5f);
-        spriteEditorPanel.sizeDelta = new Vector2(760f, 580f);
-
-        Image background = panelObject.AddComponent<Image>();
-        background.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P2048);
-        background.type = Image.Type.Sliced;
-        background.color = UIColors.PanelBG;
-
-        GameObject topBarObject = new("TopBar");
-        topBarObject.transform.SetParent(panelObject.transform, false);
-        topBarObject.AddComponent<DragHandler>();
-        Image topBarImage = topBarObject.AddComponent<Image>();
-        topBarImage.color = UIColors.TopBar;
-        topBarImage.sprite = MainCore.Spr.Get(UISliceSprite.CircleHalf256P1024);
-        topBarImage.type = Image.Type.Sliced;
-        RectTransform topBar = topBarObject.GetComponent<RectTransform>();
-        topBar.anchorMin = new Vector2(0f, 1f);
-        topBar.anchorMax = new Vector2(1f, 1f);
-        topBar.offsetMin = new Vector2(0f, -60f);
-        topBar.offsetMax = Vector2.zero;
-        topBar.pivot = new Vector2(0.5f, 1f);
-        topBar.anchoredPosition = Vector2.zero;
-        topBar.sizeDelta = new Vector2(0f, 60f);
-
-        spriteEditorTitle = CreateText(topBar, T("SPRITE_EDITOR", "Sprite Editor"), 22f, TextAlignmentOptions.Left);
-        spriteEditorTitle.rectTransform.anchorMin = new Vector2(0f, 1f);
-        spriteEditorTitle.rectTransform.anchorMax = new Vector2(1f, 1f);
-        spriteEditorTitle.rectTransform.offsetMin = new Vector2(22f, -56f);
-        spriteEditorTitle.rectTransform.offsetMax = new Vector2(-70f, -4f);
-
-        CreateSpriteEditorClose(topBar);
-
-        GameObject workspaceObject = new("Workspace");
-        workspaceObject.transform.SetParent(panelObject.transform, false);
-        RectTransform workspace = workspaceObject.AddComponent<RectTransform>();
-        workspace.anchorMin = Vector2.zero;
-        workspace.anchorMax = Vector2.one;
-        workspace.offsetMin = new Vector2(22f, 184f);
-        workspace.offsetMax = new Vector2(-22f, -66f);
-        Image workspaceBackground = workspaceObject.AddComponent<Image>();
-        workspaceBackground.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P2048);
-        workspaceBackground.type = Image.Type.Sliced;
-        workspaceBackground.color = UIColors.ObjectBG;
-        workspaceBackground.raycastTarget = true;
-
-        GameObject previewObject = new("Preview");
-        previewObject.transform.SetParent(workspace, false);
-        spriteEditorPreview = previewObject.AddComponent<RectTransform>();
-        spriteEditorPreview.anchorMin = new Vector2(0.5f, 0.5f);
-        spriteEditorPreview.anchorMax = new Vector2(0.5f, 0.5f);
-        spriteEditorPreview.pivot = new Vector2(0.5f, 0.5f);
-        spriteEditorPreview.sizeDelta = new Vector2(520f, 340f);
-
-        spriteEditorImage = previewObject.AddComponent<RawImage>();
-        spriteEditorImage.color = Color.white;
-        spriteEditorImage.raycastTarget = false;
-
-        GameObject guideOverlayObject = new("GuideOverlay");
-        guideOverlayObject.transform.SetParent(workspace, false);
-        spriteEditorGuideOverlay = guideOverlayObject.AddComponent<RectTransform>();
-        spriteEditorGuideOverlay.anchorMin = new Vector2(0.5f, 0.5f);
-        spriteEditorGuideOverlay.anchorMax = new Vector2(0.5f, 0.5f);
-        spriteEditorGuideOverlay.pivot = new Vector2(0.5f, 0.5f);
-        spriteEditorGuideOverlay.sizeDelta = spriteEditorPreview.sizeDelta;
-
-        spriteEditorLeftGuide = CreateSpriteGuide(spriteEditorGuideOverlay, SpriteGuide.Left);
-        spriteEditorRightGuide = CreateSpriteGuide(spriteEditorGuideOverlay, SpriteGuide.Right);
-        spriteEditorBottomGuide = CreateSpriteGuide(spriteEditorGuideOverlay, SpriteGuide.Bottom);
-        spriteEditorTopGuide = CreateSpriteGuide(spriteEditorGuideOverlay, SpriteGuide.Top);
-
-        GameObject fieldRowObject = new("BorderFields");
-        fieldRowObject.transform.SetParent(panelObject.transform, false);
-        spriteEditorFieldRow = fieldRowObject.AddComponent<RectTransform>();
-        spriteEditorFieldRow.anchorMin = Vector2.zero;
-        spriteEditorFieldRow.anchorMax = new Vector2(1f, 0f);
-        spriteEditorFieldRow.offsetMin = new Vector2(22f, 90f);
-        spriteEditorFieldRow.offsetMax = new Vector2(-22f, 176f);
-
-        spriteEditorHint = CreateText(
-            panelObject.transform,
-            T("SPRITE_EDITOR_HINT", "Drag the green guides to set 9-slice borders."),
-            15f,
-            TextAlignmentOptions.Center
-        );
-        spriteEditorHint.rectTransform.anchorMin = new Vector2(0f, 0f);
-        spriteEditorHint.rectTransform.anchorMax = new Vector2(1f, 0f);
-        spriteEditorHint.rectTransform.pivot = new Vector2(0.5f, 0f);
-        spriteEditorHint.rectTransform.offsetMin = new Vector2(22f, 60f);
-        spriteEditorHint.rectTransform.offsetMax = new Vector2(-22f, 82f);
-        spriteEditorHint.color = new Color(1f, 1f, 1f, 0.65f);
-
-        UIButton cancel = GenerateUI.Button(panelObject.transform, CloseSpriteEditor, T("CANCEL", "Cancel"), "sprite_editor_cancel");
-        cancel.Rect.anchorMin = new Vector2(1f, 0f);
-        cancel.Rect.anchorMax = new Vector2(1f, 0f);
-        cancel.Rect.pivot = new Vector2(1f, 0f);
-        cancel.Rect.anchoredPosition = new Vector2(-152f, 12f);
-        cancel.Rect.sizeDelta = new Vector2(130f, 42f);
-        cancel.Label.gameObject.AddComponent<TextLocalization>().Init("CANCEL", "Cancel");
-
-        UIButton applyButton = GenerateUI.Button(panelObject.transform, BeginSpriteEditorApply, T("APPLY_SETTINGS", "Apply Settings"), "sprite_editor_apply");
-        applyButton.Rect.anchorMin = new Vector2(1f, 0f);
-        applyButton.Rect.anchorMax = new Vector2(1f, 0f);
-        applyButton.Rect.pivot = new Vector2(1f, 0f);
-        applyButton.Rect.anchoredPosition = new Vector2(-12f, 12f);
-        applyButton.Rect.sizeDelta = new Vector2(130f, 42f);
-        applyButton.Label.gameObject.AddComponent<TextLocalization>().Init("APPLY_SETTINGS", "Apply Settings");
-
-        topBarObject.transform.SetAsLastSibling();
-
-        GameObject outlineObject = new("Outline");
-        outlineObject.transform.SetParent(panelObject.transform, false);
-        outlineObject.transform.SetAsLastSibling();
-        Image outlineImage = outlineObject.AddComponent<Image>();
-        outlineImage.color = Color.white;
-        outlineImage.sprite = MainCore.Spr.Get(UISliceSprite.CircleOutline256O32P1024);
-        outlineImage.type = Image.Type.Sliced;
-        outlineImage.raycastTarget = false;
-        RectTransform outlineRect = outlineObject.GetComponent<RectTransform>();
-        outlineRect.anchorMin = Vector2.zero;
-        outlineRect.anchorMax = Vector2.one;
-        outlineRect.offsetMin = Vector2.zero;
-        outlineRect.offsetMax = Vector2.zero;
-
-        SetSpriteEditor(null, Vector4.zero);
-        spriteEditorPanel.gameObject.SetActive(false);
-        spriteEditorBlocker.SetActive(false);
-        return spriteEditorPanel;
-    }
-
-    private static void CreateSpriteEditorClose(Transform parent) {
-        GameObject closeObject = new("Close");
-        closeObject.transform.SetParent(parent, false);
-        RectTransform closeRect = closeObject.AddComponent<RectTransform>();
-        closeRect.anchorMin = new Vector2(1f, 0.5f);
-        closeRect.anchorMax = new Vector2(1f, 0.5f);
-        closeRect.pivot = new Vector2(1f, 0.5f);
-        closeRect.anchoredPosition = new Vector2(-16f, 0f);
-        closeRect.sizeDelta = new Vector2(38f, 38f);
-
-        Image hoverImage = new GameObject("Hover").AddComponent<Image>();
-        hoverImage.transform.SetParent(closeObject.transform, false);
-        hoverImage.sprite = MainCore.Spr.Get(UISprite.Circle256);
-        hoverImage.color = new Color(UIColors.SoftRed.r, UIColors.SoftRed.g, UIColors.SoftRed.b, 0f);
-        hoverImage.raycastTarget = true;
-        RectTransform hoverRect = hoverImage.rectTransform;
-        hoverRect.anchorMin = Vector2.zero;
-        hoverRect.anchorMax = Vector2.one;
-        hoverRect.offsetMin = Vector2.zero;
-        hoverRect.offsetMax = Vector2.zero;
-
-        Image xImage = new GameObject("X").AddComponent<Image>();
-        xImage.transform.SetParent(closeObject.transform, false);
-        xImage.sprite = MainCore.Spr.Get(UISprite.X128);
-        xImage.raycastTarget = false;
-        RectTransform xRect = xImage.rectTransform;
-        xRect.anchorMin = Vector2.zero;
-        xRect.anchorMax = Vector2.one;
-        xRect.offsetMin = new Vector2(4f, 4f);
-        xRect.offsetMax = new Vector2(-4f, -4f);
-
-        GenerateUI.AddButton(closeObject, button => {
-            if(button == PointerEventData.InputButton.Left) {
-                CloseSpriteEditor();
-            }
-        });
-
-        EventTrigger trigger = closeObject.AddComponent<EventTrigger>();
-        UnityUtils.AddEvents(
-            trigger,
-            (EventTriggerType.PointerEnter, _ => hoverImage.color = new Color(
-                UIColors.SoftRed.r, UIColors.SoftRed.g, UIColors.SoftRed.b, 1f
-            )),
-            (EventTriggerType.PointerExit, _ => hoverImage.color = new Color(
-                UIColors.SoftRed.r, UIColors.SoftRed.g, UIColors.SoftRed.b, 0f
-            ))
-        );
-    }
-
-    private static void ShowSpriteEditor(string key) {
-        RectTransform canvasRect = UICore.CanvasObj.GetComponent<RectTransform>();
-        spriteEditorPanel.sizeDelta = new Vector2(
-            Mathf.Min(760f, canvasRect.rect.width - 32f),
-            Mathf.Min(580f, canvasRect.rect.height - 32f)
-        );
-        spriteEditorBlocker.SetActive(true);
-        spriteEditorPanel.gameObject.SetActive(true);
-        spriteEditorBlocker.transform.SetAsLastSibling();
-        spriteEditorPanel.SetAsLastSibling();
-        spriteEditorTitle.text = $"{T("SPRITE_EDITOR", "Sprite Editor")} — {key}";
-        Canvas.ForceUpdateCanvases();
-    }
-
-    private static void HideSpriteEditor() {
-        spriteEditorPanel?.gameObject.SetActive(false);
-        spriteEditorBlocker?.SetActive(false);
+        spriteEditor.Applied += OnSpriteEditorApplied;
     }
 
     private static void OpenSpriteEditor(string key) {
@@ -712,22 +493,20 @@ internal static class PageResources {
             return;
         }
 
+        EnsureSpriteEditor();
         spriteEditorKey = key;
         Vector4 border = UserResourceManager.Spr.TryGet(key, out var spriteValue)
             ? spriteValue.settings.Border
             : Vector4.zero;
-        RebuildSpriteBorderSliders(textureValue.texture.width, textureValue.texture.height);
-        ShowSpriteEditor(key);
-        SetSpriteEditor(textureValue.texture, border);
+        spriteEditor.Open(textureValue.texture, border, $"{T("SPRITE_EDITOR", "Sprite Editor")} — {key}");
     }
 
     private static void CloseSpriteEditor() {
-        HideSpriteEditor();
         spriteEditorKey = null;
-        SetSpriteEditor(null, Vector4.zero);
+        spriteEditor?.Close();
     }
 
-    private static void BeginSpriteEditorApply() {
+    private static void OnSpriteEditorApplied(Vector4 border) {
         string key = spriteEditorKey;
         if(
             busy ||
@@ -738,11 +517,7 @@ internal static class PageResources {
             return;
         }
 
-        Vector4 border = NormalizeBorder(
-            ReadBorder(),
-            textureValue.texture.width,
-            textureValue.texture.height
-        );
+        border = NormalizeBorder(border, textureValue.texture.width, textureValue.texture.height);
         if(Approximately(spriteValue.settings.Border, border)) {
             CloseSpriteEditor();
             SetStatus("SETTINGS_UNCHANGED", "Settings unchanged.", UIColors.ObjectActive);
@@ -761,340 +536,6 @@ internal static class PageResources {
         SetStatus("SPRITE_SETTINGS_APPLIED", "Sprite settings applied.", UIColors.ObjectActiveMathOk);
     }
 
-    private static void RebuildSpriteBorderSliders(int width, int height) {
-        DisposeSpriteBorderSlider(ref spriteEditorLeftInput);
-        DisposeSpriteBorderSlider(ref spriteEditorRightInput);
-        DisposeSpriteBorderSlider(ref spriteEditorBottomInput);
-        DisposeSpriteBorderSlider(ref spriteEditorTopInput);
-
-        spriteEditorLeftInput = CreateBorderSlider(
-            spriteEditorFieldRow, T("SPRITE_BORDER_LEFT", "Left"), SpriteGuide.Left, false, true, width
-        );
-        spriteEditorRightInput = CreateBorderSlider(
-            spriteEditorFieldRow, T("SPRITE_BORDER_RIGHT", "Right"), SpriteGuide.Right, true, true, width
-        );
-        spriteEditorBottomInput = CreateBorderSlider(
-            spriteEditorFieldRow, T("SPRITE_BORDER_BOTTOM", "Bottom"), SpriteGuide.Bottom, false, false, height
-        );
-        spriteEditorTopInput = CreateBorderSlider(
-            spriteEditorFieldRow, T("SPRITE_BORDER_TOP", "Top"), SpriteGuide.Top, true, false, height
-        );
-    }
-
-    private static void DisposeSpriteBorderSlider(ref UISlider input) {
-        if(input == null) {
-            return;
-        }
-
-        RectTransform rect = input.Rect;
-        input.Dispose();
-        if(rect) {
-            UnityEngine.Object.Destroy(rect.gameObject);
-        }
-        input = null;
-    }
-
-    private static UISlider CreateBorderSlider(
-        Transform parent,
-        string label,
-        SpriteGuide guide,
-        bool right,
-        bool top,
-        float max
-    ) {
-        UISlider input = GenerateUI.Slider(
-            parent,
-            0f,
-            0f,
-            max,
-            0f,
-            "F0",
-            ClampMode.All,
-            value => FilterBorderSlider(guide, value),
-            value => SetBorderFromSlider(guide, value),
-            null,
-            label,
-            $"sprite_border_{guide.ToString().ToLowerInvariant()}"
-        );
-        input.Rect.anchorMin = new Vector2(right ? 0.5f : 0f, top ? 0.5f : 0f);
-        input.Rect.anchorMax = new Vector2(right ? 1f : 0.5f, top ? 1f : 0.5f);
-        input.Rect.offsetMin = new Vector2(right ? 5f : 0f, top ? 3f : 0f);
-        input.Rect.offsetMax = new Vector2(right ? 0f : -5f, top ? 0f : -3f);
-        input.Label.fontSize = 16f;
-        (string localizationKey, string fallback) = guide switch {
-            SpriteGuide.Left => ("SPRITE_BORDER_LEFT", "Left"),
-            SpriteGuide.Right => ("SPRITE_BORDER_RIGHT", "Right"),
-            SpriteGuide.Bottom => ("SPRITE_BORDER_BOTTOM", "Bottom"),
-            _ => ("SPRITE_BORDER_TOP", "Top")
-        };
-        input.Label.gameObject.AddComponent<TextLocalization>().Init(localizationKey, fallback);
-        input.PreviewLabel.fontSize = 16f;
-        input.InputCore.InputField.textComponent.fontSize = 16f;
-        return input;
-    }
-
-    private static RectTransform CreateSpriteGuide(RectTransform parent, SpriteGuide guide) {
-        GameObject guideObject = new(guide.ToString());
-        guideObject.transform.SetParent(parent, false);
-        RectTransform rect = guideObject.AddComponent<RectTransform>();
-        bool vertical = guide is SpriteGuide.Left or SpriteGuide.Right;
-        (rect.anchorMin, rect.anchorMax) = guide switch {
-            SpriteGuide.Left => (new Vector2(0f, 0f), new Vector2(0f, 1f)),
-            SpriteGuide.Right => (new Vector2(1f, 0f), new Vector2(1f, 1f)),
-            SpriteGuide.Bottom => (new Vector2(0f, 0f), new Vector2(1f, 0f)),
-            _ => (new Vector2(0f, 1f), new Vector2(1f, 1f))
-        };
-        rect.pivot = new Vector2(0.5f, 0.5f);
-        rect.sizeDelta = vertical ? new Vector2(24f, 0f) : new Vector2(0f, 24f);
-
-        Image hitArea = guideObject.AddComponent<Image>();
-        Color idleColor = new(0.15f, 1f, 0.25f, 0.12f);
-        Color hoverColor = new(0.15f, 1f, 0.25f, 0.32f);
-        hitArea.color = idleColor;
-        hitArea.raycastTarget = true;
-
-        CreateGuideLine(guideObject.transform, vertical, 6f, new Color(0f, 0f, 0f, 0.9f));
-        CreateGuideLine(guideObject.transform, vertical, 3f, new Color(0.15f, 1f, 0.25f, 1f));
-
-        GameObject handleObject = new("Handle");
-        handleObject.transform.SetParent(guideObject.transform, false);
-        RectTransform handle = handleObject.AddComponent<RectTransform>();
-        handle.anchorMin = new Vector2(0.5f, 0.5f);
-        handle.anchorMax = new Vector2(0.5f, 0.5f);
-        handle.sizeDelta = vertical ? new Vector2(24f, 42f) : new Vector2(42f, 24f);
-        Image handleImage = handleObject.AddComponent<Image>();
-        handleImage.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P2048);
-        handleImage.type = Image.Type.Sliced;
-        handleImage.color = new Color(0f, 0f, 0f, 0.9f);
-        handleImage.raycastTarget = false;
-
-        GameObject handleFillObject = new("Fill");
-        handleFillObject.transform.SetParent(handleObject.transform, false);
-        RectTransform handleFill = handleFillObject.AddComponent<RectTransform>();
-        handleFill.anchorMin = Vector2.zero;
-        handleFill.anchorMax = Vector2.one;
-        handleFill.offsetMin = new Vector2(3f, 3f);
-        handleFill.offsetMax = new Vector2(-3f, -3f);
-        Image handleFillImage = handleFillObject.AddComponent<Image>();
-        handleFillImage.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P2048);
-        handleFillImage.type = Image.Type.Sliced;
-        handleFillImage.color = new Color(0.15f, 1f, 0.25f, 1f);
-        handleFillImage.raycastTarget = false;
-
-        UnityUtils.AddEvents(
-            guideObject.AddComponent<EventTrigger>(),
-            (EventTriggerType.PointerEnter, _ => hitArea.color = hoverColor),
-            (EventTriggerType.PointerExit, _ => hitArea.color = idleColor),
-            (EventTriggerType.PointerDown, data => DragSpriteGuide(guide, data)),
-            (EventTriggerType.BeginDrag, data => DragSpriteGuide(guide, data)),
-            (EventTriggerType.Drag, data => DragSpriteGuide(guide, data))
-        );
-        return rect;
-    }
-
-    private static void CreateGuideLine(Transform parent, bool vertical, float thickness, Color color) {
-        GameObject lineObject = new("Line");
-        lineObject.transform.SetParent(parent, false);
-        RectTransform line = lineObject.AddComponent<RectTransform>();
-        line.anchorMin = vertical ? new Vector2(0.5f, 0f) : new Vector2(0f, 0.5f);
-        line.anchorMax = vertical ? new Vector2(0.5f, 1f) : new Vector2(1f, 0.5f);
-        line.sizeDelta = vertical ? new Vector2(thickness, 0f) : new Vector2(0f, thickness);
-        Image lineImage = lineObject.AddComponent<Image>();
-        lineImage.color = color;
-        lineImage.raycastTarget = false;
-    }
-
-    private static Vector4 ReadBorder() => spriteEditorBorder;
-
-    private static float FilterBorderSlider(SpriteGuide guide, float value) {
-        value = Mathf.Round(value);
-        if(spriteEditorTexture == null) {
-            return Mathf.Max(0f, value);
-        }
-
-        return guide switch {
-            SpriteGuide.Left => Mathf.Clamp(value, 0f, spriteEditorTexture.width - spriteEditorBorder.z),
-            SpriteGuide.Right => Mathf.Clamp(value, 0f, spriteEditorTexture.width - spriteEditorBorder.x),
-            SpriteGuide.Bottom => Mathf.Clamp(value, 0f, spriteEditorTexture.height - spriteEditorBorder.w),
-            _ => Mathf.Clamp(value, 0f, spriteEditorTexture.height - spriteEditorBorder.y)
-        };
-    }
-
-    private static void SetBorderFromSlider(SpriteGuide guide, float value) {
-        if(spriteEditorTexture == null) {
-            return;
-        }
-
-        value = FilterBorderSlider(guide, value);
-        switch(guide) {
-            case SpriteGuide.Left:
-                spriteEditorBorder.x = value;
-                break;
-            case SpriteGuide.Right:
-                spriteEditorBorder.z = value;
-                break;
-            case SpriteGuide.Bottom:
-                spriteEditorBorder.y = value;
-                break;
-            case SpriteGuide.Top:
-                spriteEditorBorder.w = value;
-                break;
-        }
-
-        UpdateSpriteGuides();
-    }
-
-    private static void UpdateSpriteBorderInputs() {
-        UpdateSpriteBorderInput(spriteEditorLeftInput, spriteEditorBorder.x);
-        UpdateSpriteBorderInput(spriteEditorRightInput, spriteEditorBorder.z);
-        UpdateSpriteBorderInput(spriteEditorBottomInput, spriteEditorBorder.y);
-        UpdateSpriteBorderInput(spriteEditorTopInput, spriteEditorBorder.w);
-    }
-
-    private static void UpdateSpriteBorderInput(UISlider input, float value) {
-        if(input == null) {
-            return;
-        }
-
-        input.Set(Mathf.Round(value), false);
-    }
-
-    private static void SetSpriteEditor(Texture2D texture, Vector4 border) {
-        bool hasTexture = texture != null;
-        spriteEditorTexture = texture;
-        if(hasTexture) {
-            border = NormalizeBorder(border, texture.width, texture.height);
-            spriteEditorBorder = NormalizeBorder(
-                new Vector4(
-                    Mathf.Round(border.x),
-                    Mathf.Round(border.y),
-                    Mathf.Round(border.z),
-                    Mathf.Round(border.w)
-                ),
-                texture.width,
-                texture.height
-            );
-        } else {
-            spriteEditorBorder = Vector4.zero;
-        }
-        if(spriteEditorImage == null) {
-            return;
-        }
-
-        spriteEditorImage.texture = texture;
-        spriteEditorImage.color = hasTexture ? Color.white : new Color(1f, 1f, 1f, 0.08f);
-        if(hasTexture) {
-            RectTransform workspace = spriteEditorPreview.parent as RectTransform;
-            float maxWidth = Mathf.Max(120f, workspace.rect.width - 56f);
-            float maxHeight = Mathf.Max(100f, workspace.rect.height - 48f);
-            float scale = Mathf.Min(maxWidth / texture.width, maxHeight / texture.height);
-            spriteEditorPreview.sizeDelta = new Vector2(texture.width * scale, texture.height * scale);
-        } else {
-            spriteEditorPreview.sizeDelta = new Vector2(520f, 340f);
-            spriteEditorHint.text = T("SPRITE_EDITOR_HINT", "Drag the green guides to set 9-slice borders.");
-        }
-
-        spriteEditorGuideOverlay.sizeDelta = spriteEditorPreview.sizeDelta;
-        spriteEditorGuideOverlay.SetAsLastSibling();
-        SetGuideActive(spriteEditorLeftGuide, hasTexture);
-        SetGuideActive(spriteEditorRightGuide, hasTexture);
-        SetGuideActive(spriteEditorBottomGuide, hasTexture);
-        SetGuideActive(spriteEditorTopGuide, hasTexture);
-        UpdateSpriteBorderInputs();
-        if(hasTexture) {
-            Canvas.ForceUpdateCanvases();
-            UpdateSpriteGuides();
-        }
-    }
-
-    private static void SetGuideActive(RectTransform guide, bool active) {
-        if(guide) {
-            guide.gameObject.SetActive(active);
-        }
-    }
-
-    private static void UpdateSpriteGuides() {
-        if(spriteEditorTexture == null || spriteEditorGuideOverlay == null) {
-            return;
-        }
-
-        float width = spriteEditorGuideOverlay.rect.width;
-        float height = spriteEditorGuideOverlay.rect.height;
-        float scaleX = width / spriteEditorTexture.width;
-        float scaleY = height / spriteEditorTexture.height;
-        float inset = 3f;
-        float left = Mathf.Clamp(spriteEditorBorder.x * scaleX, inset, width - inset);
-        float right = Mathf.Clamp(spriteEditorBorder.z * scaleX, inset, width - inset);
-        float bottom = Mathf.Clamp(spriteEditorBorder.y * scaleY, inset, height - inset);
-        float top = Mathf.Clamp(spriteEditorBorder.w * scaleY, inset, height - inset);
-        spriteEditorLeftGuide.anchoredPosition = new Vector2(left, 0f);
-        spriteEditorRightGuide.anchoredPosition = new Vector2(-right, 0f);
-        spriteEditorBottomGuide.anchoredPosition = new Vector2(0f, bottom);
-        spriteEditorTopGuide.anchoredPosition = new Vector2(0f, -top);
-        UpdateSpriteBorderInputs();
-        UpdateSpriteEditorHint();
-    }
-
-    private static void UpdateSpriteEditorHint() {
-        if(spriteEditorHint == null || spriteEditorTexture == null) {
-            return;
-        }
-
-        spriteEditorHint.text = T(
-            "SPRITE_EDITOR_VALUES",
-            "L {0}  R {1}  B {2}  T {3}",
-            Mathf.RoundToInt(spriteEditorBorder.x),
-            Mathf.RoundToInt(spriteEditorBorder.z),
-            Mathf.RoundToInt(spriteEditorBorder.y),
-            Mathf.RoundToInt(spriteEditorBorder.w)
-        );
-    }
-
-    private static PointerEventData GetSpritePointer(BaseEventData data) {
-#if ML && IL2CPP
-        return data.TryCast<PointerEventData>();
-#else
-        return data as PointerEventData;
-#endif
-    }
-
-    private static void DragSpriteGuide(SpriteGuide guide, BaseEventData data) {
-        PointerEventData pointer = GetSpritePointer(data);
-        if(pointer == null || pointer.button != PointerEventData.InputButton.Left ||
-            spriteEditorTexture == null || spriteEditorPreview == null ||
-            !RectTransformUtility.ScreenPointToLocalPointInRectangle(
-                spriteEditorPreview,
-                pointer.position,
-                pointer.pressEventCamera,
-                out Vector2 local
-            )) {
-            return;
-        }
-
-        float width = spriteEditorPreview.rect.width;
-        float height = spriteEditorPreview.rect.height;
-        if(width <= 0f || height <= 0f) {
-            return;
-        }
-        float x = Mathf.Round(Mathf.Clamp(local.x + width * 0.5f, 0f, width) / width * spriteEditorTexture.width);
-        float y = Mathf.Round(Mathf.Clamp(local.y + height * 0.5f, 0f, height) / height * spriteEditorTexture.height);
-        switch(guide) {
-            case SpriteGuide.Left:
-                spriteEditorBorder.x = Mathf.Clamp(x, 0f, spriteEditorTexture.width - spriteEditorBorder.z);
-                break;
-            case SpriteGuide.Right:
-                spriteEditorBorder.z = Mathf.Clamp(spriteEditorTexture.width - x, 0f, spriteEditorTexture.width - spriteEditorBorder.x);
-                break;
-            case SpriteGuide.Bottom:
-                spriteEditorBorder.y = Mathf.Clamp(y, 0f, spriteEditorTexture.height - spriteEditorBorder.w);
-                break;
-            case SpriteGuide.Top:
-                spriteEditorBorder.w = Mathf.Clamp(spriteEditorTexture.height - y, 0f, spriteEditorTexture.height - spriteEditorBorder.y);
-                break;
-        }
-
-        UpdateSpriteGuides();
-    }
 
     private static Vector4 NormalizeBorder(Vector4 border, int width, int height) {
         float left = Mathf.Clamp(border.x, 0f, width);
@@ -1316,12 +757,12 @@ internal static class PageResources {
 
         if(currentMode == ResourceMode.Images) {
             pathInput.Placeholder.GetComponent<TextLocalization>()?.Init("IMAGE_PATH", "Image path");
-            pathInput.Rect.AddToolTip("IMAGE_PATH_TOOLTIP", "Select image file to import.");
+            pathInput.Rect.AddToolTip(() => MainCore.Tr.Get("IMAGE_PATH_TOOLTIP", "Select image file to import."));
             modeButton.Label.GetComponent<TextLocalization>()?.Init("RESOURCE_MODE_IMAGES", "Images");
             modeButton.Label.text = T("RESOURCE_MODE_IMAGES", "Images");
         } else {
             pathInput.Placeholder.GetComponent<TextLocalization>()?.Init("FONT_PATH", "Font path");
-            pathInput.Rect.AddToolTip("FONT_PATH_TOOLTIP", "Select font file to import.");
+            pathInput.Rect.AddToolTip(() => MainCore.Tr.Get("FONT_PATH_TOOLTIP", "Select font file to import."));
             modeButton.Label.GetComponent<TextLocalization>()?.Init("RESOURCE_MODE_FONTS", "Fonts");
             modeButton.Label.text = T("RESOURCE_MODE_FONTS", "Fonts");
         }
@@ -1348,7 +789,7 @@ internal static class PageResources {
             CloseSpriteEditor();
             CancelSettingsEdit();
             BuildList();
-            Tooltip.Hide();
+            O5Kit.Core.O5Tooltip.Hide();
             return;
         }
         MainThread.Enqueue(() => {
@@ -1428,7 +869,7 @@ internal static class PageResources {
         name.rectTransform.offsetMax = new Vector2(-466f, -12f);
         name.font = MainCore.Res.Get<TMP_FontAsset>(Asset.SUIT_Medium);
 
-        UIInput renameInput = GenerateUI.Input(
+        O5InputField renameInput = O5Factory.Input(
             card,
             key,
             key,
@@ -1457,7 +898,7 @@ internal static class PageResources {
         details.rectTransform.offsetMin = new Vector2(116f, 14f);
         details.rectTransform.offsetMax = new Vector2(-466f, 0f);
 
-        UIButton spriteEditor = GenerateUI.Button(
+        O5Button spriteEditor = O5Factory.Button(
             card,
             () => OpenSpriteEditor(key),
             T("SPRITE_EDITOR", "Sprite Editor"),
@@ -1467,17 +908,17 @@ internal static class PageResources {
         spriteEditor.Label.fontSize = 14f;
         spriteEditor.Label.gameObject.AddComponent<TextLocalization>().Init("SPRITE_EDITOR", "Sprite Editor");
 
-        UIButton settings = GenerateUI.Button(card, () => EnterSettingsEdit(key), T("SETTINGS", "Settings"), "settings_" + key);
+        O5Button settings = O5Factory.Button(card, () => EnterSettingsEdit(key), T("SETTINGS", "Settings"), "settings_" + key);
         PlaceRight(settings.Rect, 100f, 54f, 232f);
         settings.Label.fontSize = 15f;
         settings.Label.gameObject.AddComponent<TextLocalization>().Init("SETTINGS", "Settings");
 
-        UIButton rename = GenerateUI.Button(card, () => { }, "Rename", "rename_button_" + key);
+        O5Button rename = O5Factory.Button(card, () => { }, "Rename", "rename_button_" + key);
         PlaceRight(rename.Rect, 100f, 54f, 124f);
         rename.Label.fontSize = 15f;
         rename.Label.gameObject.AddComponent<TextLocalization>().Init("RENAME", "Rename");
 
-        UIButton remove = GenerateUI.Button(card, () => { }, "Remove", "remove_" + key);
+        O5Button remove = O5Factory.Button(card, () => { }, "Remove", "remove_" + key);
         PlaceRight(remove.Rect, 100f, 54f, 16f);
         remove.Label.fontSize = 15f;
         remove.Label.gameObject.AddComponent<TextLocalization>().Init("REMOVE", "Remove");
@@ -1528,7 +969,7 @@ internal static class PageResources {
             Remove(key);
         };
 
-        GenerateUI.AddOutlineHover(cardObject, cardObject.AddComponent<EventTrigger>());
+        O5Effects.HoverOutline(cardObject, cardObject.AddComponent<EventTrigger>());
     }
 
     private static void CreateFontCard(Transform parent, string key) {
@@ -1562,7 +1003,7 @@ internal static class PageResources {
         name.rectTransform.offsetMax = new Vector2(-324f, -8f);
         name.font = MainCore.Res.Get<TMP_FontAsset>(Asset.SUIT_Medium);
 
-        UIInput renameInput = GenerateUI.Input(
+        O5InputField renameInput = O5Factory.Input(
             card,
             key,
             key,
@@ -1591,12 +1032,12 @@ internal static class PageResources {
         details.rectTransform.offsetMin = new Vector2(16f, 8f);
         details.rectTransform.offsetMax = new Vector2(-324f, -4f);
 
-        UIButton rename = GenerateUI.Button(card, () => { }, "Rename", "rename_button_" + key);
+        O5Button rename = O5Factory.Button(card, () => { }, "Rename", "rename_button_" + key);
         PlaceRight(rename.Rect, 100f, 54f, 108f);
         rename.Label.fontSize = 15f;
         rename.Label.gameObject.AddComponent<TextLocalization>().Init("RENAME", "Rename");
 
-        UIButton remove = GenerateUI.Button(card, () => { }, "Remove", "remove_" + key);
+        O5Button remove = O5Factory.Button(card, () => { }, "Remove", "remove_" + key);
         PlaceRight(remove.Rect, 100f, 54f);
         remove.Label.fontSize = 15f;
         remove.Label.gameObject.AddComponent<TextLocalization>().Init("REMOVE", "Remove");
@@ -1680,7 +1121,7 @@ internal static class PageResources {
             }
         };
 
-        GenerateUI.AddOutlineHover(cardObject, cardObject.AddComponent<EventTrigger>());
+        O5Effects.HoverOutline(cardObject, cardObject.AddComponent<EventTrigger>());
     }
 
     private static bool Rename(string oldKey, string value) {
@@ -1807,7 +1248,7 @@ internal static class PageResources {
     }
 
     private static TextMeshProUGUI CreateText(Transform parent, string text, float size, TextAlignmentOptions alignment) {
-        TextMeshProUGUI label = GenerateUI.AddText(parent, true);
+        TextMeshProUGUI label = O5Factory.ControlText(parent, 24f, true);
         label.text = text;
         label.fontSize = size;
         label.alignment = alignment;

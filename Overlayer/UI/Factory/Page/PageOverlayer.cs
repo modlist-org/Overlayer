@@ -3,9 +3,9 @@ using Overlayer.Async;
 using Overlayer.Localization;
 using Overlayer.Overlay;
 using Overlayer.Resource;
-using Overlayer.UI.Generator;
+using O5Kit.Factory;
 using Overlayer.UI.Overlay;
-using Overlayer.UI.Utility;
+using O5Kit.Behaviour;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -235,16 +235,17 @@ internal static class PageOverlayer {
         txt.color = Color.white;
         txt.raycastTarget = false;
 
-        GenerateUI.AddOutlineHover(bg, bg.AddComponent<EventTrigger>());
+        O5Effects.HoverOutline(bg, bg.AddComponent<EventTrigger>());
 
-        GenerateUI.AddButton(bg, btn => {
+        var bgOvent = bg.AddComponent<OventHandler>();
+        bgOvent.OnClick += btn => {
             switch(btn) {
                 case InputButton.Left:
                     FadeCanvasGroup(viewportCanvasGroup, 0f, false);
                     settingPage?.Open(canvas);
                     break;
             }
-        });
+        };
 
         return bg;
     }
@@ -288,15 +289,16 @@ internal static class PageOverlayer {
 
         var trigger = go.AddComponent<EventTrigger>();
 
-        GenerateUI.AddOutlineHover(go, trigger);
+        O5Effects.HoverOutline(go, trigger);
 
-        GenerateUI.AddButton(go, btn => {
+        var goOvent = go.AddComponent<OventHandler>();
+        goOvent.OnClick += btn => {
             switch(btn) {
                 case InputButton.Left:
                     onClick?.Invoke();
                     break;
             }
-        });
+        };
 
         GTween bgTween = null;
         UnityUtils.AddEvents(trigger,

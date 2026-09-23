@@ -1,5 +1,5 @@
 ﻿using Newtonsoft.Json.Linq;
-using Overlayer.Compat.OVC;
+using O5Kit.Compat;
 using Overlayer.Core;
 using Overlayer.IO.Unity;
 using UnityEngine;
@@ -55,7 +55,7 @@ public class UserTexture2D : UserResourceBase<(Texture2D texture, Texture2DSetti
         Texture2D texture = null;
         try {
             texture = new Texture2D(2, 2, TextureFormat.RGBA32, mipChain, linear);
-            if(!OVC_Texture2D.LoadImage(texture, data)) {
+            if(!O5Texture.LoadImage(texture, data)) {
                 UnityEngine.Object.Destroy(texture);
                 return Result.Failed;
             }
@@ -85,7 +85,7 @@ public class UserTexture2D : UserResourceBase<(Texture2D texture, Texture2DSetti
         Texture2D replacement = null;
         try {
             replacement = new Texture2D(2, 2, TextureFormat.RGBA32, mipChain, linear);
-            if(!OVC_Texture2D.LoadImage(replacement, data)) {
+            if(!O5Texture.LoadImage(replacement, data)) {
                 UnityEngine.Object.Destroy(replacement);
                 return Result.Failed;
             }

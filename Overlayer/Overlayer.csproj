@@ -19,6 +19,24 @@
 		<Configurations>Debug_ML;Release_ML;Debug_ML_IL2CPP;Release_ML_IL2CPP</Configurations>
 	</PropertyGroup>
 
+	<PropertyGroup>
+		<!-- O5Kit (UI + input toolkit): config/TFM mapped from ML configs. -->
+		<O5KitProject>$(MSBuildProjectDirectory)/../../O5Kit/src/O5Kit/O5Kit.csproj</O5KitProject>
+		<O5KitConfiguration Condition="$(Configuration.Contains('IL2CPP')) and $(Configuration.Contains('Debug'))">Debug_IL2CPP</O5KitConfiguration>
+		<O5KitConfiguration Condition="$(Configuration.Contains('IL2CPP')) and !$(Configuration.Contains('Debug'))">Release_IL2CPP</O5KitConfiguration>
+		<O5KitConfiguration Condition="!$(Configuration.Contains('IL2CPP')) and $(Configuration.Contains('Debug'))">Debug_Mono</O5KitConfiguration>
+		<O5KitConfiguration Condition="!$(Configuration.Contains('IL2CPP')) and !$(Configuration.Contains('Debug'))">Release_Mono</O5KitConfiguration>
+		<O5KitTargetFramework Condition="$(Configuration.Contains('IL2CPP'))">net6.0</O5KitTargetFramework>
+		<O5KitTargetFramework Condition="!$(Configuration.Contains('IL2CPP'))">netstandard2.1</O5KitTargetFramework>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="$(O5KitProject)">
+			<SetConfiguration>Configuration=$(O5KitConfiguration)</SetConfiguration>
+			<SetTargetFramework>TargetFramework=$(O5KitTargetFramework)</SetTargetFramework>
+		</ProjectReference>
+	</ItemGroup>
+
 	<ItemDefinitionGroup>
 		<Reference>
 			<Private>false</Private>
@@ -262,6 +280,9 @@
 		<MakeDir Directories="$(TargetGamePath)/UserLibs" Condition="'@(NuGetUserLibs)' != ''" />
 		<Copy SourceFiles="@(NuGetUserLibs)" DestinationFolder="$(TargetGamePath)/UserLibs" SkipUnchangedFiles="true" />
 
+		<MakeDir Directories="$(TargetGamePath)/UserLibs" />
+		<Copy SourceFiles="$(TargetDir)O5Kit.dll" DestinationFolder="$(TargetGamePath)/UserLibs" SkipUnchangedFiles="true" Condition="Exists('$(TargetDir)O5Kit.dll')" />
+
 		<ItemGroup>
 			<ExportFiles Include="Resource/Export/**/*.*" />
 		</ItemGroup>
@@ -278,6 +299,7 @@
 		<Copy Condition="'$(TargetPath)' != ''" SourceFiles="$(TargetPath)" DestinationFolder="$(BuildOutputDir)\Mods" SkipUnchangedFiles="true" />
 		<MakeDir Directories="$(BuildOutputDir)\UserLibs" Condition="'@(NuGetUserLibs)' != ''" />
 		<Copy SourceFiles="@(NuGetUserLibs)" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" />
+		<Copy SourceFiles="$(TargetDir)O5Kit.dll" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" Condition="Exists('$(TargetDir)O5Kit.dll')" />
 		<MakeDir Directories="$(BuildOutputDir)\UserData\Overlayer" />
 		<Copy SourceFiles="@(ExportFiles)" DestinationFiles="@(ExportFiles->'$(BuildOutputDir)\UserData\Overlayer\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
 	</Target>

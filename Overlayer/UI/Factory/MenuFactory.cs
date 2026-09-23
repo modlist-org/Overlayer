@@ -1,7 +1,7 @@
-﻿using Overlayer.Core;
+using Overlayer.Core;
 using Overlayer.Localization;
 using Overlayer.Resource;
-using Overlayer.UI.Transition;
+using O5Kit.Transition;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -171,7 +171,7 @@ public static class MenuFactory {
 
         UICore.CurrentMenuState = to;
 
-        PageSwicher.SwitchPage(from, to);
+        O5PageSwitcher.SwitchPage(UICore.Pages, from, to);
         ApplyState(to);
 
         OnStateChanged?.Invoke(to);

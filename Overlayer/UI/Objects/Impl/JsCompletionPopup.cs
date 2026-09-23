@@ -1,12 +1,11 @@
 using FuzzySharp;
-using Overlayer.Compat.OVC;
 using Overlayer.Tag.Core;
 using Overlayer.TextEngine.Highlight;
-using Overlayer.UI.Generator;
+using O5Kit.Factory;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
-using Overlayer.UI.Utility;
+using O5Kit.Behaviour;
 
 #if ML && IL2CPP
 using Il2CppTMPro;
@@ -203,7 +202,7 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
         Image image = row.AddComponent<Image>();
         image.color = Color.clear;
 
-        TextMeshProUGUI name = GenerateUI.AddText(row.transform, true);
+        TextMeshProUGUI name = O5Factory.ControlText(row.transform, 24f, true);
         name.font = sourceText.font;
         name.fontSize = 14f;
         name.alignment = TextAlignmentOptions.Left;
@@ -214,7 +213,7 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
         name.rectTransform.offsetMax = new(-150f, 0f);
         name.raycastTarget = false;
 
-        TextMeshProUGUI detail = GenerateUI.AddText(row.transform, true);
+        TextMeshProUGUI detail = O5Factory.ControlText(row.transform, 24f, true);
         detail.font = sourceText.font;
         detail.fontSize = 11f;
         detail.alignment = TextAlignmentOptions.Right;
@@ -226,11 +225,12 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
         detail.rectTransform.offsetMax = new(-10f, 0f);
         detail.raycastTarget = false;
 
-        GenerateUI.AddButton(row, button => {
+        var rowOvent = row.AddComponent<OventHandler>();
+        rowOvent.OnClick += button => {
             if(button == PointerEventData.InputButton.Left) {
                 Accept(windowStart + index);
             }
-        });
+        };
 
         EventTrigger trigger = row.AddComponent<EventTrigger>();
 

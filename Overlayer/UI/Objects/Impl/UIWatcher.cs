@@ -1,8 +1,9 @@
 using UnityEngine;
+using O5Kit.Core;
 
 namespace Overlayer.UI.Objects.Impl;
 
-internal sealed class UIWatcher : UIObject {
+internal sealed class UIWatcher : O5Object {
     private Action tick;
 
     public UIWatcher(string id, RectTransform rect, Action tick) : base(id, rect) {

@@ -1,10 +1,11 @@
 using Overlayer.Core;
+using O5Kit.Core;
 using Overlayer.Overlay;
 using Overlayer.Resource;
-using Overlayer.UI.Generator;
-using Overlayer.UI.Objects;
+using O5Kit.Factory;
+using O5Kit.Control;
 using Overlayer.Localization;
-using Overlayer.UI.Utility;
+using O5Kit.Behaviour;
 using UnityEngine;
 using UnityEngine.UI;
 using static UnityEngine.EventSystems.PointerEventData;
@@ -52,9 +53,9 @@ public class OvCanvasSettingPage : IDisposable {
     private enum HierarchyDropZone { Before, Inside, After }
 
 #pragma warning disable IDE0001
-    private readonly System.Collections.Generic.List<UIObject> hierarchyUiObjects = [];
-    private readonly System.Collections.Generic.List<UIObject> inspectorUiObjects = [];
-    private readonly System.Collections.Generic.List<UIObject> permanentUiObjects = [];
+    private readonly System.Collections.Generic.List<O5Object> hierarchyUiObjects = [];
+    private readonly System.Collections.Generic.List<O5Object> inspectorUiObjects = [];
+    private readonly System.Collections.Generic.List<O5Object> permanentUiObjects = [];
 #pragma warning restore IDE0001
 
     public OvCanvasSettingPage(Transform parent, Action onBack) {
@@ -108,11 +109,12 @@ public class OvCanvasSettingPage : IDisposable {
         bTxt.alignment = TextAlignmentOptions.Center;
         bTxt.color = Color.white;
 
-        GenerateUI.AddButton(backBtnGo, btn => {
+        var backBtnGoOvent = backBtnGo.AddComponent<OventHandler>();
+        backBtnGoOvent.OnClick += btn => {
             if(btn == InputButton.Left) {
                 onBackAction?.Invoke();
             }
-        });
+        };
 
         // Title Text
         GameObject titleGo = new("TitleText");
@@ -244,7 +246,7 @@ public class OvCanvasSettingPage : IDisposable {
         // Empty Row
         RectTransform emptyRow = CreateHierarchyControlRow(hierCreateToolbar.transform);
 
-        var btnEmpty = GenerateUI.Button(emptyRow, () => {
+        var btnEmpty = O5Factory.Button(emptyRow, () => {
             if(currentCanvas == null) {
                 return;
             }
@@ -271,7 +273,7 @@ public class OvCanvasSettingPage : IDisposable {
         // Text / Image Row
         RectTransform createRow = CreateHierarchyControlRow(hierCreateToolbar.transform);
 
-        var btnText = GenerateUI.Button(createRow, () => {
+        var btnText = O5Factory.Button(createRow, () => {
             if(currentCanvas == null) {
                 return;
             }
@@ -297,7 +299,7 @@ public class OvCanvasSettingPage : IDisposable {
         btnText.Rect.offsetMax = Vector2.zero;
         permanentUiObjects.Add(btnText);
 
-        var btnImage = GenerateUI.Button(createRow, () => {
+        var btnImage = O5Factory.Button(createRow, () => {
             if(currentCanvas == null) {
                 return;
             }
@@ -340,7 +342,7 @@ public class OvCanvasSettingPage : IDisposable {
         ctrlHLayout.childForceExpandHeight = true;
 
         // Clone
-        var btnClone = GenerateUI.Button(hierCtrlToolbar.transform, () => {
+        var btnClone = O5Factory.Button(hierCtrlToolbar.transform, () => {
             if(selectedObject == null || currentCanvas == null) {
                 return;
             }
@@ -380,7 +382,7 @@ public class OvCanvasSettingPage : IDisposable {
         permanentUiObjects.Add(btnClone);
 
         // Delete
-        var btnDel = GenerateUI.Button(hierCtrlToolbar.transform, () => {
+        var btnDel = O5Factory.Button(hierCtrlToolbar.transform, () => {
             if(selectedObject == null) {
                 if(currentCanvas == null) {
                     return;
@@ -625,7 +627,7 @@ public class OvCanvasSettingPage : IDisposable {
     }
 
     private void RenderCanvasRootItem() {
-        var row = GenerateUI.Row(hierarchyContent, 50f);
+        var row = O5Factory.Row(hierarchyContent, 50f);
 
         // Add Horizontal Layout to Row to organize indent & button
         var hLayout = row.gameObject.AddComponent<HorizontalLayoutGroup>();
@@ -648,7 +650,7 @@ public class OvCanvasSettingPage : IDisposable {
         btnImg.type = Image.Type.Sliced;
         btnImg.color = (selectedObject == null) ? UIColors.ObjectActive : UIColors.ObjectBG;
 
-        var tmp = GenerateUI.AddText(itemBtn.transform);
+        var tmp = O5Factory.ControlText(itemBtn.transform, 24f);
         tmp.text = string.Format(
             MainCore.Tr.Get("CANVAS_ROOT", "Canvas: {0}"),
             currentCanvas.Config.Name
@@ -660,7 +662,7 @@ public class OvCanvasSettingPage : IDisposable {
         tmp.raycastTarget = false;
 
         var trigger = itemBtn.AddComponent<EventTrigger>();
-        GenerateUI.AddOutlineHover(itemBtn, trigger);
+        O5Effects.HoverOutline(itemBtn, trigger);
         UnityUtils.AddEvents(trigger,
             (EventTriggerType.PointerClick, eventData => {
 #pragma warning disable IDE0019
@@ -687,7 +689,7 @@ public class OvCanvasSettingPage : IDisposable {
     }
 
     private void RenderHierarchyItem(OvObject obj, int depth) {
-        var row = GenerateUI.Row(hierarchyContent, 36f);
+        var row = O5Factory.Row(hierarchyContent, 36f);
 
         var hLayout = row.gameObject.AddComponent<HorizontalLayoutGroup>();
         hLayout.childControlWidth = true;
@@ -721,7 +723,7 @@ public class OvCanvasSettingPage : IDisposable {
 
         AddHierarchyDragHandle(itemBtn.transform);
 
-        var tmp = GenerateUI.AddText(itemBtn.transform, true);
+        var tmp = O5Factory.ControlText(itemBtn.transform, 24f, true);
         tmp.text = obj.Config.Name;
         tmp.fontSize = 18f;
         tmp.color = Color.white;
@@ -731,7 +733,7 @@ public class OvCanvasSettingPage : IDisposable {
         tmp.rectTransform.offsetMin = new Vector2(28f, 0f);
 
         var trigger = itemBtn.AddComponent<EventTrigger>();
-        GenerateUI.AddOutlineHover(itemBtn, trigger);
+        O5Effects.HoverOutline(itemBtn, trigger);
         CanvasGroup dragCanvasGroup = itemBtn.AddComponent<CanvasGroup>();
         UnityUtils.AddEvents(trigger,
             (EventTriggerType.PointerClick, e => {
@@ -857,7 +859,7 @@ public class OvCanvasSettingPage : IDisposable {
         if(!hierarchyDropOnCanvas) {
             if(!RectTransformUtility.ScreenPointToLocalPointInRectangle(
                 hierarchyDropRect,
-                Overlayer.Compat.OVC.OVC_Input.MousePosition,
+                O5Kit.Input.O5Input.MousePosition,
                 null,
                 out Vector2 point
             )) {

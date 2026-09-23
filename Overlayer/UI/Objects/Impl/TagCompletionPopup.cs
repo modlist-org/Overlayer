@@ -1,13 +1,13 @@
 using FuzzySharp;
-using Overlayer.Compat.OVC;
+using O5Kit.Input;
 using Overlayer.Tag.Core;
-using Overlayer.UI.Generator;
+using O5Kit.Factory;
 using System.Reflection;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using static UnityEngine.EventSystems.PointerEventData;
-using Overlayer.UI.Utility;
+using O5Kit.Behaviour;
 
 #if ML && IL2CPP
 using MelonLoader;
@@ -188,7 +188,7 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
         Image image = row.AddComponent<Image>();
         image.color = Color.clear;
 
-        TextMeshProUGUI name = GenerateUI.AddText(row.transform, true);
+        TextMeshProUGUI name = O5Factory.ControlText(row.transform, 24f, true);
         name.font = sourceText.font;
         name.fontSize = 14f;
         name.alignment = TextAlignmentOptions.Left;
@@ -199,7 +199,7 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
         name.rectTransform.offsetMax = new(-150f, 0f);
         name.raycastTarget = false;
 
-        TextMeshProUGUI detail = GenerateUI.AddText(row.transform, true);
+        TextMeshProUGUI detail = O5Factory.ControlText(row.transform, 24f, true);
         detail.font = sourceText.font;
         detail.fontSize = 11f;
         detail.alignment = TextAlignmentOptions.Right;
@@ -211,11 +211,12 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
         detail.rectTransform.offsetMax = new(-10f, 0f);
         detail.raycastTarget = false;
 
-        GenerateUI.AddButton(row, button => {
+        var rowOvent = row.AddComponent<OventHandler>();
+        rowOvent.OnClick += button => {
             if(button == InputButton.Left) {
                 Accept(windowStart + index);
             }
-        });
+        };
 
         EventTrigger trigger = row.AddComponent<EventTrigger>();
 
@@ -602,7 +603,7 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
         => string.IsNullOrEmpty(parameter?.Name) ? $"arg{index + 1}" : parameter.Name;
 
     private static bool IsShiftHeld()
-        => OVC_Input.GetKey(KeyCode.LeftShift) || OVC_Input.GetKey(KeyCode.RightShift);
+        => O5Input.GetKey(KeyCode.LeftShift) || O5Input.GetKey(KeyCode.RightShift);
 
     private struct SnippetStop(int start, int end) {
         public int Start = start;
@@ -675,11 +676,11 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
         }
 
         private static KeyCode GetHeldNavigationKey() {
-            if(OVC_Input.GetKey(KeyCode.DownArrow)) {
+            if(O5Input.GetKey(KeyCode.DownArrow)) {
                 return KeyCode.DownArrow;
             }
 
-            if(OVC_Input.GetKey(KeyCode.UpArrow)) {
+            if(O5Input.GetKey(KeyCode.UpArrow)) {
                 return KeyCode.UpArrow;
             }
 
