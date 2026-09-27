@@ -1,5 +1,4 @@
-﻿using GTweens.Contexts;
-using Overlayer.Compat;
+﻿using Overlayer.Compat;
 using Overlayer.Compat.Interface;
 using Overlayer.Core.Service;
 using Overlayer.IO;
@@ -31,7 +30,6 @@ public static class MainCore {
     public static SpriteManager Spr => Runtime.Sprite;
     public static IOverlayerHost Host => Runtime.Host;
     public static UnityEngine.GameObject Root => Runtime.RootObject;
-    public static GTweensContext TC => Runtime.TweensContext;
     public static V8Manager V8 => Runtime.V8Manager;
     public static ModuleService ModuleService => Runtime.ModuleService;
     public static CameraManager Cam => Runtime.CameraManager;

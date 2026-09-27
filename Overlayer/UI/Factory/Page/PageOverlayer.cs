@@ -10,9 +10,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using static UnityEngine.EventSystems.PointerEventData;
-using Overlayer.Tween;
-using GTweens.Easings;
-using GTweens.Tweens;
+using O5Kit.Core;
 
 #if ML && IL2CPP
 using MelonLoader;
@@ -300,20 +298,16 @@ internal static class PageOverlayer {
             }
         };
 
-        GTween bgTween = null;
+        ITweenHandle bgTween = null;
         UnityUtils.AddEvents(trigger,
             (EventTriggerType.PointerEnter, () => {
                 bgTween?.Kill();
-                bgTween = bgImg.GTColor(UIColors.ObjectActiveLightBright, 0.12f)
-                    .SetEasing(Easing.OutSine);
-                MainCore.TC.Play(bgTween);
+                bgTween = bgImg.TColor(UIColors.ObjectActiveLightBright, 0.12f, O5Ease.OutSine);
             }
         ),
             (EventTriggerType.PointerExit, () => {
                 bgTween?.Kill();
-                bgTween = bgImg.GTColor(UIColors.ObjectButton, 0.12f)
-                    .SetEasing(Easing.OutSine);
-                MainCore.TC.Play(bgTween);
+                bgTween = bgImg.TColor(UIColors.ObjectButton, 0.12f, O5Ease.OutSine);
             }
         )
         );
@@ -321,7 +315,7 @@ internal static class PageOverlayer {
         return go;
     }
 
-    private static GTween fadeTween;
+    private static ITweenHandle fadeTween;
     private static void FadeCanvasGroup(CanvasGroup cg, float targetAlpha, bool setActive, bool noAnimate = false) {
         if(cg == null) {
             return;
@@ -343,15 +337,11 @@ internal static class PageOverlayer {
         } else {
             cg.blocksRaycasts = targetAlpha > 0;
 
-            fadeTween = cg.GTFade(targetAlpha, 0.25f)
-                .SetEasing(Easing.OutCubic)
-                .OnComplete(() => {
-                    if(!setActive) {
-                        cg.gameObject.SetActive(false);
-                    }
-                });
-
-            MainCore.TC.Play(fadeTween);
+            fadeTween = cg.TFade(targetAlpha, 0.25f, O5Ease.OutCubic, () => {
+                if(!setActive) {
+                    cg.gameObject.SetActive(false);
+                }
+            });
         }
     }
 

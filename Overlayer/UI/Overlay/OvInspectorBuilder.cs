@@ -15,10 +15,6 @@ using O5Kit.Factory;
 using O5Kit.Control;
 using Overlayer.UI.Objects.Impl;
 using O5Kit.Behaviour;
-using Overlayer.Tween;
-using GTweens.Builders;
-using GTweens.Easings;
-using GTweens.Tweens;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -370,7 +366,7 @@ internal sealed class OvInspectorBuilder(
         FxDoubleSlider(card, "Default Value", cfg.DefaultSize, 30, -10000f, 10000f, "moving_man_default", "F1");
         FxDoubleSlider(card, "Speed", cfg.Speed, 800, 0f, 10000f, "moving_man_speed", "F0");
         FxToggle(card, "Invert", cfg.Invert, false, "moving_man_invert");
-        FxEnum(card, "Ease", cfg.Ease, Easing.OutExpo, "moving_man_ease");
+        FxEnum(card, "Ease", cfg.Ease, O5Ease.OutExpo, "moving_man_ease");
     }
 
     private void MovingManTargets(Transform parent, MovingManSettings cfg) {
@@ -423,7 +419,7 @@ internal sealed class OvInspectorBuilder(
         FxDoubleSlider(card, "Maximum", cfg.Maximum, 100, -10000f, 10000f, "color_range_max", "F2");
         FxGradient(card, cfg.MinimumColor, Color.black, "color_range_min_fx");
         FxGradient(card, cfg.MaximumColor, Color.white, "color_range_max_fx");
-        FxEnum(card, "Ease", cfg.Ease, Easing.Linear, "color_range_ease");
+        FxEnum(card, "Ease", cfg.Ease, O5Ease.Linear, "color_range_ease");
     }
 
     private void BuildContentSizeFitter(OvObject obj, ContentSizeFitterSettings cfg) {
@@ -1283,7 +1279,7 @@ internal sealed class OvInspectorBuilder(
             if(image.color.Equals(UIColors.ObjectBG)) image.color = UIColors.FxField;
         }
         var fade = group.gameObject.AddComponent<CanvasGroup>();
-        GTween transition = null;
+        O5Seq transition = null;
         bool switching = false;
         var buttonSlot = O5Factory.Row(group, 50f);
         var slotLayout = buttonSlot.GetComponent<LayoutElement>();
@@ -1297,18 +1293,17 @@ internal sealed class OvInspectorBuilder(
             fade.interactable = false;
             transition?.Kill();
             float previousHeight = group.rect.height;
-            transition = GTweenSequenceBuilder.New()
-                .Join(fade.GTFade(0f, 0.1f).SetEasing(Easing.InSine))
-                .Join(editor.GTScale(new Vector3(0.985f, 0.985f, 1f), 0.1f).SetEasing(Easing.InQuad))
-                .Build().OnComplete(() => {
+            transition = O5Seq.New()
+                .Join(done => fade.TFade(0f, 0.1f, O5Ease.InSine, done))
+                .Join(done => editor.TScale(new Vector3(0.985f, 0.985f, 1f), 0.1f, O5Ease.InQuad, done))
+                .OnComplete(() => {
                 fx.UseFx = !fx.UseFx;
                 if(fx.UseFx) fx.EnsureEngine();
                 ApplyAndSave();
                 transitioningFx = (fx, previousHeight);
                 group.gameObject.SetActive(false);
                 rebuild();
-            });
-            MainCore.TC.Play(transition);
+            }).Play();
         }, MainCore.Spr.Get(UISprite.F128), id + "_use_fx", 4f);
         button.Rect.anchorMin = new Vector2(0f, 1f);
         button.Rect.anchorMax = new Vector2(1f, 1f);
@@ -1338,24 +1333,23 @@ internal sealed class OvInspectorBuilder(
             fade.interactable = false;
             switching = true;
             editor.localScale = new Vector3(0.985f, 0.985f, 1f);
-            transition = GTweenSequenceBuilder.New()
-                .Join(GTweens.Extensions.GTweenExtensions.Tween(
+            transition = O5Seq.New()
+                .Join(done => O5Boot.Tween.TweenFloat(
                     () => size.preferredHeight,
                     height => {
                         size.preferredHeight = height;
                         LayoutRebuilder.MarkLayoutForRebuild(group);
-                    }, targetHeight, 0.24f).SetEasing(Easing.OutCubic))
-                .Join(fade.GTFade(1f, 0.2f).SetEasing(Easing.OutSine))
-                .Join(editor.GTScale(Vector3.one, 0.24f).SetEasing(Easing.OutCubic))
-                .Build().OnComplete(() => {
+                    }, targetHeight, 0.24f, done, O5Ease.OutCubic))
+                .Join(done => fade.TFade(1f, 0.2f, O5Ease.OutSine, done))
+                .Join(done => editor.TScale(Vector3.one, 0.24f, O5Ease.OutCubic, done))
+                .OnComplete(() => {
                     size.minHeight = 50f;
                     size.preferredHeight = -1f;
                     transitionMask.enabled = false;
                     fade.interactable = true;
                     switching = false;
                     LayoutRebuilder.MarkLayoutForRebuild(group);
-                });
-            MainCore.TC.Play(transition);
+                }).Play();
         }
         button.OnDisposed += () => {
             transition?.Kill();
@@ -1886,7 +1880,7 @@ internal sealed class OvInspectorBuilder(
         RectTransform blocker = CreatePopupBlocker(UICore.Canvas.transform);
         CanvasGroup popupCanvas = popup.gameObject.AddComponent<CanvasGroup>();
         blocker.gameObject.SetActive(false);
-        GTween popupTween = null;
+        ITweenHandle popupTween = null;
         summary.OnDisposed += () => {
             popupTween?.Kill();
             if(popup != null) {
@@ -2101,7 +2095,7 @@ internal sealed class OvInspectorBuilder(
         RectTransform blocker = CreatePopupBlocker(UICore.Canvas.transform);
         CanvasGroup popupCanvas = popup.gameObject.AddComponent<CanvasGroup>();
         blocker.gameObject.SetActive(false);
-        GTween popupTween = null;
+        ITweenHandle popupTween = null;
         summary.OnDisposed += () => {
             popupTween?.Kill();
             if(popup != null) {
@@ -2296,12 +2290,11 @@ internal sealed class OvInspectorBuilder(
         ApplyAnchorModeForAxis(cfg, 1, vertical, parentSize.y, visibleSize.y, setPivot, setPosition);
     }
 
-    private static GTween PlayPopupAnimation(RectTransform popup, CanvasGroup canvas, bool opening) {
-        GTween sequence = GTweenSequenceBuilder.New()
-            .Join(popup.GTScale(opening ? Vector3.one : new Vector3(0.96f, 0.96f, 1f), 0.2f).SetEasing(Easing.OutBack))
-            .Join(canvas.GTFade(opening ? 1f : 0f, 0.16f).SetEasing(Easing.OutSine))
-            .Build();
-        MainCore.TC.Play(sequence);
+    private static O5Seq PlayPopupAnimation(RectTransform popup, CanvasGroup canvas, bool opening) {
+        O5Seq sequence = O5Seq.New()
+            .Join(done => popup.TScale(opening ? Vector3.one : new Vector3(0.96f, 0.96f, 1f), 0.2f, O5Ease.OutBack, done))
+            .Join(done => canvas.TFade(opening ? 1f : 0f, 0.16f, O5Ease.OutSine, done))
+            .Play();
         return sequence;
     }
 

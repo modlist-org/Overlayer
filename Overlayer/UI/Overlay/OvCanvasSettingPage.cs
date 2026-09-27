@@ -9,9 +9,6 @@ using O5Kit.Behaviour;
 using UnityEngine;
 using UnityEngine.UI;
 using static UnityEngine.EventSystems.PointerEventData;
-using GTweens.Tweens;
-using Overlayer.Tween;
-using GTweens.Easings;
 using UnityEngine.EventSystems;
 using Overlayer.IO.UnityComponent.Impl;
 using Overlayer.IO.Overlay;
@@ -48,7 +45,7 @@ public class OvCanvasSettingPage : IDisposable {
     private HierarchyDropZone hierarchyDropZone;
     private bool hierarchyDropVisualActive;
 
-    private GTween canvasFadeTween;
+    private ITweenHandle canvasFadeTween;
 
     private enum HierarchyDropZone { Before, Inside, After }
 
@@ -568,9 +565,7 @@ public class OvCanvasSettingPage : IDisposable {
             CanvasGroup.blocksRaycasts = true;
         } else {
             canvasFadeTween?.Kill();
-            canvasFadeTween = CanvasGroup.GTFade(1f, 0.25f).SetEasing(Easing.OutCubic);
-            canvasFadeTween.OnComplete(() => CanvasGroup.blocksRaycasts = true);
-            MainCore.TC.Play(canvasFadeTween);
+            canvasFadeTween = CanvasGroup.TFade(1f, 0.25f, O5Ease.OutCubic, () => CanvasGroup.blocksRaycasts = true);
         }
     }
 
@@ -1028,9 +1023,7 @@ public class OvCanvasSettingPage : IDisposable {
             CanvasGroup.alpha = 0f;
             GameObject.SetActive(false);
         } else {
-            canvasFadeTween = CanvasGroup.GTFade(0f, 0.25f).SetEasing(Easing.OutCubic);
-            canvasFadeTween.OnComplete(() => GameObject.SetActive(false));
-            MainCore.TC.Play(canvasFadeTween);
+            canvasFadeTween = CanvasGroup.TFade(0f, 0.25f, O5Ease.OutCubic, () => GameObject.SetActive(false));
         }
     }
 

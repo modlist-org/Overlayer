@@ -1,4 +1,4 @@
-using GTweens.Easings;
+using O5Kit.Core;
 using Overlayer.Tag.Core;
 using UnityEngine;
 
@@ -16,7 +16,7 @@ public static class Effects {
 
     [Tag(TagType = TagType.ProcessFormat)]
     public static double EasedValue(string tagName, int digits = -1, double speed = 500,
-        Easing ease = Easing.Linear) {
+        O5Ease ease = O5Ease.Linear) {
         if(!TryReadNumber(tagName, out double value)) {
             return 0;
         }
@@ -36,7 +36,7 @@ public static class Effects {
 
     [Tag]
     public static string ColorRange(string tagName, double minimum, double maximum, string minimumHex,
-        string maximumHex, Easing ease = Easing.Linear, int maxLength = -1) {
+        string maximumHex, O5Ease ease = O5Ease.Linear, int maxLength = -1) {
         if(!TryColorRangeProgress(tagName, minimum, maximum, ease, out float progress)
             || !TryColor(minimumHex, out Color from, out bool fromAlpha)
             || !TryColor(maximumHex, out Color to, out bool toAlpha)) {
@@ -50,7 +50,7 @@ public static class Effects {
         return maxLength < 0 || result.Length <= maxLength ? result : result[..maxLength];
     }
 
-    internal static bool TryColorRangeProgress(string tagName, double minimum, double maximum, Easing ease, out float progress) {
+    internal static bool TryColorRangeProgress(string tagName, double minimum, double maximum, O5Ease ease, out float progress) {
         progress = 0f;
         if(!TryReadNumber(tagName, out double value)) {
             return false;
@@ -66,7 +66,7 @@ public static class Effects {
 
     [Tag]
     public static double MovingMan(string tagName, double startSize, double endSize, double defaultSize,
-        double speed, bool invert = false, Easing ease = Easing.OutExpo) {
+        double speed, bool invert = false, O5Ease ease = O5Ease.OutExpo) {
         if(!TryReadNumber(tagName, out double value)) {
             return defaultSize;
         }
@@ -100,7 +100,7 @@ public static class Effects {
         return state;
     }
 
-    private static double Interpolate(AnimationState state, double now, double speed, Easing ease) {
+    private static double Interpolate(AnimationState state, double now, double speed, O5Ease ease) {
         if(speed <= 0) {
             return state.Target;
         }
@@ -109,8 +109,22 @@ public static class Effects {
         return state.Previous + ((state.Target - state.Previous) * EaseValue(progress, ease));
     }
 
-    private static float EaseValue(float progress, Easing ease)
-        => PresetEasingDelegateFactory.GetEaseDelegate(ease)(0f, 1f, progress);
+    private static float EaseValue(float progress, O5Ease ease) => ease switch {
+        O5Ease.Linear => progress,
+        O5Ease.InSine => 1f - MathF.Cos(progress * MathF.PI * 0.5f),
+        O5Ease.OutSine => MathF.Sin(progress * MathF.PI * 0.5f),
+        O5Ease.InOutSine => -(MathF.Cos(MathF.PI * progress) - 1f) * 0.5f,
+        O5Ease.InQuad => progress * progress,
+        O5Ease.OutQuad => 1f - ((1f - progress) * (1f - progress)),
+        O5Ease.InOutQuad => progress < 0.5f ? 2f * progress * progress : 1f - (MathF.Pow((-2f * progress) + 2f, 2f) / 2f),
+        O5Ease.InCubic => progress * progress * progress,
+        O5Ease.OutCubic => 1f - MathF.Pow(1f - progress, 3f),
+        O5Ease.InOutCubic => progress < 0.5f ? 4f * progress * progress * progress : 1f - (MathF.Pow((-2f * progress) + 2f, 3f) / 2f),
+        O5Ease.OutExpo => progress >= 1f ? 1f : 1f - MathF.Pow(2f, -10f * progress),
+        O5Ease.OutCirc => MathF.Sqrt(1f - MathF.Pow(progress - 1f, 2f)),
+        O5Ease.OutBack => 1f + (2.70158f * MathF.Pow(progress - 1f, 3f)) + (1.70158f * MathF.Pow(progress - 1f, 2f)),
+        _ => progress
+    };
 
     private static bool TryReadNumber(string tagName, out double value) {
         value = 0;

@@ -439,3 +439,7 @@ Directory.Build.props
 
 # Overlayer build output
 .build
+
+# Overlayer release packaging (local only)
+dist/
+tool/build-refs.zip

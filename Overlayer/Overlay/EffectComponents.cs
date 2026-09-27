@@ -1,4 +1,4 @@
-using GTweens.Easings;
+using O5Kit.Core;
 using Overlayer.TagImpl;
 using UnityEngine;
 
@@ -47,7 +47,7 @@ public sealed class MovingManComponent
     public double DefaultSize;
     public double Speed;
     public bool Invert;
-    public Easing Ease;
+    public O5Ease Ease;
 
     public void Init(TMP_Text text, RectTransform rect) {
         Text = text;
@@ -142,7 +142,7 @@ public sealed class ColorRangeComponent
     public double Maximum;
     public GradientColor MinimumColor;
     public GradientColor MaximumColor;
-    public Easing Ease;
+    public O5Ease Ease;
 
     public void Init(TMP_Text text) => Text = text;
 

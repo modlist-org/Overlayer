@@ -1,4 +1,4 @@
-using GTweens.Easings;
+using O5Kit.Core;
 using Newtonsoft.Json.Linq;
 using Overlayer.IO.Fx;
 using Overlayer.IO.Interface;
@@ -15,7 +15,7 @@ public sealed class MovingManSettings : UnityComponentSettingsBase, ICopyable<Mo
     public FxValue<double> DefaultSize = new(30);
     public FxValue<double> Speed = new(800);
     public FxValue<bool> Invert = new(false);
-    public FxValue<Easing> Ease = new(Easing.OutExpo);
+    public FxValue<O5Ease> Ease = new(O5Ease.OutExpo);
 
     private string _lastTagName = string.Empty;
     private MovingManTarget _lastTarget = MovingManTarget.TextSize;
@@ -24,7 +24,7 @@ public sealed class MovingManSettings : UnityComponentSettingsBase, ICopyable<Mo
     private double _lastDefaultSize = 30;
     private double _lastSpeed = 800;
     private bool _lastInvert;
-    private Easing _lastEase = Easing.OutExpo;
+    private O5Ease _lastEase = O5Ease.OutExpo;
 
     public override bool HasAnyFx => base.HasAnyFx
         || FxUtil.HasFx(TagName)

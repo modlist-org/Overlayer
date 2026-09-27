@@ -2,13 +2,10 @@ using Overlayer.Core;
 using Overlayer.Localization;
 using Overlayer.Resource;
 using O5Kit.Transition;
+using O5Kit.Core;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
-using GTweens.Tweens;
-using Overlayer.Tween;
-using GTweens.Builders;
-using GTweens.Easings;
 
 #if ML && IL2CPP
 using Il2CppInterop.Runtime;
@@ -26,7 +23,7 @@ public static class MenuFactory {
         public int state;
         public GameObject obj;
         public Image bg;
-        public GTween hoverSeq;
+        public ITweenHandle hoverSeq;
         public TMP_Text label;
     }
 
@@ -139,10 +136,7 @@ public static class MenuFactory {
             }
 
             menuItem.hoverSeq?.Kill();
-            menuItem.hoverSeq = GTweenSequenceBuilder.New()
-                .Append(bg.GTColor(UIColors.MenuHover, 0.2f).SetEasing(Easing.OutSine))
-                .Build();
-            MainCore.TC.Play(menuItem.hoverSeq);
+            menuItem.hoverSeq = bg.TColor(UIColors.MenuHover, 0.2f, O5Ease.OutSine);
         });
 
         Add(EventTriggerType.PointerExit, () => {
@@ -151,10 +145,7 @@ public static class MenuFactory {
             }
 
             menuItem.hoverSeq?.Kill();
-            menuItem.hoverSeq = GTweenSequenceBuilder.New()
-                .Append(bg.GTColor(UIColors.MenuNormal, 0.25f).SetEasing(Easing.OutSine))
-                .Build();
-            MainCore.TC.Play(menuItem.hoverSeq);
+            menuItem.hoverSeq = bg.TColor(UIColors.MenuNormal, 0.25f, O5Ease.OutSine);
         });
 
         Add(EventTriggerType.PointerClick, () => SetState(state));
@@ -191,9 +182,7 @@ public static class MenuFactory {
                 } else {
                     it.bg.color = UIColors.MenuHighlight;
 
-                    it.hoverSeq = it.bg.GTColor(UIColors.MenuSelected, 0.3f)
-                        .SetEasing(Easing.OutSine);
-                    MainCore.TC.Play(it.hoverSeq);
+                    it.hoverSeq = it.bg.TColor(UIColors.MenuSelected, 0.3f, O5Ease.OutSine);
                 }
             } else {
                 it.bg.color = UIColors.MenuNormal;

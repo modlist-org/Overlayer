@@ -1,4 +1,3 @@
-using GTweens.Contexts;
 using Overlayer.Async;
 using Overlayer.Compat;
 using Overlayer.Compat.Interface;
@@ -38,8 +37,6 @@ public sealed class OverlayerRuntime {
 
     public GameObject RootObject { get; private set; }
 
-    public GTweensContext TweensContext { get; }
-
     public V8Manager V8Manager { get; private set; }
 
     public ModuleService ModuleService { get; private set; }
@@ -52,7 +49,6 @@ public sealed class OverlayerRuntime {
     private readonly RuntimeTicks ticks;
 
     private UIService uiService;
-    private TweenService tweenService;
 
     public OverlayerRuntime(IOverlayerHost host) {
         Host = host;
@@ -80,7 +76,6 @@ public sealed class OverlayerRuntime {
         CameraManager = new CameraManager();
         services = new RuntimeServices();
         ticks = new RuntimeTicks();
-        TweensContext = new GTweensContext();
     }
 
     public void Initialize() {
@@ -95,16 +90,13 @@ public sealed class OverlayerRuntime {
         Localization = new LocalizationService(Paths.LangPath, Config, Logger);
 
         uiService = new UIService();
-        tweenService = new TweenService(TweensContext);
         ModuleService = new ModuleService(Logger);
 
         services.Add(Localization);
         services.Add(uiService);
-        services.Add(tweenService);
         services.Add(V8Manager);
 
         ticks.Add(uiService);
-        ticks.Add(tweenService);
 
         services.Initialize();
 

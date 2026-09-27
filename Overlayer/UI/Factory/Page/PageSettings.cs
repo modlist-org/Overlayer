@@ -1,19 +1,15 @@
-using GTweens.Builders;
-using GTweens.Easings;
-using GTweens.Tweens;
 using Overlayer.Async;
 using Overlayer.Core;
 using Overlayer.IO;
 using Overlayer.Localization;
 using Overlayer.Resource;
-using Overlayer.Tween;
+using O5Kit.Core;
 using O5Kit.Factory;
 using O5Kit.Control;
 using O5Kit.Behaviour;
 using Overlayer.Utility;
 using UnityEngine;
 using UnityEngine.UI;
-using GTweenExtensions = GTweens.Extensions.GTweenExtensions;
 
 namespace Overlayer.UI.Factory.Page;
 
@@ -258,7 +254,7 @@ internal static class PageSettings {
         var middleClickToggleTr = middleClickToggle.Label.gameObject.AddComponent<TextLocalization>().Init("MIDDLE_CLICK_TO_SET_AS_DEFAULT", "Middle-click to set as default");
         objects[middleClickToggleTr] = (overlayerText.gameObject, middleClickRow.gameObject);
 
-        GTween scaleSeq = null;
+        ITweenHandle scaleSeq = null;
 
         var uiScaleRow = O5Factory.Row(content.transform);
         var uiScale = O5Factory.Slider(
@@ -282,21 +278,20 @@ internal static class PageSettings {
                 Vector2 targetSize = UICore.DefaultPanelSize;
                 UICore.LastPanelSize = targetSize;
 
-                scaleSeq = GTweenSequenceBuilder.New()
-                    .Append(
-                        GTweenExtensions.Tween(
+                scaleSeq = O5Seq.New()
+                    .Append(done =>
+                        O5Boot.Tween.TweenFloat(
                             () => scaleStart,
                             x => UICore.PanelScale = x,
                             value,
-                            0.4f
-                        ).SetEasing(Easing.OutExpo)
+                            0.4f,
+                            done,
+                            O5Ease.OutExpo
+                        )
                     )
-                    .Join(
-                        UICore.Panel.GTSizeDelta(targetSize, 0.4f)
-                        .SetEasing(Easing.OutExpo)
-                    ).Build();
-
-                MainCore.TC.Play(scaleSeq);
+                    .Join(done =>
+                        UICore.Panel.TSizeDelta(targetSize, 0.4f, O5Ease.OutExpo, done)
+                    ).Play();
             },
             "UI Scale",
             "ui_scale"

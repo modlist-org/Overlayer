@@ -1,4 +1,4 @@
-using GTweens.Easings;
+using O5Kit.Core;
 using Newtonsoft.Json.Linq;
 using Overlayer.IO.Fx;
 using Overlayer.IO.Interface;
@@ -13,14 +13,14 @@ public sealed class ColorRangeSettings : UnityComponentSettingsBase, ICopyable<C
     public FxValue<double> Maximum = new(100);
     public FxValue<GradientColor> MinimumColor = new(new GradientColor(Color.black, true));
     public FxValue<GradientColor> MaximumColor = new(new GradientColor(Color.white, true));
-    public FxValue<Easing> Ease = new(Easing.Linear);
+    public FxValue<O5Ease> Ease = new(O5Ease.Linear);
 
     private string _lastTagName = string.Empty;
     private double _lastMinimum;
     private double _lastMaximum = 100;
     private GradientColor _lastMinimumColor = new(Color.black, true);
     private GradientColor _lastMaximumColor = new(Color.white, true);
-    private Easing _lastEase = Easing.Linear;
+    private O5Ease _lastEase = O5Ease.Linear;
 
     public override bool HasAnyFx => base.HasAnyFx
         || FxUtil.HasFx(TagName)
