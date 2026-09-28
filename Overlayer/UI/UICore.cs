@@ -1,4 +1,6 @@
+using Overlayer.Tween;
 using Overlayer.Async;
+using Overlayer.Compat;
 using O5Kit.Core;
 using Overlayer.Core;
 using Overlayer.Localization;
@@ -61,8 +63,8 @@ public static class UICore {
         CanvasObj.AddComponent<GraphicRaycaster>();
 
         CreatePanel();
-        ResizeHandle.CreateResizeHandles(Panel, CanvasObj.GetComponent<RectTransform>());
-        O5Kit.Core.O5Tooltip.Initialize(CanvasObj.transform);
+        ResizeHandle.CreateResizeHandles(O5KitAdapters.Ctx, Panel, CanvasObj.GetComponent<RectTransform>());
+        O5KitAdapters.Ctx.Tooltip.Initialize(CanvasObj.transform);
         RegisterToggleShortcut();
 
         _onPageSettings = state => {
@@ -159,7 +161,7 @@ public static class UICore {
                 string fullText = Application.platform == RuntimePlatform.LinuxPlayer
                     ? "Press Ctrl + ` (BackQuote, left of 1 key)"
                     : "Press Alt + ` (BackQuote, left of 1 key)";
-                secondRunHelperTextSequence = O5Boot.Tween.TweenFloat(
+                secondRunHelperTextSequence = O5KitAdapters.Ctx.Tween.TweenFloat(
                     () => 0f,
                     x => firstRunHelperText.text = fullText[..(int)x],
                     fullText.Length,
@@ -183,7 +185,7 @@ public static class UICore {
 
         O5Seq.New()
             .Append(done => firstRunHelperImage.TAlpha(1.0f, 0.2f, O5Ease.OutSine, done))
-            .Join(done => O5Boot.Tween.TweenFloat(
+            .Join(done => O5KitAdapters.Ctx.Tween.TweenFloat(
                 () => 0f,
                 x => firstRunHelperText.text = endText[..(int)x],
                 endText.Length,
@@ -542,7 +544,7 @@ public static class UICore {
 
         O5ShortcutManager.Register(
             ToggleShortcutId,
-            new O5KeyCombo(O5Kit.Core.O5Boot.Config.ToggleKey, modifier),
+            new O5KeyCombo(O5KitAdapters.Ctx.Config.ToggleKey, modifier),
             ToggleHoldSeconds,
             onPressed: _ => Toggle(),
             onHeld: _ => ResetScalePosition(!isOpen)
@@ -570,7 +572,7 @@ public static class UICore {
         O5ShortcutManager.HandleUpdate();
 
         O5Object.TickAll();
-        O5Kit.Core.O5Tooltip.Tick();
+        O5KitAdapters.Ctx.Tooltip.Tick();
     }
 
     private static Vector2 GetRandomOffscreenPosition() {
@@ -759,7 +761,7 @@ public static class UICore {
         O5ShortcutManager.Unregister(ToggleShortcutId);
         MainCore.Tr.OnLoadEnd -= _onPageSettings;
         MainCore.Tr.OnLoadEnd -= _onRefresh;
-        O5Kit.Core.O5Tooltip.Dispose();
+        O5KitAdapters.Ctx.Tooltip.Dispose();
         UnityEngine.Object.Destroy(CanvasObj);
         CanvasObj = null;
     }

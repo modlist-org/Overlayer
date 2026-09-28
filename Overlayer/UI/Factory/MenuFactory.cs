@@ -1,3 +1,5 @@
+using Overlayer.Tween;
+using Overlayer.Compat;
 using Overlayer.Core;
 using Overlayer.Localization;
 using Overlayer.Resource;
@@ -162,7 +164,7 @@ public static class MenuFactory {
 
         UICore.CurrentMenuState = to;
 
-        O5PageSwitcher.SwitchPage(UICore.Pages, from, to);
+        O5PageSwitcher.SwitchPage(O5KitAdapters.Ctx, UICore.Pages, from, to);
         ApplyState(to);
 
         OnStateChanged?.Invoke(to);

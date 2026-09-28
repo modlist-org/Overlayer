@@ -1,3 +1,5 @@
+using Overlayer.Tween;
+using Overlayer.Compat;
 using Overlayer.Core;
 using Overlayer.Async;
 using Overlayer.Localization;
@@ -81,7 +83,9 @@ internal static class PageOverlayer {
         var keeper = grid.AddComponent<GridRatioKeeper>();
         keeper.Setup(contentRectRef);
 
-        parent.gameObject.AddComponent<UIScrollController>().SetContent(contentRectRef, viewportRect);
+        var pageScroll = parent.gameObject.AddComponent<UIScrollController>();
+        pageScroll.Ctx = O5KitAdapters.Ctx;
+        pageScroll.SetContent(contentRectRef, viewportRect);
 
         CreateDisabledPanel(viewportRect);
 
@@ -233,7 +237,7 @@ internal static class PageOverlayer {
         txt.color = Color.white;
         txt.raycastTarget = false;
 
-        O5Effects.HoverOutline(bg, bg.AddComponent<EventTrigger>());
+        O5Effects.HoverOutline(O5KitAdapters.Ctx, bg, bg.AddComponent<EventTrigger>());
 
         var bgOvent = bg.AddComponent<OventHandler>();
         bgOvent.OnClick += btn => {
@@ -287,7 +291,7 @@ internal static class PageOverlayer {
 
         var trigger = go.AddComponent<EventTrigger>();
 
-        O5Effects.HoverOutline(go, trigger);
+        O5Effects.HoverOutline(O5KitAdapters.Ctx, go, trigger);
 
         var goOvent = go.AddComponent<OventHandler>();
         goOvent.OnClick += btn => {

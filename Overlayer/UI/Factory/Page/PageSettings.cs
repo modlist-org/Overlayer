@@ -1,3 +1,5 @@
+using Overlayer.Tween;
+using Overlayer.Compat;
 using Overlayer.Async;
 using Overlayer.Core;
 using Overlayer.IO;
@@ -61,13 +63,15 @@ internal static class PageSettings {
         var fitter = content.AddComponent<ContentSizeFitter>();
         fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
-        pad.AddComponent<UIScrollController>().SetContent(contentRect, viewportRect);
+        var pageScroll = pad.AddComponent<UIScrollController>();
+        pageScroll.Ctx = O5KitAdapters.Ctx;
+        pageScroll.SetContent(contentRect, viewportRect);
 
         CoreSettings defSet = new();
 
-        var inputRow = O5Factory.Row(content.transform);
+        var inputRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
         var findInput =
-        O5Factory.Input(
+        O5Factory.Input(O5KitAdapters.Ctx, 
             inputRow,
             null,
             null,
@@ -123,15 +127,15 @@ internal static class PageSettings {
         findInput.Placeholder.gameObject.AddComponent<TextLocalization>().Init("FIND", "Find");
         findInput.InputField.characterLimit = 22;
 
-        var langLabelRow = O5Factory.Row(content.transform);
-        var langText = O5Factory.ControlTextH1(langLabelRow);
+        var langLabelRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
+        var langText = O5Factory.ControlTextH1(O5KitAdapters.Ctx, langLabelRow);
         var langTextTr = langText.gameObject.AddComponent<TextLocalization>().Init("LANGUAGE", "Language");
 
         string[] langs = [.. MainCore.Tr.GetLanguages().OrderBy(x => x, StringComparer.OrdinalIgnoreCase)];
         const float languageReloadWidth = 240f;
         const float languageControlSpacing = 8f;
-        var langRow = O5Factory.Row(content.transform);
-        languageDropdown = O5Factory.DropDown(
+        var langRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
+        languageDropdown = O5Factory.DropDown(O5KitAdapters.Ctx, 
             langRow,
             null,
             MainCore.Tr.Language,
@@ -158,7 +162,7 @@ internal static class PageSettings {
             "language_dropdown"
         );
         languageDropdown.Rect.offsetMax = new Vector2(-(languageReloadWidth + languageControlSpacing), 0f);
-        var langBtn = O5Factory.Button(
+        var langBtn = O5Factory.Button(O5KitAdapters.Ctx, 
             langRow,
             () => { },
             "Reload",
@@ -190,11 +194,11 @@ internal static class PageSettings {
 
         objects[langTextTr] = (langLabelRow.gameObject, langRow.gameObject);
 
-        var overlayerText = O5Factory.ControlTextH1(O5Factory.Row(content.transform));
+        var overlayerText = O5Factory.ControlTextH1(O5KitAdapters.Ctx, O5Factory.Row(O5KitAdapters.Ctx, content.transform));
         var overlayerTextTr = overlayerText.gameObject.AddComponent<TextLocalization>().Init("OVERLAYER", "Overlayer");
 
-        var startupRow = O5Factory.Row(content.transform);
-        var startupToggle = O5Factory.Toggle(
+        var startupRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
+        var startupToggle = O5Factory.Toggle(O5KitAdapters.Ctx, 
             startupRow,
             defSet.ShowOnStartup,
             MainCore.Conf.ShowOnStartup,
@@ -208,26 +212,26 @@ internal static class PageSettings {
         var startupToggleTr = startupToggle.Label.gameObject.AddComponent<TextLocalization>().Init("SHOW_OVERLAYER_PANEL_AT_STARTUP", "Show Overlayer Panel at Startup");
         objects[startupToggleTr] = (overlayerText.gameObject, startupRow.gameObject);
 
-        var tooltipRow = O5Factory.Row(content.transform);
-        var tooltipToggle = O5Factory.Toggle(tooltipRow, defSet.Tooltip, MainCore.Conf.Tooltip, null, "Show Tooltip", "show_tooltip");
-        var advTooltipRow = O5Factory.Row(content.transform);
-        var advTooltipToggle = O5Factory.Toggle(advTooltipRow, defSet.AdvancedTooltip, MainCore.Conf.AdvancedTooltip, null, "Show Advanced Tooltip", "show_advanced_tooltip");
+        var tooltipRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
+        var tooltipToggle = O5Factory.Toggle(O5KitAdapters.Ctx, tooltipRow, defSet.Tooltip, MainCore.Conf.Tooltip, null, "Show Tooltip", "show_tooltip");
+        var advTooltipRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
+        var advTooltipToggle = O5Factory.Toggle(O5KitAdapters.Ctx, advTooltipRow, defSet.AdvancedTooltip, MainCore.Conf.AdvancedTooltip, null, "Show Advanced Tooltip", "show_advanced_tooltip");
         tooltipToggle.OnChanged = toggle => {
-            O5Kit.Core.O5Tooltip.Hide();
+            O5KitAdapters.Ctx.Tooltip.Hide();
             MainCore.Conf.Tooltip = toggle;
             MainCore.ConfMgr.RequestSave();
 
             advTooltipToggle.SetBlocked(!toggle);
         };
         advTooltipToggle.OnChanged = toggle => {
-            O5Kit.Core.O5Tooltip.Hide();
+            O5KitAdapters.Ctx.Tooltip.Hide();
             MainCore.Conf.AdvancedTooltip = toggle;
             MainCore.ConfMgr.RequestSave();
         };
-        tooltipToggle.Rect.AddToolTip(() => MainCore.Tr.Get("DESC_SHOW_TOOLTIP", "This is a Tooltip!"));
+        tooltipToggle.Rect.AddToolTip(O5KitAdapters.Ctx, () => MainCore.Tr.Get("DESC_SHOW_TOOLTIP", "This is a Tooltip!"));
         var tooltipToggleTr = tooltipToggle.Label.gameObject.AddComponent<TextLocalization>().Init("SHOW_TOOLTIP", "Show Tooltip");
         objects[tooltipToggleTr] = (overlayerText.gameObject, tooltipRow.gameObject);
-        advTooltipToggle.Rect.AddToolTip(() => MainCore.Tr.Get(
+        advTooltipToggle.Rect.AddToolTip(O5KitAdapters.Ctx, () => MainCore.Tr.Get(
             "DESC_SHOW_ADVANCED_TOOLTIP",
             "Additionally displays developer-written notes, technical implementation details, and inner mechanics in tooltips.\nRecommended for anyone curious about how features work under the hood."
         ));
@@ -235,8 +239,8 @@ internal static class PageSettings {
         objects[advTooltipToggleTr] = (overlayerText.gameObject, advTooltipRow.gameObject);
         advTooltipToggle.SetBlocked(!MainCore.Conf.Tooltip.Value);
 
-        var middleClickRow = O5Factory.Row(content.transform);
-        O5Toggle middleClickToggle = O5Factory.Toggle(
+        var middleClickRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
+        O5Toggle middleClickToggle = O5Factory.Toggle(O5KitAdapters.Ctx, 
             middleClickRow,
             defSet.MiddleClickToDefault,
             MainCore.Conf.MiddleClickToDefault,
@@ -247,7 +251,7 @@ internal static class PageSettings {
             "Middle-click to set as default",
             "middle_click_default"
         );
-        middleClickToggle.Rect.AddToolTip(() => MainCore.Tr.Get(
+        middleClickToggle.Rect.AddToolTip(O5KitAdapters.Ctx, () => MainCore.Tr.Get(
             "DESC_MIDDLE_CLICK_TO_SET_AS_DEFAULT",
             "Setting that restores an item to its default value when you middle-click on it.\nYou can identify it by a small dot at the top-left of the item"
         ));
@@ -256,8 +260,8 @@ internal static class PageSettings {
 
         ITweenHandle scaleSeq = null;
 
-        var uiScaleRow = O5Factory.Row(content.transform);
-        var uiScale = O5Factory.Slider(
+        var uiScaleRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
+        var uiScale = O5Factory.Slider(O5KitAdapters.Ctx, 
             uiScaleRow,
             defSet.UIScale,
             0.8f,
@@ -280,7 +284,7 @@ internal static class PageSettings {
 
                 scaleSeq = O5Seq.New()
                     .Append(done =>
-                        O5Boot.Tween.TweenFloat(
+                        O5KitAdapters.Ctx.Tween.TweenFloat(
                             () => scaleStart,
                             x => UICore.PanelScale = x,
                             value,
@@ -300,8 +304,8 @@ internal static class PageSettings {
         var uiScaleTr = uiScale.Label.gameObject.AddComponent<TextLocalization>().Init("UI_SCALE", "UI Scale");
         objects[uiScaleTr] = (overlayerText.gameObject, uiScaleRow.gameObject);
 
-        var sliderSensitivityRow = O5Factory.Row(content.transform);
-        var sliderSensitivity = O5Factory.Slider(
+        var sliderSensitivityRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
+        var sliderSensitivity = O5Factory.Slider(O5KitAdapters.Ctx, 
             sliderSensitivityRow,
             defSet.SliderSensitivity,
             0.1f,

@@ -1,3 +1,4 @@
+using Overlayer.Compat;
 using FuzzySharp;
 using O5Kit.Input;
 using Overlayer.Tag.Core;
@@ -188,7 +189,7 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
         Image image = row.AddComponent<Image>();
         image.color = Color.clear;
 
-        TextMeshProUGUI name = O5Factory.ControlText(row.transform, 24f, true);
+        TextMeshProUGUI name = O5Factory.ControlText(O5KitAdapters.Ctx, row.transform, 24f, true);
         name.font = sourceText.font;
         name.fontSize = 14f;
         name.alignment = TextAlignmentOptions.Left;
@@ -199,7 +200,7 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
         name.rectTransform.offsetMax = new(-150f, 0f);
         name.raycastTarget = false;
 
-        TextMeshProUGUI detail = O5Factory.ControlText(row.transform, 24f, true);
+        TextMeshProUGUI detail = O5Factory.ControlText(O5KitAdapters.Ctx, row.transform, 24f, true);
         detail.font = sourceText.font;
         detail.fontSize = 11f;
         detail.alignment = TextAlignmentOptions.Right;

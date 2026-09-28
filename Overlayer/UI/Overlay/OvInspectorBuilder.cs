@@ -1,4 +1,6 @@
+using Overlayer.Tween;
 using Overlayer.IO.Fx;
+using Overlayer.Compat;
 using O5Kit.Core;
 using Overlayer.IO.UnityComponent.Impl;
 using Overlayer.IO.UnityComponent;
@@ -117,7 +119,7 @@ internal sealed class OvInspectorBuilder(
         }
         if(obj.Config.HasRectMask2D.Value) {
             componentKey = "RECT_MASK_2D";
-            var (_, rectMask) = O5Factory.Card(content, InspectorLabel("Rect Mask 2D"), obj.Config.RectMask2DEnabled.Value, value => {
+            var (_, rectMask) = O5Factory.Card(O5KitAdapters.Ctx, content, InspectorLabel("Rect Mask 2D"), obj.Config.RectMask2DEnabled.Value, value => {
                 obj.Config.RectMask2DEnabled.Value = value;
                 ApplyAndSave();
             }, () => {
@@ -376,8 +378,8 @@ internal sealed class OvInspectorBuilder(
             .Cast<MovingManTarget>()
             .Where(value => value != MovingManTarget.None)
             .ToArray();
-        var row = O5Factory.Row(group, 50f);
-        var dropdown = O5Factory.MultiDropDown(
+        var row = O5Factory.Row(O5KitAdapters.Ctx, group, 50f);
+        var dropdown = O5Factory.MultiDropDown(O5KitAdapters.Ctx, 
             row,
             MovingManTarget.TextSize,
             cfg.Target.Value,
@@ -540,8 +542,8 @@ internal sealed class OvInspectorBuilder(
             return;
         }
 
-        var row = O5Factory.Row(content, 50f);
-        var dropdown = O5Factory.DropDown(row, options[0], options[0], options, InspectorLabel, selected => {
+        var row = O5Factory.Row(O5KitAdapters.Ctx, content, 50f);
+        var dropdown = O5Factory.DropDown(O5KitAdapters.Ctx, row, options[0], options[0], options, InspectorLabel, selected => {
             switch(selected) {
                 case "Text":
                     obj.Config.TextConfig = new TextMeshProUGUISettings();
@@ -610,7 +612,7 @@ internal sealed class OvInspectorBuilder(
 
     private (RectTransform Card, RectTransform Content) Card(string title, bool removable, Action remove = null) {
         componentKey = null;
-        return O5Factory.Card(content, InspectorLabel(title), true, null, remove, removable, showActiveToggle: false);
+        return O5Factory.Card(O5KitAdapters.Ctx, content, InspectorLabel(title), true, null, remove, removable, showActiveToggle: false);
     }
 
     private (RectTransform Card, RectTransform Content) ComponentCard(
@@ -620,7 +622,7 @@ internal sealed class OvInspectorBuilder(
         Action enabledChanged = null
     ) {
         componentKey = title.Replace(" ", "_").ToUpperInvariant();
-        var built = O5Factory.Card(content, InspectorText($"COMPONENT_{componentKey}", InspectorText($"INSPECTOR_{componentKey}", title)), settings.ComponentEnabled.Value, value => {
+        var built = O5Factory.Card(O5KitAdapters.Ctx, content, InspectorText($"COMPONENT_{componentKey}", InspectorText($"INSPECTOR_{componentKey}", title)), settings.ComponentEnabled.Value, value => {
             settings.ComponentEnabled.Value = value;
             if(enabledChanged == null) {
                 ApplyAndSave();
@@ -633,8 +635,8 @@ internal sealed class OvInspectorBuilder(
 
     private void Input(Transform parent, string label, string defaultValue, string value, Action<string> changed, string id, Action finished = null) {
         label = InspectorLabel(label);
-        var row = O5Factory.Row(parent, 50f);
-        var input = O5Factory.Input(row, defaultValue, value, changed, label, null, id, _ => {
+        var row = O5Factory.Row(O5KitAdapters.Ctx, parent, 50f);
+        var input = O5Factory.Input(O5KitAdapters.Ctx, row, defaultValue, value, changed, label, null, id, _ => {
             finished?.Invoke();
             save();
         });
@@ -659,7 +661,7 @@ internal sealed class OvInspectorBuilder(
     ) {
         const float editorHeight = 132f;
         const float diagnosticsLineHeight = 20f;
-        var row = O5Factory.Row(parent, editorHeight + 28f);
+        var row = O5Factory.Row(O5KitAdapters.Ctx, parent, editorHeight + 28f);
         var rowLayout = row.GetComponent<LayoutElement>();
         TextMeshProUGUI lineNumbers = null;
         string displayedText = value ?? string.Empty;
@@ -684,7 +686,7 @@ internal sealed class OvInspectorBuilder(
             changed(text);
         }
 
-        var input = O5Factory.Input(
+        var input = O5Factory.Input(O5KitAdapters.Ctx, 
             row,
             null,
             value,
@@ -730,7 +732,7 @@ internal sealed class OvInspectorBuilder(
         diagnosticsBg.color = new Color(0f, 0f, 0f, 0.14f);
         diagnosticsBg.raycastTarget = false;
 
-        var diagnosticsText = O5Factory.ControlText(diagnosticsObj.transform, 24f, true);
+        var diagnosticsText = O5Factory.ControlText(O5KitAdapters.Ctx, diagnosticsObj.transform, 24f, true);
         diagnosticsText.font = text.font;
         diagnosticsText.fontSize = 13f;
         diagnosticsText.characterSpacing = 0f;
@@ -768,7 +770,7 @@ internal sealed class OvInspectorBuilder(
         separator.color = new Color(1f, 1f, 1f, 0.1f);
         separator.raycastTarget = false;
 
-        lineNumbers = O5Factory.ControlText(gutterObj.transform, 24f, true);
+        lineNumbers = O5Factory.ControlText(O5KitAdapters.Ctx, gutterObj.transform, 24f, true);
         lineNumbers.name = "LineNumbers";
         lineNumbers.font = text.font;
         lineNumbers.fontSize = text.fontSize;
@@ -850,13 +852,13 @@ internal sealed class OvInspectorBuilder(
 
             hoverTipKey = key;
             if (key == null) {
-                O5Kit.Core.O5Tooltip.Hide();
+                O5KitAdapters.Ctx.Tooltip.Hide();
             } else {
-                O5Kit.Core.O5Tooltip.Show(tip);
+                O5KitAdapters.Ctx.Tooltip.Show(tip);
             }
         }
 
-        controls.Add(new UIWatcher(id + "_diaghover", text.rectTransform, PollDiagnosticHover));
+        controls.Add(new UIWatcher(O5KitAdapters.Ctx, id + "_diaghover", text.rectTransform, PollDiagnosticHover));
 
         codeInput.AfterLabelUpdate = (sourceText, composing) => {
             textComposing = composing;
@@ -929,7 +931,7 @@ internal sealed class OvInspectorBuilder(
         }
 
         RefreshDiagnostics();
-        controls.Add(new UIWatcher(id + "_diagnostics", diagnosticsRect, RefreshDiagnostics));
+        controls.Add(new UIWatcher(O5KitAdapters.Ctx, id + "_diagnostics", diagnosticsRect, RefreshDiagnostics));
         Track(input);
     }
 
@@ -1004,7 +1006,7 @@ internal sealed class OvInspectorBuilder(
         CompileDiagnostic[] diagnostics
     ) {
         if(root.childCount > 0) {
-            O5Kit.Core.O5Tooltip.Hide();
+            O5KitAdapters.Ctx.Tooltip.Hide();
         }
         for(int i = root.childCount - 1; i >= 0; i--) {
             UnityEngine.Object.Destroy(root.GetChild(i).gameObject);
@@ -1216,8 +1218,8 @@ internal sealed class OvInspectorBuilder(
 
     private RectTransform Slider(Transform parent, string label, float defaultValue, float min, float max, float value, Action<float> changed, string id, string format, ClampMode clampMode, Func<float, float> filter = null) {
         label = InspectorLabel(label);
-        var row = O5Factory.Row(parent, 50f);
-        var slider = O5Factory.Slider(row, defaultValue, min, max, value, format, clampMode, filter, newValue => {
+        var row = O5Factory.Row(O5KitAdapters.Ctx, parent, 50f);
+        var slider = O5Factory.Slider(O5KitAdapters.Ctx, row, defaultValue, min, max, value, format, clampMode, filter, newValue => {
             changed(newValue);
             apply();
         }, _ => save(), label, id);
@@ -1227,8 +1229,8 @@ internal sealed class OvInspectorBuilder(
 
     private RectTransform Toggle(Transform parent, string label, bool defaultValue, bool value, Action<bool> changed, string id) {
         label = InspectorLabel(label);
-        var row = O5Factory.Row(parent, 50f);
-        var toggle = O5Factory.Toggle(row, defaultValue, value, newValue => {
+        var row = O5Factory.Row(O5KitAdapters.Ctx, parent, 50f);
+        var toggle = O5Factory.Toggle(O5KitAdapters.Ctx, row, defaultValue, value, newValue => {
             changed(newValue);
             ApplyAndSave();
         }, label, id);
@@ -1239,8 +1241,8 @@ internal sealed class OvInspectorBuilder(
     private RectTransform EnumDropDown<T>(Transform parent, string label, T defaultValue, T value, Action<T> changed, string id, Action completed = null) where T : struct, Enum {
         label = InspectorLabel(label);
         var values = Enum.GetValues(typeof(T)).Cast<T>().ToArray();
-        var row = O5Factory.Row(parent, 50f);
-        var dropdown = O5Factory.DropDown(row, defaultValue, value, values, option => $"{label}: {option}", newValue => {
+        var row = O5Factory.Row(O5KitAdapters.Ctx, parent, 50f);
+        var dropdown = O5Factory.DropDown(O5KitAdapters.Ctx, row, defaultValue, value, values, option => $"{label}: {option}", newValue => {
             changed(newValue);
             if(completed == null) {
                 ApplyAndSave();
@@ -1281,13 +1283,13 @@ internal sealed class OvInspectorBuilder(
         var fade = group.gameObject.AddComponent<CanvasGroup>();
         O5Seq transition = null;
         bool switching = false;
-        var buttonSlot = O5Factory.Row(group, 50f);
+        var buttonSlot = O5Factory.Row(O5KitAdapters.Ctx, group, 50f);
         var slotLayout = buttonSlot.GetComponent<LayoutElement>();
         slotLayout.minWidth = 36f;
         slotLayout.preferredWidth = 36f;
         slotLayout.flexibleWidth = 0f;
         slotLayout.flexibleHeight = 0f;
-        var button = O5Factory.Button(buttonSlot, () => {
+        var button = O5Factory.Button(O5KitAdapters.Ctx, buttonSlot, () => {
             if(switching) return;
             switching = true;
             fade.interactable = false;
@@ -1334,7 +1336,7 @@ internal sealed class OvInspectorBuilder(
             switching = true;
             editor.localScale = new Vector3(0.985f, 0.985f, 1f);
             transition = O5Seq.New()
-                .Join(done => O5Boot.Tween.TweenFloat(
+                .Join(done => O5KitAdapters.Ctx.Tween.TweenFloat(
                     () => size.preferredHeight,
                     height => {
                         size.preferredHeight = height;
@@ -1619,7 +1621,7 @@ internal sealed class OvInspectorBuilder(
         if(format.Length > 1 && (format[0] == 'F' || format[0] == 'f')) {
             int.TryParse(format[1..], out decimals);
         }
-        var field = O5Factory.Slider(
+        var field = O5Factory.Slider(O5KitAdapters.Ctx, 
             parent,
             defaultValue,
             -1f,
@@ -1647,7 +1649,7 @@ internal sealed class OvInspectorBuilder(
     }
 
     private static RectTransform CompactRow(Transform parent, float height, float spacing) {
-        RectTransform row = O5Factory.Row(parent, height);
+        RectTransform row = O5Factory.Row(O5KitAdapters.Ctx, parent, height);
         var layout = row.gameObject.AddComponent<HorizontalLayoutGroup>();
         layout.spacing = spacing;
         layout.childControlWidth = true;
@@ -1674,7 +1676,7 @@ internal sealed class OvInspectorBuilder(
     }
 
     private static TextMeshProUGUI FixedLabel(Transform parent, string text, float width) {
-        TextMeshProUGUI label = O5Factory.ControlText(parent, 24f, true);
+        TextMeshProUGUI label = O5Factory.ControlText(O5KitAdapters.Ctx, parent, 24f, true);
         label.text = text;
         label.fontSize = 14f;
         label.alignment = TextAlignmentOptions.MidlineLeft;
@@ -1769,7 +1771,7 @@ internal sealed class OvInspectorBuilder(
         RefreshValues();
 
         if(drivenX || drivenY || posFx || sizeFx) {
-            controls.Add(new UIWatcher("rect_transform_driven", fields, RefreshValues));
+            controls.Add(new UIWatcher(O5KitAdapters.Ctx, "rect_transform_driven", fields, RefreshValues));
         }
         return RefreshValues;
     }
@@ -1845,7 +1847,7 @@ internal sealed class OvInspectorBuilder(
         secondY.Field.SetBlocked(sizeFx || (StretchY() && posFx), true);
         RefreshValues();
         if(posFx || sizeFx) {
-            controls.Add(new UIWatcher("rect_transform_driven", fields, RefreshValues));
+            controls.Add(new UIWatcher(O5KitAdapters.Ctx, "rect_transform_driven", fields, RefreshValues));
         }
         return RefreshValues;
     }
@@ -1858,12 +1860,12 @@ internal sealed class OvInspectorBuilder(
 
     private Action AnchorPresetControl(Transform parent, OvObject obj, Action positionFieldsChanged) {
         RectTransformSettings cfg = obj.Config.RectTransformConfig;
-        RectTransform buttonRow = O5Factory.Row(parent, 58f);
+        RectTransform buttonRow = O5Factory.Row(O5KitAdapters.Ctx, parent, 58f);
         var buttonLayout = buttonRow.GetComponent<LayoutElement>();
         buttonLayout.minWidth = 58f;
         buttonLayout.preferredWidth = 58f;
         buttonLayout.flexibleWidth = 0f;
-        var summary = O5Factory.Button(buttonRow, null, string.Empty, "transform_anchor_presets");
+        var summary = O5Factory.Button(O5KitAdapters.Ctx, buttonRow, null, string.Empty, "transform_anchor_presets");
         summary.Label.gameObject.SetActive(false);
         summary.Rect.anchorMin = new Vector2(0f, 0.5f);
         summary.Rect.anchorMax = new Vector2(0f, 0.5f);
@@ -1945,7 +1947,7 @@ internal sealed class OvInspectorBuilder(
             popup.anchoredPosition = position;
         }
 
-        controls.Add(new UIWatcher("transform_anchor_popup", summary.Rect, RefreshPopupPosition));
+        controls.Add(new UIWatcher(O5KitAdapters.Ctx, "transform_anchor_popup", summary.Rect, RefreshPopupPosition));
 
         var gameObjectOvent = blocker.gameObject.AddComponent<OventHandler>();
         gameObjectOvent.OnClick += button => {
@@ -2007,7 +2009,7 @@ internal sealed class OvInspectorBuilder(
                     continue;
                 }
 
-                var cell = O5Factory.Button(table, null, string.Empty, $"transform_anchor_{x}_{y}");
+                var cell = O5Factory.Button(O5KitAdapters.Ctx, table, null, string.Empty, $"transform_anchor_{x}_{y}");
                 cell.Label.gameObject.SetActive(false);
                 Track(cell);
                 bool header = x == 0 || y == 0;
@@ -2024,7 +2026,7 @@ internal sealed class OvInspectorBuilder(
                     AddTableHeader(cell.Rect, x == 0, x == 0 ? ModeName(vertical, true) : ModeName(horizontal, false));
                 }
 
-                cell.Rect.AddToolTip(AnchorCellName(horizontal, vertical));
+                cell.Rect.AddToolTip(O5KitAdapters.Ctx, AnchorCellName(horizontal, vertical));
                 cell.OnClick = () => {
                     if(obj == null || obj.GameObject == null || obj.RectTransform == null) {
                         return;
@@ -2073,12 +2075,12 @@ internal sealed class OvInspectorBuilder(
     }
 
     private Action AnchorPresetControl(Transform parent, RectTransformSettings cfg, RectTransform targetTransform, Action positionFieldsChanged) {
-        RectTransform buttonRow = O5Factory.Row(parent, 58f);
+        RectTransform buttonRow = O5Factory.Row(O5KitAdapters.Ctx, parent, 58f);
         var buttonLayout = buttonRow.GetComponent<LayoutElement>();
         buttonLayout.minWidth = 58f;
         buttonLayout.preferredWidth = 58f;
         buttonLayout.flexibleWidth = 0f;
-        var summary = O5Factory.Button(buttonRow, null, string.Empty, "transform_anchor_presets");
+        var summary = O5Factory.Button(O5KitAdapters.Ctx, buttonRow, null, string.Empty, "transform_anchor_presets");
         summary.Label.gameObject.SetActive(false);
         summary.Rect.anchorMin = new Vector2(0f, 0.5f);
         summary.Rect.anchorMax = new Vector2(0f, 0.5f);
@@ -2160,7 +2162,7 @@ internal sealed class OvInspectorBuilder(
             popup.anchoredPosition = position;
         }
 
-        controls.Add(new UIWatcher("transform_anchor_popup", summary.Rect, RefreshPopupPosition));
+        controls.Add(new UIWatcher(O5KitAdapters.Ctx, "transform_anchor_popup", summary.Rect, RefreshPopupPosition));
 
         var gameObjectOvent = blocker.gameObject.AddComponent<OventHandler>();
         gameObjectOvent.OnClick += button => {
@@ -2222,7 +2224,7 @@ internal sealed class OvInspectorBuilder(
                     continue;
                 }
 
-                var cell = O5Factory.Button(table, null, string.Empty, $"transform_anchor_{x}_{y}");
+                var cell = O5Factory.Button(O5KitAdapters.Ctx, table, null, string.Empty, $"transform_anchor_{x}_{y}");
                 cell.Label.gameObject.SetActive(false);
                 Track(cell);
                 bool header = x == 0 || y == 0;
@@ -2239,7 +2241,7 @@ internal sealed class OvInspectorBuilder(
                     AddTableHeader(cell.Rect, x == 0, x == 0 ? ModeName(vertical, true) : ModeName(horizontal, false));
                 }
 
-                cell.Rect.AddToolTip(AnchorCellName(horizontal, vertical));
+                cell.Rect.AddToolTip(O5KitAdapters.Ctx, AnchorCellName(horizontal, vertical));
                 cell.OnClick = () => {
                     bool setPivot = O5Input.GetKey(KeyCode.LeftShift) || O5Input.GetKey(KeyCode.RightShift);
                     bool setPosition = O5Input.GetKey(KeyCode.LeftAlt) || O5Input.GetKey(KeyCode.RightAlt);
@@ -2332,13 +2334,13 @@ internal sealed class OvInspectorBuilder(
         vertical.childForceExpandWidth = true;
         vertical.childForceExpandHeight = false;
 
-        TextMeshProUGUI title = O5Factory.ControlText(popup, 24f, true);
+        TextMeshProUGUI title = O5Factory.ControlText(O5KitAdapters.Ctx, popup, 24f, true);
         title.text = InspectorText("INSPECTOR_ANCHOR_PRESETS", "Anchor Presets");
         title.fontSize = 18f;
         title.fontStyle = FontStyles.Bold;
         title.gameObject.AddComponent<LayoutElement>().preferredHeight = 23f;
 
-        TextMeshProUGUI help = O5Factory.ControlText(popup, 24f, true);
+        TextMeshProUGUI help = O5Factory.ControlText(O5KitAdapters.Ctx, popup, 24f, true);
         help.name = "ModifierHelp";
         help.text = AnchorModifierHelp(false, false);
         help.fontSize = 12f;
@@ -2471,7 +2473,7 @@ internal sealed class OvInspectorBuilder(
     }
 
     private static TextMeshProUGUI AddAnchorHeader(RectTransform parent, bool horizontal, string value) {
-        TextMeshProUGUI label = O5Factory.ControlText(parent, 24f, true);
+        TextMeshProUGUI label = O5Factory.ControlText(O5KitAdapters.Ctx, parent, 24f, true);
         label.text = value;
         label.fontSize = 11f;
         label.color = new Color(1f, 1f, 1f, 0.55f);
@@ -2487,7 +2489,7 @@ internal sealed class OvInspectorBuilder(
     }
 
     private static void AddTableHeader(RectTransform parent, bool vertical, string value) {
-        TextMeshProUGUI label = O5Factory.ControlText(parent, 24f, true);
+        TextMeshProUGUI label = O5Factory.ControlText(O5KitAdapters.Ctx, parent, 24f, true);
         label.text = vertical ? value[0].ToString().ToUpperInvariant() : value;
         label.fontSize = 10f;
         label.color = new Color(1f, 1f, 1f, 0.85f);
@@ -2659,8 +2661,8 @@ internal sealed class OvInspectorBuilder(
 
         string current = string.IsNullOrEmpty(cfg.SpriteKey.Value) ? none : cfg.SpriteKey.Value;
         FxBlock(parent, "Sprite", cfg.SpriteKey, group => {
-        var row = O5Factory.Row(group, 50f);
-        var dropdown = O5Factory.DropDown(row, none, current, options, option => $"{InspectorLabel("Sprite")}: {InspectorLabel(option)}", selected => {
+        var row = O5Factory.Row(O5KitAdapters.Ctx, group, 50f);
+        var dropdown = O5Factory.DropDown(O5KitAdapters.Ctx, row, none, current, options, option => $"{InspectorLabel("Sprite")}: {InspectorLabel(option)}", selected => {
             cfg.SpriteKey.Value = selected == none ? null : selected;
             ApplyAndSave();
         }, "image_sprite");
@@ -2678,8 +2680,8 @@ internal sealed class OvInspectorBuilder(
 
         string current = string.IsNullOrEmpty(cfg.FontKey.Value) ? none : cfg.FontKey.Value;
         FxBlock(parent, "Font", cfg.FontKey, group => {
-        var row = O5Factory.Row(group, 50f);
-        var dropdown = O5Factory.DropDown(row, none, current, options, option => $"{InspectorLabel("Font")}: {InspectorLabel(option)}", selected => {
+        var row = O5Factory.Row(O5KitAdapters.Ctx, group, 50f);
+        var dropdown = O5Factory.DropDown(O5KitAdapters.Ctx, row, none, current, options, option => $"{InspectorLabel("Font")}: {InspectorLabel(option)}", selected => {
             cfg.FontKey.Value = selected == none ? null : selected;
             ApplyAndSave();
         }, "text_font");
@@ -2688,8 +2690,8 @@ internal sealed class OvInspectorBuilder(
     }
 
     private void ColorSliders(Transform parent, string label, Color defaults, Func<Color> get, Action<Color> set, string id) {
-        RectTransform row = O5Factory.Row(parent, 50f);
-        O5ColorPicker picker = O5Factory.ColorPicker(row, UICore.CanvasObj.GetComponent<RectTransform>(), UICore.Canvas ? UICore.Canvas.worldCamera : null, defaults, get(), value => {
+        RectTransform row = O5Factory.Row(O5KitAdapters.Ctx, parent, 50f);
+        O5ColorPicker picker = O5Factory.ColorPicker(O5KitAdapters.Ctx, row, UICore.CanvasObj.GetComponent<RectTransform>(), UICore.Canvas ? UICore.Canvas.worldCamera : null, defaults, get(), value => {
             set(value);
             apply();
         }, _ => save(), id, InspectorLabel(label));
@@ -2761,8 +2763,8 @@ internal sealed class OvInspectorBuilder(
     }
 
     private void Label(Transform parent, string text) {
-        var row = O5Factory.Row(parent, 34f);
-        var label = O5Factory.ControlText(row, 24f, true);
+        var row = O5Factory.Row(O5KitAdapters.Ctx, parent, 34f);
+        var label = O5Factory.ControlText(O5KitAdapters.Ctx, row, 24f, true);
         label.text = text;
         label.fontSize = 16f;
         label.color = new Color(1f, 1f, 1f, 0.55f);

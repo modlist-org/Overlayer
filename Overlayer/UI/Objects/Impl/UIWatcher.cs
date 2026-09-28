@@ -6,7 +6,7 @@ namespace Overlayer.UI.Objects.Impl;
 internal sealed class UIWatcher : O5Object {
     private Action tick;
 
-    public UIWatcher(string id, RectTransform rect, Action tick) : base(id, rect) {
+    public UIWatcher(O5Context ctx, string id, RectTransform rect, Action tick) : base(ctx, id, rect) {
         this.tick = tick;
         RegisterTick();
     }

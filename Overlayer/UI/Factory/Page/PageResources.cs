@@ -1,3 +1,4 @@
+using Overlayer.Compat;
 using Overlayer.Async;
 using Overlayer.Core;
 using Overlayer.IO.User;
@@ -9,7 +10,6 @@ using O5Kit.Factory;
 using O5Kit.Control;
 using O5Kit.Behaviour;
 using Overlayer.UI.Utility;
-using O5Kit.Control;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -63,7 +63,7 @@ internal static class PageResources {
         titleLabel.raycastTarget = true;
         titleLabel.gameObject.AddComponent<TextLocalization>().Init("IMAGE_RESOURCES", "Image Resources");
 
-        modeButton = O5Factory.Button(titleRow, ToggleMode, T("RESOURCE_MODE_IMAGES", "Images"), "resource_mode");
+        modeButton = O5Factory.Button(O5KitAdapters.Ctx, titleRow, ToggleMode, T("RESOURCE_MODE_IMAGES", "Images"), "resource_mode");
         PlaceRight(modeButton.Rect, 174f);
         modeButton.Label.gameObject.AddComponent<TextLocalization>().Init("RESOURCE_MODE_IMAGES", "Images");
 
@@ -74,7 +74,7 @@ internal static class PageResources {
         importCard.offsetMax = new Vector2(-12f, -78f);
 
         RectTransform pathRow = CreateRow(importCard, 8f);
-        pathInput = O5Factory.Input(
+        pathInput = O5Factory.Input(O5KitAdapters.Ctx, 
             pathRow,
             string.Empty,
             string.Empty,
@@ -84,18 +84,18 @@ internal static class PageResources {
             "resource_image_path"
         );
         pathInput.Placeholder.gameObject.AddComponent<TextLocalization>().Init("IMAGE_PATH", "Image path");
-        pathInput.Rect.AddToolTip(() => MainCore.Tr.Get(
+        pathInput.Rect.AddToolTip(O5KitAdapters.Ctx, () => MainCore.Tr.Get(
             "IMAGE_PATH_TOOLTIP",
             "Select image file to import."
         ));
         ResizeInput(pathInput.Rect, 190f);
 
-        browseButton = O5Factory.Button(pathRow, BeginBrowse, T("BROWSE", "Browse"), "resource_browse");
+        browseButton = O5Factory.Button(O5KitAdapters.Ctx, pathRow, BeginBrowse, T("BROWSE", "Browse"), "resource_browse");
         PlaceRight(browseButton.Rect, 174f);
         browseButton.Label.gameObject.AddComponent<TextLocalization>().Init("BROWSE", "Browse");
 
         RectTransform keyRow = CreateRow(importCard, 66f);
-        keyInput = O5Factory.Input(
+        keyInput = O5Factory.Input(O5KitAdapters.Ctx, 
             keyRow,
             string.Empty,
             string.Empty,
@@ -105,19 +105,19 @@ internal static class PageResources {
             "resource_image_name"
         );
         keyInput.Placeholder.gameObject.AddComponent<TextLocalization>().Init("RESOURCE_NAME", "Resource name");
-        keyInput.Rect.AddToolTip(() => MainCore.Tr.Get(
+        keyInput.Rect.AddToolTip(O5KitAdapters.Ctx, () => MainCore.Tr.Get(
             "RESOURCE_NAME_TOOLTIP",
             "Name used by Image components to reference this resource."
         ));
         ResizeInput(keyInput.Rect, 190f);
 
-        addButton = O5Factory.Button(keyRow, BeginImport, T("ADD_IMAGE", "Add Image"), "resource_add");
+        addButton = O5Factory.Button(O5KitAdapters.Ctx, keyRow, BeginImport, T("ADD_IMAGE", "Add Image"), "resource_add");
         PlaceRight(addButton.Rect, 174f);
         addButton.Label.gameObject.AddComponent<TextLocalization>().Init("ADD_IMAGE", "Add Image");
 
         RectTransform settingsRow = CreateRow(importCard, 124f);
         imageSettingsRow = settingsRow;
-        mipChainToggle = O5Factory.Toggle(
+        mipChainToggle = O5Factory.Toggle(O5KitAdapters.Ctx, 
             settingsRow,
             false,
             false,
@@ -126,13 +126,13 @@ internal static class PageResources {
             "resource_mip_chain"
         );
         PlaceHalf(mipChainToggle.Rect, false);
-        mipChainToggle.Rect.AddToolTip(() => MainCore.Tr.Get(
+        mipChainToggle.Rect.AddToolTip(O5KitAdapters.Ctx, () => MainCore.Tr.Get(
             "MIP_CHAIN_TOOLTIP",
             "Create mip levels for smoother minified rendering."
         ));
         mipChainToggle.Label.gameObject.AddComponent<TextLocalization>().Init("MIP_CHAIN", "Mip Chain");
 
-        linearToggle = O5Factory.Toggle(
+        linearToggle = O5Factory.Toggle(O5KitAdapters.Ctx, 
             settingsRow,
             false,
             false,
@@ -141,7 +141,7 @@ internal static class PageResources {
             "resource_linear"
         );
         PlaceHalf(linearToggle.Rect, true);
-        linearToggle.Rect.AddToolTip(() => MainCore.Tr.Get(
+        linearToggle.Rect.AddToolTip(O5KitAdapters.Ctx, () => MainCore.Tr.Get(
             "LINEAR_TOOLTIP",
             "Load texture data as linear color instead of sRGB."
         ));
@@ -159,7 +159,7 @@ internal static class PageResources {
         searchRow.anchorMax = new Vector2(1f, 1f);
         searchRow.offsetMin = new Vector2(18f, -352f);
         searchRow.offsetMax = new Vector2(-18f, -302f);
-        searchInput = O5Factory.Input(
+        searchInput = O5Factory.Input(O5KitAdapters.Ctx, 
             searchRow,
             string.Empty,
             string.Empty,
@@ -169,7 +169,7 @@ internal static class PageResources {
             "resource_search"
         );
         searchInput.Placeholder.gameObject.AddComponent<TextLocalization>().Init("SEARCH_RESOURCE", "Search resources");
-        searchInput.Rect.AddToolTip(() => MainCore.Tr.Get(
+        searchInput.Rect.AddToolTip(O5KitAdapters.Ctx, () => MainCore.Tr.Get(
             "SEARCH_RESOURCE_TOOLTIP",
             "Filter resources by name."
         ));
@@ -203,7 +203,9 @@ internal static class PageResources {
         layout.childForceExpandHeight = false;
         ContentSizeFitter fitter = contentObject.AddComponent<ContentSizeFitter>();
         fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-        root.gameObject.AddComponent<UIScrollController>().SetContent(listContent, listViewport);
+        var listScroll = root.gameObject.AddComponent<UIScrollController>();
+        listScroll.Ctx = O5KitAdapters.Ctx;
+        listScroll.SetContent(listContent, listViewport);
 
         CreateDisabledPanel(root);
         MainCore.OnModEnabledChanged += (isEnabled, isDispose) => {
@@ -475,7 +477,7 @@ internal static class PageResources {
             return;
         }
 
-        spriteEditor = O5SpriteEditor.Create(UICore.CanvasObj.transform, new O5SpriteEditorOptions {
+        spriteEditor = O5SpriteEditor.Create(O5KitAdapters.Ctx, UICore.CanvasObj.transform, new O5SpriteEditorOptions {
             HintEmpty = T("SPRITE_EDITOR_HINT", "Drag the green guides to set 9-slice borders."),
             ValuesFormat = MainCore.Tr.Get("SPRITE_EDITOR_VALUES", "L {0}  R {1}  B {2}  T {3}"),
             LeftLabel = T("SPRITE_BORDER_LEFT", "Left"),
@@ -757,12 +759,12 @@ internal static class PageResources {
 
         if(currentMode == ResourceMode.Images) {
             pathInput.Placeholder.GetComponent<TextLocalization>()?.Init("IMAGE_PATH", "Image path");
-            pathInput.Rect.AddToolTip(() => MainCore.Tr.Get("IMAGE_PATH_TOOLTIP", "Select image file to import."));
+            pathInput.Rect.AddToolTip(O5KitAdapters.Ctx, () => MainCore.Tr.Get("IMAGE_PATH_TOOLTIP", "Select image file to import."));
             modeButton.Label.GetComponent<TextLocalization>()?.Init("RESOURCE_MODE_IMAGES", "Images");
             modeButton.Label.text = T("RESOURCE_MODE_IMAGES", "Images");
         } else {
             pathInput.Placeholder.GetComponent<TextLocalization>()?.Init("FONT_PATH", "Font path");
-            pathInput.Rect.AddToolTip(() => MainCore.Tr.Get("FONT_PATH_TOOLTIP", "Select font file to import."));
+            pathInput.Rect.AddToolTip(O5KitAdapters.Ctx, () => MainCore.Tr.Get("FONT_PATH_TOOLTIP", "Select font file to import."));
             modeButton.Label.GetComponent<TextLocalization>()?.Init("RESOURCE_MODE_FONTS", "Fonts");
             modeButton.Label.text = T("RESOURCE_MODE_FONTS", "Fonts");
         }
@@ -789,7 +791,7 @@ internal static class PageResources {
             CloseSpriteEditor();
             CancelSettingsEdit();
             BuildList();
-            O5Kit.Core.O5Tooltip.Hide();
+            O5KitAdapters.Ctx.Tooltip.Hide();
             return;
         }
         MainThread.Enqueue(() => {
@@ -869,7 +871,7 @@ internal static class PageResources {
         name.rectTransform.offsetMax = new Vector2(-466f, -12f);
         name.font = MainCore.Res.Get<TMP_FontAsset>(Asset.SUIT_Medium);
 
-        O5InputField renameInput = O5Factory.Input(
+        O5InputField renameInput = O5Factory.Input(O5KitAdapters.Ctx, 
             card,
             key,
             key,
@@ -898,7 +900,7 @@ internal static class PageResources {
         details.rectTransform.offsetMin = new Vector2(116f, 14f);
         details.rectTransform.offsetMax = new Vector2(-466f, 0f);
 
-        O5Button spriteEditor = O5Factory.Button(
+        O5Button spriteEditor = O5Factory.Button(O5KitAdapters.Ctx, 
             card,
             () => OpenSpriteEditor(key),
             T("SPRITE_EDITOR", "Sprite Editor"),
@@ -908,17 +910,17 @@ internal static class PageResources {
         spriteEditor.Label.fontSize = 14f;
         spriteEditor.Label.gameObject.AddComponent<TextLocalization>().Init("SPRITE_EDITOR", "Sprite Editor");
 
-        O5Button settings = O5Factory.Button(card, () => EnterSettingsEdit(key), T("SETTINGS", "Settings"), "settings_" + key);
+        O5Button settings = O5Factory.Button(O5KitAdapters.Ctx, card, () => EnterSettingsEdit(key), T("SETTINGS", "Settings"), "settings_" + key);
         PlaceRight(settings.Rect, 100f, 54f, 232f);
         settings.Label.fontSize = 15f;
         settings.Label.gameObject.AddComponent<TextLocalization>().Init("SETTINGS", "Settings");
 
-        O5Button rename = O5Factory.Button(card, () => { }, "Rename", "rename_button_" + key);
+        O5Button rename = O5Factory.Button(O5KitAdapters.Ctx, card, () => { }, "Rename", "rename_button_" + key);
         PlaceRight(rename.Rect, 100f, 54f, 124f);
         rename.Label.fontSize = 15f;
         rename.Label.gameObject.AddComponent<TextLocalization>().Init("RENAME", "Rename");
 
-        O5Button remove = O5Factory.Button(card, () => { }, "Remove", "remove_" + key);
+        O5Button remove = O5Factory.Button(O5KitAdapters.Ctx, card, () => { }, "Remove", "remove_" + key);
         PlaceRight(remove.Rect, 100f, 54f, 16f);
         remove.Label.fontSize = 15f;
         remove.Label.gameObject.AddComponent<TextLocalization>().Init("REMOVE", "Remove");
@@ -969,7 +971,7 @@ internal static class PageResources {
             Remove(key);
         };
 
-        O5Effects.HoverOutline(cardObject, cardObject.AddComponent<EventTrigger>());
+        O5Effects.HoverOutline(O5KitAdapters.Ctx, cardObject, cardObject.AddComponent<EventTrigger>());
     }
 
     private static void CreateFontCard(Transform parent, string key) {
@@ -1003,7 +1005,7 @@ internal static class PageResources {
         name.rectTransform.offsetMax = new Vector2(-324f, -8f);
         name.font = MainCore.Res.Get<TMP_FontAsset>(Asset.SUIT_Medium);
 
-        O5InputField renameInput = O5Factory.Input(
+        O5InputField renameInput = O5Factory.Input(O5KitAdapters.Ctx, 
             card,
             key,
             key,
@@ -1032,12 +1034,12 @@ internal static class PageResources {
         details.rectTransform.offsetMin = new Vector2(16f, 8f);
         details.rectTransform.offsetMax = new Vector2(-324f, -4f);
 
-        O5Button rename = O5Factory.Button(card, () => { }, "Rename", "rename_button_" + key);
+        O5Button rename = O5Factory.Button(O5KitAdapters.Ctx, card, () => { }, "Rename", "rename_button_" + key);
         PlaceRight(rename.Rect, 100f, 54f, 108f);
         rename.Label.fontSize = 15f;
         rename.Label.gameObject.AddComponent<TextLocalization>().Init("RENAME", "Rename");
 
-        O5Button remove = O5Factory.Button(card, () => { }, "Remove", "remove_" + key);
+        O5Button remove = O5Factory.Button(O5KitAdapters.Ctx, card, () => { }, "Remove", "remove_" + key);
         PlaceRight(remove.Rect, 100f, 54f);
         remove.Label.fontSize = 15f;
         remove.Label.gameObject.AddComponent<TextLocalization>().Init("REMOVE", "Remove");
@@ -1121,7 +1123,7 @@ internal static class PageResources {
             }
         };
 
-        O5Effects.HoverOutline(cardObject, cardObject.AddComponent<EventTrigger>());
+        O5Effects.HoverOutline(O5KitAdapters.Ctx, cardObject, cardObject.AddComponent<EventTrigger>());
     }
 
     private static bool Rename(string oldKey, string value) {
@@ -1248,7 +1250,7 @@ internal static class PageResources {
     }
 
     private static TextMeshProUGUI CreateText(Transform parent, string text, float size, TextAlignmentOptions alignment) {
-        TextMeshProUGUI label = O5Factory.ControlText(parent, 24f, true);
+        TextMeshProUGUI label = O5Factory.ControlText(O5KitAdapters.Ctx, parent, 24f, true);
         label.text = text;
         label.fontSize = size;
         label.alignment = alignment;

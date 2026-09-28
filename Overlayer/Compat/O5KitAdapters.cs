@@ -51,8 +51,11 @@ public sealed class OverlayerFontProvider : IFontProvider {
 public static class O5KitAdapters {
     private static bool _wired;
 
+    /// <summary>Overlayer's owned O5Kit instance. Pass this to every O5Factory call.</summary>
+    public static O5Context Ctx { get; private set; } = null!;
+
     public static void Setup() {
-        O5Boot.Configure(
+        Ctx = new O5Context(
             config: new O5Config {
                 UIScale = MainCore.Conf.UIScale.Value,
                 TooltipEnabled = MainCore.Conf.Tooltip.Value,
@@ -66,7 +69,7 @@ public static class O5KitAdapters {
         O5Kit.Behaviour.UIScrollController.ShouldConsumeParentScroll = () => UICodeInputField.ShouldConsumeParentScroll;
         if(!_wired) {
             _wired = true;
-            MainCore.OnModEnabledChanged += (enabled, _) => O5Object.NotifyEnabledChanged(enabled);
+            MainCore.OnModEnabledChanged += (enabled, _) => Ctx.NotifyEnabledChanged(enabled);
         }
     }
 }
