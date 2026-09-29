@@ -40,6 +40,17 @@ Overlayer v5 utilizes runtime-loaded modules to support specific game features a
 > [!NOTE]
 > Modules require this base mod environment to function and cannot run standalone.
 
+# 🛠️ Development
+you obviously need the .NET SDK. copy `Directory.Build.example.props` to `Directory.Build.props` and set `GamePath` + `GameData` or nothing builds
+
+```bash
+./test.sh    # tests, no game dlls needed. run before push idk
+./build.sh   # builds Release_ML (./build.sh Debug_ML whatever)
+./zip.sh     # zips
+./bump.sh patch   # or 5.0.4 / minor / major. --force if u sure (do u really need it tho)
+```
+ps1 twins exist for windows. ts: `impl.d.ts` spawns next to `impl.js`, tsc your stuff and throw the js into `Script/`. release: bump -> commit `"X.Y.Z"` -> tag -> publish
+
 # ⚖️ Licenses
 ### Logo
 - The Overlayer logo is based on a modified version of the Google V8 logo.
