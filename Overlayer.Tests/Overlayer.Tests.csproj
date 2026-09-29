@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.ClearScript" Version="7.5.1" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.0" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <!-- Link pure-logic sources directly so tests run without game/Unity assemblies. -->
+  <ItemGroup>
+    <Compile Include="..\Overlayer\Tag\Compile\ArgConverter.cs" />
+    <Compile Include="..\Overlayer\Tag\Compile\Compiler.cs" />
+    <Compile Include="..\Overlayer\Tag\Compile\CompileState.cs" />
+    <Compile Include="..\Overlayer\Tag\Compile\ExpressionBuilder.cs" />
+    <Compile Include="..\Overlayer\Tag\Compile\FormatValidator.cs" />
+    <Compile Include="..\Overlayer\Tag\Compile\ResolvedSignature.cs" />
+    <Compile Include="..\Overlayer\Tag\Compile\SignatureResolver.cs" />
+    <Compile Include="..\Overlayer\Tag\Core\Placeholder.cs" />
+    <Compile Include="..\Overlayer\Tag\Core\TagCore.cs" />
+    <Compile Include="..\Overlayer\Tag\Diagnostic\CompileDiagnostic.cs" />
+    <Compile Include="..\Overlayer\Tag\Diagnostic\CompileSeverity.cs" />
+    <Compile Include="..\Overlayer\Tag\Diagnostic\DiagnosticContext.cs" />
+    <Compile Include="..\Overlayer\Tag\Diagnostic\DiagnosticId.cs" />
+    <Compile Include="..\Overlayer\Tag\Runtime\CompiledPlaceholder.cs" />
+    <Compile Include="..\Overlayer\Tag\Runtime\EmptyDelegates.cs" />
+    <Compile Include="..\Overlayer\TextEngine\Parse\ParsedTag.cs" />
+    <Compile Include="..\Overlayer\TextEngine\Parse\Parser.cs" />
+  </ItemGroup>
+
+</Project>
