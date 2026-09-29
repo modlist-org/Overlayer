@@ -9,8 +9,9 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG="${1:-Release_ML}"
 if [[ $# -gt 0 ]]; then shift; fi
 
-if [[ ! -f "$ROOT/Directory.Build.props" ]]; then
-    echo "error: Directory.Build.props not found. Copy Directory.Build.example.props and set GamePath first." >&2
+if [[ ! -f "$ROOT/Directory.Build.props" && ! -f "$ROOT/Overlayer/Directory.Build.props" ]]; then
+    echo "error: Directory.Build.props not found (checked $ROOT and $ROOT/Overlayer)." >&2
+    echo "Copy Directory.Build.example.props to $ROOT/Directory.Build.props and set GamePath first." >&2
     exit 1
 fi
 

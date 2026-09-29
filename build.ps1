@@ -10,7 +10,7 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $Root = $PSScriptRoot
-if (-not (Test-Path (Join-Path $Root 'Directory.Build.props'))) {
-    Write-Error 'Directory.Build.props not found. Copy Directory.Build.example.props and set GamePath first.'
+if (-not (Test-Path (Join-Path $Root 'Directory.Build.props')) -and -not (Test-Path (Join-Path $Root 'Overlayer/Directory.Build.props'))) {
+    Write-Error 'Directory.Build.props not found (checked root and Overlayer/). Copy Directory.Build.example.props to Directory.Build.props and set GamePath first.'
 }
 dotnet build (Join-Path $Root 'Overlayer/Overlayer.csproj') -c $Configuration @BuildArgs
