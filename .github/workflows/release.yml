@@ -3,7 +3,7 @@
 # Usage: GitHub repo > Releases > Draft a new release
 #   1. Choose or create a tag (numeric X.Y.Z, e.g. 5.0.3; suffixes like 5.0.3-beta.1 allowed)
 #   2. Check "Set as a pre-release" for beta, leave unchecked for stable
-#   3. Write release notes, then Publish -> this workflow builds and attaches the files automatically
+#   3. Write release notes from tool/release_template.md, then Publish -> this workflow builds and attaches the files automatically
 #
 # Steps:
 #   1. Validate the tag and check that the code version matches it
