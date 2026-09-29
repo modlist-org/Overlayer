@@ -71,7 +71,32 @@ public static class ExpressionBuilder {
 
         Expression result;
 
-        if(tag.ReturnType == typeof(string)) {
+        if(tag.IsJS) {
+            // JS return type is dynamic (object). Direct cast to IFormattable
+            // throws at runtime for string/null/undefined. Use null-safe
+            // runtime helpers instead. C# path below is untouched.
+            var asObject = Expression.Convert(call, typeof(object));
+            if(sig.HasFormat) {
+                var formatMethod = typeof(FormatValidator).GetMethod(
+                    nameof(FormatValidator.FormatObject),
+                    [typeof(object), typeof(string)]
+                )!;
+                result = Expression.Call(
+                    formatMethod,
+                    asObject,
+                    Expression.Constant(sig.Format, typeof(string))
+                );
+            } else {
+                var stringifyMethod = typeof(FormatValidator).GetMethod(
+                    nameof(FormatValidator.StringifyObject),
+                    [typeof(object)]
+                )!;
+                result = Expression.Call(
+                    stringifyMethod,
+                    asObject
+                );
+            }
+        } else if(tag.ReturnType == typeof(string)) {
             result = Expression.Coalesce(call, Expression.Constant(""));
         } else if(sig.HasFormat) {
             var formattable = Expression.Convert(call, typeof(IFormattable));

@@ -31,4 +31,69 @@ public static class FormatValidator {
             return false;
         }
     }
+
+    public static bool TryValidateJs(string format, out Exception exception) {
+        exception = null;
+
+        if(string.IsNullOrEmpty(format)) {
+            return true;
+        }
+
+        // JS return type is dynamic (object). Accept the format if it is
+        // valid for any common formattable type so numeric/date formats
+        // like N0/F2/D5/yyyy-MM-dd all pass compile-time validation.
+        // Runtime formatting is null/non-formattable safe (see FormatObject).
+        Exception last = null;
+        if(TryValidate(typeof(double), format, out last)) {
+            return true;
+        }
+        if(TryValidate(typeof(long), format, out last)) {
+            return true;
+        }
+        if(TryValidate(typeof(decimal), format, out last)) {
+            return true;
+        }
+        if(TryValidate(typeof(DateTime), format, out last)) {
+            return true;
+        }
+
+        exception = last;
+        return false;
+    }
+
+    public static string FormatObject(object value, string format) {
+        if(value == null) {
+            return string.Empty;
+        }
+
+        if(value is Microsoft.ClearScript.Undefined) {
+            return string.Empty;
+        }
+
+        if(string.IsNullOrEmpty(format)) {
+            return value.ToString() ?? string.Empty;
+        }
+
+        if(value is IFormattable formattable) {
+            try {
+                return formattable.ToString(format, null) ?? string.Empty;
+            } catch {
+                return value.ToString() ?? string.Empty;
+            }
+        }
+
+        return value.ToString() ?? string.Empty;
+    }
+
+    public static string StringifyObject(object value) {
+        if(value == null) {
+            return string.Empty;
+        }
+
+        if(value is Microsoft.ClearScript.Undefined) {
+            return string.Empty;
+        }
+
+        return value.ToString() ?? string.Empty;
+    }
 }

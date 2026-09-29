@@ -61,6 +61,7 @@ public class V8Manager : IRuntimeService {
     private void BindEngine(V8ScriptEngine engine) {
         engine.AddHostObject(nameof(TagAccessHelper), new TagAccessHelper());
         engine.AddHostObject(nameof(Store), Store);
+        engine.Execute(JSTagRegistrationHost.TagTypeScript);
     }
 
     public FxStore Store { get; } = new();
@@ -153,13 +154,18 @@ public class V8Manager : IRuntimeService {
 
         sb.AppendLine("/* Overlayer Functions */\n");
 
+        sb.AppendLine("/* TagType bitmask constants (see TagCore.TagType).");
+        sb.AppendLine("   Use in RegisterTag options, e.g. { Type: TagType.ProcessFormat }");
+        sb.AppendLine("   or combine with bitwise OR: { Type: TagType.ProcessFormat | TagType.BlockOnPaused } */");
+        sb.AppendLine(JSTagRegistrationHost.TagTypeScript + "\n");
+
         sb.AppendLine("/**");
         sb.AppendLine(" * Registers a new custom tag with the Overlayer engine.");
         sb.AppendLine(" * ");
         sb.AppendLine(" * @param {string} name - The unique name of the tag.");
         sb.AppendLine(" * @param {Function} func - The logic to execute.");
         sb.AppendLine(" * @param {Object} [options] - Configuration object.");
-        sb.AppendLine(" * @param {number} [options.Type] - TagType bitmask for engine behaviors.");
+        sb.AppendLine(" * @param {number} [options.Type] - TagType bitmask (e.g. TagType.ProcessFormat, or TagType.ProcessFormat | TagType.BlockOnPaused).");
         sb.AppendLine(" * @param {string} [options.Desc] - Description of the tag.");
         sb.AppendLine(" */");
         sb.AppendLine("globalThis.RegisterTag = function(name, func, options) {};\n");

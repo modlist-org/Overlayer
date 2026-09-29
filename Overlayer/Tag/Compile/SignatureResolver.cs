@@ -59,9 +59,18 @@ public static class SignatureResolver {
         }
 
         if(format != null) {
-            Type checkType = tag.IsJS ? typeof(string) : tag.ReturnType;
+            bool valid;
+            Exception e;
+            if(tag.IsJS) {
+                // JS return type is dynamic (object). Validate against
+                // any common formattable type instead of string
+                // (string would reject every numeric format).
+                valid = FormatValidator.TryValidateJs(format, out e);
+            } else {
+                valid = FormatValidator.TryValidate(tag.ReturnType, format, out e);
+            }
 
-            if(!FormatValidator.TryValidate(checkType, format, out var e)) {
+            if(!valid) {
                 diag.Add(new(
                     DiagnosticId.FormatFail,
                     CompileSeverity.Error,

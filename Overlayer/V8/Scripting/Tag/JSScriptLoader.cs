@@ -69,7 +69,6 @@ public class JSScriptLoader {
 
     private void LoadScriptInternal(string filePath, string hash, V8ScriptEngine engine) {
         var host = new JSTagRegistrationHost(this, filePath);
-        engine.AddHostType(nameof(TagType), typeof(TagType));
         engine.AddHostObject(
             JSTagRegistrationHost.HostBindingName,
             (Action<string, object, object, string>)host.RegisterTag
