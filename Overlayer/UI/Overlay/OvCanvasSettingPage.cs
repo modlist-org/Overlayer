@@ -432,7 +432,7 @@ public class OvCanvasSettingPage : IDisposable {
 
             toDelete.Dispose();
 
-            // 탐색한 객체로 선택 변경
+            // Switch selection to the browsed object
             selectedObject = nextSelect;
 
             RebuildHierarchy();
