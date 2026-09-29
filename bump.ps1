@@ -6,20 +6,24 @@
 #   .\bump.ps1 major
 #   .\bump.ps1 5.0.4
 #   .\bump.ps1 patch -Force
+#   .\bump.ps1 patch -NoCommit (-nc)
 param(
     [Parameter(Mandatory = $true, Position = 0)]
     [string]$Target,
     [Alias('f')]
-    [switch]$Force
+    [switch]$Force,
+    [Alias('nc')]
+    [switch]$NoCommit
 )
 $ErrorActionPreference = 'Stop'
 
 $Root = $PSScriptRoot
 $Info = Join-Path $Root 'Overlayer/Core/Info.cs'
+$VersionFiles = @('Overlayer/Core/Info.cs', 'Overlayer/Overlayer.csproj')
 
 $IsPart = $Target -in @('patch', 'minor', 'major')
 $IsVersion = $Target -match '^[0-9]+\.[0-9]+\.[0-9]+$'
-if (-not $IsPart -and -not $IsVersion) { Write-Error 'usage: .\bump.ps1 <patch|minor|major|X.Y.Z> [-Force|-f]' }
+if (-not $IsPart -and -not $IsVersion) { Write-Error 'usage: .\bump.ps1 <patch|minor|major|X.Y.Z> [-Force|-f] [-NoCommit|-nc]' }
 
 $line = Select-String -Path $Info -Pattern 'public const string Version = "([^"]+)"' | Select-Object -First 1
 $Cur = $line.Matches[0].Groups[1].Value
@@ -63,4 +67,16 @@ Write-Host "--- $Cur -> $New ($Target) ---"
 
 & bash (Join-Path $Root 'tool/set_version.sh') $New
 
-Write-Host "next: git add Overlayer/Core/Info.cs Overlayer/Overlayer.csproj && git commit -m `"$New`" && git push"
+if ($NoCommit) {
+    Write-Host "next: git add Overlayer/Core/Info.cs Overlayer/Overlayer.csproj && git commit -m `"$New`" && git push"
+    exit 0
+}
+
+git -C $Root add $VersionFiles
+git -C $Root diff --cached --quiet
+if ($LASTEXITCODE -eq 0) {
+    Write-Host "nothing to commit (already at $New)."
+} else {
+    git -C $Root commit -m $New
+}
+Write-Host 'next: git push'

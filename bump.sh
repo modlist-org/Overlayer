@@ -9,26 +9,36 @@
 #   ./bump.sh major          # 5.0.3 -> 6.0.0
 #   ./bump.sh 5.0.4          # explicit (must be one step from the tag)
 #   ./bump.sh patch --force  # ignore the guard
+#   ./bump.sh patch --no-commit (-nc)  # don't auto-commit, just rewrite the files
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INFO="$ROOT/Overlayer/Core/Info.cs"
+VERSION_FILES=(Overlayer/Core/Info.cs Overlayer/Overlayer.csproj)
 
 FORCE=0
-if [[ $# -eq 2 && ("$2" == "--force" || "$2" == "-f") ]]; then
-    FORCE=1
-elif [[ $# -ne 1 ]]; then
-    echo "usage: $0 <patch|minor|major|X.Y.Z> [--force|-f]" >&2
+NO_COMMIT=0
+if [[ $# -lt 1 || $# -gt 3 ]]; then
+    echo "usage: $0 <patch|minor|major|X.Y.Z> [--force|-f] [--no-commit|-nc]" >&2
     exit 1
 fi
-ARG="$1"
-MODE=""
+ARG="$1"; shift
+for flag in "$@"; do
+    case "$flag" in
+        --force|-f) FORCE=1 ;;
+        --no-commit|-nc) NO_COMMIT=1 ;;
+        *)
+            echo "usage: $0 <patch|minor|major|X.Y.Z> [--force|-f] [--no-commit|-nc]" >&2
+            exit 1
+            ;;
+    esac
+done
 if [[ "$ARG" == "patch" || "$ARG" == "minor" || "$ARG" == "major" ]]; then
     MODE="part"
 elif [[ "$ARG" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     MODE="explicit"
 else
-    echo "usage: $0 <patch|minor|major|X.Y.Z> [--force|-f]" >&2
+    echo "usage: $0 <patch|minor|major|X.Y.Z> [--force|-f] [--no-commit|-nc]" >&2
     exit 1
 fi
 
@@ -99,4 +109,15 @@ echo "--- $CUR -> $NEW ($ARG) ---"
 
 "$ROOT/tool/set_version.sh" "$NEW"
 
-echo "next: git add Overlayer/Core/Info.cs Overlayer/Overlayer.csproj && git commit -m \"$NEW\" && git push"
+if [[ "$NO_COMMIT" -eq 1 ]]; then
+    echo "next: git add Overlayer/Core/Info.cs Overlayer/Overlayer.csproj && git commit -m \"$NEW\" && git push"
+    exit 0
+fi
+
+git -C "$ROOT" add "${VERSION_FILES[@]}"
+if git -C "$ROOT" diff --cached --quiet; then
+    echo "nothing to commit (already at $NEW)."
+else
+    git -C "$ROOT" commit -m "$NEW"
+fi
+echo "next: git push"
