@@ -114,6 +114,7 @@ public sealed class OverlayerRuntime {
     public void Tick() => ticks.Tick();
 
     public void Dispose() {
+        Compat.O5KitAdapters.Teardown();
         SetModEnabledLate(false, true);
         SetModEnabled(false, true);
 

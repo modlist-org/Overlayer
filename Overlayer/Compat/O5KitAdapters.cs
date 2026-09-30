@@ -50,6 +50,7 @@ public sealed class OverlayerFontProvider : IFontProvider {
 
 public static class O5KitAdapters {
     private static bool _wired;
+    private static Action<bool, bool> _enabledHandler;
 
     /// <summary>Overlayer's owned O5Kit instance. Pass this to every O5Factory call.</summary>
     public static O5Context Ctx { get; private set; } = null!;
@@ -69,7 +70,19 @@ public static class O5KitAdapters {
         O5Kit.Behaviour.UIScrollController.ShouldConsumeParentScroll = () => UICodeInputField.ShouldConsumeParentScroll;
         if(!_wired) {
             _wired = true;
-            MainCore.OnModEnabledChanged += (enabled, _) => Ctx.NotifyEnabledChanged(enabled);
+            _enabledHandler = (enabled, _) => Ctx.NotifyEnabledChanged(enabled);
+            MainCore.OnModEnabledChanged += _enabledHandler;
         }
+    }
+
+    public static void Teardown() {
+        if(_enabledHandler != null) {
+            try {
+                MainCore.OnModEnabledChanged -= _enabledHandler;
+            } catch {
+            }
+            _enabledHandler = null;
+        }
+        _wired = false;
     }
 }
