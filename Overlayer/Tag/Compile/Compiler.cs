@@ -1,4 +1,5 @@
-﻿using Overlayer.Tag.Core;
+﻿using Overlayer.ModuleAPI;
+using Overlayer.Tag.Core;
 using Overlayer.Tag.Diagnostics;
 using Overlayer.Tag.Runtime;
 using Overlayer.TextEngine.Parse;
@@ -29,7 +30,12 @@ public static class Compiler {
         } else {
             var expr = ExpressionBuilder.Build(tag, sig, diagnostics);
             var lambda = Expression.Lambda<Func<string>>(expr);
-            compiledFunc = lambda.Compile();
+            Func<string> inner = lambda.Compile();
+            // Block flags are checked at runtime so no recompile is needed
+            // when play/pause state flips. Blocked tags render raw text.
+            compiledFunc = HasBlockFlag(tag)
+                ? () => IsBlocked(tag) ? parsed.Raw : inner()
+                : inner;
         }
 
         return new CompiledPlaceholder(
@@ -37,4 +43,11 @@ public static class Compiler {
             [.. diagnostics]
         );
     }
+
+    private static bool HasBlockFlag(TagCore tag)
+        => (tag.TagType & (TagType.BlockOnNotPlaying | TagType.BlockOnPaused)) != 0;
+
+    private static bool IsBlocked(TagCore tag)
+        => ((tag.TagType & TagType.BlockOnNotPlaying) != 0 && !PlaybackState.IsPlaying)
+        || ((tag.TagType & TagType.BlockOnPaused) != 0 && PlaybackState.IsPaused);
 }
