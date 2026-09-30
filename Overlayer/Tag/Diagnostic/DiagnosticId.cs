@@ -55,6 +55,13 @@ public enum DiagnosticId {
     FormatFail,
 
     /// <summary>
+    /// Triggered when a JS-only tag is used in overlay text instead of JavaScript.
+    /// <para><strong>Data:</strong></para>
+    /// <c>[0]</c> (string) : The name of the JS-only tag.
+    /// </summary>
+    JsOnlyBlocked,
+
+    /// <summary>
     /// An error originating from an advanced tag rather than a standard tag, indicating a non-basic exception.
     /// </summary>
     AdvancedTagException,

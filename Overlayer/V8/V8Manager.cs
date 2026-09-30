@@ -220,6 +220,7 @@ public class V8Manager : IRuntimeService {
         sb.AppendLine("    readonly BlockOnPaused: 2;");
         sb.AppendLine("    readonly BlockOnAll: 3;");
         sb.AppendLine("    readonly ProcessFormat: 256;");
+        sb.AppendLine("    readonly JsOnly: 512;");
         sb.AppendLine("    readonly Hide: 65536;");
         sb.AppendLine("    readonly Advanced: 16777216;");
         sb.AppendLine("};");

@@ -98,6 +98,15 @@ public sealed class SignatureResolverTests {
     }
 
     [Fact]
+    public void JsOnlyTag_IsBlockedInText() {
+        var diag = new List<CompileDiagnostic>();
+        var sig = Resolve(PropertyTag("JsThing", nameof(DummyTags.FullComboValue), TagType.JsOnly), [], diag);
+
+        Assert.False(sig.IsExecutable);
+        Assert.Contains(diag, d => d.Id == DiagnosticId.JsOnlyBlocked);
+    }
+
+    [Fact]
     public void MissingRequiredArg_ReturnsError() {
         var diag = new List<CompileDiagnostic>();
         var sig = Resolve(MethodTag("Stream", nameof(DummyTags.Stream), TagType.ProcessFormat), [], diag);

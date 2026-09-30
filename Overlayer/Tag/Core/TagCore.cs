@@ -13,6 +13,8 @@ public enum TagType {
 
     ProcessFormat = 1 << 8,
 
+    JsOnly = 1 << 9,
+
     Hide = 1 << 16,
 
     Advanced = 1 << 24,

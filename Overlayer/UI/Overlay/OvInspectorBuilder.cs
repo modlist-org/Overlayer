@@ -1177,6 +1177,7 @@ internal sealed class OvInspectorBuilder(
             DiagnosticId.ArgTooFew => string.Format(InspectorText("INSPECTOR_DIAG_ARG_TOO_FEW", "Expected at least {0} arguments; got {1}"), Data(0), Data(1)),
             DiagnosticId.ArgTooMany => string.Format(InspectorText("INSPECTOR_DIAG_ARG_TOO_MANY", "Expected at most {0} arguments; got {1}"), Data(0), Data(1)),
             DiagnosticId.FormatFail => string.Format(InspectorText("INSPECTOR_DIAG_FORMAT", "Invalid format '{0}'"), Data(0)),
+            DiagnosticId.JsOnlyBlocked => string.Format(InspectorText("INSPECTOR_DIAG_JSONLY", "Tag '{0}' is only available in JavaScript"), Data(0)),
             DiagnosticId.AdvancedTagException => Data(0, InspectorText("INSPECTOR_DIAG_ADVANCED_TAG", "Advanced tag failed")),
             DiagnosticId.JsError => Data(0, "JavaScript error"),
             DiagnosticId.InternalError => InspectorText("INSPECTOR_DIAG_INTERNAL", "Internal compiler error"),

@@ -15,7 +15,7 @@ public class JSTagRegistrationHost(JSScriptLoader loader, string filePath) {
     // Injected in V8Manager.BindEngine (runtime) and emitted into impl.js
     // (autocomplete + Fx). Keep values in sync with TagCore.TagType.
     public const string TagTypeScript =
-        "globalThis.TagType = Object.freeze({ None: 0, BlockOnNotPlaying: 1, BlockOnPaused: 2, BlockOnAll: 3, ProcessFormat: 256, Hide: 65536, Advanced: 16777216 });";
+        "globalThis.TagType = Object.freeze({ None: 0, BlockOnNotPlaying: 1, BlockOnPaused: 2, BlockOnAll: 3, ProcessFormat: 256, JsOnly: 512, Hide: 65536, Advanced: 16777216 });";
     public const string BindingScript = @"
         Object.defineProperty(globalThis, 'RegisterTag', {
             value: function(name, func, options) {

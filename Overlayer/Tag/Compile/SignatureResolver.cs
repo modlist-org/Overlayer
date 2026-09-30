@@ -15,6 +15,16 @@ public static class SignatureResolver {
             return ResolvedSignature.Invalid;
         }
 
+        if((tag.TagType & TagType.JsOnly) != 0) {
+            diag.Add(new CompileDiagnostic(
+                DiagnosticId.JsOnlyBlocked,
+                CompileSeverity.Error,
+                context,
+                [tag.Name]
+            ));
+            return ResolvedSignature.Invalid;
+        }
+
         string[] rawArgs = placeholder.Args ?? [];
         var parameters = tag.Parameters;
 
