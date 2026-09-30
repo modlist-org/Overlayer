@@ -8,7 +8,7 @@ namespace Overlayer.Tests;
 
 public sealed class CompilerTests {
     private static class DummyTags {
-        public static double FullComboValue => 12345.0;
+        public static double FullComboValue => 1557.0;
         public static string MissValue => "FullCombo";
     }
 
@@ -21,7 +21,7 @@ public sealed class CompilerTests {
         var compiled = Compiler.Compile(tag, new ParsedTag("{FullCombo:F1}", "FullCombo", ["F1"], 0, 14));
 
         Assert.True(compiled.IsValid);
-        Assert.Equal(12345.0d.ToString("F1"), compiled.Get());
+        Assert.Equal(1557.0d.ToString("F1"), compiled.Get());
     }
 
     [Fact]
@@ -30,7 +30,17 @@ public sealed class CompilerTests {
         var compiled = Compiler.Compile(tag, new ParsedTag("{FullCombo}", "FullCombo", [], 0, 11));
 
         Assert.True(compiled.IsValid);
-        Assert.Equal(12345.0d.ToString(), compiled.Get());
+        Assert.Equal(1557.0d.ToString(), compiled.Get());
+    }
+
+    [Fact]
+    public void BlockedTag_RendersRawWhenNotPlaying() {
+        var prop = typeof(DummyTags).GetProperty(nameof(DummyTags.FullComboValue), BindingFlags.Public | BindingFlags.Static)!;
+        var tag = new TagCore("FullCombo", prop, TagType.BlockOnNotPlaying);
+        var compiled = Compiler.Compile(tag, new ParsedTag("{FullCombo:F1}", "FullCombo", ["F1"], 0, 14));
+
+        Assert.True(compiled.IsValid);
+        Assert.Equal("{FullCombo:F1}", compiled.Get());
     }
 
     [Fact]
