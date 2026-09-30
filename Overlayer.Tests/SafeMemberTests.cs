@@ -96,4 +96,29 @@ public sealed class SafeMemberTests {
             SafeAccess.ModeOverride = null;
         }
     }
+
+    [Fact]
+    public void Access_GetterReadsDirectly() {
+        var get = Access.Getter<int>(typeof(DummyTarget).FullName, nameof(DummyTarget.Score));
+
+        Assert.Equal(7, get(null));
+    }
+
+    [Fact]
+    public void Access_MissingMemberThrows() {
+        Assert.Throws<MissingMemberException>(() =>
+            Access.Getter<int>(typeof(DummyTarget).FullName, "NoSuchMember_xyz"));
+    }
+
+    [Fact]
+    public void Access_MissingTypeThrows() {
+        Assert.Throws<TypeLoadException>(() => Access.RequireType("NoSuchType_xyz"));
+    }
+
+    [Fact]
+    public void Access_InvokerCallsWithConvertedArgs() {
+        var invoke = Access.Invoker<int>(typeof(DummyTarget).FullName, nameof(DummyTarget.Add));
+
+        Assert.Equal(374, invoke(null, [200, 174]));
+    }
 }

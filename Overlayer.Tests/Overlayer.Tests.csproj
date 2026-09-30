@@ -40,6 +40,7 @@
     <Compile Include="..\Overlayer\Patch\Lazy\NeedsPatchResolver.cs" />
     <Compile Include="..\Overlayer\Utility\Access\SafeAccess.cs" />
     <Compile Include="..\Overlayer\Utility\Access\SafeMember.cs" />
+    <Compile Include="..\Overlayer\Utility\Access\Access.cs" />
     <Compile Include="..\Overlayer\TextEngine\Parse\ParsedTag.cs" />
     <Compile Include="..\Overlayer\TextEngine\Parse\Parser.cs" />
   </ItemGroup>

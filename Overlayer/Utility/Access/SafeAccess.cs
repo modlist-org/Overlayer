@@ -106,6 +106,7 @@ public static class SafeAccess {
 
     private static readonly Dictionary<(Type, string), Func<object, object>> readers = [];
     private static readonly Dictionary<(Type, string, int), Func<object, object[], object>> callers = [];
+    private static readonly Dictionary<(Type, string), Action<object, object>> writers = [];
 
     public static bool TryRead(object target, string member, out object value) {
         value = null;
@@ -152,6 +153,47 @@ public static class SafeAccess {
         } catch {
             return false;
         }
+    }
+
+    public static bool TryWrite(object target, string member, object value) {
+        if(target == null || string.IsNullOrEmpty(member)) {
+            return false;
+        }
+        try {
+            var key = (target.GetType(), member);
+            lock(syncLock) {
+                if(!writers.TryGetValue(key, out var writer)) {
+                    writer = BuildWriter(key.Item1, member);
+                    writers[key] = writer;
+                }
+                if(writer == null) {
+                    return false;
+                }
+                writer(target, value);
+                return true;
+            }
+        } catch {
+            return false;
+        }
+    }
+
+    private static Action<object, object> BuildWriter(Type type, string member) {
+        const BindingFlags flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance;
+        var inst = Expression.Parameter(typeof(object), "instance");
+        var val = Expression.Parameter(typeof(object), "value");
+        var field = type.GetField(member, flags);
+        if(field != null && !field.IsInitOnly) {
+            Expression target = field.IsStatic ? null : Expression.Convert(inst, type);
+            var body = Expression.Assign(Expression.Field(target, field), Expression.Convert(val, field.FieldType));
+            return Expression.Lambda<Action<object, object>>(body, inst, val).Compile();
+        }
+        var set = type.GetProperty(member, flags)?.GetSetMethod(true);
+        if(set != null) {
+            Expression target = set.IsStatic ? null : Expression.Convert(inst, type);
+            var body = Expression.Call(target, set, Expression.Convert(val, set.GetParameters()[0].ParameterType));
+            return Expression.Lambda<Action<object, object>>(body, inst, val).Compile();
+        }
+        return null;
     }
 
     private static Func<object, object> BuildReader(Type type, string member) {

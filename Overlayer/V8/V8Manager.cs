@@ -64,6 +64,7 @@ public class V8Manager : IRuntimeService {
     private void BindEngine(V8ScriptEngine engine) {
         engine.AddHostObject(nameof(TagAccessHelper), new TagAccessHelper());
         engine.AddHostObject(nameof(Store), Store);
+        engine.AddHostObject("Clr", new Scripting.Clr.ClrAccess());
         engine.Execute(JSTagRegistrationHost.TagTypeScript);
     }
 
@@ -186,6 +187,12 @@ public class V8Manager : IRuntimeService {
         sb.AppendLine("/* Store.Get(key, fallback): value or fallback. */");
         sb.AppendLine("/* Store.Has(key) / Store.Remove(key) / Store.Clear() / Store.Keys() / Store.Count. */\n");
 
+        sb.AppendLine("/* CLR access: Clr.Create(\"System.Random\") makes an instance. */");
+        sb.AppendLine("/* Clr.Get(targetOrType, member) / Clr.Set(targetOrType, member, value). */");
+        sb.AppendLine("/* Clr.Call(targetOrType, method, ...args) / Clr.Invoke(typeName, method, ...args). */");
+        sb.AppendLine("/* Statics take a type-name string, e.g. Clr.Call(\"System.Math\", \"Max\", 1, 2). */");
+        sb.AppendLine("/* Fast path: var m = Clr.Prepare(targetOrType, member); m.Get(); m.Set(v); m.Call(...args). */\n");
+
         sb.AppendLine("/* Tags */\n");
 
         foreach(var tag in tags.OrderBy(t => t.Name)) {
@@ -239,6 +246,24 @@ public class V8Manager : IRuntimeService {
         sb.AppendLine("    readonly Count: number;");
         sb.AppendLine("}");
         sb.AppendLine("declare const Store: FxStore;");
+        sb.AppendLine("interface ClrAccess {");
+        sb.AppendLine("    Create(typeName: string, ...args: any[]): any;");
+        sb.AppendLine("    Get(targetOrType: any, member: string): any;");
+        sb.AppendLine("    Set(targetOrType: any, member: string, value: any): void;");
+        sb.AppendLine("    Call(targetOrType: any, method: string, ...args: any[]): any;");
+        sb.AppendLine("    Invoke(typeName: string, method: string, ...args: any[]): any;");
+        sb.AppendLine("    Prepare(targetOrType: any, member: string): ClrMember;");
+        sb.AppendLine("    TryGet(targetOrType: any, member: string): any;");
+        sb.AppendLine("    TrySet(targetOrType: any, member: string, value: any): boolean;");
+        sb.AppendLine("    TryCall(targetOrType: any, method: string, ...args: any[]): any;");
+        sb.AppendLine("    TryPrepare(targetOrType: any, member: string): ClrMember;");
+        sb.AppendLine("}");
+        sb.AppendLine("interface ClrMember {");
+        sb.AppendLine("    Get(): any;");
+        sb.AppendLine("    Set(value: any): void;");
+        sb.AppendLine("    Call(...args: any[]): any;");
+        sb.AppendLine("}");
+        sb.AppendLine("declare const Clr: ClrAccess;");
         sb.AppendLine("interface TagNamespace {");
         sb.AppendLine("    [key: string]: (...args: any[]) => any;");
         sb.AppendLine("}");
