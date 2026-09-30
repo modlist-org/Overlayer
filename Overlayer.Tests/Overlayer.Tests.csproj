@@ -35,6 +35,7 @@
     <Compile Include="..\Overlayer\Tag\Diagnostic\DiagnosticId.cs" />
     <Compile Include="..\Overlayer\Tag\Runtime\CompiledPlaceholder.cs" />
     <Compile Include="..\Overlayer\Tag\Runtime\EmptyDelegates.cs" />
+    <Compile Include="..\Overlayer\ModuleAPI\PlaybackState.cs" />
     <Compile Include="..\Overlayer\TextEngine\Parse\ParsedTag.cs" />
     <Compile Include="..\Overlayer\TextEngine\Parse\Parser.cs" />
   </ItemGroup>
