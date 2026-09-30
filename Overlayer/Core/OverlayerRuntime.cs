@@ -59,6 +59,7 @@ public sealed class OverlayerRuntime {
         Logger = new OverlayerLogger(
             host.OverlayerLogger
         );
+        Utility.Access.SafeAccess.Logger = message => Logger.Wrn(message);
         State = new ModState();
         Paths = new PathService(
             Path.Combine(

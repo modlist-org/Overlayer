@@ -38,6 +38,8 @@
     <Compile Include="..\Overlayer\ModuleAPI\PlaybackState.cs" />
     <Compile Include="..\Overlayer\Patch\Lazy\NeedsPatchAttribute.cs" />
     <Compile Include="..\Overlayer\Patch\Lazy\NeedsPatchResolver.cs" />
+    <Compile Include="..\Overlayer\Utility\Access\SafeAccess.cs" />
+    <Compile Include="..\Overlayer\Utility\Access\SafeMember.cs" />
     <Compile Include="..\Overlayer\TextEngine\Parse\ParsedTag.cs" />
     <Compile Include="..\Overlayer\TextEngine\Parse\Parser.cs" />
   </ItemGroup>
