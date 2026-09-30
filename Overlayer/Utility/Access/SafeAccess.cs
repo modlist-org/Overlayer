@@ -47,13 +47,21 @@ public static class SafeAccess {
                 }
             }
             SweepLocked();
+            int total = 0;
+            int resolved = 0;
             foreach(var weak in members) {
                 if(weak.TryGetTarget(out var member) && member != null) {
+                    total++;
                     try {
-                        member.Resolve();
+                        if(member.Resolve()) {
+                            resolved++;
+                        }
                     } catch {
                     }
                 }
+            }
+            if(total > 0) {
+                Logger?.Invoke($"[SafeAccess] Resolved {resolved}/{total} members.");
             }
         }
     }
