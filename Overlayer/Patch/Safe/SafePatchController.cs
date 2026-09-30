@@ -33,6 +33,17 @@ public static class SafePatchController {
         return [.. patches.OfType<T>()];
     }
 
+    public static SafeConditionalPatch Find(Type patchType) {
+        lock(patches) {
+            foreach(var patch in patches) {
+                if(patch != null && patch.GetType() == patchType) {
+                    return patch;
+                }
+            }
+        }
+        return null;
+    }
+
     public static void ApplyAll() {
         foreach(var patch in patches) {
             patch.Apply();

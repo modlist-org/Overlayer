@@ -39,6 +39,13 @@ public abstract class SafeConditionalPatch(string id) {
     }
 
     protected abstract bool ShouldApply();
+    internal bool WantsApply() {
+        try {
+            return ShouldApply();
+        } catch {
+            return false;
+        }
+    }
     protected abstract MethodBase GetTargetMethod();
     protected virtual HarmonyMethod Prefix() => null;
     protected virtual HarmonyMethod Postfix() => null;

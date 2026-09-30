@@ -15,6 +15,7 @@ public sealed class TagCache {
     }
 
     private readonly Dictionary<string, CacheEntry> cache = [];
+    private readonly Dictionary<string, int> activeTagCounts = [];
     private readonly object lockObject = new();
 
     public CompiledPlaceholder GetOrCompile(ParsedTag parsed) {
@@ -53,28 +54,80 @@ public sealed class TagCache {
     }
 
     public void IncrementRef(string key) {
+        string[] changed = null;
         lock(lockObject) {
             if(cache.TryGetValue(key, out var entry)) {
                 entry.RefCount++;
+                if(entry.RefCount == 1) {
+                    changed = TrackActive(KeyToTagName(key), 1);
+                }
             }
         }
+        NotifyLazy(changed);
     }
 
     public void DecrementRef(string key) {
+        string[] changed = null;
         lock(lockObject) {
             if(cache.TryGetValue(key, out var entry)) {
                 entry.RefCount--;
                 if(entry.RefCount <= 0) {
                     cache.Remove(key);
+                    changed = TrackActive(KeyToTagName(key), -1);
                 }
             }
         }
+        NotifyLazy(changed);
     }
 
     public void Clear() {
+        string[] changed = null;
         lock(lockObject) {
             cache.Clear();
+            if(activeTagCounts.Count > 0) {
+                activeTagCounts.Clear();
+                changed = [];
+            }
         }
+        NotifyLazy(changed);
+    }
+
+    public IReadOnlyCollection<string> GetActiveTagNames() {
+        lock(lockObject) {
+            return [.. activeTagCounts.Keys];
+        }
+    }
+
+    private string[] TrackActive(string tagName, int delta) {
+        if(string.IsNullOrEmpty(tagName)) {
+            return null;
+        }
+        activeTagCounts.TryGetValue(tagName, out int count);
+        count += delta;
+        if(count <= 0) {
+            activeTagCounts.Remove(tagName);
+        } else {
+            activeTagCounts[tagName] = count;
+        }
+        return [.. activeTagCounts.Keys];
+    }
+
+    private static void NotifyLazy(string[] activeTags) {
+        if(activeTags == null) {
+            return;
+        }
+        try {
+            Overlayer.Patch.Lazy.LazyPatchController.Sync(activeTags);
+        } catch {
+        }
+    }
+
+    private static string KeyToTagName(string key) {
+        if(string.IsNullOrEmpty(key)) {
+            return null;
+        }
+        int sep = key.IndexOf(':');
+        return sep < 0 ? key : key[..sep];
     }
 
     public string GetKey(ParsedTag parsed) => MakeKey(parsed);
