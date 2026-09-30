@@ -75,6 +75,7 @@ public sealed class SafeMember<T> : SafeMemberBase {
     private Func<object, T> _getter;
     private Action<object, T> _setter;
     private Func<object, object[], T> _invoker;
+    private ParameterInfo[] _invokeParams;
 
     public SafeMember(SafeMemberConfig config) : base(config) {
         SafeAccess.Register(this);
@@ -116,12 +117,31 @@ public sealed class SafeMember<T> : SafeMemberBase {
             return false;
         }
         try {
-            result = _invoker(instance, args ?? []);
+            result = _invoker(instance, PadArgs(args ?? []));
             return true;
         } catch {
             result = default;
             return false;
         }
+    }
+
+    private object[] PadArgs(object[] args) {
+        var ps = _invokeParams;
+        if(ps == null || args.Length == ps.Length) {
+            return args;
+        }
+        if(args.Length > ps.Length) {
+            return null;
+        }
+        var padded = new object[ps.Length];
+        Array.Copy(args, padded, args.Length);
+        for(int i = args.Length; i < ps.Length; i++) {
+            if(!ps[i].HasDefaultValue) {
+                return null;
+            }
+            padded[i] = ps[i].DefaultValue;
+        }
+        return padded;
     }
 
     protected override void ResolveCore() {
@@ -156,6 +176,7 @@ public sealed class SafeMember<T> : SafeMemberBase {
         var method = FindMethod(type, flags);
         if(method != null) {
             _invoker = BuildInvoker(method);
+            _invokeParams = method.GetParameters();
             Resolved = true;
         }
     }
@@ -231,4 +252,5 @@ public sealed class SafeMember<T> : SafeMemberBase {
             : Expression.Convert(call, typeof(T));
         return Expression.Lambda<Func<object, object[], T>>(body, inst, args).Compile();
     }
+
 }
