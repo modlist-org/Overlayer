@@ -32,10 +32,20 @@ public static class Compiler {
             var lambda = Expression.Lambda<Func<string>>(expr);
             Func<string> inner = lambda.Compile();
             // Block flags are checked at runtime so no recompile is needed
-            // when play/pause state flips. Blocked tags render raw text.
-            compiledFunc = HasBlockFlag(tag)
-                ? () => IsBlocked(tag) ? parsed.Raw : inner()
-                : inner;
+            // when play/pause state flips. While blocked (e.g. the frames of
+            // a scene transition), keep the last good value instead of
+            // flashing raw text; raw is only the never-evaluated fallback.
+            if(!HasBlockFlag(tag)) {
+                compiledFunc = inner;
+            } else {
+                string last = null;
+                compiledFunc = () => {
+                    if(IsBlocked(tag)) {
+                        return last ?? parsed.Raw;
+                    }
+                    return last = inner();
+                };
+            }
         }
 
         return new CompiledPlaceholder(
