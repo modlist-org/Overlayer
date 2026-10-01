@@ -192,37 +192,7 @@ public class OvCanvasSettingPage : IDisposable {
         hierTitleLE.minHeight = 30f;
 
         // Hierarchy Scroll View
-        GameObject hierViewport = new("HierarchyViewport");
-        hierViewport.transform.SetParent(hierarchyCol.transform, false);
-        var hierViewportRect = hierViewport.AddComponent<RectTransform>();
-        var hierViewportLE = hierViewport.AddComponent<LayoutElement>();
-        hierViewportLE.flexibleHeight = 1f;
-
-        hierViewport.AddComponent<EmptyGraphic>().raycastTarget = true;
-        hierViewport.AddComponent<RectMask2D>();
-
-        GameObject hierContent = new("HierarchyContent");
-        hierContent.transform.SetParent(hierViewport.transform, false);
-        hierarchyContent = hierContent.AddComponent<RectTransform>();
-        hierarchyContent.anchorMin = new Vector2(0f, 1f);
-        hierarchyContent.anchorMax = new Vector2(1f, 1f);
-        hierarchyContent.pivot = new Vector2(0.5f, 1f);
-        hierarchyContent.offsetMin = Vector2.zero;
-        hierarchyContent.offsetMax = Vector2.zero;
-
-        var hierContentLayout = hierContent.AddComponent<VerticalLayoutGroup>();
-        hierContentLayout.spacing = 6f;
-        hierContentLayout.childControlWidth = true;
-        hierContentLayout.childControlHeight = true;
-        hierContentLayout.childForceExpandWidth = true;
-        hierContentLayout.childForceExpandHeight = false;
-
-        var hierContentFitter = hierContent.AddComponent<ContentSizeFitter>();
-        hierContentFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-
-        var hierScroll = hierarchyCol.AddComponent<UIScrollController>();
-        hierScroll.Ctx = O5KitAdapters.Ctx;
-        hierScroll.SetContent(hierarchyContent, hierViewportRect);
+        hierarchyContent = O5Factory.ScrollView(O5KitAdapters.Ctx, hierarchyCol.transform, 6f, expandLayout: true).content;
 
         // Hierarchy Create Toolbar
         GameObject hierCreateToolbar = new("HierarchyCreateToolbar");
@@ -482,37 +452,7 @@ public class OvCanvasSettingPage : IDisposable {
         inspTitleLE.minHeight = 30f;
 
         // Inspector Scroll View
-        GameObject inspViewport = new("InspectorViewport");
-        inspViewport.transform.SetParent(inspectorCol.transform, false);
-        var inspViewportRect = inspViewport.AddComponent<RectTransform>();
-        var inspViewportLE = inspViewport.AddComponent<LayoutElement>();
-        inspViewportLE.flexibleHeight = 1f;
-
-        inspViewport.AddComponent<EmptyGraphic>().raycastTarget = true;
-        inspViewport.AddComponent<RectMask2D>();
-
-        GameObject inspContent = new("InspectorContent");
-        inspContent.transform.SetParent(inspViewport.transform, false);
-        inspectorContent = inspContent.AddComponent<RectTransform>();
-        inspectorContent.anchorMin = new Vector2(0f, 1f);
-        inspectorContent.anchorMax = new Vector2(1f, 1f);
-        inspectorContent.pivot = new Vector2(0.5f, 1f);
-        inspectorContent.offsetMin = Vector2.zero;
-        inspectorContent.offsetMax = Vector2.zero;
-
-        var inspContentLayout = inspContent.AddComponent<VerticalLayoutGroup>();
-        inspContentLayout.spacing = 12f;
-        inspContentLayout.childControlWidth = true;
-        inspContentLayout.childControlHeight = true;
-        inspContentLayout.childForceExpandWidth = true;
-        inspContentLayout.childForceExpandHeight = false;
-
-        var inspContentFitter = inspContent.AddComponent<ContentSizeFitter>();
-        inspContentFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-
-        var inspScroll = inspectorCol.AddComponent<UIScrollController>();
-        inspScroll.Ctx = O5KitAdapters.Ctx;
-        inspScroll.SetContent(inspectorContent, inspViewportRect);
+        inspectorContent = O5Factory.ScrollView(O5KitAdapters.Ctx, inspectorCol.transform, 12f, expandLayout: true).content;
         headerGo.transform.SetAsLastSibling();
     }
 

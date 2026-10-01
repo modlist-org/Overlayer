@@ -175,37 +175,14 @@ internal static class PageResources {
         ));
         searchInput.Rect.offsetMax = Vector2.zero;
 
-        GameObject viewportObject = new("ImageViewport");
-        viewportObject.transform.SetParent(root, false);
-        listViewport = viewportObject.AddComponent<RectTransform>();
-        listViewport.anchorMin = Vector2.zero;
-        listViewport.anchorMax = Vector2.one;
-        listViewport.offsetMin = new Vector2(18f, 18f);
-        listViewport.offsetMax = new Vector2(-18f, -366f);
-        viewportObject.AddComponent<EmptyGraphic>().raycastTarget = true;
-        viewportObject.AddComponent<RectMask2D>();
-
-        GameObject contentObject = new("ImageList");
-        contentObject.transform.SetParent(listViewport, false);
-        listContent = contentObject.AddComponent<RectTransform>();
-        listContent.anchorMin = new Vector2(0f, 1f);
-        listContent.anchorMax = new Vector2(1f, 1f);
-        listContent.pivot = new Vector2(0.5f, 1f);
-        listContent.offsetMin = Vector2.zero;
-        listContent.offsetMax = Vector2.zero;
-
-        VerticalLayoutGroup layout = contentObject.AddComponent<VerticalLayoutGroup>();
-        layout.spacing = 8f;
-        layout.padding = new RectOffset { left = 0, right = 0, top = 0, bottom = 12 };
-        layout.childControlWidth = true;
-        layout.childControlHeight = true;
-        layout.childForceExpandWidth = true;
-        layout.childForceExpandHeight = false;
-        ContentSizeFitter fitter = contentObject.AddComponent<ContentSizeFitter>();
-        fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-        var listScroll = root.gameObject.AddComponent<UIScrollController>();
-        listScroll.Ctx = O5KitAdapters.Ctx;
-        listScroll.SetContent(listContent, listViewport);
+        var (viewportRect, contentRect, _) = O5Factory.ScrollView(O5KitAdapters.Ctx,
+            root,
+            8f,
+            viewportOffsetMin: new Vector2(18f, 18f),
+            viewportOffsetMax: new Vector2(-18f, -366f),
+            contentPadding: new RectOffset { left = 0, right = 0, top = 0, bottom = 12 });
+        listViewport = viewportRect;
+        listContent = contentRect;
 
         CreateDisabledPanel(root);
         MainCore.OnModEnabledChanged += (isEnabled, isDispose) => {

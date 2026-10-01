@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using O5Kit.Resource;
+using UnityEngine;
 using Object = UnityEngine.Object;
 
 namespace Overlayer.Resource;
@@ -35,8 +36,17 @@ public enum UISliceSprite {
     CircleOutline256O64P2048,
 }
 
-public sealed class SpriteManager(ResourceManager resource) : IDisposable {
-    private readonly ResourceManager resource = resource;
+/// <summary>Sprite cache over O5Kit's canonical artwork (no duplicated PNGs).
+/// An optional module-owned <see cref="ResourceManager"/> serves string lookups
+/// that O5Kit doesn't carry (e.g. a module's own icons).</summary>
+public sealed class SpriteManager : IDisposable {
+    private readonly O5Resources o5 = O5Resources.Bundled();
+    private readonly ResourceManager resource;
+
+    /// <param name="resource">Module-owned assets for string lookups. Null serves O5Kit art only.</param>
+    public SpriteManager(ResourceManager resource = null) {
+        this.resource = resource;
+    }
 
     private readonly Dictionary<object, Sprite> cache = [];
 
@@ -67,7 +77,8 @@ public sealed class SpriteManager(ResourceManager resource) : IDisposable {
             return sprite;
         }
 
-        Texture2D tex = resource.Get<Texture2D>(assetName);
+        Texture2D tex = o5.GetTexture(assetName)
+            ?? resource?.Get<Texture2D>(assetName);
         if(tex == null) {
             return null;
         }
@@ -89,7 +100,8 @@ public sealed class SpriteManager(ResourceManager resource) : IDisposable {
             return sprite;
         }
 
-        Texture2D tex = resource.Get<Texture2D>(assetName);
+        Texture2D tex = o5.GetTexture(assetName)
+            ?? resource?.Get<Texture2D>(assetName);
         if(tex == null) {
             return null;
         }
@@ -100,12 +112,12 @@ public sealed class SpriteManager(ResourceManager resource) : IDisposable {
         return sprite;
     }
 
-    public Sprite Get(Asset asset) {
+    private Sprite Get(O5Asset asset) {
         if(cache.TryGetValue(asset, out Sprite sprite)) {
             return sprite;
         }
 
-        Texture2D tex = resource.Get<Texture2D>(asset);
+        Texture2D tex = o5.GetTexture(asset);
         if(tex == null) {
             return null;
         }
@@ -116,14 +128,14 @@ public sealed class SpriteManager(ResourceManager resource) : IDisposable {
         return sprite;
     }
 
-    public Sprite GetSliced(Asset asset, float ppui, Vector4 border) {
+    private Sprite GetSliced(O5Asset asset, float ppui, Vector4 border) {
         object key = (asset, ppui, border);
 
         if(cache.TryGetValue(key, out Sprite sprite)) {
             return sprite;
         }
 
-        Texture2D tex = resource.Get<Texture2D>(asset);
+        Texture2D tex = o5.GetTexture(asset);
         if(tex == null) {
             return null;
         }
@@ -134,10 +146,10 @@ public sealed class SpriteManager(ResourceManager resource) : IDisposable {
         return sprite;
     }
 
-    public Sprite Get(UISprite sprite) => spriteMap.TryGetValue(sprite, out Asset asset) ? Get(asset) : null;
+    public Sprite Get(UISprite sprite) => spriteMap.TryGetValue(sprite, out O5Asset asset) ? Get(asset) : null;
 
     public Sprite Get(UISliceSprite sprite) {
-        if(!sliceMap.TryGetValue(sprite, out (Asset asset, float ppui) data)) {
+        if(!sliceMap.TryGetValue(sprite, out (O5Asset asset, float ppui) data)) {
             return null;
         }
 
@@ -154,37 +166,38 @@ public sealed class SpriteManager(ResourceManager resource) : IDisposable {
         }
 
         cache.Clear();
+        o5.Dispose();
     }
 
-    private readonly Dictionary<UISprite, Asset> spriteMap = new() {
-        [UISprite.OV5LogoOutline256] = Asset.OV5LogoOutline256,
-        [UISprite.Circle256] = Asset.Circle256,
-        [UISprite.X128] = Asset.X128,
-        [UISprite.Monitor128] = Asset.Monitor128,
-        [UISprite.Gear128] = Asset.Gear128,
-        [UISprite.Text128] = Asset.Text128,
-        [UISprite.Image128] = Asset.Image128,
-        [UISprite.Book128] = Asset.Book128,
-        [UISprite.Star128] = Asset.Star128,
-        [UISprite.ToggleCircle128] = Asset.ToggleCircle128,
-        [UISprite.Triangle128] = Asset.Triangle128,
-        [UISprite.Power128] = Asset.Power128,
-        [UISprite.MagnifyingGlass128] = Asset.MagnifyingGlass128,
-        [UISprite.Box128] = Asset.Box128,
-        [UISprite.Cube128] = Asset.Cube128,
-        [UISprite.Clone128] = Asset.Clone128,
-        [UISprite.Plus128] = Asset.Plus128,
-        [UISprite.Ping128] = Asset.Ping128,
-        [UISprite.CodeBlock128] = Asset.CodeBlock128,
-        [UISprite.F128] = Asset.F128,
+    private readonly Dictionary<UISprite, O5Asset> spriteMap = new() {
+        [UISprite.OV5LogoOutline256] = O5Asset.OV5LogoOutline256,
+        [UISprite.Circle256] = O5Asset.Circle256,
+        [UISprite.X128] = O5Asset.X128,
+        [UISprite.Monitor128] = O5Asset.Monitor128,
+        [UISprite.Gear128] = O5Asset.Gear128,
+        [UISprite.Text128] = O5Asset.Text128,
+        [UISprite.Image128] = O5Asset.Image128,
+        [UISprite.Book128] = O5Asset.Book128,
+        [UISprite.Star128] = O5Asset.Star128,
+        [UISprite.ToggleCircle128] = O5Asset.ToggleCircle128,
+        [UISprite.Triangle128] = O5Asset.Triangle128,
+        [UISprite.Power128] = O5Asset.Power128,
+        [UISprite.MagnifyingGlass128] = O5Asset.MagnifyingGlass128,
+        [UISprite.Box128] = O5Asset.Box128,
+        [UISprite.Cube128] = O5Asset.Cube128,
+        [UISprite.Clone128] = O5Asset.Clone128,
+        [UISprite.Plus128] = O5Asset.Plus128,
+        [UISprite.Ping128] = O5Asset.Ping128,
+        [UISprite.CodeBlock128] = O5Asset.CodeBlock128,
+        [UISprite.F128] = O5Asset.F128,
     };
 
-    private readonly Dictionary<UISliceSprite, (Asset asset, float ppui)> sliceMap = new() {
-        [UISliceSprite.Circle256P1024] = (Asset.Circle256, 1024f),
-        [UISliceSprite.Circle256P2048] = (Asset.Circle256, 2048f),
-        [UISliceSprite.CircleHalf256P1024] = (Asset.CircleHalf256, 1024f),
-        [UISliceSprite.CircleOutline256O32P1024] = (Asset.CircleOutline256O32, 1024f),
-        [UISliceSprite.CircleOutline256O64P1024] = (Asset.CircleOutline256O64, 1024f),
-        [UISliceSprite.CircleOutline256O64P2048] = (Asset.CircleOutline256O64, 2048f),
+    private readonly Dictionary<UISliceSprite, (O5Asset asset, float ppui)> sliceMap = new() {
+        [UISliceSprite.Circle256P1024] = (O5Asset.Circle256, 1024f),
+        [UISliceSprite.Circle256P2048] = (O5Asset.Circle256, 2048f),
+        [UISliceSprite.CircleHalf256P1024] = (O5Asset.CircleHalf256, 1024f),
+        [UISliceSprite.CircleOutline256O32P1024] = (O5Asset.CircleOutline256O32, 1024f),
+        [UISliceSprite.CircleOutline256O64P1024] = (O5Asset.CircleOutline256O64, 1024f),
+        [UISliceSprite.CircleOutline256O64P2048] = (O5Asset.CircleOutline256O64, 2048f),
     };
 }

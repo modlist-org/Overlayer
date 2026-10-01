@@ -34,7 +34,9 @@ public static class SignatureResolver {
         string format = null;
 
         if(parameters.Length == 0) {
-            if(rawArgs.Length > 0) {
+            // C# tags keep the legacy rule (sole arg is always the format).
+            // JS tags must opt in explicitly via ProcessFormat.
+            if(rawArgs.Length > 0 && (hasFormatFlag || !tag.IsJS)) {
                 format = rawArgs[0];
             }
         } else if(hasFormatFlag && rawArgs.Length > 0) {

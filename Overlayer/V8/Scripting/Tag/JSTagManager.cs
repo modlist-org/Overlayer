@@ -3,12 +3,12 @@ using Overlayer.Tag.Core;
 namespace Overlayer.V8.Scripting.Tag;
 
 public static class JSTagManager {
-    private static readonly Dictionary<string, (ScriptObject Func, TagType Type, string Desc)> _jsTags = [];
+    private static readonly Dictionary<string, (ScriptObject Func, TagType Type, string Desc, Type ReturnType)> _jsTags = [];
     private static readonly object _lock = new();
 
-    public static void Add(string name, ScriptObject func, TagType type, string desc) {
+    public static void Add(string name, ScriptObject func, TagType type, string desc, Type returnType = null) {
         lock(_lock) {
-            _jsTags[name] = (func, type, desc);
+            _jsTags[name] = (func, type, desc, returnType ?? typeof(object));
         }
     }
 

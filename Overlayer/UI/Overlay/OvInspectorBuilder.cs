@@ -858,7 +858,7 @@ internal sealed class OvInspectorBuilder(
             }
         }
 
-        controls.Add(new UIWatcher(O5KitAdapters.Ctx, id + "_diaghover", text.rectTransform, PollDiagnosticHover));
+        controls.Add(new O5Watcher(O5KitAdapters.Ctx, id + "_diaghover", text.rectTransform, PollDiagnosticHover));
 
         codeInput.AfterLabelUpdate = (sourceText, composing) => {
             textComposing = composing;
@@ -931,7 +931,7 @@ internal sealed class OvInspectorBuilder(
         }
 
         RefreshDiagnostics();
-        controls.Add(new UIWatcher(O5KitAdapters.Ctx, id + "_diagnostics", diagnosticsRect, RefreshDiagnostics));
+        controls.Add(new O5Watcher(O5KitAdapters.Ctx, id + "_diagnostics", diagnosticsRect, RefreshDiagnostics));
         Track(input);
     }
 
@@ -1772,7 +1772,7 @@ internal sealed class OvInspectorBuilder(
         RefreshValues();
 
         if(drivenX || drivenY || posFx || sizeFx) {
-            controls.Add(new UIWatcher(O5KitAdapters.Ctx, "rect_transform_driven", fields, RefreshValues));
+            controls.Add(new O5Watcher(O5KitAdapters.Ctx, "rect_transform_driven", fields, RefreshValues));
         }
         return RefreshValues;
     }
@@ -1848,7 +1848,7 @@ internal sealed class OvInspectorBuilder(
         secondY.Field.SetBlocked(sizeFx || (StretchY() && posFx), true);
         RefreshValues();
         if(posFx || sizeFx) {
-            controls.Add(new UIWatcher(O5KitAdapters.Ctx, "rect_transform_driven", fields, RefreshValues));
+            controls.Add(new O5Watcher(O5KitAdapters.Ctx, "rect_transform_driven", fields, RefreshValues));
         }
         return RefreshValues;
     }
@@ -1948,7 +1948,7 @@ internal sealed class OvInspectorBuilder(
             popup.anchoredPosition = position;
         }
 
-        controls.Add(new UIWatcher(O5KitAdapters.Ctx, "transform_anchor_popup", summary.Rect, RefreshPopupPosition));
+        controls.Add(new O5Watcher(O5KitAdapters.Ctx, "transform_anchor_popup", summary.Rect, RefreshPopupPosition));
 
         var gameObjectOvent = blocker.gameObject.AddComponent<OventHandler>();
         gameObjectOvent.OnClick += button => {
@@ -2163,7 +2163,7 @@ internal sealed class OvInspectorBuilder(
             popup.anchoredPosition = position;
         }
 
-        controls.Add(new UIWatcher(O5KitAdapters.Ctx, "transform_anchor_popup", summary.Rect, RefreshPopupPosition));
+        controls.Add(new O5Watcher(O5KitAdapters.Ctx, "transform_anchor_popup", summary.Rect, RefreshPopupPosition));
 
         var gameObjectOvent = blocker.gameObject.AddComponent<OventHandler>();
         gameObjectOvent.OnClick += button => {

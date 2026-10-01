@@ -35,35 +35,11 @@ internal static class PageOverlayer {
 
     public static void Create(RectTransform parent) {
         MainCore.Log.Msg("Creating Overlayer Page UI...");
-        GameObject viewport = new("Viewport");
-        viewport.transform.SetParent(parent, false);
-        RectTransform viewportRect = viewport.AddComponent<RectTransform>();
-        viewportRect.anchorMin = Vector2.zero;
-        viewportRect.anchorMax = Vector2.one;
-        viewportRect.offsetMin = Vector2.zero;
-        viewportRect.offsetMax = Vector2.zero;
-        viewport.AddComponent<EmptyGraphic>().raycastTarget = true;
+        var (viewportRect, contentRect, _) = O5Factory.ScrollView(O5KitAdapters.Ctx, parent, 0f);
+        GameObject viewport = viewportRect.gameObject;
+        contentRectRef = contentRect;
         rootViewport = viewport;
         viewportCanvasGroup = viewport.AddComponent<CanvasGroup>();
-        viewport.AddComponent<RectMask2D>();
-
-        GameObject content = new("Content");
-        content.transform.SetParent(viewportRect, false);
-        contentRectRef = content.AddComponent<RectTransform>();
-        contentRectRef.anchorMin = new Vector2(0f, 1f);
-        contentRectRef.anchorMax = new Vector2(1f, 1f);
-        contentRectRef.pivot = new Vector2(0.5f, 1f);
-        contentRectRef.offsetMin = Vector2.zero;
-        contentRectRef.offsetMax = Vector2.zero;
-
-        var contentLayout = content.AddComponent<VerticalLayoutGroup>();
-        contentLayout.childControlHeight = true;
-        contentLayout.childControlWidth = true;
-        contentLayout.childForceExpandHeight = false;
-        contentLayout.childForceExpandWidth = true;
-
-        var fitter = content.AddComponent<ContentSizeFitter>();
-        fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
         GameObject grid = new("Grid");
         grid.transform.SetParent(contentRectRef, false);

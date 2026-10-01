@@ -47,6 +47,7 @@ public class JSTagRegistrationHost(JSScriptLoader loader, string filePath) {
 
         string desc = null;
         TagType type = TagType.None;
+        Type returnType = typeof(object);
         string[] paramNames;
         try {
             paramNames = ExtractParameterNames(functionSource);
@@ -71,12 +72,17 @@ public class JSTagRegistrationHost(JSScriptLoader loader, string filePath) {
             if(descProp != null && descProp != Undefined.Value) {
                 desc = descProp.ToString();
             }
+
+            var returnTypeProp = obj.GetProperty("ReturnType");
+            if(returnTypeProp != null && returnTypeProp != Undefined.Value) {
+                returnType = ParseReturnType(returnTypeProp);
+            }
         }
 
         try {
-            var tag = new TagCore(name, scriptFunc, paramNames, type, desc);
+            var tag = new TagCore(name, scriptFunc, paramNames, type, desc, returnType);
 
-            JSTagManager.Add(name, scriptFunc, type, desc);
+            JSTagManager.Add(name, scriptFunc, type, desc, returnType);
             TagManager.Set(tag);
 
             _loader.RegisterFileTag(FilePath, name);
@@ -84,6 +90,41 @@ public class JSTagRegistrationHost(JSScriptLoader loader, string filePath) {
             JSTagManager.Remove(name);
             _loader.Diagnostics.Add(new JSDiagnostic(JSTagDiagnosticId.DuplicateName, JSSeverity.Error, FilePath, name));
         }
+    }
+
+    /// <summary>
+    /// Maps the <c>ReturnType</c> option of <c>RegisterTag</c> to a .NET type
+    /// used for compile-time format validation (e.g. {Tag:0.##}).
+    /// Only numeric declarations enable format ("number"/"double", "float",
+    /// "decimal", "int", "long"). Anything else (including "string", "date",
+    /// omitted) means format cannot be used: specifying one is a compile
+    /// error (<c>FormatFail</c>, raw text output).
+    /// </summary>
+    private static Type ParseReturnType(object value) {
+        if(value is Type hostType) {
+            return ToValidatableType(hostType);
+        }
+
+        string name = value?.ToString()?.Trim().ToLowerInvariant();
+        return name switch {
+            "number" or "double" => typeof(double),
+            "float" or "single" => typeof(float),
+            "decimal" => typeof(decimal),
+            "int" or "int32" => typeof(int),
+            "long" or "int64" => typeof(long),
+            "string" => typeof(string),
+            _ => typeof(object),
+        };
+    }
+
+    private static Type ToValidatableType(Type type) {
+        if(type == typeof(float) || type == typeof(double) || type == typeof(decimal) ||
+            type == typeof(int) || type == typeof(long) ||
+            type == typeof(string)) {
+            return type;
+        }
+
+        return typeof(object);
     }
 
     private static string[] ExtractParameterNames(string source) {

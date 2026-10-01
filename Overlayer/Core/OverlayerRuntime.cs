@@ -72,7 +72,7 @@ public sealed class OverlayerRuntime {
             Assembly,
             "Overlayer.Resource.Embedded."
         );
-        Sprite = new SpriteManager(Resource);
+        Sprite = new SpriteManager();
         V8Manager = new V8Manager();
         CameraManager = new CameraManager();
         services = new RuntimeServices();

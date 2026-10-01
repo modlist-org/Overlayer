@@ -178,6 +178,10 @@ public class V8Manager : IRuntimeService {
         sb.AppendLine(" * @param {Function} func - The logic to execute.");
         sb.AppendLine(" * @param {Object} [options] - Configuration object.");
         sb.AppendLine(" * @param {number} [options.Type] - TagType bitmask (e.g. TagType.ProcessFormat, or TagType.ProcessFormat | TagType.BlockOnPaused).");
+        sb.AppendLine(" * Use TagType.ProcessFormat to allow a trailing format argument (e.g. {Tag:0.##}).");
+        sb.AppendLine(" * @param {string} [options.ReturnType] - Declared return type for format validation.");
+        sb.AppendLine(" * One of 'number', 'float', 'decimal', 'int', 'long', 'string'.");
+        sb.AppendLine(" * Only numeric types allow a format argument; otherwise it is a compile error.");
         sb.AppendLine(" * @param {string} [options.Desc] - Description of the tag.");
         sb.AppendLine(" */");
         sb.AppendLine("globalThis.RegisterTag = function(name, func, options) {};\n");

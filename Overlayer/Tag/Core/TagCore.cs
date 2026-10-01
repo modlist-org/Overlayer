@@ -110,14 +110,14 @@ public class TagCore {
         public override object RawDefaultValue => Undefined.Value;
     }
 
-    public TagCore(string name, ScriptObject jsInvoker, string[] paramNames, TagType tagType, string description = null) {
+    public TagCore(string name, ScriptObject jsInvoker, string[] paramNames, TagType tagType, string description = null, Type returnType = null) {
         Name = name;
         Description = description;
         TagType = tagType & ~TagType.Advanced;
         Member = null;
         MemberType = TagMemberType.JS;
         JSFunction = jsInvoker;
-        ReturnType = typeof(object);
+        ReturnType = returnType ?? typeof(object);
 
         Parameters = new ParameterInfo[paramNames.Length];
         for(int i = 0; i < paramNames.Length; i++) {

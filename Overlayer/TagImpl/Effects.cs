@@ -123,8 +123,47 @@ public static class Effects {
         O5Ease.OutExpo => progress >= 1f ? 1f : 1f - MathF.Pow(2f, -10f * progress),
         O5Ease.OutCirc => MathF.Sqrt(1f - MathF.Pow(progress - 1f, 2f)),
         O5Ease.OutBack => 1f + (2.70158f * MathF.Pow(progress - 1f, 3f)) + (1.70158f * MathF.Pow(progress - 1f, 2f)),
+        O5Ease.InQuart => progress * progress * progress * progress,
+        O5Ease.OutQuart => 1f - MathF.Pow(1f - progress, 4f),
+        O5Ease.InOutQuart => progress < 0.5f ? 8f * progress * progress * progress * progress : 1f - MathF.Pow(-2f * progress + 2f, 4f) / 2f,
+        O5Ease.InQuint => progress * progress * progress * progress * progress,
+        O5Ease.OutQuint => 1f - MathF.Pow(1f - progress, 5f),
+        O5Ease.InOutQuint => progress < 0.5f ? 16f * progress * progress * progress * progress * progress : 1f - MathF.Pow(-2f * progress + 2f, 5f) / 2f,
+        O5Ease.InExpo => progress <= 0f ? 0f : MathF.Pow(2f, 10f * progress - 10f),
+        O5Ease.InOutExpo => progress <= 0f ? 0f : progress >= 1f ? 1f : progress < 0.5f ? MathF.Pow(2f, 20f * progress - 10f) / 2f : (2f - MathF.Pow(2f, -20f * progress + 10f)) / 2f,
+        O5Ease.InCirc => 1f - MathF.Sqrt(1f - progress * progress),
+        O5Ease.InOutCirc => progress < 0.5f ? (1f - MathF.Sqrt(1f - 4f * progress * progress)) / 2f : (MathF.Sqrt(1f - MathF.Pow(-2f * progress + 2f, 2f)) + 1f) / 2f,
+        O5Ease.InBack => 2.70158f * progress * progress * progress - 1.70158f * progress * progress,
+        O5Ease.InOutBack => progress < 0.5f ? (4f * progress * progress * ((3.59491f * 2f * progress) - 2.59491f)) / 2f : (MathF.Pow(2f * progress - 2f, 2f) * ((3.59491f * (2f * progress - 2f)) + 2.59491f) + 2f) / 2f,
+        O5Ease.InElastic => progress <= 0f ? 0f : progress >= 1f ? 1f : -MathF.Pow(2f, 10f * progress - 10f) * MathF.Sin((10f * progress - 10.75f) * 2.0944f),
+        O5Ease.OutElastic => progress <= 0f ? 0f : progress >= 1f ? 1f : MathF.Pow(2f, -10f * progress) * MathF.Sin((10f * progress - 0.75f) * 2.0944f) + 1f,
+        O5Ease.InOutElastic => progress <= 0f ? 0f : progress >= 1f ? 1f : progress < 0.5f ? -(MathF.Pow(2f, 20f * progress - 10f) * MathF.Sin((20f * progress - 11.125f) * 1.39626f)) / 2f : MathF.Pow(2f, -20f * progress + 10f) * MathF.Sin((20f * progress - 11.125f) * 1.39626f) / 2f,
+        O5Ease.InBounce => 1f - BounceOut(1f - progress),
+        O5Ease.OutBounce => BounceOut(progress),
+        O5Ease.InOutBounce => progress < 0.5f ? (1f - BounceOut(1f - 2f * progress)) / 2f : (1f + BounceOut(2f * progress - 1f)) / 2f,
         _ => progress
     };
+
+    private static float BounceOut(float t) {
+        const float n1 = 7.5625f;
+        const float d1 = 2.75f;
+        if(t < 1f / d1) {
+            return n1 * t * t;
+        }
+
+        if(t < 2f / d1) {
+            t -= 1.5f / d1;
+            return n1 * t * t + 0.75f;
+        }
+
+        if(t < 2.5f / d1) {
+            t -= 2.25f / d1;
+            return n1 * t * t + 0.9375f;
+        }
+
+        t -= 2.625f / d1;
+        return n1 * t * t + 0.984375f;
+    }
 
     private static bool TryReadNumber(string tagName, out double value) {
         value = 0;
