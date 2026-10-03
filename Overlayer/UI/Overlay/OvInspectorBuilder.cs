@@ -1260,7 +1260,7 @@ internal sealed class OvInspectorBuilder(
         string source
     ) => $"{state}|{source?.GetHashCode() ?? 0}|{string.Join("|", diagnostics.Select(d => d.ToString()))}";
 
-    private RectTransform Slider(Transform parent, string label, float defaultValue, float min, float max, float value, Action<float> changed, string id, string format = "F2") => Slider(parent, label, defaultValue, min, max, value, changed, id, format, ClampMode.All, null);
+    private RectTransform Slider(Transform parent, string label, float defaultValue, float min, float max, float value, Action<float> changed, string id, string format = "F2") => Slider(parent, label, defaultValue, min, max, value, changed, id, format, ClampMode.Slider, null);
 
     private RectTransform Slider(Transform parent, string label, float defaultValue, float min, float max, float value, Action<float> changed, string id, string format, ClampMode clampMode, Func<float, float> filter = null) {
         label = InspectorLabel(label);
