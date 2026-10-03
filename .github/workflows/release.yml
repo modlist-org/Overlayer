@@ -7,7 +7,7 @@
 #
 # Steps:
 #   1. Validate the tag and check that the code version matches it
-#   2. Decrypt tool/build-refs.zip.enc with the REFS_KEY secret -> stage reference DLLs
+#   2. Stage reference DLLs (checked in at tool/build-refs/, see below)
 #   3. Build Release_ML
 #   4. Assemble Overlayer_ML_win.zip / Overlayer_ML_linux.zip
 #   5. Upload both zips to the published release (prerelease flag from the release is preserved)
@@ -17,13 +17,6 @@
 #   git add Overlayer/Core/Info.cs Overlayer/Overlayer.csproj
 #   git commit -m "5.0.3" && git push
 #   # then Draft a new release on GitHub with tag 5.0.3 and publish it
-#
-# One-time setup:
-#   1. Locally: openssl rand -hex 32  (generate a key, store it somewhere safe)
-#   2. Locally: REFS_KEY=<key> ./tool/pack_refs.sh  -> creates tool/build-refs.zip.enc
-#   3. Commit/push tool/build-refs.zip.enc
-#   4. GitHub repo Settings > Secrets and variables > Actions > New repository secret
-#      Name: REFS_KEY, Value: <key>
 #
 # NOTE: keep the code version numeric (X.Y.Z). A tag suffix like "-beta.1" is fine for
 #   naming, but only the numeric part is injected into the build: OverlayerRuntime parses
@@ -43,7 +36,6 @@ jobs:
   release:
     runs-on: ubuntu-latest
     env:
-      REFS_KEY: ${{ secrets.REFS_KEY }}
       TAG: ${{ github.event.release.tag_name }}
     steps:
       - name: Checkout tag
@@ -71,23 +63,18 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Decrypt build refs
+      - name: Restore game reference DLLs
         run: |
-          if [[ -z "${REFS_KEY:-}" ]]; then
-            echo "::error::REFS_KEY secret is missing. See 'One-time setup' at the top of this workflow."
-            exit 1
-          fi
-          if [[ ! -f tool/build-refs.zip.enc ]]; then
-            echo "::error::tool/build-refs.zip.enc is not in the repo. Run pack_refs.sh locally and commit it."
-            exit 1
-          fi
-          openssl enc -d -aes-256-cbc -pbkdf2 \
-            -in tool/build-refs.zip.enc \
-            -out /tmp/build-refs.zip \
-            -pass env:REFS_KEY
-          mkdir -p /tmp/gamerefs
-          unzip -q -o /tmp/build-refs.zip -d /tmp/gamerefs
-          rm -f /tmp/build-refs.zip
+          # We cannot ship the game's copyrighted DLLs in the repo. Instead
+          # tool/build-refs/ records which assemblies the build needs
+          # (build-refs.txt) plus their SHA-256 (build-refs.sha256).
+          # CI recreates reference-only assemblies from that metadata with a
+          # local stub compiler and verifies every hash matches the game
+          # install the list was taken from. Reference assemblies carry no
+          # game code — only the assembly identities the C# compiler resolves
+          # HintPaths against — so this never touches copyrighted bytes.
+          dotnet run --project tool/GenRefs/GenRefs.csproj -- \
+            tool/build-refs/build-refs.txt tool/build-refs/build-refs.sha256 /tmp/gamerefs
           ls -R /tmp/gamerefs/game | head -n 20
 
       - name: Use CI game paths

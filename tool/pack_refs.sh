@@ -1,68 +1,61 @@
 #!/usr/bin/env bash
 #
-# Collects the reference DLLs needed for CI builds into an encrypted
-# zip (tool/build-refs.zip.enc).
-# Game DLLs must never be committed in plaintext (copyright) -> encrypt with
-# openssl AES-256-CBC and commit the .enc file. The decryption key lives only
-# in GitHub Secrets (REFS_KEY).
+# Regenerates the CI reference metadata (tool/build-refs/).
 #
-# Usage (once at setup + whenever the referenced DLL set changes):
-#   openssl rand -hex 32              # generate key -> store it somewhere safe
-#   REFS_KEY=<key> ./tool/pack_refs.sh
-#   # commit tool/build-refs.zip.enc
-#   # register REFS_KEY under GitHub repo Settings > Secrets > Actions
+# Checked in (plaintext, safe):
+#   build-refs.txt    - assembly identities (name, version, public key token)
+#   build-refs.sha256 - SHA-256 of the real game DLL each line was taken from
 #
-# Contents = files referenced by Overlayer.csproj that come from the game folder:
-#   MelonLoader/net35/{0Harmony,MelonLoader}.dll
-#   <GameData>/Managed/{DemiLib, I18N*, Newtonsoft.Json, Rewired_Core, Unity*, UnityEngine*}.dll
-# NOTE: re-run this script whenever a new game reference DLL is added to the csproj.
+# CI (release.yml) runs tool/GenRefs, which verifies the hashes against a
+# local game install when present and emits reference-only assemblies
+# (signatures only, no game code) for the compiler to resolve HintPaths
+# against. Re-run this script whenever a game reference DLL is added to the
+# csproj, and commit the result.
+#
+# Usage: ./tool/pack_refs.sh   (needs the game installed at ADOFAI_DIR or
+#   ~/.local/share/Steam/steamapps/common/A Dance of Fire and Ice)
 set -euo pipefail
 
-: "${REFS_KEY:?error: REFS_KEY env is required. Generate one with 'openssl rand -hex 32'.}"
-
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PROPS="$ROOT/Directory.Build.props"
-GAMEPATH="$(grep -oP '(?<=<GamePath>).*?(?=</GamePath>)' "$PROPS" | head -n 1)"
-GAMEDATA="$(grep -oP '(?<=<GameData>).*?(?=</GameData>)' "$PROPS" | head -n 1)"
-if [[ -z "$GAMEPATH" || -z "$GAMEDATA" ]]; then
-    echo "error: could not read GamePath/GameData from Directory.Build.props." >&2
-    exit 1
-fi
+GAMEPATH="${ADOFAI_DIR:-$HOME/.local/share/Steam/steamapps/common/A Dance of Fire and Ice}"
 
-MANAGED="$GAMEPATH/$GAMEDATA/Managed"
-NET35="$GAMEPATH/MelonLoader/net35"
+OUT="$ROOT/tool/build-refs"
+mkdir -p "$OUT"
 
-STAGE="$(mktemp -d)"
-trap 'rm -rf "$STAGE"' EXIT
-mkdir -p "$STAGE/game/GameData/Managed" "$STAGE/game/MelonLoader/net35"
+WANT="$OUT/.want.txt"
+{
+    # MelonLoader/0Harmony for the ML build (keep the subdir: GenRefs
+    # resolves them against the game root, not Managed).
+    echo "MelonLoader/net35/0Harmony.dll"
+    echo "MelonLoader/net35/MelonLoader.dll"
+    # Every game-relative HintPath in the csproj (minus facades the framework provides).
+    grep -rhoE '\$\(GamePath\)/\$\(GameData\)/Managed/[A-Za-z0-9._-]+\.dll' "$ROOT/Overlayer/Overlayer.csproj" \
+        | sed 's|.*/Managed/||' | sort -u
+} > "$WANT"
 
-shopt -s nullglob
-MANAGED_FILES=(
-    "$MANAGED/DemiLib.dll"
-    "$MANAGED"/I18N*.dll
-    "$MANAGED/Newtonsoft.Json.dll"
-    "$MANAGED/Rewired_Core.dll"
-    "$MANAGED"/Unity.*.dll
-    "$MANAGED"/UnityEngine*.dll
-)
-if [[ ${#MANAGED_FILES[@]} -eq 0 ]]; then
-    echo "error: no reference DLLs found in $MANAGED." >&2
-    exit 1
-fi
-cp -v "${MANAGED_FILES[@]}" "$STAGE/game/GameData/Managed/"
-cp -v "$NET35/0Harmony.dll" "$NET35/MelonLoader.dll" "$STAGE/game/MelonLoader/net35/"
+{
+    echo "# Game reference identities for CI (see release.yml)."
+    echo "# file|AssemblyName, Version=x[, pkt=HEX]"
+} > "$OUT/build-refs.txt"
+{
+    echo "# SHA-256 of the real game DLL each line above was taken from."
+} > "$OUT/build-refs.sha256"
 
-echo "packed ${#MANAGED_FILES[@]} managed + 2 melonloader dlls"
+dotnet build "$ROOT/tool/GenRefs/GenRefs.csproj" -c Release --nologo -v q
 
-(
-    cd "$STAGE"
-    zip -qr "$ROOT/tool/build-refs.zip" game
-)
-openssl enc -aes-256-cbc -pbkdf2 \
-    -in "$ROOT/tool/build-refs.zip" \
-    -out "$ROOT/tool/build-refs.zip.enc" \
-    -pass env:REFS_KEY
-rm -f "$ROOT/tool/build-refs.zip"  # never leave the plaintext behind
+count=0
+while IFS= read -r rel; do
+    src="$GAMEPATH/$rel"
+    if [[ ! -f "$src" ]]; then
+        echo "missing: $src" >&2
+        exit 1
+    fi
+    ident="$(dotnet run --project "$ROOT/tool/GenRefs/GenRefs.csproj" --no-build -c Release -- describe "$src")"
+    hash="$(sha256sum "$src" | cut -d' ' -f1)"
+    echo "$rel|$ident" >> "$OUT/build-refs.txt"
+    echo "$hash  $rel" >> "$OUT/build-refs.sha256"
+    count=$((count + 1))
+done < "$WANT"
+rm -f "$WANT"
 
-ls -la "$ROOT/tool/build-refs.zip.enc"
-echo "done. Commit tool/build-refs.zip.enc and register REFS_KEY in GitHub Secrets."
+echo "wrote $count entries to $OUT (verify with GAME_MANAGED_DIR=... GenRefs)"

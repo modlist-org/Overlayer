@@ -1,0 +1,68 @@
+# Game reference identities for CI (see release.yml).
+# file|AssemblyName, Version=x[, pkt=HEX]
+MelonLoader/net35/0Harmony.dll|0Harmony, Version=2.10.2.0
+DemiLib.dll|DemiLib, Version=1.0.0.0
+I18N.dll|I18N, Version=2.0.0.0, pkt=0738EB9F132ED756
+I18N.CJK.dll|I18N.CJK, Version=2.0.0.0, pkt=0738EB9F132ED756
+I18N.MidEast.dll|I18N.MidEast, Version=2.0.0.0, pkt=0738EB9F132ED756
+I18N.Other.dll|I18N.Other, Version=2.0.0.0, pkt=0738EB9F132ED756
+I18N.Rare.dll|I18N.Rare, Version=2.0.0.0, pkt=0738EB9F132ED756
+I18N.West.dll|I18N.West, Version=2.0.0.0, pkt=0738EB9F132ED756
+MelonLoader/net35/MelonLoader.dll|MelonLoader, Version=0.7.3.0
+Newtonsoft.Json.dll|Newtonsoft.Json, Version=13.0.0.0, pkt=30AD4FE6B2A6AEED
+Rewired_Core.dll|Rewired_Core, Version=1.0.0.0
+Unity.Addressables.dll|Unity.Addressables, Version=0.0.0.0
+Unity.Burst.dll|Unity.Burst, Version=0.0.0.0
+Unity.Burst.Unsafe.dll|Unity.Burst.Unsafe, Version=4.0.5.0
+Unity.Collections.dll|Unity.Collections, Version=0.0.0.0
+Unity.Collections.LowLevel.ILSupport.dll|Unity.Collections.LowLevel.ILSupport, Version=0.0.0.0
+Unity.Mathematics.dll|Unity.Mathematics, Version=0.0.0.0
+Unity.MemoryProfiler.dll|Unity.MemoryProfiler, Version=0.0.0.0
+Unity.ResourceManager.dll|Unity.ResourceManager, Version=0.0.0.0
+Unity.TextMeshPro.dll|Unity.TextMeshPro, Version=0.0.0.0
+UnityEngine.dll|UnityEngine, Version=0.0.0.0
+UnityEngine.AIModule.dll|UnityEngine.AIModule, Version=0.0.0.0
+UnityEngine.AccessibilityModule.dll|UnityEngine.AccessibilityModule, Version=0.0.0.0
+UnityEngine.AndroidJNIModule.dll|UnityEngine.AndroidJNIModule, Version=0.0.0.0
+UnityEngine.AnimationModule.dll|UnityEngine.AnimationModule, Version=0.0.0.0
+UnityEngine.AssetBundleModule.dll|UnityEngine.AssetBundleModule, Version=0.0.0.0
+UnityEngine.AudioModule.dll|UnityEngine.AudioModule, Version=0.0.0.0
+UnityEngine.ClothModule.dll|UnityEngine.ClothModule, Version=0.0.0.0
+UnityEngine.ContentLoadModule.dll|UnityEngine.ContentLoadModule, Version=0.0.0.0
+UnityEngine.CoreModule.dll|UnityEngine.CoreModule, Version=0.0.0.0
+UnityEngine.CrashReportingModule.dll|UnityEngine.CrashReportingModule, Version=0.0.0.0
+UnityEngine.DSPGraphModule.dll|UnityEngine.DSPGraphModule, Version=0.0.0.0
+UnityEngine.DirectorModule.dll|UnityEngine.DirectorModule, Version=0.0.0.0
+UnityEngine.GIModule.dll|UnityEngine.GIModule, Version=0.0.0.0
+UnityEngine.GameCenterModule.dll|UnityEngine.GameCenterModule, Version=0.0.0.0
+UnityEngine.GridModule.dll|UnityEngine.GridModule, Version=0.0.0.0
+UnityEngine.HotReloadModule.dll|UnityEngine.HotReloadModule, Version=0.0.0.0
+UnityEngine.IMGUIModule.dll|UnityEngine.IMGUIModule, Version=0.0.0.0
+UnityEngine.ImageConversionModule.dll|UnityEngine.ImageConversionModule, Version=0.0.0.0
+UnityEngine.InputLegacyModule.dll|UnityEngine.InputLegacyModule, Version=0.0.0.0
+UnityEngine.InputModule.dll|UnityEngine.InputModule, Version=0.0.0.0
+UnityEngine.JSONSerializeModule.dll|UnityEngine.JSONSerializeModule, Version=0.0.0.0
+UnityEngine.LocalizationModule.dll|UnityEngine.LocalizationModule, Version=0.0.0.0
+UnityEngine.ParticleSystemModule.dll|UnityEngine.ParticleSystemModule, Version=0.0.0.0
+UnityEngine.PerformanceReportingModule.dll|UnityEngine.PerformanceReportingModule, Version=0.0.0.0
+UnityEngine.Physics2DModule.dll|UnityEngine.Physics2DModule, Version=0.0.0.0
+UnityEngine.PhysicsModule.dll|UnityEngine.PhysicsModule, Version=0.0.0.0
+UnityEngine.PropertiesModule.dll|UnityEngine.PropertiesModule, Version=0.0.0.0
+UnityEngine.RuntimeInitializeOnLoadManagerInitializerModule.dll|UnityEngine.RuntimeInitializeOnLoadManagerInitializerModule, Version=0.0.0.0
+UnityEngine.ScreenCaptureModule.dll|UnityEngine.ScreenCaptureModule, Version=0.0.0.0
+UnityEngine.SharedInternalsModule.dll|UnityEngine.SharedInternalsModule, Version=0.0.0.0
+UnityEngine.SpriteMaskModule.dll|UnityEngine.SpriteMaskModule, Version=0.0.0.0
+UnityEngine.SpriteShapeModule.dll|UnityEngine.SpriteShapeModule, Version=0.0.0.0
+UnityEngine.StreamingModule.dll|UnityEngine.StreamingModule, Version=0.0.0.0
+UnityEngine.SubstanceModule.dll|UnityEngine.SubstanceModule, Version=0.0.0.0
+UnityEngine.SubsystemsModule.dll|UnityEngine.SubsystemsModule, Version=0.0.0.0
+UnityEngine.TLSModule.dll|UnityEngine.TLSModule, Version=0.0.0.0
+UnityEngine.TerrainModule.dll|UnityEngine.TerrainModule, Version=0.0.0.0
+UnityEngine.TerrainPhysicsModule.dll|UnityEngine.TerrainPhysicsModule, Version=0.0.0.0
+UnityEngine.TextCoreFontEngineModule.dll|UnityEngine.TextCoreFontEngineModule, Version=0.0.0.0
+UnityEngine.TextCoreTextEngineModule.dll|UnityEngine.TextCoreTextEngineModule, Version=0.0.0.0
+UnityEngine.TextRenderingModule.dll|UnityEngine.TextRenderingModule, Version=0.0.0.0
+UnityEngine.TilemapModule.dll|UnityEngine.TilemapModule, Version=0.0.0.0
+UnityEngine.UI.dll|UnityEngine.UI, Version=1.0.0.0
+UnityEngine.UIElementsModule.dll|UnityEngine.UIElementsModule, Version=0.0.0.0
+UnityEngine.UIModule.dll|UnityEngine.UIModule, Version=0.0.0.0
