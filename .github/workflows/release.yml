@@ -7,7 +7,8 @@
 #
 # Steps:
 #   1. Validate the tag and check that the code version matches it
-#   2. Stage reference DLLs (checked in at tool/build-refs/, see below)
+#   2. Check out O5Kit (sibling ProjectReference, not a submodule) + stage
+#      the checked-in reference DLLs (tool/build-refs/game/)
 #   3. Build Release_ML
 #   4. Assemble Overlayer_ML_win.zip / Overlayer_ML_linux.zip
 #   5. Upload both zips to the published release (prerelease flag from the release is preserved)
@@ -58,6 +59,17 @@ jobs:
           fi
           echo "tag=$TAG code_version=$CODE_VER"
 
+      - name: Checkout O5Kit
+        # Sibling ProjectReference (Overlayer.csproj -> ../../O5Kit/...),
+        # not a submodule: it must sit next to this checkout, with its own
+        # LitMotion submodule initialized.
+        uses: actions/checkout@v4
+        with:
+          repository: modlist-org/O5Kit
+          path: ../O5Kit
+          fetch-depth: 1
+          submodules: recursive
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
@@ -66,14 +78,16 @@ jobs:
       - name: Restore game reference DLLs
         run: |
           # We cannot ship the game's copyrighted DLLs in the repo. Instead
-          # tool/build-refs/ records which assemblies the build needs
-          # (build-refs.txt) plus their SHA-256 (build-refs.sha256, pinned
-          # when pack_refs.sh recorded them).
-          # CI emits reference-only assemblies from those identities with
-          # tool/GenRefs (name/version/public-key only, no game code — the
-          # C# compiler resolves HintPaths by identity alone).
+          # tool/build-refs/game/ holds stripped reference assemblies built
+          # by tool/pack_refs.sh: real API surface, every method body
+          # replaced by `ret` / `throw null`, resources dropped. No game
+          # logic or game data — just what the compiler resolves HintPaths
+          # against. tool/build-refs/build-refs.sha256 pins the real game
+          # DLLs they were harvested from.
           dotnet run --project tool/GenRefs/GenRefs.csproj -- \
-            tool/build-refs/build-refs.txt tool/build-refs/build-refs.sha256 /tmp/gamerefs
+            verify tool/build-refs/build-refs.txt tool/build-refs
+          mkdir -p /tmp/gamerefs
+          cp -r tool/build-refs/game /tmp/gamerefs/game
           ls -R /tmp/gamerefs/game | head -n 20
 
       - name: Use CI game paths
@@ -83,19 +97,16 @@ jobs:
               <PropertyGroup>
                   <GamePath>/tmp/gamerefs/game</GamePath>
                   <GameData>GameData</GameData>
-                  <!-- CI game refs are identity-only: they satisfy the
-                       compiler's HintPath resolution, nothing more. -->
-                  <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
               </PropertyGroup>
-              <!-- The O5Kit project reference resolves its own game
-                   assemblies from the same fake tree (it reads GamePath/
-                   GameData from this file too). -->
           </Project>
           EOF
           ls -R /tmp/gamerefs/game | head -n 30
 
       - name: Build (Release_ML)
-        run: dotnet build Overlayer/Overlayer.csproj -c Release_ML --nologo -v minimal
+        # GamePath/GameData as global properties so the O5Kit
+        # ProjectReference (outside this Directory.Build.props tree)
+        # resolves the same fake tree.
+        run: dotnet build Overlayer/Overlayer.csproj -c Release_ML --nologo -v minimal -p:GamePath=/tmp/gamerefs/game -p:GameData=GameData
 
       - name: Package zips
         run: ./tool/make_zips.sh

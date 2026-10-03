@@ -1,15 +1,25 @@
-// Restores game reference assemblies for CI from checked-in metadata.
-// We cannot ship the game's copyrighted DLLs in the repo. Instead,
-// tool/build-refs/build-refs.txt lists every assembly the build references
-// (name, version, optional public key token) and build-refs.sha256 pins the
-// SHA-256 of the real game DLL each line was taken from. This tool emits
-// reference-only assemblies (no method bodies, no game code — just enough
-// metadata for the C# compiler to resolve HintPaths) and verifies the hashes
-// match a local game install when one is present.
+// Produces the CI reference assemblies checked in at tool/build-refs/game/.
 //
-// Usage: GenRefs <build-refs.txt> <build-refs.sha256> <outdir>
-// Layout under <outdir> mirrors pack_refs.sh: game/GameData/Managed/*.dll
-// + game/MelonLoader/net35/{0Harmony,MelonLoader}.dll
+// We cannot ship the game's copyrighted DLLs in the repo. Instead this tool
+// harvests ONLY their API surface (type/member signatures) with Mono.Cecil,
+// replaces every method body with `ret` / `throw null`, and drops all managed
+// resources (I18N tables, etc.). No game logic or game data survives — just
+// enough metadata for the C# compiler to resolve the csproj HintPaths.
+// Custom attributes, const values and signatures are kept byte-identical so
+// overload resolution, `params`, optional args and extension methods behave
+// exactly like they do against the real game.
+//
+// Modes:
+//   GenRefs describe <dll>                 prints "Name, Version=x[, pkt=HEX]"
+//   GenRefs <txt> <sha256> <outdir>        verify hashes vs local game install,
+//                                          then emit stripped refs under
+//                                          <outdir>/game/... (needs the game)
+//   GenRefs verify <txt> <stubroot>        check checked-in stubs at
+//                                          <stubroot>/game/... match <txt>
+//                                          (no game needed; used by CI)
+//
+// Layout under <outdir>/<stubroot> mirrors the game: game/GameData/Managed/
+// *.dll + game/MelonLoader/net35/{0Harmony,MelonLoader}.dll
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -25,31 +35,9 @@ internal static class GenRefs {
         public byte[] Pkt;
     }
 
-    private static int Main(string[] args) {
-        if(args.Length == 2 && args[0] == "describe") {
-            // describe <dll>: prints "Name, Version=x.y.z.w[, pkt=HEX]" for pack_refs.sh
-            try {
-                var asm = Mono.Cecil.AssemblyDefinition.ReadAssembly(args[1],
-                    new Mono.Cecil.ReaderParameters { ReadSymbols = false });
-                var n = asm.Name;
-                string pkt = n.PublicKeyToken is byte[] t && t.Length > 0
-                    ? ", pkt=" + BitConverter.ToString(t).Replace("-", "")
-                    : "";
-                Console.WriteLine($"{n.Name}, Version={n.Version}{pkt}");
-                return 0;
-            } catch(Exception e) {
-                Console.Error.WriteLine("describe failed: " + e.Message);
-                return 2;
-            }
-        }
-        if(args.Length != 3) {
-            Console.Error.WriteLine("usage: GenRefs <build-refs.txt> <build-refs.sha256> <outdir>");
-            Console.Error.WriteLine("   or: GenRefs describe <dll>");
-            return 2;
-        }
-
+    private static List<Ref> ReadRefs(string path) {
         var refs = new List<Ref>();
-        foreach(string line in File.ReadAllLines(args[0])) {
+        foreach(string line in File.ReadAllLines(path)) {
             string t = line.Trim();
             if(t.Length == 0 || t.StartsWith('#')) {
                 continue;
@@ -57,8 +45,7 @@ internal static class GenRefs {
             // file|AssemblyName, Version=x.y.z.w[, pkt=HEX]
             string[] parts = t.Split('|');
             if(parts.Length != 2) {
-                Console.Error.WriteLine("bad line: " + t);
-                return 2;
+                throw new InvalidOperationException("bad line: " + t);
             }
             string file = parts[0].Trim();
             string name = null;
@@ -75,10 +62,77 @@ internal static class GenRefs {
                 }
             }
             if(name == null || version == null) {
-                Console.Error.WriteLine("bad line: " + t);
-                return 2;
+                throw new InvalidOperationException("bad line: " + t);
             }
             refs.Add(new Ref { File = file, Name = name, Version = version, Pkt = pkt });
+        }
+        return refs;
+    }
+
+    private static int Main(string[] args) {
+        if(args.Length == 2 && args[0] == "describe") {
+            try {
+                var asm = Mono.Cecil.AssemblyDefinition.ReadAssembly(args[1],
+                    new Mono.Cecil.ReaderParameters { ReadSymbols = false });
+                var n = asm.Name;
+                string pkt = n.PublicKeyToken is byte[] t && t.Length > 0
+                    ? ", pkt=" + BitConverter.ToString(t).Replace("-", "")
+                    : "";
+                Console.WriteLine($"{n.Name}, Version={n.Version}{pkt}");
+                return 0;
+            } catch(Exception e) {
+                Console.Error.WriteLine("describe failed: " + e.Message);
+                return 2;
+            }
+        }
+        if(args.Length == 3 && args[0] == "verify") {
+            // CI identity check: stubs on disk must match the checked-in list.
+            List<Ref> refs;
+            try {
+                refs = ReadRefs(args[1]);
+            } catch(Exception e) {
+                Console.Error.WriteLine(e.Message);
+                return 2;
+            }
+            foreach(var r in refs) {
+                string stub = r.File.StartsWith("MelonLoader/", StringComparison.Ordinal)
+                    ? Path.Combine(args[2], "game/MelonLoader/net35", Path.GetFileName(r.File))
+                    : Path.Combine(args[2], "game/GameData/Managed", Path.GetFileName(r.File));
+                if(!File.Exists(stub)) {
+                    Console.Error.WriteLine("stub missing: " + stub);
+                    return 2;
+                }
+                var n = Mono.Cecil.AssemblyDefinition.ReadAssembly(stub,
+                    new Mono.Cecil.ReaderParameters { ReadSymbols = false }).Name;
+                string pkt = n.PublicKeyToken is byte[] t && t.Length > 0
+                    ? BitConverter.ToString(t).Replace("-", "")
+                    : null;
+                string wantPkt = r.Pkt != null && r.Pkt.Length > 0
+                    ? BitConverter.ToString(r.Pkt).Replace("-", "")
+                    : null;
+                if(n.Name != r.Name || n.Version != r.Version || pkt != wantPkt) {
+                    Console.Error.WriteLine($"identity mismatch for {r.File}: " +
+                        $"stub is {n.Name}, Version={n.Version}" +
+                        (pkt == null ? "" : ", pkt=" + pkt));
+                    return 2;
+                }
+            }
+            Console.WriteLine($"verified {refs.Count} stub identities");
+            return 0;
+        }
+        if(args.Length != 3) {
+            Console.Error.WriteLine("usage: GenRefs <build-refs.txt> <build-refs.sha256> <outdir>");
+            Console.Error.WriteLine("   or: GenRefs describe <dll>");
+            Console.Error.WriteLine("   or: GenRefs verify <build-refs.txt> <stubroot>");
+            return 2;
+        }
+
+        List<Ref> emitRefs;
+        try {
+            emitRefs = ReadRefs(args[0]);
+        } catch(Exception e) {
+            Console.Error.WriteLine(e.Message);
+            return 2;
         }
 
         var hashes = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -99,14 +153,16 @@ internal static class GenRefs {
         if(string.IsNullOrEmpty(managed)) {
             managed = FindManagedDir();
         }
-        bool verified = false;
-        if(managed != null) {
-            Console.WriteLine("verifying against local game install: " + managed);
-            using var sha = SHA256.Create();
-            foreach(var r in refs) {
+        if(managed == null) {
+            Console.Error.WriteLine("no local game install: set GAME_MANAGED_DIR or install the game.");
+            return 2;
+        }
+        Console.WriteLine("verifying against local game install: " + managed);
+        using(var sha = SHA256.Create()) {
+            foreach(var r in emitRefs) {
                 string gameFile = FindGameFile(r.File, managed);
                 if(string.IsNullOrEmpty(gameFile) || !File.Exists(gameFile)) {
-                    Console.Error.WriteLine("game file missing: " + gameFile);
+                    Console.Error.WriteLine("game file missing: " + (gameFile ?? r.File));
                     return 2;
                 }
                 string hex = Convert.ToHexString(sha.ComputeHash(File.ReadAllBytes(gameFile))).ToLowerInvariant();
@@ -115,28 +171,19 @@ internal static class GenRefs {
                     return 2;
                 }
             }
-            Console.WriteLine($"verified {refs.Count} hashes against local game install");
-            verified = true;
         }
+        Console.WriteLine($"verified {emitRefs.Count} hashes against local game install");
 
-        if(!verified) {
-            Console.WriteLine("no local game install: emitting UNVERIFIED reference assemblies.");
-            Console.WriteLine("Every emitted identity still comes from build-refs.txt (checked in); only the");
-            Console.WriteLine("hash pinning is skipped. The compiler resolves HintPaths by identity alone,");
-            Console.WriteLine("so the build output is identical either way.");
-        }
-        foreach(var r in refs) {
+        foreach(var r in emitRefs) {
             string dir = r.File.StartsWith("MelonLoader/", StringComparison.Ordinal)
                 ? Path.Combine(args[2], "game/MelonLoader/net35")
                 : Path.Combine(args[2], "game/GameData/Managed");
             Directory.CreateDirectory(dir);
             EmitReference(Path.Combine(dir, Path.GetFileName(r.File)), r, managed);
         }
-        Console.WriteLine($"wrote {refs.Count} reference assemblies" + (managed == null ? " (UNVERIFIED: no local game install)" : ""));
+        Console.WriteLine($"wrote {emitRefs.Count} reference assemblies");
         return 0;
     }
-
-
 
     private static string FindGameFile(string file, string managedDir) {
         if(file.StartsWith("MelonLoader/", StringComparison.Ordinal)) {
@@ -175,7 +222,6 @@ internal static class GenRefs {
         yield return Path.Combine(HomeDir(), ".local/share/Steam/steamapps/common/A Dance of Fire and Ice");
     }
 
-
     private static string HomeDir() {
         string home = Environment.GetEnvironmentVariable("HOME");
         if(!string.IsNullOrEmpty(home)) {
@@ -205,23 +251,90 @@ internal static class GenRefs {
     }
 
     private static void EmitReference(string path, Ref r, string managedDir) {
-        // Identity-only: name/version/public-key straight from the checked-in
-        // build-refs.txt. No game bytes, no game reads — the C# compiler
-        // resolves HintPaths by identity alone. The hash pinning in Main()
-        // already confirmed each identity against a real game install when
-        // pack_refs.sh recorded it.
-        var name = new AssemblyNameDefinition(r.Name, r.Version);
-        if(r.Pkt != null && r.Pkt.Length > 0) {
-            name.PublicKeyToken = r.Pkt;
+        // Harvest the real API surface, then strip everything executable:
+        // every method body becomes `ret` (void) or `throw null` (works for
+        // ANY return type, like real reference assemblies), and all managed
+        // resources are dropped. Signatures, attributes, constants and the
+        // pinned identity are kept, so compilation behaves identically.
+        string gameFile = FindGameFile(r.File, managedDir);
+        if(gameFile == null || !File.Exists(gameFile)) {
+            throw new InvalidOperationException(
+                "game file missing for " + r.File + " (set GAME_MANAGED_DIR or install the game)");
         }
-        using var asm = AssemblyDefinition.CreateAssembly(name, "<RefStub>", ModuleKind.Dll);
-        var module = asm.MainModule;
-        var stub = new TypeDefinition("", "__RefStub",
-            Mono.Cecil.TypeAttributes.Public | Mono.Cecil.TypeAttributes.Class,
-            module.TypeSystem.Object);
-        module.Types.Add(stub);
+        var resolver = new GameDirResolver(Path.GetDirectoryName(gameFile));
+        var asm = Mono.Cecil.AssemblyDefinition.ReadAssembly(gameFile,
+            new Mono.Cecil.ReaderParameters { ReadSymbols = false, AssemblyResolver = resolver });
+        asm.Name.Version = r.Version;
+        if(r.Pkt != null && r.Pkt.Length > 0) {
+            asm.Name.PublicKeyToken = r.Pkt;
+        }
+        foreach(var module in asm.Modules) {
+            foreach(var type in module.Types.ToArray()) {
+                StripType(type);
+            }
+            foreach(var res in module.Resources.ToArray()) {
+                module.Resources.Remove(res);
+            }
+        }
         Directory.CreateDirectory(Path.GetDirectoryName(path));
         asm.Write(path);
+        string simple = Path.GetFileNameWithoutExtension(path);
+        if(simple == "mscorlib" || simple == "netstandard" || simple == "System") {
+            throw new InvalidOperationException("refusing to emit framework assembly: " + simple);
+        }
     }
 
+    private static void StripType(Mono.Cecil.TypeDefinition type) {
+        foreach(var nested in type.NestedTypes.ToArray()) {
+            StripType(nested);
+        }
+        foreach(var method in type.Methods.ToArray()) {
+            if(!method.HasBody) {
+                continue;
+            }
+            if(method.IsPInvokeImpl || method.IsAbstract || method.IsRuntime) {
+                continue;
+            }
+            StripBody(method);
+        }
+        foreach(var field in type.Fields) {
+            if(field.HasConstant) {
+                continue;
+            }
+            field.Constant = null;
+        }
+    }
+
+    private static void StripBody(Mono.Cecil.MethodDefinition method) {
+        var body = new Mono.Cecil.Cil.MethodBody(method);
+        body.MaxStackSize = 8;
+        method.Body = body;
+        var il = body.GetILProcessor();
+        if(method.ReturnType.FullName == "System.Void") {
+            il.Emit(Mono.Cecil.Cil.OpCodes.Ret);
+        } else {
+            il.Emit(Mono.Cecil.Cil.OpCodes.Ldnull);
+            il.Emit(Mono.Cecil.Cil.OpCodes.Throw);
+        }
+    }
+
+    private sealed class GameDirResolver : Mono.Cecil.DefaultAssemblyResolver {
+        private readonly string dir;
+        public GameDirResolver(string dir) {
+            this.dir = dir;
+            AddSearchDirectory(dir);
+        }
+        public override Mono.Cecil.AssemblyDefinition Resolve(Mono.Cecil.AssemblyNameReference name) {
+            try {
+                return base.Resolve(name);
+            } catch {
+                string cand = Path.Combine(dir, name.Name + ".dll");
+                if(File.Exists(cand)) {
+                    return Mono.Cecil.AssemblyDefinition.ReadAssembly(cand,
+                        new Mono.Cecil.ReaderParameters { ReadSymbols = false, AssemblyResolver = this });
+                }
+                throw;
+            }
+        }
+    }
 }
