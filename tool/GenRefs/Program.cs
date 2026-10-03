@@ -141,22 +141,22 @@ internal static class GenRefs {
 
 
     private static string FindGameFile(string file, string managedDir) {
-        if(file.StartsWith("MelonLoader/", StringComparison.Ordinal)) {
-            string home = HomeDir();
-            foreach(string root in new[] {
-                Environment.GetEnvironmentVariable("ADOFAI_DIR"),
-                Path.Combine(home, ".local/share/Steam/steamapps/common/A Dance of Fire and Ice"),
-            }) {
-                if(string.IsNullOrEmpty(root)) {
-                    continue;
-                }
+        // MelonLoader files sit beside Managed (game root), not inside it.
+        if(file.StartsWith("MelonLoader/", StringComparison.Ordinal) && managedDir != null) {
+            string root = managedDir;
+            for(int i = 0; i < 2 && root != null; i++) {
+                root = Path.GetDirectoryName(root);
+            }
+            if(root != null) {
                 string cand = Path.Combine(root, file);
                 if(File.Exists(cand)) {
                     return cand;
                 }
             }
-            return null;
         }
+
+        // MelonLoader files sit beside Managed (game root), not inside it.
+
         if(managedDir != null) {
             string cand = Path.Combine(managedDir, Path.GetFileName(file));
             if(File.Exists(cand)) {
