@@ -62,13 +62,20 @@ jobs:
       - name: Checkout O5Kit
         # Sibling ProjectReference (Overlayer.csproj -> ../../O5Kit/...),
         # not a submodule: it must sit next to this checkout, with its own
-        # LitMotion submodule initialized.
+        # LitMotion submodule initialized. The checkout action only allows
+        # paths inside the workspace, so land inside and move it out.
         uses: actions/checkout@v4
         with:
           repository: modlist-org/O5Kit
-          path: ../O5Kit
+          path: O5Kit-tmp
           fetch-depth: 1
           submodules: recursive
+
+      - name: Move O5Kit next to checkout
+        run: |
+          rm -rf ../O5Kit
+          mv O5Kit-tmp ../O5Kit
+          ls ../O5Kit/src/O5Kit/O5Kit.csproj ../O5Kit/lib/LitMotion/src/LitMotion/Assets/LitMotion/Runtime/LMotion.Create.cs
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
