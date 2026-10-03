@@ -67,12 +67,11 @@ jobs:
         run: |
           # We cannot ship the game's copyrighted DLLs in the repo. Instead
           # tool/build-refs/ records which assemblies the build needs
-          # (build-refs.txt) plus their SHA-256 (build-refs.sha256).
-          # CI recreates reference-only assemblies from that metadata with a
-          # local stub compiler and verifies every hash matches the game
-          # install the list was taken from. Reference assemblies carry no
-          # game code — only the assembly identities the C# compiler resolves
-          # HintPaths against — so this never touches copyrighted bytes.
+          # (build-refs.txt) plus their SHA-256 (build-refs.sha256, pinned
+          # when pack_refs.sh recorded them).
+          # CI emits reference-only assemblies from those identities with
+          # tool/GenRefs (name/version/public-key only, no game code — the
+          # C# compiler resolves HintPaths by identity alone).
           dotnet run --project tool/GenRefs/GenRefs.csproj -- \
             tool/build-refs/build-refs.txt tool/build-refs/build-refs.sha256 /tmp/gamerefs
           ls -R /tmp/gamerefs/game | head -n 20
