@@ -104,9 +104,7 @@ internal static class GenRefs {
             Console.WriteLine("verifying against local game install: " + managed);
             using var sha = SHA256.Create();
             foreach(var r in refs) {
-                string gameFile = r.File.StartsWith("MelonLoader/", StringComparison.Ordinal)
-                    ? FindGameFile(r.File, managed)
-                    : Path.Combine(managed, Path.GetFileName(r.File));
+                string gameFile = FindGameFile(r.File, managed);
                 if(string.IsNullOrEmpty(gameFile) || !File.Exists(gameFile)) {
                     Console.Error.WriteLine("game file missing: " + gameFile);
                     return 2;
@@ -141,31 +139,41 @@ internal static class GenRefs {
 
 
     private static string FindGameFile(string file, string managedDir) {
-        // MelonLoader files sit beside Managed (game root), not inside it.
-        if(file.StartsWith("MelonLoader/", StringComparison.Ordinal) && managedDir != null) {
-            string root = managedDir;
-            for(int i = 0; i < 2 && root != null; i++) {
-                root = Path.GetDirectoryName(root);
-            }
-            if(root != null) {
+        if(file.StartsWith("MelonLoader/", StringComparison.Ordinal)) {
+            foreach(string root in GameRoots(managedDir)) {
                 string cand = Path.Combine(root, file);
                 if(File.Exists(cand)) {
                     return cand;
                 }
             }
+            return null;
         }
-
-        // MelonLoader files sit beside Managed (game root), not inside it.
-
         if(managedDir != null) {
             string cand = Path.Combine(managedDir, Path.GetFileName(file));
             if(File.Exists(cand)) {
                 return cand;
             }
         }
-        string managed = FindManagedDir();
-        return managed == null ? null : Path.Combine(managed, Path.GetFileName(file));
+        return null;
     }
+
+    private static IEnumerable<string> GameRoots(string managedDir) {
+        if(managedDir != null) {
+            string root = managedDir;
+            for(int i = 0; i < 2 && root != null; i++) {
+                root = Path.GetDirectoryName(root);
+            }
+            if(root != null) {
+                yield return root;
+            }
+        }
+        string env = Environment.GetEnvironmentVariable("ADOFAI_DIR");
+        if(!string.IsNullOrEmpty(env)) {
+            yield return env;
+        }
+        yield return Path.Combine(HomeDir(), ".local/share/Steam/steamapps/common/A Dance of Fire and Ice");
+    }
+
 
     private static string HomeDir() {
         string home = Environment.GetEnvironmentVariable("HOME");
