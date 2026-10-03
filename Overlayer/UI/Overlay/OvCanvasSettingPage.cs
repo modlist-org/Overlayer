@@ -235,7 +235,7 @@ public class OvCanvasSettingPage : IDisposable {
             RebuildHierarchy();
             RebuildInspector();
             SaveConfig();
-        }, MainCore.Spr.Get(UISprite.Cube128), "btn_hier_add_empty");
+        }, MainCore.Spr.Get(UISprite.Cube128), "btn_hier_add_empty", height: 36f);
 
         btnEmpty.Rect.offsetMax = Vector2.zero;
         permanentUiObjects.Add(btnEmpty);
@@ -265,7 +265,7 @@ public class OvCanvasSettingPage : IDisposable {
             RebuildHierarchy();
             RebuildInspector();
             SaveConfig();
-        }, MainCore.Spr.Get(UISprite.Text128), "btn_hier_add_text");
+        }, MainCore.Spr.Get(UISprite.Text128), "btn_hier_add_text", height: 36f);
 
         btnText.Rect.offsetMax = Vector2.zero;
         permanentUiObjects.Add(btnText);
@@ -290,7 +290,7 @@ public class OvCanvasSettingPage : IDisposable {
             RebuildHierarchy();
             RebuildInspector();
             SaveConfig();
-        }, MainCore.Spr.Get(UISprite.Image128), "btn_hier_add_image");
+        }, MainCore.Spr.Get(UISprite.Image128), "btn_hier_add_image", height: 36f);
 
         btnImage.Rect.offsetMax = Vector2.zero;
         permanentUiObjects.Add(btnImage);
@@ -347,7 +347,7 @@ public class OvCanvasSettingPage : IDisposable {
             RebuildHierarchy();
             RebuildInspector();
             SaveConfig();
-        }, MainCore.Spr.Get(UISprite.Clone128), "btn_hier_clone");
+        }, MainCore.Spr.Get(UISprite.Clone128), "btn_hier_clone", height: 36f);
 
         btnClone.Rect.offsetMax = Vector2.zero;
         permanentUiObjects.Add(btnClone);
@@ -408,7 +408,7 @@ public class OvCanvasSettingPage : IDisposable {
             RebuildHierarchy();
             RebuildInspector();
             SaveConfig();
-        }, MainCore.Spr.Get(UISprite.X128), "btn_hier_del");
+        }, MainCore.Spr.Get(UISprite.X128), "btn_hier_del", height: 36f);
 
         btnDel.Rect.offsetMax = Vector2.zero;
         permanentUiObjects.Add(btnDel);

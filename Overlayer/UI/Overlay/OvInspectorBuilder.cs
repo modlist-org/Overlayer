@@ -1687,7 +1687,8 @@ internal sealed class OvInspectorBuilder(
             dragStep: Mathf.Pow(10f, -decimals),
             blockHoverWhileDragging: true
         );
-        var element = field.Rect.gameObject.AddComponent<LayoutElement>();
+        var element = field.Rect.gameObject.GetComponent<LayoutElement>();
+        element.preferredHeight = element.minHeight = 44f;
         element.minWidth = 100f;
         element.flexibleWidth = 1f;
         Track(field);
