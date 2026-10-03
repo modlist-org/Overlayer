@@ -102,6 +102,9 @@ internal sealed class OvInspectorBuilder(
         if(obj.Config.ColorRangeConfig != null) {
             BuildColorRange(obj, obj.Config.ColorRangeConfig);
         }
+        if(obj.Config.GraphConfig != null) {
+            BuildGraph(obj, obj.Config.GraphConfig);
+        }
         if(obj.Config.ImageConfig != null) {
             BuildImage(obj, obj.Config.ImageConfig);
         }
@@ -410,6 +413,41 @@ internal sealed class OvInspectorBuilder(
             : $"{selected.Length} selected";
     }
 
+
+
+
+
+    private void BuildGraph(OvObject obj, GraphSettings cfg) {
+        var (_, card) = ComponentCard("Graph", cfg, () => {
+            obj.Config.GraphConfig = null;
+            RefreshComponents(obj);
+        });
+
+        Label(card, "JS function f(t), t is seconds. Sampled once per frame into a scrolling history.");
+        var jsLanguage = new CodeEditorLanguage {
+            Highlight = JsSyntaxHighlighter.GetSpans,
+            Diagnose = null,
+            TagCompletion = false,
+            LabelSuffix = "js expression"
+        };
+        CodeEditor(card, "f(t)", "graph_code", cfg.JsCode.Value, value => {
+            cfg.JsCode.Value = value;
+            ApplyAndSave();
+        }, null, jsLanguage);
+
+        FxSlider(card, "Window (s)", cfg.Window, 10f, 1f, 60f, "graph_window", "F1");
+        FxIntSlider(card, "Samples", cfg.Samples, 120, 8, 1000, "graph_samples", "F0");
+        FxSlider(card, "Min", cfg.Min, 0f, -1000f, 1000f, "graph_min", "F1");
+        FxSlider(card, "Max", cfg.Max, 100f, -1000f, 1000f, "graph_max", "F1");
+        FxToggle(card, "Auto Scale", cfg.AutoScale, false, "graph_autoscale");
+        FxColor(card, "Line Color", cfg.LineColor, Color.white, "graph_line_color");
+        FxSlider(card, "Thickness", cfg.Thickness, 2f, 1f, 10f, "graph_thickness", "F1");
+        FxToggle(card, "Axes", cfg.ShowAxes, true, "graph_axes");
+        FxToggle(card, "Grid", cfg.ShowGrid, false, "graph_grid");
+        FxToggle(card, "Fill", cfg.ShowFill, false, "graph_fill");
+        FxColor(card, "Fill Color", cfg.FillColor, new Color(1f, 1f, 1f, 0.25f), "graph_fill_color");
+    }
+
     private void BuildColorRange(OvObject obj, ColorRangeSettings cfg) {
         var (_, card) = ComponentCard("Color Range", cfg, () => {
             obj.Config.ColorRangeConfig = null;
@@ -509,6 +547,10 @@ internal sealed class OvInspectorBuilder(
         if(obj.Config.TextConfig != null && obj.Config.ColorRangeConfig == null) {
             options.Add("Color Range");
         }
+
+        if(obj.Config.GraphConfig == null) {
+            options.Add("Graph");
+        }
         
         if(obj.Config.ShadowConfig == null) {
             options.Add("Shadow");
@@ -557,6 +599,9 @@ internal sealed class OvInspectorBuilder(
                     break;
                 case "Color Range":
                     obj.Config.ColorRangeConfig = new ColorRangeSettings();
+                    break;
+                case "Graph":
+                    obj.Config.GraphConfig = new GraphSettings();
                     break;
                 case "Shadow":
                     obj.Config.ShadowConfig = new ShadowSettings();

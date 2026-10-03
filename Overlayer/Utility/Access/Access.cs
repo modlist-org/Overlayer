@@ -3,9 +3,6 @@ using System.Reflection;
 
 namespace Overlayer.Utility.Access;
 
-// Raw direct access. Same compiled delegates as SafeMember, but throws
-// instead of degrading: MissingMemberException / TypeLoadException.
-// SafeAccess stays as the fallback/logging variant.
 public static class Access {
     private static readonly Dictionary<string, Type> typeCache = [];
     private static readonly object syncLock = new();

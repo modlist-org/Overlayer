@@ -7,6 +7,7 @@ namespace Overlayer.V8;
 public class TagAccessHelper {
     public object Get(string tagName, params object[] args) {
         if(TagManager.TryGet(tagName, out var tag)) {
+            Patch.Lazy.LazyPatchController.Touch(tagName);
             try {
                 var result = tag.Invoke(args);
                 return result;

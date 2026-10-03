@@ -16,6 +16,7 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
     public OvTextSettings TextEngineConfig = null;
     public MovingManSettings MovingManConfig = null;
     public ColorRangeSettings ColorRangeConfig = null;
+    public GraphSettings GraphConfig = null;
     public ImageSettings ImageConfig = null;
     public MaskSettings MaskConfig = null;
     public ShadowSettings ShadowConfig = null;
@@ -37,6 +38,7 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
         || FxUtil.HasFx(TextEngineConfig?.NotPlayingText)
         || (MovingManConfig?.HasAnyFx ?? false)
         || (ColorRangeConfig?.HasAnyFx ?? false)
+        || (GraphConfig?.HasAnyFx ?? false)
         || (ImageConfig?.HasAnyFx ?? false)
         || (MaskConfig?.HasAnyFx ?? false)
         || (ShadowConfig?.HasAnyFx ?? false)
@@ -67,6 +69,9 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
         }
         if(ColorRangeConfig != null) {
             obj[nameof(ColorRangeConfig)] = ColorRangeConfig.Serialize();
+        }
+        if(GraphConfig != null) {
+            obj[nameof(GraphConfig)] = GraphConfig.Serialize();
         }
         if(ImageConfig != null) {
             obj[nameof(ImageConfig)] = ImageConfig.Serialize();
@@ -134,6 +139,7 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
         }
         MovingManConfig = ReadConfig<MovingManSettings>(obj, nameof(MovingManConfig));
         ColorRangeConfig = ReadConfig<ColorRangeSettings>(obj, nameof(ColorRangeConfig));
+        GraphConfig = ReadConfig<GraphSettings>(obj, nameof(GraphConfig));
         ImageConfig = ReadConfig<ImageSettings>(obj, nameof(ImageConfig));
 #if !IL2CPP
         BoxCollider2DConfig = ReadConfig<BoxCollider2DSettings>(obj, nameof(BoxCollider2DConfig));
@@ -157,6 +163,7 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
             TextEngineConfig = TextEngineConfig?.Copy(),
             MovingManConfig = MovingManConfig?.Copy(),
             ColorRangeConfig = ColorRangeConfig?.Copy(),
+            GraphConfig = GraphConfig?.Copy(),
             ImageConfig = ImageConfig?.Copy(),
 #if !IL2CPP
             BoxCollider2DConfig = BoxCollider2DConfig?.Copy(),

@@ -9,7 +9,6 @@ public static class SafeAccess {
     private static readonly HashSet<string> warned = [];
     private static readonly Dictionary<string, Type> typeCache = [];
 
-    // User-facing override (module setting). Null keeps per-member Mode.
     public static SafeResolveMode? ModeOverride { get; set; }
 
     public static void Register(SafeMemberBase member) {
@@ -75,16 +74,46 @@ public static class SafeAccess {
             if(typeCache.TryGetValue(typeName, out var cached)) {
                 return cached;
             }
-            foreach(var asm in AppDomain.CurrentDomain.GetAssemblies()) {
+            foreach (var asm in AppDomain.CurrentDomain.GetAssemblies()) {
                 Type found;
                 try {
                     found = asm.GetType(typeName, false, false);
                 } catch {
                     continue;
                 }
-                if(found != null) {
+                if (found != null) {
                     typeCache[typeName] = found;
                     return found;
+                }
+            }
+
+            if(!typeName.Contains('.')) {
+                Type unique = null;
+                bool ambiguous = false;
+                foreach(var asm in AppDomain.CurrentDomain.GetAssemblies()) {
+                    Type[] types;
+                    try {
+                        types = asm.GetTypes();
+                    } catch {
+                        continue;
+                    }
+                    foreach(var t in types) {
+                        if(t.Name != typeName) {
+                            continue;
+                        }
+                        if(unique != null && unique != t) {
+                            ambiguous = true;
+                            break;
+                        }
+                        unique ??= t;
+                    }
+                    if(ambiguous) {
+                        break;
+                    }
+                }
+                if(!ambiguous && unique != null) {
+                    typeCache[typeName] = unique;
+                    return unique;
                 }
             }
             return null;
