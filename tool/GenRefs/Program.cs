@@ -196,45 +196,137 @@ internal static class GenRefs {
     }
 
     private static void EmitReference(string path, Ref r, string managedDir) {
-        // No game bytes here: emit a bare reference-only assembly carrying
-        // exactly the checked-in identity (name, version, public key token).
-        // The compiler resolves HintPaths by identity alone, so this is all
-        // the build needs. (CI has no game install; the hash pinning in
-        // Main() already confirmed the identity against a real install when
-        // pack_refs.sh recorded it.)
+        // Real types, harvested from the local game install's DLL with
+        // Mono.Cecil, then stripped to signatures: every method body becomes
+        // `ldnull;ret` / `ldc.i4.0;ret` / `ret`, field initializers are
+        // dropped, and ALL custom attributes are removed. No game logic or
+        // game content survives — only the API surface the compiler resolves
+        // against. (CI has no game install, so Main() refuses to emit there;
+        // the hash pinning already confirmed the identity against a real
+        // install when pack_refs.sh recorded it.)
         string gameFile = r.File.StartsWith("MelonLoader/", StringComparison.Ordinal)
             ? FindGameFile(r.File, managedDir)
-            : null;
-        if(gameFile == null) {
-            gameFile = "identities-only";
+            : managedDir == null ? FindGameFile(r.File, null)
+            : Path.Combine(managedDir, Path.GetFileName(r.File));
+        if(gameFile == null || !File.Exists(gameFile)) {
+            throw new InvalidOperationException(
+                "game file missing for " + r.File + " (set GAME_MANAGED_DIR or install the game)");
         }
-        EmitIdentityReference(path, r, gameFile);
-    }
-
-    private static void EmitIdentityReference(string path, Ref r, string gameFile) {
-        var name = new AssemblyNameDefinition(r.Name, r.Version);
+        var resolver = new GameDirResolver(Path.GetDirectoryName(gameFile));
+        var asm = Mono.Cecil.AssemblyDefinition.ReadAssembly(gameFile,
+            new Mono.Cecil.ReaderParameters { ReadSymbols = false, AssemblyResolver = resolver });
+        asm.Name.Version = r.Version;
         if(r.Pkt != null && r.Pkt.Length > 0) {
-            name.PublicKeyToken = r.Pkt;
+            asm.Name.PublicKeyToken = r.Pkt;
         }
-        using var asm = AssemblyDefinition.CreateAssembly(name, "<RefStub>", ModuleKind.Dll);
-        var module = asm.MainModule;
-        // Marker so the file is a valid, loadable assembly.
-        var stub = new TypeDefinition("", "__RefStub",
-            Mono.Cecil.TypeAttributes.Public | Mono.Cecil.TypeAttributes.Class,
-            module.TypeSystem.Object);
-        module.Types.Add(stub);
+        foreach(var module in asm.Modules) {
+            foreach(var type in module.Types.ToArray()) {
+                StripType(type);
+            }
+        }
+        // Drop every custom attribute assembly-wide (second sweep catches
+        // anything the per-type pass missed, e.g. assembly-level attrs).
+        foreach(var module in asm.Modules) {
+            foreach(var attr in module.Assembly.CustomAttributes.ToArray()) {
+                module.Assembly.CustomAttributes.Remove(attr);
+            }
+            foreach(var attr in module.CustomAttributes.ToArray()) {
+                module.CustomAttributes.Remove(attr);
+            }
+        }
         Directory.CreateDirectory(Path.GetDirectoryName(path));
         asm.Write(path);
+        string simple = Path.GetFileNameWithoutExtension(path);
+        if(simple == "mscorlib" || simple == "netstandard" || simple == "System") {
+            throw new InvalidOperationException("refusing to emit framework assembly: " + simple);
+        }
     }
 
+    private static void StripType(Mono.Cecil.TypeDefinition type) {
+        foreach(var nested in type.NestedTypes.ToArray()) {
+            StripType(nested);
+        }
+        foreach(var method in type.Methods.ToArray()) {
+            if(!method.HasBody) {
+                continue;
+            }
+            var ret = method.ReturnType.FullName;
+            if(ret != "System.Void" && ret != "System.String" && ret != "System.Boolean"
+                && ret != "System.Int32" && ret != "System.UInt32" && ret != "System.Single") {
+                // Unknown/struct/generic returns: drop the method. Callers never
+                // execute reference bodies; fewer exotic signatures is safer.
+                // (Kept: ctors stay — stripping those breaks subclassing.)
+                if(!method.IsConstructor) {
+                    type.Methods.Remove(method);
+                    continue;
+                }
+            }
+            method.Body.Variables.Clear();
+            method.Body.ExceptionHandlers.Clear();
+            var il = method.Body.GetILProcessor();
+            il.Clear();
+            if(ret == "System.String") {
+                il.Emit(Mono.Cecil.Cil.OpCodes.Ldstr, "");
+            } else if(ret == "System.Boolean") {
+                il.Emit(Mono.Cecil.Cil.OpCodes.Ldc_I4_0);
+            } else if(ret == "System.Int32") {
+                il.Emit(Mono.Cecil.Cil.OpCodes.Ldc_I4_0);
+            } else if(ret == "System.UInt32") {
+                il.Emit(Mono.Cecil.Cil.OpCodes.Ldc_I4_0);
+                il.Emit(Mono.Cecil.Cil.OpCodes.Conv_U4);
+            } else if(ret == "System.Single") {
+                il.Emit(Mono.Cecil.Cil.OpCodes.Ldc_R4, 0f);
+            }
+            il.Emit(Mono.Cecil.Cil.OpCodes.Ret);
+        }
+        foreach(var field in type.Fields) {
+            if(!field.HasConstant) {
+                field.Constant = null;
+            }
+        }
+        foreach(var attr in type.CustomAttributes.ToArray()) {
+            type.CustomAttributes.Remove(attr);
+        }
+        foreach(var method in type.Methods) {
+            foreach(var attr in method.CustomAttributes.ToArray()) {
+                method.CustomAttributes.Remove(attr);
+            }
+            foreach(var param in method.Parameters) {
+                param.CustomAttributes.Clear();
+            }
+        }
+        foreach(var field in type.Fields) {
+            foreach(var attr in field.CustomAttributes.ToArray()) {
+                field.CustomAttributes.Remove(attr);
+            }
+        }
+        foreach(var prop in type.Properties) {
+            prop.CustomAttributes.Clear();
+        }
+        foreach(var ev in type.Events) {
+            ev.CustomAttributes.Clear();
+        }
+    }
 
+    /// <summary>Assembly resolver pointed at one game directory.</summary>
+    private sealed class GameDirResolver : Mono.Cecil.DefaultAssemblyResolver {
+        private readonly string dir;
+        public GameDirResolver(string dir) {
+            this.dir = dir;
+            AddSearchDirectory(dir);
+        }
+        public override Mono.Cecil.AssemblyDefinition Resolve(Mono.Cecil.AssemblyNameReference name) {
+            try {
+                return base.Resolve(name);
+            } catch {
+                string cand = Path.Combine(dir, name.Name + ".dll");
+                if(File.Exists(cand)) {
+                    return Mono.Cecil.AssemblyDefinition.ReadAssembly(cand,
+                        new Mono.Cecil.ReaderParameters { ReadSymbols = false, AssemblyResolver = this });
+                }
+                throw;
+            }
+        }
+    }
 
-
-
-
-
-    /// <summary>Type members the Overlayer build touches, keyed by assembly
-    /// name. Everything else resolves through these roots; member bodies are
-    /// empty (reference assemblies never execute). Regenerate from the
-    /// csproj + game DLLs if the referenced API surface grows.</summary>
 }

@@ -83,9 +83,16 @@ jobs:
               <PropertyGroup>
                   <GamePath>/tmp/gamerefs/game</GamePath>
                   <GameData>GameData</GameData>
+                  <!-- CI game refs are identity-only: they satisfy the
+                       compiler's HintPath resolution, nothing more. -->
+                  <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
               </PropertyGroup>
+              <!-- The O5Kit project reference resolves its own game
+                   assemblies from the same fake tree (it reads GamePath/
+                   GameData from this file too). -->
           </Project>
           EOF
+          ls -R /tmp/gamerefs/game | head -n 30
 
       - name: Build (Release_ML)
         run: dotnet build Overlayer/Overlayer.csproj -c Release_ML --nologo -v minimal
