@@ -10,8 +10,8 @@
 #   2. Check out O5Kit (sibling ProjectReference, not a submodule) + stage
 #      the checked-in reference DLLs (tool/build-refs/game/)
 #   3. Build Release_ML
-#   4. Assemble Overlayer_ML_win.zip / Overlayer_ML_linux.zip
-#   5. Upload both zips to the published release (prerelease flag from the release is preserved)
+#   4. Assemble Overlayer_ML_win.zip / Overlayer_ML_linux.zip / Overlayer_ML_mac.zip
+#   5. Upload the zips to the published release (prerelease flag from the release is preserved)
 #
 # Before tagging (locally):
 #   ./tool/set_version.sh 5.0.3   # inject version into Info.cs + csproj
@@ -126,3 +126,4 @@ jobs:
           files: |
             dist/Overlayer_ML_win.zip
             dist/Overlayer_ML_linux.zip
+            dist/Overlayer_ML_mac.zip
