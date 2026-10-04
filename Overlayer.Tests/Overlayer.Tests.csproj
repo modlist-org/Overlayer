@@ -24,6 +24,7 @@
     <Compile Include="..\Overlayer\Tag\Compile\Compiler.cs" />
     <Compile Include="..\Overlayer\Tag\Compile\CompileState.cs" />
     <Compile Include="..\Overlayer\Tag\Compile\ExpressionBuilder.cs" />
+    <Compile Include="..\Overlayer\Tag\Compile\JsResultFormatter.cs" />
     <Compile Include="..\Overlayer\Tag\Compile\FormatValidator.cs" />
     <Compile Include="..\Overlayer\Tag\Compile\ResolvedSignature.cs" />
     <Compile Include="..\Overlayer\Tag\Compile\SignatureResolver.cs" />
