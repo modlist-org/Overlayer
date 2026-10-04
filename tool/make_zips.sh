@@ -29,6 +29,7 @@ trap 'rm -rf "$WORK"' EXIT
 # --- win ---
 rm -rf "$WORK/win" && cp -r "$SRC" "$WORK/win"
 rm -f "$WORK"/win/UserLibs/ClearScriptV8.linux-x64.so* "$WORK"/win/UserLibs/ClearScriptV8.osx-*.dylib
+rm -f "$WORK"/win/UserLibs/libnfd.so* "$WORK"/win/UserLibs/libnfd.dylib
 (cd "$WORK/win" && zip -qr "$DIST/Overlayer_ML_win.zip" Mods UserData UserLibs)
 
 # --- linux ---
@@ -36,6 +37,7 @@ rm -rf "$WORK/linux" && cp -r "$SRC" "$WORK/linux"
 rm -f "$WORK"/linux/UserLibs/ClearScriptV8.win-x64.dll \
       "$WORK"/linux/UserLibs/Microsoft.Win32.Registry.dll \
       "$WORK"/linux/UserLibs/ClearScriptV8.osx-*.dylib
+rm -f "$WORK"/linux/UserLibs/nfd.dll "$WORK"/linux/UserLibs/libnfd.dylib
 (cd "$WORK/linux" && zip -qr "$DIST/Overlayer_ML_linux.zip" Mods UserData UserLibs)
 
 # --- mac ---
@@ -43,6 +45,7 @@ rm -rf "$WORK/mac" && cp -r "$SRC" "$WORK/mac"
 rm -f "$WORK"/mac/UserLibs/ClearScriptV8.win-x64.dll \
       "$WORK"/mac/UserLibs/Microsoft.Win32.Registry.dll \
       "$WORK"/mac/UserLibs/ClearScriptV8.linux-x64.so*
+rm -f "$WORK"/mac/UserLibs/nfd.dll "$WORK"/mac/UserLibs/libnfd.so*
 (cd "$WORK/mac" && zip -qr "$DIST/Overlayer_ML_mac.zip" Mods UserData UserLibs)
 
 ls -la "$DIST"/Overlayer_ML_win.zip "$DIST"/Overlayer_ML_linux.zip "$DIST"/Overlayer_ML_mac.zip
