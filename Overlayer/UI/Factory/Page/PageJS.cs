@@ -20,7 +20,8 @@ namespace Overlayer.UI.Factory.Page;
 
 internal static class PageJS {
     private static RectTransform listContent;
-    private static TextMeshProUGUI diagLabel;
+    private static TextMeshProUGUI diagText;
+    private static GameObject disabledPanel;
 
     public static void Create(RectTransform parent) {
         RectTransform root = CreateStretch(parent, "JSRoot");
@@ -38,16 +39,17 @@ internal static class PageJS {
         titleLe.minHeight = 46f;
         titleLe.flexibleHeight = 0f;
 
-        RectTransform toolbar = O5Factory.Row(O5KitAdapters.Ctx, root, 50f);
+        RectTransform toolbar = O5Factory.Row(O5KitAdapters.Ctx, root, 44f);
         var toolbarLayout = toolbar.gameObject.AddComponent<HorizontalLayoutGroup>();
         toolbarLayout.spacing = 8f;
         toolbarLayout.childControlWidth = true;
         toolbarLayout.childControlHeight = true;
-        toolbarLayout.childForceExpandWidth = true;
+        toolbarLayout.childForceExpandWidth = false;
         toolbarLayout.childForceExpandHeight = true;
-        O5Factory.Button(O5KitAdapters.Ctx, toolbar, ReloadAll, T("JS_RELOAD_ALL", "Reload All"), "js_reload_all");
-        O5Factory.Button(O5KitAdapters.Ctx, toolbar, OpenFolder, T("JS_OPEN_FOLDER", "Open Folder"), "js_open_folder");
-        O5Factory.Button(O5KitAdapters.Ctx, toolbar, Refresh, T("JS_REFRESH", "Refresh"), "js_refresh");
+        toolbarLayout.childAlignment = TextAnchor.MiddleLeft;
+        ToolbarButton(toolbar, T("JS_RELOAD_ALL", "Reload All"), "js_reload_all", 150f, ReloadAll);
+        ToolbarButton(toolbar, T("JS_OPEN_FOLDER", "Open Folder"), "js_open_folder", 150f, OpenFolder);
+        ToolbarButton(toolbar, T("JS_REFRESH", "Refresh"), "js_refresh", 110f, Refresh);
 
         RectTransform toggleRow = O5Factory.Row(O5KitAdapters.Ctx, root, 50f);
         CoreSettings defSet = new();
@@ -65,13 +67,20 @@ internal static class PageJS {
         );
         autoToggle.Label.gameObject.AddComponent<TextLocalization>().Init("JS_AUTO_RELOAD", "Auto Reload");
 
+        RectTransform diagBox = O5Factory.Row(O5KitAdapters.Ctx, root, 120f);
+        var (_, diagContent, _) = O5Factory.ScrollView(O5KitAdapters.Ctx, diagBox, expandLayout: true);
+        diagText = CreateText(diagContent, string.Empty, 18f, TextAlignmentOptions.TopLeft);
+
         var (_, contentRect, _) = O5Factory.ScrollView(O5KitAdapters.Ctx, root, expandLayout: true);
         listContent = contentRect;
 
-        diagLabel = CreateText(root, string.Empty, 20f, TextAlignmentOptions.Left);
-        var diagLe = diagLabel.gameObject.AddComponent<LayoutElement>();
-        diagLe.minHeight = 90f;
-        diagLe.flexibleHeight = 0f;
+        CreateDisabledPanel(root);
+        MainCore.OnModEnabledChanged += (isEnabled, isDispose) => {
+            if(!isDispose) {
+                ToggleUIStateByMod(isEnabled);
+            }
+        };
+        ToggleUIStateByMod(MainCore.IsModEnabled);
 
         MenuFactory.OnStateChanged += state => {
             if(state == (int)OriginalMenuState.JS) {
@@ -80,6 +89,50 @@ internal static class PageJS {
         };
 
         Refresh();
+    }
+
+    private static void ToolbarButton(Transform parent, string text, string id, float width, Action onClick) {
+        var button = O5Factory.Button(O5KitAdapters.Ctx, parent, onClick, text, id, 44f);
+        var le = button.Rect.gameObject.GetComponent<LayoutElement>();
+        le.minWidth = width;
+        le.preferredWidth = width;
+        le.flexibleWidth = 0f;
+    }
+
+    private static void ToggleUIStateByMod(bool isEnabled) {
+        if(disabledPanel == null) {
+            return;
+        }
+        disabledPanel.SetActive(!isEnabled);
+    }
+
+    private static void CreateDisabledPanel(RectTransform parent) {
+        disabledPanel = new GameObject("DisabledJSPanel");
+        disabledPanel.transform.SetParent(parent, false);
+
+        RectTransform rect = disabledPanel.AddComponent<RectTransform>();
+        rect.anchorMin = Vector2.zero;
+        rect.anchorMax = Vector2.one;
+        rect.offsetMin = Vector2.zero;
+        rect.offsetMax = Vector2.zero;
+
+        Image image = disabledPanel.AddComponent<Image>();
+        image.color = UIColors.PanelBG;
+        image.raycastTarget = true;
+
+        TextMeshProUGUI message = CreateText(disabledPanel.transform,
+            T("ONLY_AVAILABLE_WHEN_ENABLED", "Only available when the Mod is Enabled!"),
+            24f, TextAlignmentOptions.Center);
+        message.rectTransform.anchorMin = Vector2.zero;
+        message.rectTransform.anchorMax = Vector2.one;
+        message.rectTransform.offsetMin = Vector2.zero;
+        message.rectTransform.offsetMax = Vector2.zero;
+        message.gameObject.AddComponent<TextLocalization>().Init(
+            "ONLY_AVAILABLE_WHEN_ENABLED",
+            "Only available when the Mod is Enabled!"
+        );
+
+        disabledPanel.SetActive(false);
     }
 
     private static void ReloadAll() {
@@ -104,11 +157,11 @@ internal static class PageJS {
         foreach(string file in MainCore.V8.ScriptFiles) {
             BuildFileRow(file);
         }
-        var diags = MainCore.V8.LoaderDiagnostics;
-        if(diagLabel != null) {
-            diagLabel.text = diags.Count == 0
+        if(diagText != null) {
+            var diags = MainCore.V8.LoaderDiagnostics;
+            diagText.text = diags.Count == 0
                 ? T("JS_NO_ERRORS", "No script errors.")
-                : string.Join("\n", diags.TakeLast(4).Select(d => d.ToString()));
+                : string.Join("\n", diags.TakeLast(6).Select(d => d.ToString()));
         }
         LayoutRebuilder.ForceRebuildLayoutImmediate(listContent);
     }
@@ -123,7 +176,7 @@ internal static class PageJS {
             tags = 0;
             patches = 0;
         }
-        RectTransform row = O5Factory.Row(O5KitAdapters.Ctx, listContent, 50f);
+        RectTransform row = O5Factory.Row(O5KitAdapters.Ctx, listContent, 44f);
         var layout = row.gameObject.AddComponent<HorizontalLayoutGroup>();
         layout.spacing = 8f;
         layout.childControlWidth = true;
@@ -141,7 +194,7 @@ internal static class PageJS {
         counts.text = $"{tags} tags · {patches} patches";
         counts.alignment = TextAlignmentOptions.Right;
         var countsLe = counts.gameObject.AddComponent<LayoutElement>();
-        countsLe.minWidth = 260f;
+        countsLe.minWidth = 190f;
         countsLe.flexibleWidth = 0f;
 
         string captured = file;
@@ -151,10 +204,10 @@ internal static class PageJS {
             } finally {
                 Refresh();
             }
-        }, T("JS_RELOAD", "Reload"), "js_reload_file");
+        }, T("JS_RELOAD", "Reload"), "js_reload_file", 44f);
         var reloadLe = reload.Rect.gameObject.GetComponent<LayoutElement>();
-        reloadLe.minWidth = 130f;
-        reloadLe.preferredWidth = 130f;
+        reloadLe.minWidth = 110f;
+        reloadLe.preferredWidth = 110f;
         reloadLe.flexibleWidth = 0f;
     }
 

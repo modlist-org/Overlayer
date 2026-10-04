@@ -36,9 +36,9 @@ public static class MenuFactory {
 
         var overlayer = CreateItem(parent, "Overlayer", MainCore.Spr.Get(UISprite.Monitor128), 0);
         var resources = CreateItem(parent, "Resources", MainCore.Spr.Get(UISprite.Box128), 4);
+        var js = CreateItem(parent, "JS", MainCore.Spr.Get(UISprite.CodeBlock128), 5);
         var settings = CreateItem(parent, "Settings", MainCore.Spr.Get(UISprite.Gear128), 1);
         var docs = CreateItem(parent, "Docs", MainCore.Spr.Get(UISprite.Book128), 2);
-        var js = CreateItem(parent, "JS", MainCore.Spr.Get(UISprite.CodeBlock128), 5);
         var credits = CreateItem(parent, "Credits", MainCore.Spr.Get(UISprite.Star128), 3);
 
         overlayer.label.gameObject.AddComponent<TextLocalization>()
