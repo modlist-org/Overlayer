@@ -152,6 +152,7 @@ public sealed class OverlayerRuntime {
 
         if(enabled) {
             UserResourceManager.Initialize();
+            Compat.O5KitAdapters.SetUserFontsEnabled(true);
 
             SafePatchController.ApplyAll();
 
@@ -169,6 +170,7 @@ public sealed class OverlayerRuntime {
 
             SafePatchController.UnloadAll();
 
+            Compat.O5KitAdapters.SetUserFontsEnabled(false);
             UserResourceManager.Dispose();
 
             Logger.Msg("Mod Disabled");

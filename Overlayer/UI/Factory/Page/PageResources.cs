@@ -401,6 +401,7 @@ internal static class PageResources {
         }
 
         UserResourceManager.Config.RequestSave(50);
+        O5KitAdapters.RefreshFonts();
         pathInput.Set(string.Empty);
         keyInput.Set(string.Empty);
         FinishBusy();
@@ -1085,6 +1086,7 @@ internal static class PageResources {
 
             string filePath = path;
             UserResourceManager.Fnt.Remove(key);
+            O5KitAdapters.RefreshFonts();
             UserResourceManager.Config.RequestSave(50);
             BuildList();
             SetStatus("RESOURCE_REMOVED", "Removed {0}.", UIColors.ObjectActiveMathOk, key);

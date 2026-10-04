@@ -1,6 +1,7 @@
 using Newtonsoft.Json.Linq;
 using Overlayer.IO.Fx;
 using Overlayer.IO.Interface;
+using System.Collections.Generic;
 
 namespace Overlayer.IO;
 
@@ -15,6 +16,10 @@ public sealed class CoreSettings : ISettingsFile {
     public FxValue<float> UIScale = new(1.0f);
     public FxValue<float> SliderSensitivity = new(1.0f);
     public FxValue<bool> EnableJSScriptWatcher = new(true);
+    public FxValue<string> SystemFontKey = FxValue<string>.FromValue(null);
+    public FxValue<string> CodeFontKey = FxValue<string>.FromValue(null);
+    public FxValue<List<string>> SystemFontFallbacks = new(new List<string>());
+    public FxValue<List<string>> CodeFontFallbacks = new(new List<string>());
 
     public JToken Serialize() {
         return new JObject {
@@ -27,7 +32,11 @@ public sealed class CoreSettings : ISettingsFile {
             [nameof(MiddleClickToDefault)] = IOUtils.WriteFx(MiddleClickToDefault),
             [nameof(UIScale)] = IOUtils.WriteFx(UIScale),
             [nameof(SliderSensitivity)] = IOUtils.WriteFx(SliderSensitivity),
-            [nameof(EnableJSScriptWatcher)] = IOUtils.WriteFx(EnableJSScriptWatcher)
+            [nameof(EnableJSScriptWatcher)] = IOUtils.WriteFx(EnableJSScriptWatcher),
+            [nameof(SystemFontKey)] = IOUtils.WriteFx(SystemFontKey),
+            [nameof(CodeFontKey)] = IOUtils.WriteFx(CodeFontKey),
+            [nameof(SystemFontFallbacks)] = IOUtils.WriteFx(SystemFontFallbacks),
+            [nameof(CodeFontFallbacks)] = IOUtils.WriteFx(CodeFontFallbacks)
         };
     }
 
@@ -42,5 +51,9 @@ public sealed class CoreSettings : ISettingsFile {
         UIScale = IOUtils.ReadFx(token, nameof(UIScale), UIScale);
         SliderSensitivity = IOUtils.ReadFx(token, nameof(SliderSensitivity), SliderSensitivity);
         EnableJSScriptWatcher = IOUtils.ReadFx(token, nameof(EnableJSScriptWatcher), EnableJSScriptWatcher);
+        SystemFontKey = IOUtils.ReadFx(token, nameof(SystemFontKey), SystemFontKey);
+        CodeFontKey = IOUtils.ReadFx(token, nameof(CodeFontKey), CodeFontKey);
+        SystemFontFallbacks = IOUtils.ReadFx(token, nameof(SystemFontFallbacks), SystemFontFallbacks);
+        CodeFontFallbacks = IOUtils.ReadFx(token, nameof(CodeFontFallbacks), CodeFontFallbacks);
     }
 }

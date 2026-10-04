@@ -10,12 +10,28 @@ using O5Kit.Factory;
 using O5Kit.Control;
 using O5Kit.Behaviour;
 using Overlayer.Utility;
+using Overlayer.IO.Fx;
+using Overlayer.IO.User;
 using UnityEngine;
 using UnityEngine.UI;
+
+#if ML && IL2CPP
+using Il2CppTMPro;
+#else
+using TMPro;
+#endif
 
 namespace Overlayer.UI.Factory.Page;
 
 internal static class PageSettings {
+    private const string BuiltinFontOption = "@builtin-default";
+    private sealed class FallbackListView {
+        public GameObject Root;
+        public readonly List<O5Object> Controls = [];
+    }
+
+    private static readonly List<Action> fontOptionRefreshers = [];
+    private static bool fontRefreshHooked;
     private static readonly Dictionary<TextLocalization, (GameObject LabelRow, GameObject MainRow)> objects = [];
     private static O5Dropdown<string> languageDropdown;
 
@@ -280,6 +296,224 @@ internal static class PageSettings {
         );
         var sliderSensitivityTr = sliderSensitivity.Label.gameObject.AddComponent<TextLocalization>().Init("SLIDER_SENSITIVITY", "Slider Sensitivity");
         objects[sliderSensitivityTr] = (overlayerText.gameObject, sliderSensitivityRow.gameObject);
+
+        BuildFontPickers(content, objects, overlayerText);
+    }
+
+    private static void BuildFontPickers(GameObject content, Dictionary<TextLocalization, (GameObject, GameObject)> objects, TextMeshProUGUI overlayerText) {
+        fontOptionRefreshers.Clear();
+        if(!fontRefreshHooked) {
+            fontRefreshHooked = true;
+            Overlayer.UI.Factory.MenuFactory.OnStateChanged += state => {
+                if(state == (int)Overlayer.UI.OriginalMenuState.Settings) {
+                    foreach(var refresh in fontOptionRefreshers.ToArray()) {
+                        refresh();
+                    }
+                }
+            };
+        }
+        BuildFontPicker(content, objects, overlayerText,
+            "SYSTEM_FONT", "System Font", MainCore.Conf.SystemFontKey, MainCore.Conf.SystemFontFallbacks,
+            "SYSTEM_FONT_FALLBACKS", "System Font Fallbacks");
+        BuildFontPicker(content, objects, overlayerText,
+            "CODE_FONT", "Code Font", MainCore.Conf.CodeFontKey, MainCore.Conf.CodeFontFallbacks,
+            "CODE_FONT_FALLBACKS", "Code Font Fallbacks");
+    }
+
+    private static void BuildFontPicker(GameObject content, Dictionary<TextLocalization, (GameObject, GameObject)> objects,
+        TextMeshProUGUI overlayerText, string key, string label, FxValue<string> fx,
+        FxValue<List<string>> fallbacks, string fallbacksKey, string fallbacksLabel) {
+        var row = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
+        var text = O5Factory.ControlTextH1(O5KitAdapters.Ctx, row);
+        var textTr = text.gameObject.AddComponent<TextLocalization>().Init(key, label);
+
+        var fallbackList = new FallbackListView();
+
+        var pickerRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
+        var dropdown = O5Factory.DropDown(O5KitAdapters.Ctx,
+            pickerRow,
+            null,
+            string.IsNullOrEmpty(fx.Value) ? BuiltinFontOption : fx.Value,
+            FontOptions(includeBuiltin: true, includeKey: fx.Value),
+            FontOptionLabel,
+            value => {
+                fx.Value = value == BuiltinFontOption ? null : value;
+                if(fallbacks.Value != null) {
+                    fallbacks.Value.RemoveAll(k => k == fx.Value);
+                }
+                MainCore.ConfMgr.RequestSave();
+                O5KitAdapters.RefreshFonts();
+                TextLocalization.RefreshAll();
+                RefreshFallbackRows(fallbackList, fallbacks, fx.Value);
+            },
+            key.ToLowerInvariant() + "_dropdown"
+        );
+        dropdown.Rect.AddToolTip(O5KitAdapters.Ctx, () => {
+            if(key == "SYSTEM_FONT") {
+                return MainCore.Tr.Get("DESC_SYSTEM_FONT",
+                    "UI font, loaded from Resources. Empty means the built-in default.");
+            }
+            return MainCore.Tr.Get("DESC_CODE_FONT",
+                "Code and numeric font, loaded from Resources. Empty means the built-in default.");
+        });
+        objects[textTr] = (overlayerText.gameObject, row.gameObject);
+
+        var fallbacksRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
+        var fallbacksText = O5Factory.ControlText(O5KitAdapters.Ctx, fallbacksRow, 22f, true);
+        fallbacksText.text = MainCore.Tr.Get(fallbacksKey, fallbacksLabel);
+        fallbacksText.gameObject.AddComponent<TextLocalization>().Init(fallbacksKey, fallbacksLabel);
+
+        fallbackList.Root = new GameObject(fallbacksKey + "_List");
+        fallbackList.Root.transform.SetParent(content.transform, false);
+        fallbackList.Root.AddComponent<RectTransform>();
+        var fallbackLayout = fallbackList.Root.AddComponent<VerticalLayoutGroup>();
+        fallbackLayout.spacing = 6f;
+        fallbackLayout.childControlWidth = true;
+        fallbackLayout.childControlHeight = true;
+        fallbackLayout.childForceExpandWidth = true;
+        fallbackLayout.childForceExpandHeight = false;
+        var fallbackFitter = fallbackList.Root.AddComponent<ContentSizeFitter>();
+        fallbackFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        var fallbackElement = fallbackList.Root.AddComponent<LayoutElement>();
+        fallbackElement.minWidth = 0f;
+        fallbackElement.flexibleWidth = 1f;
+        RefreshFallbackRows(fallbackList, fallbacks, fx.Value);
+
+        var addRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform, 44f);
+        O5Factory.Button(O5KitAdapters.Ctx, addRow, () => {
+            var chain = fallbacks.Value ?? [];
+            string first = UserResourceManager.Fnt.Keys
+                .OrderBy(k => k, StringComparer.OrdinalIgnoreCase)
+                .FirstOrDefault(k => k != fx.Value && !chain.Contains(k));
+            if(first == null) {
+                if(chain.Contains(BuiltinFontOption)) {
+                    return;
+                }
+                first = BuiltinFontOption;
+            }
+            chain.Add(first);
+            fallbacks.Value = chain;
+            MainCore.ConfMgr.RequestSave();
+            O5KitAdapters.RefreshFonts();
+            TextLocalization.RefreshAll();
+            RefreshFallbackRows(fallbackList, fallbacks, fx.Value);
+        }, MainCore.Tr.Get("ADD_FALLBACK", "Add Fallback"), key.ToLowerInvariant() + "_fallback_add", 44f);
+
+        fontOptionRefreshers.Add(() => {
+            if(dropdown != null && fallbackList.Root != null) {
+                dropdown.SetValues(FontOptions(includeBuiltin: true, includeKey: fx.Value));
+                RefreshFallbackRows(fallbackList, fallbacks, fx.Value);
+            }
+        });
+    }
+
+    private static void RefreshFallbackRows(FallbackListView list, FxValue<List<string>> fallbacks, string primaryKey) {
+        if(list?.Root == null) {
+            return;
+        }
+        foreach(var control in list.Controls) {
+            control?.Dispose();
+        }
+        list.Controls.Clear();
+        GameObject listBox = list.Root;
+        for(int i = listBox.transform.childCount - 1; i >= 0; i--) {
+            UnityEngine.Object.Destroy(listBox.transform.GetChild(i).gameObject);
+        }
+        var chain = fallbacks.Value ?? [];
+        for(int i = 0; i < chain.Count; i++) {
+            int index = i;
+            RectTransform row = O5Factory.Row(O5KitAdapters.Ctx, listBox.transform, 44f);
+            var rowLayout = row.gameObject.AddComponent<HorizontalLayoutGroup>();
+            rowLayout.spacing = 8f;
+            rowLayout.childControlWidth = true;
+            rowLayout.childControlHeight = true;
+            rowLayout.childForceExpandWidth = false;
+            rowLayout.childForceExpandHeight = true;
+            var dropdown = O5Factory.DropDown(O5KitAdapters.Ctx,
+                row,
+                null,
+                FontOptionLabel(chain[index]),
+                FontOptions(includeBuiltin: true, includeKey: chain[index]),
+                FontOptionLabel,
+                value => {
+                    var next = fallbacks.Value ?? [];
+                    string selected = value;
+                    if(index < next.Count && selected != primaryKey &&
+                        !next.Where((_, i) => i != index).Contains(selected)) {
+                        next[index] = selected;
+                        fallbacks.Value = next;
+                        MainCore.ConfMgr.RequestSave();
+                        O5KitAdapters.RefreshFonts();
+                        TextLocalization.RefreshAll();
+                        RefreshFallbackRows(list, fallbacks, primaryKey);
+                    } else {
+                        RefreshFallbackRows(list, fallbacks, primaryKey);
+                    }
+                },
+                $"fallback_row_{index}"
+            );
+            list.Controls.Add(dropdown);
+            var dropLe = dropdown.Rect.gameObject.GetComponent<LayoutElement>();
+            if(dropLe == null) {
+                dropLe = dropdown.Rect.gameObject.AddComponent<LayoutElement>();
+            }
+            dropLe.flexibleWidth = 1f;
+            list.Controls.Add(IconButton(row, MainCore.Spr.Get(UISprite.Triangle128), 180f, $"fallback_up_{index}", () => MoveFallback(list, fallbacks, index, -1, primaryKey)));
+            list.Controls.Add(IconButton(row, MainCore.Spr.Get(UISprite.Triangle128), 0f, $"fallback_down_{index}", () => MoveFallback(list, fallbacks, index, 1, primaryKey)));
+            list.Controls.Add(IconButton(row, MainCore.Spr.Get(UISprite.X128), 0f, $"fallback_del_{index}", () => {
+                var next = fallbacks.Value ?? [];
+                if(index < next.Count) {
+                    next.RemoveAt(index);
+                    fallbacks.Value = next;
+                    MainCore.ConfMgr.RequestSave();
+                    O5KitAdapters.RefreshFonts();
+                    TextLocalization.RefreshAll();
+                    RefreshFallbackRows(list, fallbacks, primaryKey);
+                }
+            }));
+        }
+    }
+
+    private static void MoveFallback(FallbackListView list, FxValue<List<string>> fallbacks, int index, int dir, string primaryKey) {
+        var next = fallbacks.Value ?? [];
+        int other = index + dir;
+        if(index < 0 || index >= next.Count || other < 0 || other >= next.Count) {
+            return;
+        }
+        (next[index], next[other]) = (next[other], next[index]);
+        fallbacks.Value = next;
+        MainCore.ConfMgr.RequestSave();
+        O5KitAdapters.RefreshFonts();
+        TextLocalization.RefreshAll();
+        RefreshFallbackRows(list, fallbacks, primaryKey);
+    }
+
+    private static O5Button IconButton(Transform parent, Sprite sprite, float rotationDeg, string id, Action onClick) {
+        var button = O5Factory.Button(O5KitAdapters.Ctx, parent, onClick, sprite, id, 5f, 44f);
+        if(rotationDeg != 0f && button.Icon != null) {
+            button.Icon.rectTransform.localEulerAngles = new Vector3(0f, 0f, rotationDeg);
+        }
+        var le = button.Rect.gameObject.GetComponent<LayoutElement>();
+        le.minWidth = 52f;
+        le.preferredWidth = 52f;
+        le.flexibleWidth = 0f;
+        return button;
+    }
+
+    private static string DefaultFontName() => "Default";
+
+    private static string FontOptionLabel(string key)
+        => key == BuiltinFontOption ? DefaultFontName() : key;
+
+    private static string[] FontOptions(bool includeBuiltin = false, string includeKey = null) {
+        var keys = UserResourceManager.Fnt.Keys.OrderBy(k => k, StringComparer.OrdinalIgnoreCase).ToList();
+        if(includeBuiltin) {
+            keys.Insert(0, BuiltinFontOption);
+        }
+        if(!string.IsNullOrEmpty(includeKey) && !keys.Contains(includeKey)) {
+            keys.Add(includeKey);
+        }
+        return [.. keys];
     }
 
     internal static void OnTranslatorLoadEnd() {
