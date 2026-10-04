@@ -12,6 +12,7 @@ using TMPro;
 
 namespace Overlayer.Resource;
 
+/// <summary>Keys for assets bundled by Overlayer. O5Kit's shared UI assets are owned and loaded by O5Kit.</summary>
 public enum Asset {
     SUIT_Regular,
     SUIT_Medium,
@@ -19,19 +20,13 @@ public enum Asset {
     JetBrainsMonoNL_Medium,
 
     OV5LogoOutline256,
-    Circle256,
-    CircleHalf256,
-    X128,
     Monitor128,
     Gear128,
     Image128,
     Text128,
     Book128,
     Star128,
-    ToggleCircle128,
     CircleOutline256O32,
-    CircleOutline256O64,
-    Triangle128,
     Power128,
     MagnifyingGlass128,
     Box128,
@@ -201,19 +196,13 @@ public sealed class ResourceManager(Assembly assembly, string resourcePath) : ID
         [Asset.JetBrainsMonoNL_Regular] = "Font.JetBrainsMonoNL-Regular.ttf",
         [Asset.JetBrainsMonoNL_Medium] = "Font.JetBrainsMonoNL-Medium.ttf",
         [Asset.OV5LogoOutline256] = "Image.OV5LogoOutline256.png",
-        [Asset.Circle256] = "Image.Circle256.png",
-        [Asset.CircleHalf256] = "Image.CircleHalf256.png",
-        [Asset.X128] = "Image.X128.png",
         [Asset.Monitor128] = "Image.Monitor128.png",
         [Asset.Gear128] = "Image.Gear128.png",
         [Asset.Image128] = "Image.Image128.png",
         [Asset.Text128] = "Image.Text128.png",
         [Asset.Book128] = "Image.Book128.png",
         [Asset.Star128] = "Image.Star128.png",
-        [Asset.ToggleCircle128] = "Image.ToggleCircle128.png",
         [Asset.CircleOutline256O32] = "Image.CircleOutline256O32.png",
-        [Asset.CircleOutline256O64] = "Image.CircleOutline256O64.png",
-        [Asset.Triangle128] = "Image.Triangle128.png",
         [Asset.Power128] = "Image.Power128.png",
         [Asset.MagnifyingGlass128] = "Image.MagnifyingGlass128.png",
         [Asset.Box128] = "Image.Box128.png",
