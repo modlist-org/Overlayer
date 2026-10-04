@@ -39,17 +39,17 @@ internal static class PageJS {
         titleLe.minHeight = 46f;
         titleLe.flexibleHeight = 0f;
 
-        RectTransform toolbar = O5Factory.Row(O5KitAdapters.Ctx, root, 44f);
+        RectTransform toolbar = O5Factory.Row(O5KitAdapters.Ctx, root);
         var toolbarLayout = toolbar.gameObject.AddComponent<HorizontalLayoutGroup>();
         toolbarLayout.spacing = 8f;
         toolbarLayout.childControlWidth = true;
         toolbarLayout.childControlHeight = true;
-        toolbarLayout.childForceExpandWidth = false;
-        toolbarLayout.childForceExpandHeight = true;
+        toolbarLayout.childForceExpandWidth = true;
+        toolbarLayout.childForceExpandHeight = false;
         toolbarLayout.childAlignment = TextAnchor.MiddleLeft;
-        ToolbarButton(toolbar, T("JS_RELOAD_ALL", "Reload All"), "js_reload_all", 150f, ReloadAll);
-        ToolbarButton(toolbar, T("JS_OPEN_FOLDER", "Open Folder"), "js_open_folder", 150f, OpenFolder);
-        ToolbarButton(toolbar, T("JS_REFRESH", "Refresh"), "js_refresh", 110f, Refresh);
+        ToolbarButton(toolbar, T("JS_RELOAD_ALL", "Reload All"), "js_reload_all", ReloadAll);
+        ToolbarButton(toolbar, T("JS_OPEN_FOLDER", "Open Folder"), "js_open_folder", OpenFolder);
+        ToolbarButton(toolbar, T("JS_REFRESH", "Refresh"), "js_refresh", Refresh);
 
         RectTransform toggleRow = O5Factory.Row(O5KitAdapters.Ctx, root, 50f);
         CoreSettings defSet = new();
@@ -67,9 +67,8 @@ internal static class PageJS {
         );
         autoToggle.Label.gameObject.AddComponent<TextLocalization>().Init("JS_AUTO_RELOAD", "Auto Reload");
 
-        RectTransform diagBox = O5Factory.Row(O5KitAdapters.Ctx, root, 120f);
-        var (_, diagContent, _) = O5Factory.ScrollView(O5KitAdapters.Ctx, diagBox, expandLayout: true);
-        diagText = CreateText(diagContent, string.Empty, 18f, TextAlignmentOptions.TopLeft);
+        RectTransform diagBox = O5Factory.Row(O5KitAdapters.Ctx, root, 40f);
+        diagText = CreateText(diagBox, string.Empty, 20f, TextAlignmentOptions.Left);
 
         var (_, contentRect, _) = O5Factory.ScrollView(O5KitAdapters.Ctx, root, expandLayout: true);
         listContent = contentRect;
@@ -91,12 +90,8 @@ internal static class PageJS {
         Refresh();
     }
 
-    private static void ToolbarButton(Transform parent, string text, string id, float width, Action onClick) {
-        var button = O5Factory.Button(O5KitAdapters.Ctx, parent, onClick, text, id, 44f);
-        var le = button.Rect.gameObject.GetComponent<LayoutElement>();
-        le.minWidth = width;
-        le.preferredWidth = width;
-        le.flexibleWidth = 0f;
+    private static void ToolbarButton(Transform parent, string text, string id, Action onClick) {
+        O5Factory.Button(O5KitAdapters.Ctx, parent, onClick, text, id);
     }
 
     private static void ToggleUIStateByMod(bool isEnabled) {
@@ -158,10 +153,10 @@ internal static class PageJS {
             BuildFileRow(file);
         }
         if(diagText != null) {
-            var diags = MainCore.V8.LoaderDiagnostics;
-            diagText.text = diags.Count == 0
+            int errors = MainCore.V8.LoaderDiagnostics.Count;
+            diagText.text = errors == 0
                 ? T("JS_NO_ERRORS", "No script errors.")
-                : string.Join("\n", diags.TakeLast(6).Select(d => d.ToString()));
+                : string.Format(T("JS_ERROR_COUNT", "{0} script errors (see log)."), errors);
         }
         LayoutRebuilder.ForceRebuildLayoutImmediate(listContent);
     }
@@ -196,19 +191,6 @@ internal static class PageJS {
         var countsLe = counts.gameObject.AddComponent<LayoutElement>();
         countsLe.minWidth = 190f;
         countsLe.flexibleWidth = 0f;
-
-        string captured = file;
-        var reload = O5Factory.Button(O5KitAdapters.Ctx, row, () => {
-            try {
-                MainCore.V8.ReloadScriptFile(captured);
-            } finally {
-                Refresh();
-            }
-        }, T("JS_RELOAD", "Reload"), "js_reload_file", 44f);
-        var reloadLe = reload.Rect.gameObject.GetComponent<LayoutElement>();
-        reloadLe.minWidth = 110f;
-        reloadLe.preferredWidth = 110f;
-        reloadLe.flexibleWidth = 0f;
     }
 
     private static RectTransform CreateStretch(Transform parent, string name) {
