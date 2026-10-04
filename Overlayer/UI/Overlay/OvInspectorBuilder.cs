@@ -590,6 +590,7 @@ internal sealed class OvInspectorBuilder(
                 case "Text":
                     obj.Config.TextConfig = new TextMeshProUGUISettings();
                     obj.Config.TextEngineConfig = new OvTextSettings();
+                    obj.Config.ContentSizeFitterConfig ??= new ContentSizeFitterSettings();
                     break;
                 case "Image":
                     obj.Config.ImageConfig = new ImageSettings();
