@@ -76,6 +76,16 @@ public class JSScriptLoader {
 
         try {
             engine.Execute(JSTagRegistrationHost.BindingScript);
+            var patchHost = new Scripting.Patch.JSPatchHost(this, filePath);
+            engine.AddHostObject(
+                Scripting.Patch.JSPatchHost.HostBindingName,
+                (Func<object, object, string, string, int>)patchHost.AddPatch
+            );
+            engine.AddHostObject(
+                "__OverlayerRemovePatch",
+                (Func<object, bool>)patchHost.RemovePatch
+            );
+            engine.Execute(Scripting.Patch.JSPatchHost.BindingScript);
             string source = JSScriptPreprocessor.RemoveImplImports(
                 File.ReadAllText(filePath)
             );
@@ -93,6 +103,7 @@ public class JSScriptLoader {
     }
 
     private void UnloadScript(string filePath) {
+        Scripting.Patch.JSPatchManager.RemoveFile(filePath);
         if(_fileToTags.TryGetValue(filePath, out var tags)) {
             if(tags != null && tags.Count > 0) {
                 foreach(var tag in tags) {

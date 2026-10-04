@@ -70,6 +70,15 @@ public class V8Manager : IRuntimeService {
 
     public FxStore Store { get; } = new();
 
+    internal object InvokeCallback(Microsoft.ClearScript.ScriptObject fn, object[] callArgs) {
+        lock(_engineLock) {
+            if(_engine == null) {
+                return null;
+            }
+            return fn.Invoke(false, callArgs);
+        }
+    }
+
     private async Task ExecuteAllScriptsInEngine() {
         var files = Directory.GetFiles(ScriptFolderPath, "*.js");
         lock(_engineLock) {
@@ -81,6 +90,16 @@ public class V8Manager : IRuntimeService {
                         (Action<string, object, object, string>)host.RegisterTag
                     );
                     _engine.Execute(JSTagRegistrationHost.BindingScript);
+                    var patchHost = new Scripting.Patch.JSPatchHost(_scriptLoader, file);
+                    _engine.AddHostObject(
+                        Scripting.Patch.JSPatchHost.HostBindingName,
+                        (Func<object, object, string, string, int>)patchHost.AddPatch
+                    );
+                    _engine.AddHostObject(
+                        "__OverlayerRemovePatch",
+                        (Func<object, bool>)patchHost.RemovePatch
+                    );
+                    _engine.Execute(Scripting.Patch.JSPatchHost.BindingScript);
                     string source = JSScriptPreprocessor.RemoveImplImports(
                         File.ReadAllText(file)
                     );
@@ -92,6 +111,9 @@ public class V8Manager : IRuntimeService {
 
             _engine.Execute(
                 $"delete globalThis.RegisterTag; delete globalThis.{JSTagRegistrationHost.HostBindingName};"
+                + " delete globalThis.AddPatch; delete globalThis.RemovePatch;"
+                + $" delete globalThis.{Scripting.Patch.JSPatchHost.HostBindingName};"
+                + " delete globalThis.__OverlayerRemovePatch;"
             );
         }
     }
@@ -103,6 +125,7 @@ public class V8Manager : IRuntimeService {
             _engine = new V8ScriptEngine();
             BindEngine(_engine);
         }
+        Scripting.Patch.JSPatchManager.RemoveAll();
         LoadImplJs();
     }
 
@@ -196,6 +219,19 @@ public class V8Manager : IRuntimeService {
         sb.AppendLine("/* Clr.Call(targetOrType, method, ...args) / Clr.Invoke(typeName, method, ...args). */");
         sb.AppendLine("/* Statics take a type-name string, e.g. Clr.Call(\"System.Math\", \"Max\", 1, 2). */");
         sb.AppendLine("/* Fast path: var m = Clr.Prepare(targetOrType, member); m.Get(); m.Set(v); m.Call(...args). */\n");
+
+        sb.AppendLine("/**");
+        sb.AppendLine(" * Patches a game/mod method with JS prefix/postfix callbacks. Mono-only.");
+        sb.AppendLine(" * ");
+        sb.AppendLine(" * @param {string} target - \"Type::Method\" (auto-pick when unique) or \"Type::Method(Arg1, Arg2)\".");
+        sb.AppendLine(" * @param {Object} options - { prefix, postfix } (at least one).");
+        sb.AppendLine(" * prefix(args) may mutate args; return false to skip the original,");
+        sb.AppendLine(" * return { result: x } to skip with result x. Expanded (a, b) form matches overload arity.");
+        sb.AppendLine(" * postfix(args, result): return non-undefined to replace the result.");
+        sb.AppendLine(" * @returns {number} Patch handle for RemovePatch, or -1 on error. Unpatched automatically on script reload.");
+        sb.AppendLine(" */");
+        sb.AppendLine("globalThis.AddPatch = function(target, options) {};");
+        sb.AppendLine("globalThis.RemovePatch = function(handle) {};\n");
 
         sb.AppendLine("/* Tags */\n");
 
