@@ -65,6 +65,9 @@ public class V8Manager : IRuntimeService {
         engine.AddHostObject(nameof(TagAccessHelper), new TagAccessHelper());
         engine.AddHostObject(nameof(Store), Store);
         engine.AddHostObject("Clr", new Scripting.Clr.ClrAccess());
+        var log = new Scripting.JSLog();
+        engine.AddHostObject("Log", log);
+        engine.AddHostObject("console", log);
         engine.Execute(JSTagRegistrationHost.TagTypeScript);
     }
 
@@ -219,6 +222,9 @@ public class V8Manager : IRuntimeService {
         sb.AppendLine("/* Clr.Call(targetOrType, method, ...args) / Clr.Invoke(typeName, method, ...args). */");
         sb.AppendLine("/* Statics take a type-name string, e.g. Clr.Call(\"System.Math\", \"Max\", 1, 2). */");
         sb.AppendLine("/* Fast path: var m = Clr.Prepare(targetOrType, member); m.Get(); m.Set(v); m.Call(...args). */\n");
+
+        sb.AppendLine("/* Logging: Log.Msg(x) / Log.Wrn(x) / Log.Err(x) -> MelonLoader log as [JS]. */");
+        sb.AppendLine("/* console.log / console.warn / console.error map to the same. */\n");
 
         sb.AppendLine("/**");
         sb.AppendLine(" * Patches a game/mod method with JS prefix/postfix callbacks. Mono-only.");
