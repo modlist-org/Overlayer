@@ -12,9 +12,6 @@ public static class UserResourceManager {
 
     public static void Initialize() {
         try {
-            // Must run before Config.Load(): sprite/texture settings
-            // deserialize through the raw readers (Rect/Vector2/...).
-            // (Idempotent; OverlayCore also registers on its own init.)
             FxConverters.RegisterDefaultConverters();
             Config.Load();
             MainCore.Log.Msg($"[{nameof(UserResourceManager)}] Initialized");
@@ -25,10 +22,6 @@ public static class UserResourceManager {
 
     private const string ModPathToken = "{ModPath}";
 
-    /// <summary>
-    /// Converts an absolute internal path into a user-readable path using tokens.
-    /// Example: C:\Game\Mods\file.png → {ModPath}/file.png
-    /// </summary>
     public static string ToUser(string path) {
         if(string.IsNullOrEmpty(path)) {
             return path;
@@ -37,10 +30,6 @@ public static class UserResourceManager {
         return path.Replace(MainCore.Paths.RootPath, ModPathToken, StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>
-    /// Converts a user-provided token path into an absolute internal path.
-    /// Example: {ModPath}/file.png → C:\Game\Mods\file.png
-    /// </summary>
     public static string FromUser(string path) {
         if(string.IsNullOrEmpty(path)) {
             return path;
