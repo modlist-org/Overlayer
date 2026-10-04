@@ -33,6 +33,9 @@ public class OvCanvasSettingPage : IDisposable {
 
     private OvCanvas currentCanvas;
     private OvObject selectedObject;
+    private O5Button deleteButton;
+    private OvCanvas armedDeleteCanvas;
+    private DateTime armedDeleteTime;
 
     private RectTransform hierarchyContent;
     private RectTransform inspectorContent;
@@ -230,10 +233,7 @@ public class OvCanvasSettingPage : IDisposable {
             newObj.ApplyComponent();
             newObj.ApplyConfig();
 
-            selectedObject = newObj;
-
-            RebuildHierarchy();
-            RebuildInspector();
+            SelectObject(newObj);
             SaveConfig();
         }, MainCore.Spr.Get(UISprite.Cube128), "btn_hier_add_empty", height: 36f);
 
@@ -260,10 +260,7 @@ public class OvCanvasSettingPage : IDisposable {
             newObj.ApplyComponent();
             newObj.ApplyConfig();
 
-            selectedObject = newObj;
-
-            RebuildHierarchy();
-            RebuildInspector();
+            SelectObject(newObj);
             SaveConfig();
         }, MainCore.Spr.Get(UISprite.Text128), "btn_hier_add_text", height: 36f);
 
@@ -285,10 +282,7 @@ public class OvCanvasSettingPage : IDisposable {
             newObj.ApplyComponent();
             newObj.ApplyConfig();
 
-            selectedObject = newObj;
-
-            RebuildHierarchy();
-            RebuildInspector();
+            SelectObject(newObj);
             SaveConfig();
         }, MainCore.Spr.Get(UISprite.Image128), "btn_hier_add_image", height: 36f);
 
@@ -342,10 +336,7 @@ public class OvCanvasSettingPage : IDisposable {
                 SyncRootSiblingOrder();
             }
 
-            selectedObject = clone;
-
-            RebuildHierarchy();
-            RebuildInspector();
+            SelectObject(clone);
             SaveConfig();
         }, MainCore.Spr.Get(UISprite.Clone128), "btn_hier_clone", height: 36f);
 
@@ -359,6 +350,17 @@ public class OvCanvasSettingPage : IDisposable {
                     return;
                 }
 
+                if(armedDeleteCanvas != currentCanvas ||
+                    (DateTime.Now - armedDeleteTime).TotalSeconds > 5) {
+                    armedDeleteCanvas = currentCanvas;
+                    armedDeleteTime = DateTime.Now;
+                    if(deleteButton != null && deleteButton.Icon != null) {
+                        deleteButton.Icon.color = UIColors.SoftRed;
+                    }
+                    return;
+                }
+
+                DisarmDeleteButton();
                 var canvasToDelete = currentCanvas;
                 currentCanvas = null;
 
@@ -411,6 +413,7 @@ public class OvCanvasSettingPage : IDisposable {
         }, MainCore.Spr.Get(UISprite.X128), "btn_hier_del", height: 36f);
 
         btnDel.Rect.offsetMax = Vector2.zero;
+        deleteButton = btnDel;
         permanentUiObjects.Add(btnDel);
 
         // ==================== 2. Inspector Column ====================
@@ -494,7 +497,15 @@ public class OvCanvasSettingPage : IDisposable {
         }
     }
 
+    private void DisarmDeleteButton() {
+        armedDeleteCanvas = null;
+        if(deleteButton != null && deleteButton.Icon != null) {
+            deleteButton.Icon.color = Color.white;
+        }
+    }
+
     public void Open(OvCanvas canvas, bool noAnimate = false) {
+        DisarmDeleteButton();
         currentCanvas = canvas;
         titleText.text = string.IsNullOrEmpty(canvas.Config.Name)
             ? MainCore.Tr.Get("EMPTY", "(Empty)")
@@ -517,6 +528,9 @@ public class OvCanvasSettingPage : IDisposable {
 
     private void SelectObject(OvObject obj) {
         selectedObject = obj;
+        if(obj != null) {
+            DisarmDeleteButton();
+        }
         RebuildHierarchy();
         RebuildInspector();
     }

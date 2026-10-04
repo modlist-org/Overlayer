@@ -48,7 +48,7 @@ internal sealed class OvInspectorBuilder(
 
     public void BuildCanvas(OvCanvas canvas, Action<string> nameChanged) {
         var (_, identity) = Card("Canvas", false);
-        Input(identity, "Canvas Name", "", canvas.Config.Name.Value, value => {
+        Input(identity, "Canvas Name", null, canvas.Config.Name.Value, value => {
             canvas.Config.Name.Value = value;
             canvas.ApplyConfig();
             nameChanged(value);
@@ -80,7 +80,7 @@ internal sealed class OvInspectorBuilder(
 
     public void BuildObject(OvObject obj) {
         var (_, identity) = Card("Object", false);
-        Input(identity, "Object Name", "OvObject", obj.Config.Name.Value, value => {
+        Input(identity, "Object Name", null, obj.Config.Name.Value, value => {
             obj.Config.Name.Value = value;
             apply();
         }, "obj_name", hierarchyChanged);
