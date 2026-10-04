@@ -59,8 +59,19 @@ public class V8Manager : IRuntimeService {
             BindEngine(_engine);
         }
 
-        await ExecuteAllScriptsInEngine();
+        await Task.CompletedTask;
+    }
 
+    public async Task LoadScriptsAsync() {
+        try {
+            if(await _scriptLoader.LoadAllScriptsAsync(ScriptFolderPath, _engine)) {
+                foreach(var diag in LoaderDiagnostics) {
+                    MainCore.Log.Msg(diag.ToString());
+                }
+            }
+        } catch(Exception e) {
+            MainCore.Log.Err($"[{nameof(V8Manager)}] Script load failed: {e.Message}");
+        }
         GenerateImplJs(force: true);
         UpdateWatcher();
     }
@@ -83,45 +94,6 @@ public class V8Manager : IRuntimeService {
                 return null;
             }
             return fn.Invoke(false, callArgs);
-        }
-    }
-
-    private async Task ExecuteAllScriptsInEngine() {
-        var files = Directory.GetFiles(ScriptFolderPath, "*.js");
-        lock(_engineLock) {
-            foreach(var file in files) {
-                try {
-                    var host = new JSTagRegistrationHost(_scriptLoader, file);
-                    _engine.AddHostObject(
-                        JSTagRegistrationHost.HostBindingName,
-                        (Action<string, object, object, string>)host.RegisterTag
-                    );
-                    _engine.Execute(JSTagRegistrationHost.BindingScript);
-                    var patchHost = new Scripting.Patch.JSPatchHost(_scriptLoader, file);
-                    _engine.AddHostObject(
-                        Scripting.Patch.JSPatchHost.HostBindingName,
-                        (Func<object, object, string, string, int>)patchHost.AddPatch
-                    );
-                    _engine.AddHostObject(
-                        "__OverlayerRemovePatch",
-                        (Func<object, bool>)patchHost.RemovePatch
-                    );
-                    _engine.Execute(Scripting.Patch.JSPatchHost.BindingScript);
-                    string source = JSScriptPreprocessor.RemoveImplImports(
-                        File.ReadAllText(file)
-                    );
-                    _engine.Execute(source);
-                } catch(Exception e) {
-                    MainCore.Log.Err($"[{nameof(V8Manager)}] Script execution error in '{Path.GetFileName(file)}': {e}");
-                }
-            }
-
-            _engine.Execute(
-                $"delete globalThis.RegisterTag; delete globalThis.{JSTagRegistrationHost.HostBindingName};"
-                + " delete globalThis.AddPatch; delete globalThis.RemovePatch;"
-                + $" delete globalThis.{Scripting.Patch.JSPatchHost.HostBindingName};"
-                + " delete globalThis.__OverlayerRemovePatch;"
-            );
         }
     }
 

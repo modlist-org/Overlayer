@@ -73,6 +73,12 @@ internal static class PageJS {
         diagLe.minHeight = 90f;
         diagLe.flexibleHeight = 0f;
 
+        MenuFactory.OnStateChanged += state => {
+            if(state == (int)OriginalMenuState.JS) {
+                Refresh();
+            }
+        };
+
         Refresh();
     }
 

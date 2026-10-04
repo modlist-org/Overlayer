@@ -109,6 +109,8 @@ public sealed class OverlayerRuntime {
         ModuleService.InitializeAllModules();
 
         SetModEnabledLate(Config.Data.Active, false);
+
+        _ = V8Manager.LoadScriptsAsync();
     }
 
     public void Tick() => ticks.Tick();
