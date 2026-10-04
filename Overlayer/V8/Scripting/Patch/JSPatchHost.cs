@@ -196,14 +196,13 @@ public class JSPatchHost(JSScriptLoader loader, string filePath) {
         string typeName = target[..sep].Trim();
         string rest = target[(sep + 2)..].Trim();
         string methodName = rest;
-        Type[] explicitSig = null;
+        string[] explicitSig = null;
         int paren = rest.IndexOf('(');
         if(paren >= 0 && rest.EndsWith(")", StringComparison.Ordinal)) {
             methodName = rest[..paren].Trim();
             explicitSig = SplitTopLevel(rest[(paren + 1)..^1])
                 .Where(s => !string.IsNullOrWhiteSpace(s))
-                .Select(s => FindType(s.Trim())
-                    ?? throw new InvalidOperationException($"Type not found in signature: {s.Trim()}"))
+                .Select(s => s.Trim())
                 .ToArray();
         }
         if(string.IsNullOrEmpty(methodName)) {
@@ -219,7 +218,7 @@ public class JSPatchHost(JSScriptLoader loader, string filePath) {
         }
         if(explicitSig != null) {
             var hit = candidates.FirstOrDefault(m =>
-                m.GetParameters().Select(p => p.ParameterType).SequenceEqual(explicitSig));
+                ParamsMatch(m.GetParameters(), explicitSig));
             if(hit == null) {
                 throw new InvalidOperationException(
                     $"No overload matches {target}. Candidates: {string.Join("; ", candidates.Select(Sig))}");
@@ -248,6 +247,35 @@ public class JSPatchHost(JSScriptLoader loader, string filePath) {
         throw new InvalidOperationException(
             $"Ambiguous: {typeName}::{methodName} has {candidates.Length} overloads. Candidates: {string.Join("; ", candidates.Select(Sig))}. " +
             "Declare the callback with matching arity or use \"Type::Method(Args)\".");
+    }
+
+    private static bool ParamsMatch(ParameterInfo[] parameters, string[] tokens) {
+        if(parameters.Length != tokens.Length) {
+            return false;
+        }
+        for(int i = 0; i < parameters.Length; i++) {
+            if(!TokenMatches(parameters[i].ParameterType, tokens[i])) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static bool TokenMatches(Type type, string token) {
+        if(Keywords.TryGetValue(token, out var kw)) {
+            return kw == type;
+        }
+        if(token == type.Name || token == type.FullName) {
+            return true;
+        }
+        if(token.EndsWith("[]", StringComparison.Ordinal) && type.IsArray) {
+            return TokenMatches(type.GetElementType(), token[..^2]);
+        }
+        if(token.EndsWith("?", StringComparison.Ordinal)
+            && type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>)) {
+            return TokenMatches(type.GetGenericArguments()[0], token[..^1]);
+        }
+        return false;
     }
 
     private static string Sig(MethodInfo m) =>
