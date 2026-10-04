@@ -25,6 +25,8 @@ public enum UISprite {
     Ping128,
     CodeBlock128,
     F128,
+    Upload128,
+    Download128,
 }
 
 public enum UISliceSprite {
@@ -223,6 +225,8 @@ public sealed class SpriteManager(ResourceManager resource) : IDisposable {
         [UISprite.Ping128] = Asset.Ping128,
         [UISprite.CodeBlock128] = Asset.CodeBlock128,
         [UISprite.F128] = Asset.F128,
+        [UISprite.Upload128] = Asset.Upload128,
+        [UISprite.Download128] = Asset.Download128,
     };
 
     private readonly Dictionary<UISprite, O5Asset> o5SpriteMap = new() {

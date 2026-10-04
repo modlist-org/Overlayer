@@ -235,7 +235,7 @@ internal static class PageOverlayer {
             }
         };
 
-        O5Button exportBtn = TileButton(bg.transform, TileIcon("Upload128.png"), "Export",
+        O5Button exportBtn = TileButton(bg.transform, TileIcon("Upload128.png", UISprite.Upload128), "Export",
             $"tile_export_{canvas.GetHashCode()}", () => { });
         exportBtn.OnClick = () => {
             exportBtn.OnPressExit();
@@ -305,7 +305,7 @@ internal static class PageOverlayer {
 
     private static readonly Dictionary<string, Sprite> tileIconCache = [];
 
-    private static Sprite TileIcon(string fileName) {
+    private static Sprite TileIcon(string fileName, UISprite fallback) {
         if(tileIconCache.TryGetValue(fileName, out var cached)) {
             return cached;
         }
@@ -324,6 +324,7 @@ internal static class PageOverlayer {
         } catch {
             sprite = null;
         }
+        sprite ??= BuiltinIcon(fallback);
         tileIconCache[fileName] = sprite;
         return sprite;
     }
@@ -383,7 +384,7 @@ internal static class PageOverlayer {
         var left = CreateDiagonalHalf(go.transform, false);
         var right = CreateDiagonalHalf(go.transform, true);
         CreateTileActionIcon(left.transform, BuiltinIcon(UISprite.Plus128), 0.25f);
-        CreateTileActionIcon(right.transform, TileIcon("Download128.png"), 0.75f);
+        CreateTileActionIcon(right.transform, TileIcon("Download128.png", UISprite.Download128), 0.75f);
 
         var trigger = go.AddComponent<EventTrigger>();
         var handler = go.AddComponent<OventHandler>();
