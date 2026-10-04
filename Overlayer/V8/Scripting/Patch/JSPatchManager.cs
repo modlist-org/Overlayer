@@ -98,6 +98,23 @@ public static class JSPatchManager {
         }
     }
 
+    public static IReadOnlyList<(int handle, string target)> GetFilePatches(string file) {
+        lock(Sync) {
+            if(!ByFile.TryGetValue(file, out var list)) {
+                return [];
+            }
+            var result = new List<(int, string)>(list.Count);
+            foreach(int handle in list) {
+                if(ByHandle.TryGetValue(handle, out var reg)) {
+                    var m = reg.Target;
+                    result.Add((handle,
+                        $"{m.DeclaringType?.Name}::{m.Name}({string.Join(", ", m.GetParameters().Select(p => p.ParameterType.Name))})"));
+                }
+            }
+            return result;
+        }
+    }
+
     public static bool Remove(int handle) {
         lock(Sync) {
             if(!ByHandle.TryGetValue(handle, out var reg)) {

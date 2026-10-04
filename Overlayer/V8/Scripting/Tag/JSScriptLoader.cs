@@ -36,7 +36,10 @@ public class JSScriptLoader {
                     }
 
                     foreach(var file in files) {
-                        string currentHash = GetFileHash(file);
+                        string currentHash = TryGetFileHash(file);
+                        if(currentHash == null) {
+                            continue;
+                        }
                         if(_fileHashes.TryGetValue(file, out var existingHash) && existingHash == currentHash) {
                             continue;
                         }
@@ -86,14 +89,29 @@ public class JSScriptLoader {
                 (Func<object, bool>)patchHost.RemovePatch
             );
             engine.Execute(Scripting.Patch.JSPatchHost.BindingScript);
-            string source = JSScriptPreprocessor.RemoveImplImports(
-                File.ReadAllText(filePath)
-            );
-            engine.Execute(source);
+            string source = ReadScriptSource(filePath);
+            if(source == null) {
+                Diagnostics.Add(new JSDiagnostic(JSTagDiagnosticId.ScriptError, JSSeverity.Error, filePath,
+                    new IOException($"Could not read '{Path.GetFileName(filePath)}' (locked by editor?)")));
+                return;
+            }
+            string processed = JSScriptPreprocessor.RemoveImplImports(source);
+            engine.Execute(processed);
             _fileHashes[filePath] = hash;
         } catch(Exception e) {
             Diagnostics.Add(new JSDiagnostic(JSTagDiagnosticId.ScriptError, JSSeverity.Error, filePath, e));
         }
+    }
+
+    private static string ReadScriptSource(string filePath) {
+        for(int i = 0; i < 10; i++) {
+            try {
+                return File.ReadAllText(filePath);
+            } catch(IOException) {
+                Thread.Sleep(50);
+            }
+        }
+        return null;
     }
 
     private static void SyncV8AndRecompile() {
@@ -130,6 +148,64 @@ public class JSScriptLoader {
             if(!tags.Contains(tagName)) {
                 tags.Add(tagName);
             }
+        }
+    }
+
+    public (List<string> changed, List<string> removed) PreviewChanges(string folderPath) {
+        var changed = new List<string>();
+        var removed = new List<string>();
+        lock(_syncLock) {
+            string[] files;
+            try {
+                files = Directory.GetFiles(folderPath, "*.js");
+            } catch {
+                return (changed, removed);
+            }
+            var current = new HashSet<string>(files);
+            foreach(var tracked in _fileHashes.Keys) {
+                if(!current.Contains(tracked)) {
+                    removed.Add(tracked);
+                }
+            }
+            foreach(var file in files) {
+                string hash = TryGetFileHash(file);
+                if(hash == null || !_fileHashes.TryGetValue(file, out var existing) || existing != hash) {
+                    changed.Add(file);
+                }
+            }
+        }
+        return (changed, removed);
+    }
+
+    public IReadOnlyList<string> GetScriptFiles() {
+        lock(_syncLock) {
+            return _fileHashes.Keys.OrderBy(f => f).ToList();
+        }
+    }
+
+    public IReadOnlyList<string> GetFileTags(string filePath) {
+        lock(_syncLock) {
+            return _fileToTags.TryGetValue(filePath, out var tags) ? [.. tags] : [];
+        }
+    }
+
+    public void ReloadFile(string filePath, V8ScriptEngine engine) {
+        string hash = TryGetFileHash(filePath);
+        if(hash == null) {
+            return;
+        }
+        lock(_syncLock) {
+            UnloadScript(filePath);
+            LoadScriptInternal(filePath, hash, engine);
+            SyncV8AndRecompile();
+        }
+    }
+
+    private static string TryGetFileHash(string filePath) {
+        try {
+            return GetFileHash(filePath);
+        } catch {
+            return null;
         }
     }
 

@@ -31,6 +31,7 @@ public static class PageFactory {
         PageOverlayer.Create(UICore.Pages[(int)OriginalMenuState.Overlayer]);
         PageDocs.Create(UICore.Pages[(int)OriginalMenuState.Docs]);
         PageResources.Create(UICore.Pages[(int)OriginalMenuState.Resources]);
+        PageJS.Create(UICore.Pages[(int)OriginalMenuState.JS]);
 
         return PagesContaner;
     }

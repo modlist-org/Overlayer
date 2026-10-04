@@ -19,6 +19,10 @@ public class V8Manager : IRuntimeService {
     private readonly JSScriptLoader _scriptLoader = new();
     public IReadOnlyList<JSDiagnostic> LoaderDiagnostics => _scriptLoader.Diagnostics;
 
+    public IReadOnlyList<string> ScriptFiles => _scriptLoader.GetScriptFiles();
+
+    public IReadOnlyList<string> ScriptFileTags(string filePath) => _scriptLoader.GetFileTags(filePath);
+
     public Task InitializationTask { get; private set; }
     private FileSystemWatcher _watcher;
 
@@ -133,6 +137,10 @@ public class V8Manager : IRuntimeService {
     }
 
     public async Task ReloadScriptsAsync() {
+        var preview = await Task.Run(() => _scriptLoader.PreviewChanges(ScriptFolderPath));
+        if(preview.changed.Count == 0 && preview.removed.Count == 0) {
+            return;
+        }
         lock(_engineLock) {
             ClearFxScriptCache();
             _engine.Dispose();
@@ -585,6 +593,19 @@ public class V8Manager : IRuntimeService {
         }
     }
 
+    public void ReloadScriptFile(string filePath) {
+        lock(_engineLock) {
+            if(_engine == null) {
+                return;
+            }
+            _scriptLoader.ReloadFile(filePath, _engine);
+            foreach(var diag in LoaderDiagnostics) {
+                MainCore.Log.Msg(diag.ToString());
+            }
+            GenerateImplJs(false);
+        }
+    }
+
     public void UpdateWatcher() {
         bool enabled = MainCore.Conf.EnableJSScriptWatcher;
         if(enabled && _watcher == null) {
@@ -592,6 +613,9 @@ public class V8Manager : IRuntimeService {
                 NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite
             };
             _watcher.Changed += OnScriptChanged;
+            _watcher.Created += OnScriptChanged;
+            _watcher.Deleted += OnScriptChanged;
+            _watcher.Renamed += OnScriptChanged;
             _watcher.EnableRaisingEvents = true;
         } else if(!enabled && _watcher != null) {
             _watcher.EnableRaisingEvents = false;
@@ -600,7 +624,22 @@ public class V8Manager : IRuntimeService {
         }
     }
 
-    private void OnScriptChanged(object sender, FileSystemEventArgs e) => _ = ReloadScriptsAsync();
+    private CancellationTokenSource _watchDebounce;
+    private void OnScriptChanged(object sender, FileSystemEventArgs e) {
+        _watchDebounce?.Cancel();
+        _watchDebounce?.Dispose();
+        var cts = _watchDebounce = new CancellationTokenSource();
+        _ = Task.Delay(300, cts.Token).ContinueWith(async t => {
+            if(t.IsCanceled) {
+                return;
+            }
+            try {
+                await ReloadScriptsAsync();
+            } catch(Exception ex) {
+                MainCore.Log.Err($"[{nameof(V8Manager)}] Script reload failed: {ex.Message}");
+            }
+        }, TaskScheduler.Default);
+    }
 
     public void Dispose() {
         lock(_engineLock) {
