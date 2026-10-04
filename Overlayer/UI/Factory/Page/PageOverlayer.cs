@@ -6,6 +6,7 @@ using Overlayer.Localization;
 using Overlayer.Overlay;
 using Overlayer.Resource;
 using O5Kit.Factory;
+using O5Kit.Control;
 using Overlayer.UI.Overlay;
 using O5Kit.Behaviour;
 using UnityEngine;
@@ -118,16 +119,15 @@ internal static class PageOverlayer {
         for(int i = 0; i < OverlayCore.Canvases.Count; i++) {
             var c = OverlayCore.Canvases[i];
             if(!tileMap.TryGetValue(c, out var tile)) {
-                tile = CreateCanvasTile(transform, c);
+                tile = CreateCanvasTile(transform, c, () => BuildAllTiles(transform));
                 tileMap[c] = tile;
             }
         }
 
-        GameObject addTile = CreateAddTile(transform, () => {
-            var canvas = OverlayCore.CreateOvCanvas();
+        CreateCanvasActionTile(transform, () => {
+            OverlayCore.CreateOvCanvas();
             BuildAllTiles(transform);
-        });
-        addTile.name = "AddTile";
+        }, () => BeginImportCanvas(transform));
 
         if(contentRectRef != null) {
             LayoutRebuilder.ForceRebuildLayoutImmediate(contentRectRef);
@@ -184,7 +184,7 @@ internal static class PageOverlayer {
         disabledPanel.SetActive(false);
     }
 
-    static GameObject CreateCanvasTile(Transform parent, OvCanvas canvas) {
+    static GameObject CreateCanvasTile(Transform parent, OvCanvas canvas, Action onChanged = null) {
         var bg = new GameObject(canvas.Config.Name);
         bg.transform.SetParent(parent, false);
 
@@ -194,7 +194,7 @@ internal static class PageOverlayer {
         bgImg.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P2048);
         bgImg.type = Image.Type.Sliced;
         bgImg.color = UIColors.ObjectBG;
-        bgImg.raycastTarget = false;
+        bgImg.raycastTarget = true;
 
         GameObject textGo = new("CanvasNameText");
         textGo.transform.SetParent(bg.transform, false);
@@ -213,86 +213,398 @@ internal static class PageOverlayer {
         txt.color = Color.white;
         txt.raycastTarget = false;
 
-        O5Effects.HoverOutline(O5KitAdapters.Ctx, bg, bg.AddComponent<EventTrigger>());
+        var tileTrigger = bg.AddComponent<EventTrigger>();
+        O5Effects.HoverOutline(O5KitAdapters.Ctx, bg, tileTrigger);
+        AddTileHoverScale(bg, tileTrigger);
+
+        var tileControls = new List<GameObject>();
 
         var bgOvent = bg.AddComponent<OventHandler>();
         bgOvent.OnClick += btn => {
             switch(btn) {
                 case InputButton.Left:
+                    if(!canvas.Config.Enabled.Value) {
+                        break;
+                    }
+                    if(PointerOnTileControl(bg, tileControls)) {
+                        break;
+                    }
                     FadeCanvasGroup(viewportCanvasGroup, 0f, false);
                     settingPage?.Open(canvas);
                     break;
             }
         };
 
+        O5Button exportBtn = TileButton(bg.transform, TileIcon("Upload128.png"), "Export",
+            $"tile_export_{canvas.GetHashCode()}", () => { });
+        exportBtn.OnClick = () => {
+            exportBtn.OnPressExit();
+            exportBtn.OnHoverExit();
+            BeginExportCanvas(canvas);
+        };
+        var exportRect = exportBtn.Rect;
+        exportRect.anchorMin = new Vector2(1f, 0f);
+        exportRect.anchorMax = new Vector2(1f, 0f);
+        exportRect.pivot = new Vector2(1f, 0f);
+        exportRect.anchoredPosition = new Vector2(-10f, 10f);
+        exportRect.sizeDelta = new Vector2(110f, 34f);
+
+        var cloneRect = TileButton(bg.transform, BuiltinIcon(UISprite.Clone128), "Clone",
+            $"tile_clone_{canvas.GetHashCode()}", () => {
+                if(OverlayCore.CloneCanvas(canvas) != null) {
+                    onChanged?.Invoke();
+                }
+            }).Rect;
+        cloneRect.anchorMin = new Vector2(0f, 0f);
+        cloneRect.anchorMax = new Vector2(0f, 0f);
+        cloneRect.pivot = new Vector2(0f, 0f);
+        cloneRect.anchoredPosition = new Vector2(10f, 10f);
+        cloneRect.sizeDelta = new Vector2(110f, 34f);
+
+        var toggleGo = new GameObject("EnabledToggle");
+        toggleGo.transform.SetParent(bg.transform, false);
+        var toggleRect = toggleGo.AddComponent<RectTransform>();
+        toggleRect.anchorMin = new Vector2(1f, 1f);
+        toggleRect.anchorMax = new Vector2(1f, 1f);
+        toggleRect.pivot = new Vector2(1f, 1f);
+        toggleRect.anchoredPosition = new Vector2(-10f, -10f);
+        toggleRect.sizeDelta = new Vector2(64f, 34f);
+        var enabledToggle = O5Factory.Toggle(O5KitAdapters.Ctx,
+            toggleGo.transform,
+            null,
+            canvas.Config.Enabled.Value,
+            toggle => {
+                canvas.Config.Enabled.Value = toggle;
+                OverlayCore.SaveAllCanvases();
+                ApplyTileEnabledVisual(bgImg, txt, toggle);
+            },
+            string.Empty,
+            $"tile_enabled_{canvas.GetHashCode()}");
+        var hoverOutline = enabledToggle.Rect.transform.Find("Hover");
+        if(hoverOutline != null) {
+            UnityEngine.Object.Destroy(hoverOutline.gameObject);
+        }
+        var toggleBg = enabledToggle.Rect.GetComponent<Image>();
+        if(toggleBg != null) {
+            toggleBg.color = Color.clear;
+        }
+        tileControls.Add(exportRect.gameObject);
+        tileControls.Add(cloneRect.gameObject);
+        tileControls.Add(toggleGo);
+        ApplyTileEnabledVisual(bgImg, txt, canvas.Config.Enabled.Value);
+
         return bg;
     }
 
-    static GameObject CreateAddTile(Transform parent, Action onClick) {
-        var go = new GameObject("AddTile");
+    private static void ApplyTileEnabledVisual(Image bgImg, TextMeshProUGUI nameText, bool enabled) {
+        var bg = UIColors.ObjectBG;
+        bg.a = enabled ? 1f : 0.4f;
+        bgImg.color = bg;
+        nameText.color = enabled ? Color.white : UIColors.ObjectInactive;
+    }
+
+    private static readonly Dictionary<string, Sprite> tileIconCache = [];
+
+    private static Sprite TileIcon(string fileName) {
+        if(tileIconCache.TryGetValue(fileName, out var cached)) {
+            return cached;
+        }
+        Sprite sprite = null;
+        try {
+            string path = Path.Combine(MainCore.Paths.RootPath, "Icons", fileName);
+            if(File.Exists(path)) {
+                var tex = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+                if(tex.LoadImage(File.ReadAllBytes(path))) {
+                    tex.filterMode = FilterMode.Bilinear;
+                    sprite = Sprite.Create(tex, new Rect(0f, 0f, tex.width, tex.height), new Vector2(0.5f, 0.5f));
+                } else {
+                    UnityEngine.Object.Destroy(tex);
+                }
+            }
+        } catch {
+            sprite = null;
+        }
+        tileIconCache[fileName] = sprite;
+        return sprite;
+    }
+
+    private static Sprite BuiltinIcon(UISprite sprite) {
+        try {
+            return MainCore.Spr.Get(sprite);
+        } catch {
+            return null;
+        }
+    }
+
+    private static O5Button TileButton(Transform parent, Sprite icon, string fallbackText, string id, Action onClick) {
+        if(icon != null) {
+            return O5Factory.Button(O5KitAdapters.Ctx, parent, onClick, icon, id, 5f, 34f);
+        }
+        return O5Factory.Button(O5KitAdapters.Ctx, parent, onClick, fallbackText, id, 34f);
+    }
+
+    private static bool PointerOnTileControl(GameObject tile, List<GameObject> controls) {
+        var es = EventSystem.current;
+        if(es == null || tile == null) {
+            return false;
+        }
+        var ped = new PointerEventData(es) { position = UnityEngine.Input.mousePosition };
+        var hits = new List<RaycastResult>();
+        es.RaycastAll(ped, hits);
+        foreach(var h in hits) {
+            var go = h.gameObject;
+            if(go == null || go == tile) {
+                return false;
+            }
+            foreach(var control in controls) {
+                if(go == control || go.transform.IsChildOf(control.transform)) {
+                    return true;
+                }
+            }
+            if(go.transform.IsChildOf(tile.transform)) {
+                continue;
+            }
+            return false;
+        }
+        return false;
+    }
+
+    private static GameObject CreateCanvasActionTile(Transform parent, Action create, Action import) {
+        var go = new GameObject("CanvasActionsTile");
         go.transform.SetParent(parent, false);
-        go.AddComponent<RectTransform>();
-        go.AddComponent<EmptyGraphic>().raycastTarget = true;
+        var root = go.AddComponent<RectTransform>();
 
-        GameObject bgGo = new("Background");
-        bgGo.transform.SetParent(go.transform, false);
-        var bgRect = bgGo.AddComponent<RectTransform>();
-        bgRect.anchorMin = Vector2.zero;
-        bgRect.anchorMax = Vector2.one;
-        bgRect.offsetMin = Vector2.zero;
-        bgRect.offsetMax = Vector2.zero;
+        var background = go.AddComponent<Image>();
+        background.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P2048);
+        background.type = Image.Type.Sliced;
+        background.color = UIColors.PanelBG;
+        background.raycastTarget = true;
 
-        var bgImg = bgGo.AddComponent<Image>();
-        bgImg.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P2048);
-        bgImg.type = Image.Type.Sliced;
-        bgImg.color = UIColors.ObjectButton;
-        bgImg.raycastTarget = false;
-
-        GameObject textGo = new("PlusText");
-        textGo.transform.SetParent(go.transform, false);
-
-        var textRect = textGo.AddComponent<RectTransform>();
-        textRect.anchorMin = Vector2.zero;
-        textRect.anchorMax = Vector2.one;
-        textRect.offsetMin = Vector2.zero;
-        textRect.offsetMax = Vector2.zero;
-
-        var txt = textGo.AddComponent<TextMeshProUGUI>();
-        txt.text = "+";
-        txt.font = MainCore.Res.Get<TMP_FontAsset>(Asset.SUIT_Medium);
-        txt.fontSize = 60;
-        txt.alignment = TextAlignmentOptions.Center;
-        txt.color = Color.white;
-        txt.raycastTarget = false;
+        var left = CreateDiagonalHalf(go.transform, false);
+        var right = CreateDiagonalHalf(go.transform, true);
+        CreateTileActionIcon(left.transform, BuiltinIcon(UISprite.Plus128), 0.25f);
+        CreateTileActionIcon(right.transform, TileIcon("Download128.png"), 0.75f);
 
         var trigger = go.AddComponent<EventTrigger>();
-
-        O5Effects.HoverOutline(O5KitAdapters.Ctx, go, trigger);
-
-        var goOvent = go.AddComponent<OventHandler>();
-        goOvent.OnClick += btn => {
-            switch(btn) {
-                case InputButton.Left:
-                    onClick?.Invoke();
-                    break;
+        var handler = go.AddComponent<OventHandler>();
+        AddActionHalfHoverScale(handler, root, left, right);
+        handler.OnClick += button => {
+            if(button != InputButton.Left) {
+                return;
+            }
+            if(!RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                root, UnityEngine.Input.mousePosition, null, out var local)) {
+                return;
+            }
+            Rect rect = root.rect;
+            float y = Mathf.InverseLerp(rect.yMin, rect.yMax, local.y);
+            float splitX = Mathf.Lerp(0.28f, 0.72f, y);
+            float split = rect.xMin + rect.width * splitX;
+            if(local.x < split) {
+                create?.Invoke();
+            } else {
+                import?.Invoke();
             }
         };
 
-        ITweenHandle bgTween = null;
+        ITweenHandle hover = null;
         UnityUtils.AddEvents(trigger,
             (EventTriggerType.PointerEnter, () => {
-                bgTween?.Kill();
-                bgTween = bgImg.TColor(UIColors.ObjectActiveLightBright, 0.12f, O5Ease.OutSine);
-            }
-        ),
+                hover?.Kill();
+                hover = background.TColor(UIColors.PanelBG, 0.12f, O5Ease.OutSine);
+            }),
             (EventTriggerType.PointerExit, () => {
-                bgTween?.Kill();
-                bgTween = bgImg.TColor(UIColors.ObjectButton, 0.12f, O5Ease.OutSine);
-            }
-        )
+                hover?.Kill();
+                left.color = right.color = UIColors.ObjectButton;
+                hover = background.TColor(UIColors.PanelBG, 0.12f, O5Ease.OutSine);
+            })
         );
-
         return go;
+    }
+
+    private static void AddTileHoverScale(GameObject go, EventTrigger trigger) {
+        ITweenHandle tween = null;
+        Transform target = go.transform;
+        void ScaleTo(float value) {
+            tween?.Kill();
+            tween = O5KitAdapters.Ctx.Tween.TweenFloat(
+                () => target ? target.localScale.x : value,
+                v => {
+                    if(target) {
+                        target.localScale = Vector3.one * v;
+                    }
+                },
+                value,
+                0.22f,
+                ease: O5Ease.OutExpo
+            );
+        }
+        UnityUtils.AddEvents(trigger,
+            (EventTriggerType.PointerEnter, () => ScaleTo(1.02f)),
+            (EventTriggerType.PointerExit, () => ScaleTo(1f))
+        );
+    }
+
+    private static void AddActionHalfHoverScale(OventHandler handler, RectTransform root,
+        DiagonalTileGraphic left, DiagonalTileGraphic right) {
+        left.rectTransform.pivot = new Vector2(0.25f, 0.5f);
+        right.rectTransform.pivot = new Vector2(0.75f, 0.5f);
+        ITweenHandle leftTween = null;
+        ITweenHandle rightTween = null;
+        int active = -1;
+
+        void SetScale(Transform target, bool isLeft, float value) {
+            if(isLeft) {
+                leftTween?.Kill();
+            } else {
+                rightTween?.Kill();
+            }
+            var tween = O5KitAdapters.Ctx.Tween.TweenFloat(
+                () => target ? target.localScale.x : value,
+                v => {
+                    if(target) {
+                        target.localScale = Vector3.one * v;
+                    }
+                },
+                value,
+                0.22f,
+                ease: O5Ease.OutExpo
+            );
+            if(isLeft) {
+                leftTween = tween;
+            } else {
+                rightTween = tween;
+            }
+        }
+
+        handler.OnHoverUpdate = () => {
+            if(!RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                root, UnityEngine.Input.mousePosition, null, out var local)) {
+                return;
+            }
+            Rect rect = root.rect;
+            float y = Mathf.InverseLerp(rect.yMin, rect.yMax, local.y);
+            float splitX = Mathf.Lerp(0.28f, 0.72f, y);
+            int next = local.x < rect.xMin + rect.width * splitX ? 0 : 1;
+            if(next == active) {
+                return;
+            }
+            active = next;
+            left.color = next == 0 ? UIColors.ObjectActiveLightBright : UIColors.ObjectButton;
+            right.color = next == 1 ? UIColors.ObjectActiveLightBright : UIColors.ObjectButton;
+            SetScale(left.transform, true, next == 0 ? 1.02f : 1f);
+            SetScale(right.transform, false, next == 1 ? 1.02f : 1f);
+        };
+
+        void ResetHover() {
+            active = -1;
+            leftTween?.Kill();
+            rightTween?.Kill();
+            left.transform.localScale = Vector3.one;
+            right.transform.localScale = Vector3.one;
+            left.color = right.color = UIColors.ObjectButton;
+        }
+        handler.OnDisabled += ResetHover;
+        var trigger = root.GetComponent<EventTrigger>();
+        if(trigger != null) {
+            UnityUtils.AddEvents(trigger, (EventTriggerType.PointerExit, ResetHover));
+        }
+    }
+
+    private static DiagonalTileGraphic CreateDiagonalHalf(Transform parent, bool right) {
+        var go = new GameObject(right ? "ImportHalf" : "CreateHalf");
+        go.transform.SetParent(parent, false);
+        var rect = go.AddComponent<RectTransform>();
+        rect.anchorMin = Vector2.zero;
+        rect.anchorMax = Vector2.one;
+        rect.pivot = new Vector2(right ? 0.75f : 0.25f, 0.5f);
+        rect.offsetMin = Vector2.zero;
+        rect.offsetMax = Vector2.zero;
+        var graphic = go.AddComponent<DiagonalTileGraphic>();
+        graphic.RightHalf = right;
+        graphic.color = UIColors.ObjectButton;
+        graphic.raycastTarget = false;
+        return graphic;
+    }
+
+    private static void CreateTileActionIcon(Transform parent, Sprite sprite, float anchorX) {
+        if(sprite == null) {
+            return;
+        }
+        var go = new GameObject("ActionIcon");
+        go.transform.SetParent(parent, false);
+        var rect = go.AddComponent<RectTransform>();
+        rect.anchorMin = rect.anchorMax = new Vector2(anchorX, 0.5f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = Vector2.zero;
+        rect.sizeDelta = new Vector2(56f, 56f);
+        var image = go.AddComponent<Image>();
+        image.sprite = sprite;
+        image.preserveAspect = true;
+        image.raycastTarget = false;
+    }
+
+    private static void BeginExportCanvas(OvCanvas canvas) {
+        string baseName = string.Join("_", (canvas.Config.Name.Value ?? "Canvas").Split(Path.GetInvalidFileNameChars()));
+        if(string.IsNullOrWhiteSpace(baseName)) {
+            baseName = "Canvas";
+        }
+        _ = Task.Run(() => {
+            try {
+                string dir = OverlayCore.ExportDir;
+                if(!Directory.Exists(dir)) {
+                    Directory.CreateDirectory(dir);
+                }
+                return NativeFileDialog.Extended.NFD.SaveDialog(
+                    dir,
+                    $"{baseName}.json",
+                    new Dictionary<string, string> { ["JSON"] = "json" }
+                );
+            } catch(Exception e) {
+                MainCore.Log.Err($"[CanvasExport] File dialog failed: {e.Message}");
+                return null;
+            }
+        }).ContinueWith(task => {
+            MainThread.Enqueue(() => {
+                if(!MainCore.IsModEnabled) {
+                    return;
+                }
+                string path = task.Status == TaskStatus.RanToCompletion ? task.Result : null;
+                if(string.IsNullOrWhiteSpace(path)) {
+                    return;
+                }
+                OverlayCore.ExportCanvas(canvas, path);
+            });
+        });
+    }
+
+    private static void BeginImportCanvas(Transform grid) {
+        _ = Task.Run(() => {
+            try {
+                string dir = OverlayCore.ExportDir;
+                if(!Directory.Exists(dir)) {
+                    Directory.CreateDirectory(dir);
+                }
+                return NativeFileDialog.Extended.NFD.OpenDialog(
+                    dir,
+                    new Dictionary<string, string> { ["JSON"] = "json" }
+                );
+            } catch(Exception e) {
+                MainCore.Log.Err($"[CanvasImport] File dialog failed: {e.Message}");
+                return null;
+            }
+        }).ContinueWith(task => {
+            MainThread.Enqueue(() => {
+                if(!MainCore.IsModEnabled) {
+                    return;
+                }
+                string path = task.Status == TaskStatus.RanToCompletion ? task.Result : null;
+                if(!string.IsNullOrWhiteSpace(path)) {
+                    OverlayCore.ImportCanvas(path);
+                }
+                BuildAllTiles(grid);
+            });
+        });
     }
 
     private static ITweenHandle fadeTween;

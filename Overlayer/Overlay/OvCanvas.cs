@@ -25,6 +25,7 @@ public class OvCanvas : ISettingsFile {
     public bool HasAnyFx => Config?.HasAnyFx ?? false;
 
     private string _lastName;
+    private bool _lastEnabled = true;
 
     public OvCanvas() {
         GameObject = new GameObject("OvCanvas");
@@ -57,6 +58,8 @@ public class OvCanvas : ISettingsFile {
     public void ApplyConfig() {
         _lastName = Config.Name.Value;
         GameObject.name = _lastName;
+        _lastEnabled = Config.Enabled.Value;
+        GameObject.SetActive(_lastEnabled);
         Config.RectTransformConfig.ToUnity(GameObject);
         Config.CanvasGroupConfig.ToUnity(GameObject);
         Config.CanvasConfig.ToUnity(GameObject);
@@ -70,6 +73,7 @@ public class OvCanvas : ISettingsFile {
         }
 
         FxUtil.ApplyIfChanged(ref _lastName, Config.Name.Value, v => GameObject.name = v);
+        FxUtil.ApplyIfChanged(ref _lastEnabled, Config.Enabled.Value, v => GameObject.SetActive(v));
         Config.RectTransformConfig?.RefreshFx(GameObject);
         Config.CanvasGroupConfig?.RefreshFx(GameObject);
         Config.CanvasConfig?.RefreshFx(GameObject);

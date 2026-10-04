@@ -8,6 +8,7 @@ namespace Overlayer.IO.Overlay;
 
 public sealed class OvCanvasSettings : ISettingsFile, ICopyable<OvCanvasSettings> {
     public FxValue<string> Name = FxValue<string>.FromValue("OvCanvas");
+    public FxValue<bool> Enabled = new(true);
     public RectTransformSettings RectTransformConfig = new() {
         AnchorMin = Vector2.zero,
         AnchorMax = Vector2.one,
@@ -23,6 +24,7 @@ public sealed class OvCanvasSettings : ISettingsFile, ICopyable<OvCanvasSettings
     public GraphicRaycasterSettings GraphicRaycasterConfig = new();
 
     public bool HasAnyFx => FxUtil.HasFx(Name)
+        || FxUtil.HasFx(Enabled)
         || (RectTransformConfig?.HasAnyFx ?? false)
         || (CanvasGroupConfig?.HasAnyFx ?? false)
         || (CanvasConfig?.HasAnyFx ?? false)
@@ -32,6 +34,7 @@ public sealed class OvCanvasSettings : ISettingsFile, ICopyable<OvCanvasSettings
     public JToken Serialize() {
         return new JObject {
             [nameof(Name)] = IOUtils.WriteFx(Name),
+            [nameof(Enabled)] = IOUtils.WriteFx(Enabled),
             [nameof(RectTransformConfig)] = RectTransformConfig.Serialize(),
             [nameof(CanvasGroupConfig)] = CanvasGroupConfig.Serialize(),
             [nameof(CanvasConfig)] = CanvasConfig.Serialize(),
@@ -46,6 +49,7 @@ public sealed class OvCanvasSettings : ISettingsFile, ICopyable<OvCanvasSettings
         }
 
         Name = IOUtils.ReadFx(obj, nameof(Name), Name);
+        Enabled = IOUtils.ReadFx(obj, nameof(Enabled), Enabled);
         RectTransformConfig.Deserialize(obj[nameof(RectTransformConfig)]);
         if(obj[nameof(CanvasGroupConfig)] != null) {
             CanvasGroupConfig.Deserialize(obj[nameof(CanvasGroupConfig)]);
@@ -58,6 +62,7 @@ public sealed class OvCanvasSettings : ISettingsFile, ICopyable<OvCanvasSettings
     public OvCanvasSettings Copy() {
         return new OvCanvasSettings {
             Name = Name?.Copy(),
+            Enabled = Enabled?.Copy(),
             RectTransformConfig = RectTransformConfig?.Copy(),
             CanvasGroupConfig = CanvasGroupConfig?.Copy(),
             CanvasConfig = CanvasConfig?.Copy(),

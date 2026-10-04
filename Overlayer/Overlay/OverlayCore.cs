@@ -13,6 +13,7 @@ public static class OverlayCore {
     public static readonly List<OvCanvas> Canvases = [];
 
     private static readonly string SaveDir = Path.Combine(MainCore.Paths.RootPath, "Canvases");
+    public static string ExportDir => Path.Combine(SaveDir, "Export");
     private static int pendingLayoutRefreshes;
 
     public static int GetCanvasIndex(OvCanvas canvas)
@@ -36,6 +37,73 @@ public static class OverlayCore {
         canvas.RectTransform.SetParent(Transform, false);
         Canvases.Add(canvas);
         return canvas;
+    }
+
+    public static string ExportCanvas(OvCanvas canvas, string filePath) {
+        if(canvas == null || string.IsNullOrWhiteSpace(filePath)) {
+            return null;
+        }
+        try {
+            string dir = Path.GetDirectoryName(filePath);
+            if(!string.IsNullOrEmpty(dir) && !Directory.Exists(dir)) {
+                Directory.CreateDirectory(dir);
+            }
+            File.WriteAllText(filePath, canvas.Serialize().ToString());
+            MainCore.Log.Msg($"[{nameof(OverlayCore)}] Exported canvas '{canvas.Config.Name.Value}' to {filePath}");
+            return filePath;
+        } catch(Exception e) {
+            MainCore.Log.Err($"[{nameof(OverlayCore)}] Failed to export canvas: {e.Message}");
+            return null;
+        }
+    }
+
+    public static bool ImportCanvas(string filePath) {
+        if(string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath)) {
+            return false;
+        }
+        try {
+            var wrapper = new SettingsFile<OvCanvas>(filePath);
+            if(!wrapper.Load()) {
+                wrapper.Dispose();
+                MainCore.Log.Err($"[{nameof(OverlayCore)}] Failed to import canvas: bad file {filePath}");
+                return false;
+            }
+            var canvas = wrapper.Data;
+            canvas.RectTransform.SetParent(Transform, false);
+            canvas.ApplyConfig();
+            canvas.RefreshLayouts();
+            Canvases.Add(canvas);
+            SaveAllCanvases();
+            MainCore.Log.Msg($"[{nameof(OverlayCore)}] Imported canvas '{canvas.Config.Name.Value}' from {filePath}");
+            return true;
+        } catch(Exception e) {
+            MainCore.Log.Err($"[{nameof(OverlayCore)}] Failed to import canvas: {e.Message}");
+            return false;
+        }
+    }
+
+    public static OvCanvas CloneCanvas(OvCanvas source) {
+        if(source == null) {
+            return null;
+        }
+        try {
+            var token = Newtonsoft.Json.Linq.JToken.Parse(source.Serialize().ToString());
+            var canvas = new OvCanvas();
+            canvas.Deserialize(token);
+            if(!canvas.Config.Name.Value.EndsWith(" Copy")) {
+                canvas.Config.Name.Value = $"{canvas.Config.Name.Value} Copy";
+            }
+            canvas.RectTransform.SetParent(Transform, false);
+            canvas.ApplyConfig();
+            canvas.RefreshLayouts();
+            Canvases.Add(canvas);
+            SaveAllCanvases();
+            MainCore.Log.Msg($"[{nameof(OverlayCore)}] Cloned canvas '{source.Config.Name.Value}'");
+            return canvas;
+        } catch(Exception e) {
+            MainCore.Log.Err($"[{nameof(OverlayCore)}] Failed to clone canvas: {e.Message}");
+            return null;
+        }
     }
 
     public static bool DeleteOvCanvas(OvCanvas canvas) {
