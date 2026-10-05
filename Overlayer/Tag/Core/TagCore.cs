@@ -1,4 +1,5 @@
 ﻿using Microsoft.ClearScript;
+using Overlayer.Tag.Compile;
 using System.Linq.Expressions;
 using System.Reflection;
 
@@ -133,6 +134,85 @@ public class TagCore {
         RequiredParameterCount = Parameters.Count(p => !p.HasDefaultValue);
     }
 
+    // Coerces a runtime argument (typically from V8/ClearScript, where every
+    // JS number may arrive as double) to a tag parameter type. Mirrors the
+    // compile-time rules of ArgConverter so Fx/JS calls behave exactly like
+    // TextEngine {Tag:args} calls instead of throwing InvalidCastException.
+    internal static object CoerceArg(object value, Type target) {
+        if(target == null) {
+            throw new ArgumentNullException(nameof(target));
+        }
+        if(value == null) {
+            return target.IsValueType && Nullable.GetUnderlyingType(target) == null
+                ? Activator.CreateInstance(target)
+                : null;
+        }
+        if(target.IsInstanceOfType(value)) {
+            return value;
+        }
+        Type nonNullable = Nullable.GetUnderlyingType(target) ?? target;
+        if(target != nonNullable) {
+            // Boxed underlying values unbox into Nullable<T> directly.
+            return CoerceArg(value, nonNullable);
+        }
+        if(target == typeof(string)) {
+            return value.ToString();
+        }
+        if(target.IsEnum) {
+            if(value is string name) {
+                return Enum.Parse(target, name, true);
+            }
+            return Enum.ToObject(target, value);
+        }
+        if(value is string text) {
+            return ArgConverter.Convert(text, target);
+        }
+        if(value is IConvertible && (target.IsPrimitive || target == typeof(decimal))) {
+            return Convert.ChangeType(value, target, System.Globalization.CultureInfo.InvariantCulture);
+        }
+        throw new InvalidCastException(
+            $"Cannot convert '{value.GetType().FullName}' to '{target.FullName}'.");
+    }
+
+    private static object DefaultOf(Type type) {
+        return type.IsValueType ? Activator.CreateInstance(type) : null;
+    }
+
+    private static object[] NormalizeArgs(ParameterInfo[] parameters, object[] args) {
+        args ??= [];
+        bool variadic = parameters.Length > 0
+            && parameters[parameters.Length - 1].GetCustomAttribute<ParamArrayAttribute>() != null;
+        int fixedCount = variadic ? parameters.Length - 1 : parameters.Length;
+        var normalized = new object[parameters.Length];
+        for(int i = 0; i < parameters.Length; i++) {
+            if(variadic && i == parameters.Length - 1) {
+                Type elementType = parameters[i].ParameterType.GetElementType() ?? typeof(object);
+                int extra = Math.Max(0, args.Length - fixedCount);
+                var packed = Array.CreateInstance(elementType, extra);
+                for(int j = 0; j < extra; j++) {
+                    packed.SetValue(CoerceArg(args[fixedCount + j], elementType), j);
+                }
+                normalized[i] = packed;
+            } else if(i < args.Length) {
+                normalized[i] = CoerceArg(args[i], parameters[i].ParameterType);
+            } else if(parameters[i].HasDefaultValue) {
+                try {
+                    object fallback = parameters[i].DefaultValue;
+                    if(fallback == null || fallback == DBNull.Value || fallback == Type.Missing) {
+                        normalized[i] = DefaultOf(parameters[i].ParameterType);
+                    } else {
+                        normalized[i] = CoerceArg(fallback, parameters[i].ParameterType);
+                    }
+                } catch {
+                    normalized[i] = DefaultOf(parameters[i].ParameterType);
+                }
+            } else {
+                normalized[i] = DefaultOf(parameters[i].ParameterType);
+            }
+        }
+        return normalized;
+    }
+
     public object Invoke(params object[] args) {
         if(IsJS) {
             // The V8 engine is disposed and recreated on script reload.
@@ -181,7 +261,13 @@ public class TagCore {
             _compiledDelegate = Expression.Lambda<Func<object[], object>>(castResult, argsParam).Compile();
         }
 
-        return _compiledDelegate.DynamicInvoke((object)args);
+        // The compiled delegate unboxes positionally, so normalize first:
+        // coerce every element to its parameter type (JS numbers often arrive
+        // as double), pack params arrays, and pad missing arguments.
+        // NOTE: the (object) cast is load-bearing. DynamicInvoke takes
+        // params object[], and without it the array would spread instead of
+        // binding to the delegate's single object[] parameter.
+        return _compiledDelegate.DynamicInvoke((object)NormalizeArgs(Parameters, args));
     }
 
     public override string ToString() {
