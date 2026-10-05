@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Hand-built System.Memory for old Unity Mono (e.g. 2019.4), whose netstandard
+    facade predates Span AND whose mscorlib lacks MemoryExtensions/MemoryMarshal.
+    Every NuGet System.Memory vintage vectorizes SpanHelpers over
+    System.Numerics.Vectors (absent on legacy), so none of them can ship.
+    This shim implements EXACTLY the surface reachable from Overlayer's legacy
+    paths (audited via Cecil reachability sim):
+      ReadOnlySpan<T>: (void*,int) + (T[][,int,int]) ctors, Length, ref-readonly
+        indexer, Slice, ToArray
+      Span<T>: same shape, mutable indexer
+      MemoryExtensions: AsSpan(string), AsSpan(T[]), AsSpan(T[],int), AsSpan(T[],int,int)
+      MemoryMarshal: AsBytes<T>(ROS<T>)
+    Representation is GC-safe by construction: managed sources are held as
+    (array-or-string + element offset) and indexed via managed access, native
+    sources as (pointer + length). NOTHING is ever pinned; interior pointers are
+    never fabricated for movable objects. AsBytes over managed char data
+    materializes a byte[] (little-endian); digests stay deterministic per session.
+  -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <AssemblyName>System.Memory</AssemblyName>
+    <AssemblyVersion>4.0.1.0</AssemblyVersion>
+    <Version>4.0.1.0</Version>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <EnableDefaultCompileItems>true</EnableDefaultCompileItems>
+    <IsPackable>false</IsPackable>
+    <!-- No PackageReferences on purpose: mscorlib-only (plus Marshal). -->
+  </PropertyGroup>
+</Project>
