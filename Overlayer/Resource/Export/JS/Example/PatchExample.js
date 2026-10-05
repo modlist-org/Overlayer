@@ -10,17 +10,29 @@
 //
 //   prefix(args): args is a mutable array; mutating it changes the call.
 //     Return false            -> skip the original (default result).
-//     Return { result: x }    -> skip the original with result x.
+//     Return { result: x }    -> skip a non-void original with result x.
 //     Anything else (or nothing) -> run the original.
-//     Expanded form prefix(a, b) matches the 2-arg overload automatically.
+//     Expanded form prefix(a, b) matches a 2-arg overload automatically.
 //
-//   postfix(args, result): return non-undefined to replace the result.
-//     Expanded form postfix(a, b, result) matches the 2-arg overload.
+//   postfix(args, result): return a non-null, non-undefined value to replace
+//     a non-void result. Returning null/undefined leaves it unchanged.
+//     Expanded form postfix(a, b, result) matches a 2-arg overload.
+//
+//   __instance: a parameter literally named __instance (any position) is
+//     bound to the target instance (null for static) and doesn't count toward
+//     overload matching. It must be a regular named parameter; rest parameters
+//     aren't special. This is the only Harmony-style special parameter—names
+//     like __args, __result and __originalMethod aren't bound.
+//     The other callback slots remain args / result:
+//     prefix: (args, __instance) => { ... }
+//     postfix: (args, result, __instance) => { ... }
+//     Packed callbacks don't select among overloads by argument count; for an
+//     ambiguous target, specify its signature: "Type::Method(int)".
 //
 // All examples below are commented out. Uncomment one block at a time to try.
 // Watch the Overlayer log for [JSPatch] errors (bad target, ambiguous overload).
 
-// 1. Watch calls: log arguments, change nothing.
+// 1. Count calls: increment a shared counter, change nothing.
 /*
 const h1 = AddPatch("scrController::Update", {
     prefix: (args) => {
@@ -66,5 +78,15 @@ const h5 = AddPatch("SomeType::SomeFloatMethod", {
 /*
 const h6 = AddPatch("SomeType::Method(int)", {
     postfix: (args, result) => result + 1
+});
+*/
+
+// 7. Instance: access the patched component directly (no FindObjectsOfType).
+/*
+const h7 = AddPatch("scrShowIfDebug::Update", {
+    postfix: (args, result, __instance) => {
+        const txt = Clr.TryGet(__instance, "txt");
+        if (txt !== null) Clr.TrySet(txt, "text", "");
+    }
 });
 */

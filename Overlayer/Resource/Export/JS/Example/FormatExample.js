@@ -6,6 +6,8 @@
 //   ReturnType: "number"          (numeric only; anything else + format = compile error)
 //
 // Try in a text field:
+//   Sample numeric output below is shown in en-US; number formatting follows
+//   the active culture, so decimal/group separators may differ.
 //   {ExamplePi:0.##}            -> "3.14"
 //   {ExamplePi:N2}              -> "3.14"
 //   {ExampleScore:alice,N2}     -> "1,234.57"

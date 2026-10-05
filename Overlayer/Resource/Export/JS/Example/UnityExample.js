@@ -24,7 +24,10 @@
 //
 // NOTE: scripts load off the main thread, so defer load-time Unity work:
 //   Unity.NextTick(() => { /* touch the scene here */ });
-// Patch callbacks already run on the game thread, use the API directly.
+// AddPatch callbacks run on the thread that calls the patched method; that
+// isn't always Unity's main thread. Use Unity API directly only when the
+// target is known to run on the main thread (for example, Unity Update).
+// Otherwise queue Unity work with Unity.NextTick(fn).
 //
 // All examples below are commented out. Uncomment one block at a time.
 
