@@ -106,42 +106,48 @@ public sealed class OvObject : ISettingsFile {
     }
 
     public void RefreshFx() {
-        if(!HasAnyFx || GameObject == null) {
+        if(GameObject == null) {
             return;
         }
 
-        FxUtil.ApplyIfChanged(ref _lastName, Config.Name.Value, v => GameObject.name = v);
-        FxUtil.ApplyIfChanged(ref _lastEnabled, Config.Enabled.Value, v => GameObject.SetActive(v));
-        Config.RectTransformConfig?.RefreshFx(GameObject);
-        Config.CanvasGroupConfig?.RefreshFx(GameObject);
-        Config.TextConfig?.RefreshFx(GameObject);
-        if(Config.TextEngineConfig != null && TextUpdater != null) {
-            FxUtil.ApplyIfChanged(ref _lastPlayingText, Config.TextEngineConfig.PlayingText.Value, v => TextUpdater.PlayingEngine.Text = v);
-            FxUtil.ApplyIfChanged(ref _lastNotPlayingText, Config.TextEngineConfig.NotPlayingText.Value, v => TextUpdater.NotPlayingEngine.Text = v);
-        }
-        Config.MovingManConfig?.RefreshFx(GameObject);
-        Config.ColorRangeConfig?.RefreshFx(GameObject);
-        Config.GraphConfig?.RefreshFx(GameObject);
-        Config.ImageConfig?.RefreshFx(GameObject);
-        Config.MaskConfig?.RefreshFx(GameObject);
-        Config.ShadowConfig?.RefreshFx(GameObject);
-        Config.OutlineConfig?.RefreshFx(GameObject);
-        Config.ContentSizeFitterConfig?.RefreshFx(GameObject);
-#if !IL2CPP
-        Config.BoxCollider2DConfig?.RefreshFx(GameObject);
-        Config.Rigidbody2DConfig?.RefreshFx(GameObject);
-#endif
-        bool rectMaskChanged = FxUtil.ApplyIfChanged(ref _lastHasRectMask2D, Config.HasRectMask2D.Value, _ => { });
-        if(rectMaskChanged) {
-            ApplyComponent();
-            ApplyConfig();
-            return;
-        }
-        if(Config.HasRectMask2D.Value) {
-            var rectMask = GameObject.GetComponent<RectMask2D>();
-            if(rectMask != null) {
-                FxUtil.ApplyIfChanged(ref _lastRectMask2DEnabled, Config.RectMask2DEnabled.Value, v => rectMask.enabled = v);
+        if(HasAnyFx) {
+            FxUtil.ApplyIfChanged(ref _lastName, Config.Name.Value, v => GameObject.name = v);
+            FxUtil.ApplyIfChanged(ref _lastEnabled, Config.Enabled.Value, v => GameObject.SetActive(v));
+            Config.RectTransformConfig?.RefreshFx(GameObject);
+            Config.CanvasGroupConfig?.RefreshFx(GameObject);
+            Config.TextConfig?.RefreshFx(GameObject);
+            if(Config.TextEngineConfig != null && TextUpdater != null) {
+                FxUtil.ApplyIfChanged(ref _lastPlayingText, Config.TextEngineConfig.PlayingText.Value, v => TextUpdater.PlayingEngine.Text = v);
+                FxUtil.ApplyIfChanged(ref _lastNotPlayingText, Config.TextEngineConfig.NotPlayingText.Value, v => TextUpdater.NotPlayingEngine.Text = v);
             }
+            Config.MovingManConfig?.RefreshFx(GameObject);
+            Config.ColorRangeConfig?.RefreshFx(GameObject);
+            Config.GraphConfig?.RefreshFx(GameObject);
+            Config.ImageConfig?.RefreshFx(GameObject);
+            Config.MaskConfig?.RefreshFx(GameObject);
+            Config.ShadowConfig?.RefreshFx(GameObject);
+            Config.OutlineConfig?.RefreshFx(GameObject);
+            Config.ContentSizeFitterConfig?.RefreshFx(GameObject);
+#if !IL2CPP
+            Config.BoxCollider2DConfig?.RefreshFx(GameObject);
+            Config.Rigidbody2DConfig?.RefreshFx(GameObject);
+#endif
+            bool rectMaskChanged = FxUtil.ApplyIfChanged(ref _lastHasRectMask2D, Config.HasRectMask2D.Value, _ => { });
+            if(rectMaskChanged) {
+                ApplyComponent();
+                ApplyConfig();
+            } else if(Config.HasRectMask2D.Value) {
+                var rectMask = GameObject.GetComponent<RectMask2D>();
+                if(rectMask != null) {
+                    FxUtil.ApplyIfChanged(ref _lastRectMask2DEnabled, Config.RectMask2DEnabled.Value, v => rectMask.enabled = v);
+                }
+            }
+        }
+
+        // Child Fx values must continue ticking even when this object's own
+        // settings have no Fx. Otherwise Fx-enabled descendants never update.
+        foreach(var child in Children) {
+            child?.RefreshFx();
         }
     }
 
@@ -350,6 +356,11 @@ public sealed class OvObject : ISettingsFile {
 
         Parent?.Children.Remove(this);
         Parent = null;
+
+        try {
+            IO.Fx.FxDisposal.DisposeDeep(Config);
+        } catch {
+        }
 
         if(GameObject != null) {
             GameObject.transform.SetParent(null);

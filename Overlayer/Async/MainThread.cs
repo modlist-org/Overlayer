@@ -22,6 +22,7 @@ class MainThread
 #endif
 {
     private static readonly ConcurrentQueue<Action> queue = new();
+    private const int MaxActionsPerFrame = 64;
 
     public static void Enqueue(Action action) {
         if(action == null) {
@@ -32,11 +33,17 @@ class MainThread
     }
 
     private void Update() {
-        while(queue.TryDequeue(out Action action)) {
+        // Only drain work that was queued before this frame started. Actions
+        // enqueued by an action (e.g. a Repeat(0) pump) belong to next frame;
+        // otherwise self-enqueuing work runs up to the entire frame cap here.
+        int frameBatch = Math.Min(queue.Count, MaxActionsPerFrame);
+        int processed = 0;
+        while(processed < frameBatch && queue.TryDequeue(out Action action)) {
+            processed++;
             try {
                 action();
             } catch(Exception e) {
-                MainCore.Log.Err(e.Message);
+                MainCore.Log.Err(e.ToString());
             }
         }
     }

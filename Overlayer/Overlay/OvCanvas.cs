@@ -22,6 +22,8 @@ public class OvCanvas : ISettingsFile {
     
     public OvCanvasSettings Config = new();
 
+    internal string SourceFile { get; set; }
+
     public bool HasAnyFx => Config?.HasAnyFx ?? false;
 
     private string _lastName;
@@ -204,6 +206,11 @@ public class OvCanvas : ISettingsFile {
         }
 
         OvObjects.Clear();
+
+        try {
+            Overlayer.IO.Fx.FxDisposal.DisposeDeep(Config);
+        } catch {
+        }
 
         if(Canvas != null) {
             Object.Destroy(Canvas.gameObject);

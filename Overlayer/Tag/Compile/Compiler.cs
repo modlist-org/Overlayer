@@ -28,9 +28,23 @@ public static class Compiler {
         if(sig == null || !sig.IsExecutable) {
             compiledFunc = () => parsed.Raw;
         } else {
-            var expr = ExpressionBuilder.Build(tag, sig, diagnostics);
-            var lambda = Expression.Lambda<Func<string>>(expr);
-            Func<string> inner = lambda.Compile();
+            Func<string> inner;
+            try {
+                var expr = ExpressionBuilder.Build(tag, sig, diagnostics);
+                var lambda = Expression.Lambda<Func<string>>(expr);
+                inner = lambda.Compile();
+            } catch(Exception e) {
+                diagnostics.Add(new CompileDiagnostic(
+                    DiagnosticId.InternalError,
+                    CompileSeverity.Error,
+                    context,
+                    [e]
+                ));
+                return new CompiledPlaceholder(
+                    () => parsed.Raw,
+                    [.. diagnostics]
+                );
+            }
             // Block flags are checked at runtime so no recompile is needed
             // when play/pause state flips. While blocked (e.g. the frames of
             // a scene transition), keep the last good value instead of

@@ -34,11 +34,17 @@ public static class ExpressionBuilder {
 
                 value = Expression.Convert(value, typeof(object));
             } else {
-                object defaultValue = DBNull.Value;
+                object defaultValue = null;
                 try {
                     defaultValue = parameters[i].DefaultValue;
                 } catch { }
-                value = Expression.Constant(defaultValue, typeof(object));
+                if(defaultValue == null || defaultValue == DBNull.Value || defaultValue is Missing) {
+                    Type paramType = parameters[i].ParameterType;
+                    object fallback = paramType.IsValueType ? Activator.CreateInstance(paramType) : null;
+                    value = Expression.Constant(fallback, typeof(object));
+                } else {
+                    value = Expression.Constant(defaultValue, typeof(object));
+                }
             }
 
             body.Add(
@@ -92,7 +98,7 @@ public static class ExpressionBuilder {
             }
         } else if(tag.ReturnType == typeof(string)) {
             result = Expression.Coalesce(call, Expression.Constant(""));
-        } else if(sig.HasFormat) {
+        } else if(sig.HasFormat && typeof(IFormattable).IsAssignableFrom(tag.ReturnType)) {
             var formattable = Expression.Convert(call, typeof(IFormattable));
 
             var method = typeof(IFormattable).GetMethod(

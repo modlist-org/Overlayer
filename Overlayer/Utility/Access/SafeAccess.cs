@@ -142,19 +142,24 @@ public static class SafeAccess {
         if(target == null || string.IsNullOrEmpty(member)) {
             return false;
         }
+        Func<object, object> reader;
         try {
             var key = (target.GetType(), member);
             lock(syncLock) {
-                if(!readers.TryGetValue(key, out var reader)) {
+                if(!readers.TryGetValue(key, out reader)) {
                     reader = BuildReader(key.Item1, member);
                     readers[key] = reader;
                 }
-                if(reader == null) {
-                    return false;
-                }
-                value = reader(target);
-                return true;
             }
+        } catch {
+            return false;
+        }
+        if(reader == null) {
+            return false;
+        }
+        try {
+            value = reader(target);
+            return true;
         } catch {
             return false;
         }
@@ -166,19 +171,24 @@ public static class SafeAccess {
             return false;
         }
         args ??= [];
+        Func<object, object[], object> caller;
         try {
             var key = (target.GetType(), method, args.Length);
             lock(syncLock) {
-                if(!callers.TryGetValue(key, out var caller)) {
+                if(!callers.TryGetValue(key, out caller)) {
                     caller = BuildCaller(key.Item1, method, args.Length);
                     callers[key] = caller;
                 }
-                if(caller == null) {
-                    return false;
-                }
-                result = caller(target, args);
-                return true;
             }
+        } catch {
+            return false;
+        }
+        if(caller == null) {
+            return false;
+        }
+        try {
+            result = caller(target, args);
+            return true;
         } catch {
             return false;
         }
@@ -188,19 +198,24 @@ public static class SafeAccess {
         if(target == null || string.IsNullOrEmpty(member)) {
             return false;
         }
+        Action<object, object> writer;
         try {
             var key = (target.GetType(), member);
             lock(syncLock) {
-                if(!writers.TryGetValue(key, out var writer)) {
+                if(!writers.TryGetValue(key, out writer)) {
                     writer = BuildWriter(key.Item1, member);
                     writers[key] = writer;
                 }
-                if(writer == null) {
-                    return false;
-                }
-                writer(target, value);
-                return true;
             }
+        } catch {
+            return false;
+        }
+        if(writer == null) {
+            return false;
+        }
+        try {
+            writer(target, value);
+            return true;
         } catch {
             return false;
         }

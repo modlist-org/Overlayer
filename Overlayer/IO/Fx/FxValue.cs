@@ -372,9 +372,20 @@ public sealed class FxValue<T> : FxValue, IFxValue, ISettingsFile, ICopyable<FxV
             return SafeFromObject(staticValue);
         }
 
-        return new JObject {
+        var obj = new JObject {
             [FxKey] = Engine?.Text ?? string.Empty
         };
+        try {
+            if(RawWriters.TryGetValue(typeof(T), out var writer)) {
+                obj["Value"] = writer(staticValue);
+            } else if(staticValue is ISettingsFile file) {
+                obj["Value"] = file.Serialize();
+            } else {
+                obj["Value"] = SafeFromObject(staticValue);
+            }
+        } catch {
+        }
+        return obj;
     }
 
     public void Deserialize(JToken token) {
@@ -390,6 +401,19 @@ public sealed class FxValue<T> : FxValue, IFxValue, ISettingsFile, ICopyable<FxV
             var engineText = obj[FxKey]?.Value<string>() ?? string.Empty;
             Engine ??= new TextEngineCore();
             Engine.Text = engineText;
+            if (obj.ContainsKey("Value")) {
+                try {
+                    if (RawReaders.TryGetValue(typeof(T), out var raw)) {
+                        var r = raw(obj["Value"]);
+                        if (r is T typed) {
+                            staticValue = typed;
+                        }
+                    } else {
+                        staticValue = obj["Value"].ToObject<T>()!;
+                    }
+                } catch {
+                }
+            }
         } 
         else {
             UseFx = false;

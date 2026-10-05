@@ -15,6 +15,7 @@ public static class OverlayCore {
     private static readonly string SaveDir = Path.Combine(MainCore.Paths.RootPath, "Canvases");
     public static string ExportDir => Path.Combine(SaveDir, "Export");
     private static int pendingLayoutRefreshes;
+    private static readonly HashSet<string> knownFiles = new(StringComparer.OrdinalIgnoreCase);
 
     public static int GetCanvasIndex(OvCanvas canvas)
         => canvas == null ? -1 : Canvases.IndexOf(canvas);
@@ -124,10 +125,12 @@ public static class OverlayCore {
         var files = Directory.GetFiles(SaveDir, "*.json").OrderBy(Path.GetFileName);
 
         foreach(var file in files) {
+            knownFiles.Add(Path.GetFileName(file));
             var wrapper = new SettingsFile<OvCanvas>(file);
 
             if(wrapper.Load()) {
                 var canvas = wrapper.Data;
+                canvas.SourceFile = file;
                 canvas.RectTransform.SetParent(Transform, false);
                 canvas.ApplyConfig();
                 canvas.RefreshLayouts();
@@ -161,14 +164,32 @@ public static class OverlayCore {
                 Directory.CreateDirectory(SaveDir);
             }
 
-            for(int i = 0; i < Canvases.Count; i++) {
-                string filePath = Path.Combine(SaveDir, $"Canvas{i}.json");
-                File.WriteAllText(filePath, Canvases[i].Serialize().ToString());
+            var usedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            int autoIndex = 0;
+            foreach(var canvas in Canvases) {
+                string fileName = null;
+                if(!string.IsNullOrEmpty(canvas?.SourceFile)) {
+                    string sourceName = Path.GetFileName(canvas.SourceFile);
+                    if(!string.IsNullOrEmpty(sourceName) && !usedNames.Contains(sourceName)) {
+                        fileName = sourceName;
+                    }
+                }
+                while(fileName == null) {
+                    string candidate = $"Canvas{autoIndex}.json";
+                    autoIndex++;
+                    if(!usedNames.Contains(candidate)) {
+                        fileName = candidate;
+                    }
+                }
+                usedNames.Add(fileName);
+                string filePath = Path.Combine(SaveDir, fileName);
+                File.WriteAllText(filePath, canvas.Serialize().ToString());
+                canvas.SourceFile = filePath;
             }
 
-            foreach(string staleFile in Directory.GetFiles(SaveDir, "Canvas*.json")) {
-                string fileName = Path.GetFileNameWithoutExtension(staleFile);
-                if(int.TryParse(fileName["Canvas".Length..], out int index) && index >= Canvases.Count) {
+            foreach(string staleFile in Directory.GetFiles(SaveDir, "*.json")) {
+                string staleName = Path.GetFileName(staleFile);
+                if(!usedNames.Contains(staleName) && knownFiles.Contains(staleName)) {
                     File.Delete(staleFile);
                 }
             }

@@ -57,11 +57,16 @@ public sealed class OvGraphComponent : MaskableGraphic {
         }
         history.Add(new Vector2(now, value));
         float cutoff = now - Math.Max(0.01f, Window);
-        while(history.Count > 0 && history[0].x < cutoff) {
-            history.RemoveAt(0);
+        int trim = 0;
+        while(trim < history.Count && history[trim].x < cutoff) {
+            trim++;
         }
-        while(history.Count > Math.Max(8, Samples)) {
-            history.RemoveAt(0);
+        int over = history.Count - trim - Math.Max(8, Samples);
+        if(over > 0) {
+            trim += over;
+        }
+        if(trim > 0) {
+            history.RemoveRange(0, trim);
         }
         SetVerticesDirty();
     }
@@ -70,8 +75,8 @@ public sealed class OvGraphComponent : MaskableGraphic {
         if(func != null && funcCode == JsCode) {
             return;
         }
+        DisposeFunc();
         funcCode = JsCode;
-        func = null;
         if(string.IsNullOrWhiteSpace(JsCode)) {
             return;
         }
@@ -84,6 +89,24 @@ public sealed class OvGraphComponent : MaskableGraphic {
         } catch {
             func = null;
         }
+    }
+
+    private void DisposeFunc() {
+        if(func == null) {
+            return;
+        }
+        try {
+            (func as IDisposable)?.Dispose();
+        } catch { }
+        func = null;
+    }
+
+    protected override void OnDisable() {
+        DisposeFunc();
+    }
+
+    protected override void OnDestroy() {
+        DisposeFunc();
     }
 
     private static bool TryToFloat(object raw, out float value) {
@@ -203,7 +226,7 @@ public sealed class OvGraphComponent : MaskableGraphic {
             vh.AddTriangle(baseIndex, baseIndex + 2, baseIndex + 3);
         }
 
-        foreach(var p in new[] { Map(history[0]), Map(history[^1]) }) {
+        void Cap(Vector2 p) {
             int baseIndex = vh.currentVertCount;
             vert.color = LineColor;
             const int capSegs = 6;
@@ -217,5 +240,8 @@ public sealed class OvGraphComponent : MaskableGraphic {
                 vh.AddTriangle(baseIndex, baseIndex + i, baseIndex + i + 1);
             }
         }
+
+        Cap(Map(history[0]));
+        Cap(Map(history[^1]));
     }
 }

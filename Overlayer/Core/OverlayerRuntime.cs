@@ -98,6 +98,8 @@ public sealed class OverlayerRuntime {
         services.Add(V8Manager);
 
         ticks.Add(uiService);
+        ticks.Add(new TagImpl.KpsTracker());
+        ticks.Add(new TagImpl.FpsTracker());
 
         services.Initialize();
 

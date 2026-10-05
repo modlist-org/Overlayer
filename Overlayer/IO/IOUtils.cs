@@ -181,7 +181,7 @@ public static class IOUtils {
     public static Color Read(JToken token, string key, Color fallback) {
         var value = token[key];
 
-        if(value == null || value is not JArray arr || arr.Count < 4) {
+        if(value == null || value is not JArray arr || arr.Count < 3) {
             return fallback;
         }
 
@@ -190,7 +190,7 @@ public static class IOUtils {
                 (float)arr[0],
                 (float)arr[1],
                 (float)arr[2],
-                (float)arr[3]
+                arr.Count >= 4 ? (float)arr[3] : 1f
             );
         } catch {
             return fallback;

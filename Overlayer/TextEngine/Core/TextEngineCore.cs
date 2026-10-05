@@ -129,12 +129,31 @@ public sealed class TextEngineCore {
         int last = 0;
 
         foreach(var s in segs) {
-            sb.Append(text, last, s.Index - last);
-            sb.Append(s.Replacer.Get());
-            last = s.Index + s.Length;
+            int from = Math.Clamp(s.Index, 0, text.Length);
+            if(from > last) {
+                sb.Append(text, last, from - last);
+            }
+            string replacement;
+            try {
+                replacement = s.Replacer.Get();
+            } catch {
+                replacement = null;
+            }
+            if(replacement == null) {
+                int end = Math.Clamp(s.Index + s.Length, 0, text.Length);
+                if(end > from) {
+                    sb.Append(text, from, end - from);
+                }
+                last = Math.Max(last, end);
+            } else {
+                sb.Append(replacement);
+                last = Math.Max(last, Math.Clamp(s.Index + s.Length, 0, text.Length));
+            }
         }
 
-        sb.Append(text, last, text.Length - last);
+        if(last < text.Length) {
+            sb.Append(text, last, text.Length - last);
+        }
 
         return sb.ToString();
     }

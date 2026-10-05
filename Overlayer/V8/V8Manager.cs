@@ -15,6 +15,7 @@ public class V8Manager : IRuntimeService {
 
     private readonly object _engineLock = new();
     private V8ScriptEngine _engine;
+    private readonly SemaphoreSlim _reloadGate = new(1, 1);
 
     private readonly JSScriptLoader _scriptLoader = new();
     public IReadOnlyList<JSDiagnostic> LoaderDiagnostics => _scriptLoader.Diagnostics;
@@ -80,6 +81,33 @@ public class V8Manager : IRuntimeService {
         engine.AddHostObject(nameof(TagAccessHelper), new TagAccessHelper());
         engine.AddHostObject(nameof(Store), Store);
         engine.AddHostObject("Clr", new Scripting.Clr.ClrAccess());
+        engine.AddHostObject("Unity", new Scripting.Unity.UnityAccess());
+        engine.AddHostType("GameObject", typeof(UnityEngine.GameObject));
+        engine.AddHostType("Transform", typeof(UnityEngine.Transform));
+        engine.AddHostType("RectTransform", typeof(UnityEngine.RectTransform));
+        engine.AddHostType("Component", typeof(UnityEngine.Component));
+        engine.AddHostType("Behaviour", typeof(UnityEngine.Behaviour));
+        engine.AddHostType("Vector2", typeof(UnityEngine.Vector2));
+        engine.AddHostType("Vector3", typeof(UnityEngine.Vector3));
+        engine.AddHostType("Vector4", typeof(UnityEngine.Vector4));
+        engine.AddHostType("Quaternion", typeof(UnityEngine.Quaternion));
+        engine.AddHostType("Color", typeof(UnityEngine.Color));
+        engine.AddHostType("Color32", typeof(UnityEngine.Color32));
+        engine.AddHostType("Mathf", typeof(UnityEngine.Mathf));
+        engine.AddHostType("Time", typeof(UnityEngine.Time));
+        engine.AddHostType("Random", typeof(UnityEngine.Random));
+        engine.AddHostType("UnityObject", typeof(UnityEngine.Object));
+        engine.AddHostType("SceneManager", typeof(UnityEngine.SceneManagement.SceneManager));
+        engine.AddHostType("Scene", typeof(UnityEngine.SceneManagement.Scene));
+        engine.AddHostType("Application", typeof(UnityEngine.Application));
+        engine.AddHostType("Screen", typeof(UnityEngine.Screen));
+        engine.AddHostType("Input", typeof(UnityEngine.Input));
+        engine.AddHostType("KeyCode", typeof(UnityEngine.KeyCode));
+        engine.AddHostType("Cursor", typeof(UnityEngine.Cursor));
+        engine.AddHostType("CursorLockMode", typeof(UnityEngine.CursorLockMode));
+        engine.AddHostType("Camera", typeof(UnityEngine.Camera));
+        engine.AddHostType("Canvas", typeof(UnityEngine.Canvas));
+        engine.AddHostType("AudioSource", typeof(UnityEngine.AudioSource));
         var log = new Scripting.JSLog();
         engine.AddHostObject("Log", log);
         engine.AddHostObject("console", log);
@@ -109,24 +137,29 @@ public class V8Manager : IRuntimeService {
     }
 
     public async Task ReloadScriptsAsync() {
-        var preview = await Task.Run(() => _scriptLoader.PreviewChanges(ScriptFolderPath));
-        if(preview.changed.Count == 0 && preview.removed.Count == 0) {
-            return;
-        }
-        lock(_engineLock) {
-            ClearFxScriptCache();
-            _engine.Dispose();
-            _engine = new V8ScriptEngine();
-            BindEngine(_engine);
-        }
-
-        TagCache.Instance.Clear();
-
-        if(await _scriptLoader.LoadAllScriptsAsync(ScriptFolderPath, _engine)) {
-            foreach(var diag in LoaderDiagnostics) {
-                MainCore.Log.Msg(diag.ToString());
+        await _reloadGate.WaitAsync();
+        try {
+            var preview = await Task.Run(() => _scriptLoader.PreviewChanges(ScriptFolderPath));
+            if(preview.changed.Count == 0 && preview.removed.Count == 0) {
+                return;
             }
-            GenerateImplJs(false);
+            lock(_engineLock) {
+                ClearFxScriptCache();
+                _engine.Dispose();
+                _engine = new V8ScriptEngine();
+                BindEngine(_engine);
+            }
+
+            TagCache.Instance.Clear();
+
+            if(await _scriptLoader.LoadAllScriptsAsync(ScriptFolderPath, _engine)) {
+                foreach(var diag in LoaderDiagnostics) {
+                    MainCore.Log.Msg(diag.ToString());
+                }
+                GenerateImplJs(false);
+            }
+        } finally {
+            _reloadGate.Release();
         }
     }
 
@@ -202,6 +235,24 @@ public class V8Manager : IRuntimeService {
         sb.AppendLine("/* Clr.Call(targetOrType, method, ...args) / Clr.Invoke(typeName, method, ...args). */");
         sb.AppendLine("/* Statics take a type-name string, e.g. Clr.Call(\"System.Math\", \"Max\", 1, 2). */");
         sb.AppendLine("/* Fast path: var m = Clr.Prepare(targetOrType, member); m.Get(); m.Set(v); m.Call(...args). */\n");
+
+        sb.AppendLine("/* Unity API, real names (main thread only). Host types: */");
+        sb.AppendLine("/* GameObject: new GameObject(name), GameObject.Find(name), FindWithTag, FindGameObjectsWithTag. */");
+        sb.AppendLine("/*   go.name, go.SetActive(on), go.transform, go.AddComponent(Type), go.GetComponent(Type). */");
+        sb.AppendLine("/* UnityObject (= UnityEngine.Object; renamed: JS already has `Object`): */");
+        sb.AppendLine("/*   UnityObject.Destroy(obj, delay?), UnityObject.DontDestroyOnLoad(obj), UnityObject.Instantiate(obj). */");
+        sb.AppendLine("/* Structs: new Vector3(x, y, z), new Vector2(x, y), new Color(r, g, b, a?), Quaternion.Euler(x, y, z). */");
+        sb.AppendLine("/* Statics: Time.deltaTime, Mathf.Clamp(v, a, b), Random.Range(a, b). transform.position etc. assignable. */");
+        sb.AppendLine("/* Unity glue (string-named types + main-thread defer): */");
+        sb.AppendLine("/* Unity.FindObjectsOfType(\"Rigidbody\") / Unity.FindObjectOfType(\"Rigidbody\"). */");
+        sb.AppendLine("/* Unity.AddComponent(go, \"Rigidbody\") / Unity.GetComponent / Unity.GetComponents / Unity.HasComponent. */");
+        sb.AppendLine("/* Unity.IsValid(obj): dead Unity objects are NOT js null, check with this. */");
+        sb.AppendLine("/* Unity.NextTick(fn): run fn on the main thread next frame (use from script load time). */");
+        sb.AppendLine("/* Unity.Repeat(seconds, fn): run fn every N seconds (0 = every frame), returns a handle. */");
+        sb.AppendLine("/* Unity.CancelTick(handle): stop a Repeat. Repeat callbacks cost like per-frame patches: keep them light. */");
+        sb.AppendLine("/* Scenes: SceneManager.LoadScene(name), SceneManager.GetActiveScene(). Scripts: Input.GetKey(KeyCode.Space). */");
+        sb.AppendLine("/* Screen: Screen.SetResolution(w, h, false), Screen.fullScreen, Application.targetFrameRate = 144. */");
+        sb.AppendLine("/* Camera.main.WorldToScreenPoint(pos), Cursor.visible, Time.timeScale, Mathf.Clamp, Random.Range. */\n");
 
         sb.AppendLine("/* Logging: Log.Msg(x) / Log.Wrn(x) / Log.Err(x) -> MelonLoader log as [JS]. */");
         sb.AppendLine("/* console.log / console.warn / console.error map to the same. */\n");
@@ -290,6 +341,45 @@ public class V8Manager : IRuntimeService {
         sb.AppendLine("    Call(...args: any[]): any;");
         sb.AppendLine("}");
         sb.AppendLine("declare const Clr: ClrAccess;");
+        sb.AppendLine("interface UnityAccess {");
+        sb.AppendLine("    FindObjectsOfType(typeName: string): any[];");
+        sb.AppendLine("    FindObjectOfType(typeName: string): any;");
+        sb.AppendLine("    AddComponent(obj: any, typeName: string): any;");
+        sb.AppendLine("    GetComponent(obj: any, typeName: string): any;");
+        sb.AppendLine("    GetComponents(obj: any, typeName: string): any[];");
+        sb.AppendLine("    HasComponent(obj: any, typeName: string): boolean;");
+        sb.AppendLine("    IsValid(obj: any): boolean;");
+        sb.AppendLine("    NextTick(fn: (...args: any[]) => any): boolean;");
+        sb.AppendLine("    Repeat(seconds: number, fn: (...args: any[]) => any): number;");
+        sb.AppendLine("    CancelTick(handle: number): boolean;");
+        sb.AppendLine("}");
+        sb.AppendLine("declare const Unity: UnityAccess;");
+        sb.AppendLine("declare const GameObject: any;");
+        sb.AppendLine("declare const Transform: any;");
+        sb.AppendLine("declare const RectTransform: any;");
+        sb.AppendLine("declare const Component: any;");
+        sb.AppendLine("declare const Behaviour: any;");
+        sb.AppendLine("declare const Vector2: any;");
+        sb.AppendLine("declare const Vector3: any;");
+        sb.AppendLine("declare const Vector4: any;");
+        sb.AppendLine("declare const Quaternion: any;");
+        sb.AppendLine("declare const Color: any;");
+        sb.AppendLine("declare const Color32: any;");
+        sb.AppendLine("declare const Mathf: any;");
+        sb.AppendLine("declare const Time: any;");
+        sb.AppendLine("declare const Random: any;");
+        sb.AppendLine("declare const UnityObject: any;");
+        sb.AppendLine("declare const SceneManager: any;");
+        sb.AppendLine("declare const Scene: any;");
+        sb.AppendLine("declare const Application: any;");
+        sb.AppendLine("declare const Screen: any;");
+        sb.AppendLine("declare const Input: any;");
+        sb.AppendLine("declare const KeyCode: any;");
+        sb.AppendLine("declare const Cursor: any;");
+        sb.AppendLine("declare const CursorLockMode: any;");
+        sb.AppendLine("declare const Camera: any;");
+        sb.AppendLine("declare const Canvas: any;");
+        sb.AppendLine("declare const AudioSource: any;");
         sb.AppendLine("interface TagNamespace {");
         sb.AppendLine("    [key: string]: (...args: any[]) => any;");
         sb.AppendLine("}");
@@ -362,6 +452,8 @@ public class V8Manager : IRuntimeService {
     private readonly Dictionary<string, (V8ScriptEngine Engine, V8Script Script, string Error)> _fxScriptCache = new();
     private readonly Dictionary<string, string> _fxRuntimeErrors = new();
     private readonly Dictionary<string, long> _fxTimeoutBackoff = new();
+    private long _evalSeq;
+    private long _evalActive = -1;
 
     private (V8Script Script, string Error) CompileFx(string code) {
         if (_fxScriptCache.TryGetValue(code, out var cached) && ReferenceEquals(cached.Engine, _engine)) {
@@ -444,11 +536,18 @@ public class V8Manager : IRuntimeService {
 
     private bool RunGuarded(string code, V8ScriptEngine engine, Func<object> run, out object result) {
         result = null;
+        // Generation tag: the timeout may only interrupt the eval that
+        // actually timed out. Without this, a late timer from eval A fires
+        // engine-wide Interrupt() while an innocent eval B runs, B throws,
+        // and B's code eats a 5s backoff (e.g. a held key shows released).
+        long seq = Interlocked.Increment(ref _evalSeq);
+        Volatile.Write(ref _evalActive, seq);
         int running = 1;
         bool timedOut = false;
         using var timeout = new CancellationTokenSource();
         Task.Delay(FxScriptTimeoutMilliseconds, timeout.Token).ContinueWith(task => {
-            if (!task.IsCanceled && Interlocked.CompareExchange(ref running, 0, 1) == 1) {
+            if(!task.IsCanceled && Interlocked.CompareExchange(ref running, 0, 1) == 1
+                && Volatile.Read(ref _evalActive) == seq) {
                 timedOut = true;
                 try {
                     engine.Interrupt();
@@ -459,9 +558,9 @@ public class V8Manager : IRuntimeService {
 
         try {
             result = run();
-        } catch (Exception ex) {
+        } catch(Exception ex) {
             result = null;
-            if (timedOut) {
+            if(timedOut) {
                 RecordTimeout(code);
             } else {
                 RecordRuntimeError(code, ex.Message);
@@ -471,6 +570,9 @@ public class V8Manager : IRuntimeService {
         } finally {
             timeout.Cancel();
             Interlocked.Exchange(ref running, 0);
+            if(Volatile.Read(ref _evalActive) == seq) {
+                Volatile.Write(ref _evalActive, -1);
+            }
         }
 
         if (timedOut) {
@@ -619,6 +721,10 @@ public class V8Manager : IRuntimeService {
             _watcher?.Dispose();
             _engine?.Dispose();
             _engine = null;
+        }
+        try {
+            _reloadGate.Dispose();
+        } catch {
         }
     }
 }

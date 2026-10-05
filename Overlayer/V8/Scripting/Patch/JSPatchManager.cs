@@ -1,6 +1,7 @@
 using HarmonyLib;
 using Microsoft.ClearScript;
 using Overlayer.Core;
+using System.Collections.Concurrent;
 using System.Globalization;
 using System.Reflection;
 
@@ -13,6 +14,7 @@ public static class JSPatchManager {
     private static readonly Dictionary<int, Registration> ByHandle = new();
     private static readonly Dictionary<string, List<int>> ByFile = new(StringComparer.Ordinal);
     private static readonly Dictionary<MethodBase, ForwardedPatch> Forwarded = new();
+    private static readonly ConcurrentDictionary<MethodBase, ParameterInfo[]> ParamCache = new();
     private static readonly HashSet<string> WarnedOnce = new();
 
     public sealed class Registration {
@@ -35,6 +37,7 @@ public static class JSPatchManager {
         public MethodInfo PrefixMethod;
         public MethodInfo PostfixMethod;
         public readonly List<int> Handles = [];
+        public Registration[] Snapshot = [];
     }
 
     public static int Add(string file, MethodBase target, ScriptObject prefix, ScriptObject postfix,
@@ -89,6 +92,7 @@ public static class JSPatchManager {
                 PostfixRest = postfixRest,
             };
             fwd.Handles.Add(handle);
+            RefreshSnapshot(fwd);
             if(!ByFile.TryGetValue(file, out var list)) {
                 list = [];
                 ByFile[file] = list;
@@ -132,6 +136,8 @@ public static class JSPatchManager {
                 if(fwd.Handles.Count == 0) {
                     try { Harmony.Unpatch(reg.Target, HarmonyPatchType.All, Harmony.Id); } catch { }
                     Forwarded.Remove(reg.Target);
+                } else {
+                    RefreshSnapshot(fwd);
                 }
             }
             return true;
@@ -197,18 +203,20 @@ public static class JSPatchManager {
         }
     }
 
-    private static List<Registration> ForTarget(MethodBase target) {
+    private static void RefreshSnapshot(ForwardedPatch fwd) {
+        var snapshot = new Registration[fwd.Handles.Count];
+        for(int i = 0; i < fwd.Handles.Count; i++) {
+            snapshot[i] = ByHandle[fwd.Handles[i]];
+        }
+        fwd.Snapshot = snapshot;
+    }
+
+    private static Registration[] ForTarget(MethodBase target) {
         lock(Sync) {
-            if(!Forwarded.TryGetValue(target, out var fwd)) {
+            if(!Forwarded.TryGetValue(target, out var fwd) || fwd.Snapshot.Length == 0) {
                 return null;
             }
-            var regs = new List<Registration>(fwd.Handles.Count);
-            foreach(int handle in fwd.Handles) {
-                if(ByHandle.TryGetValue(handle, out var reg)) {
-                    regs.Add(reg);
-                }
-            }
-            return regs;
+            return fwd.Snapshot;
         }
     }
 
@@ -245,6 +253,9 @@ public static class JSPatchManager {
             Array.Copy(args, spread, n);
             return spread;
         }
+        if(reg.PrefixArity == 0) {
+            return [];
+        }
         return [args];
     }
 
@@ -255,6 +266,9 @@ public static class JSPatchManager {
             Array.Copy(args, spread, n);
             spread[n] = result;
             return spread;
+        }
+        if(reg.PostfixArity == 0) {
+            return [];
         }
         return [args, result];
     }
@@ -295,14 +309,15 @@ public static class JSPatchManager {
         }
     }
 
-    private static void CoerceArgs(Registration reg, object[] args, object[] originals, ParameterInfo[] parameters) {
+    private static void CoerceArgs(Registration reg, object[] args, ParameterInfo[] parameters) {
         for(int i = 0; i < args.Length && i < parameters.Length; i++) {
-            object original = i < originals.Length ? originals[i] : null;
+            object original = args[i];
             args[i] = Coerce(args[i], original, parameters[i].ParameterType, reg, $"arg{i}");
         }
     }
 
-    private static ParameterInfo[] TargetParameters(MethodBase target) => target.GetParameters();
+    private static ParameterInfo[] TargetParameters(MethodBase target)
+        => ParamCache.GetOrAdd(target, static t => t.GetParameters());
 
     private static bool RunPrefixes(MethodBase target, object[] args, Type ret, out object result) {
         result = null;
@@ -315,10 +330,8 @@ public static class JSPatchManager {
             if(reg.Prefix == null) {
                 continue;
             }
-            var snapshot = new object[args.Length];
-            Array.Copy(args, snapshot, args.Length);
             object ret2 = InvokeJs(reg, reg.Prefix, PrefixCallArgs(reg, args), "prefix");
-            CoerceArgs(reg, args, snapshot, parameters);
+            CoerceArgs(reg, args, parameters);
             if(ret2 is bool b && !b) {
                 return false;
             }

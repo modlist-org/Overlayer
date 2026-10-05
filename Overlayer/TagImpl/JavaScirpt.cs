@@ -63,9 +63,10 @@ public static class JavaScirpt {
             return () => parsed.Raw;
         }
 
+        string wrappedJsCode = FxValue.WrapJsBlock(restoredJsCode);
         V8Script compiledScript;
         try {
-            compiledScript = v8Manager.Engine.Compile(restoredJsCode);
+            compiledScript = v8Manager.Engine.Compile(wrappedJsCode);
         } catch(Exception ex) {
             diags.Add(new CompileDiagnostic(
                 DiagnosticId.AdvancedTagException,
@@ -75,22 +76,25 @@ public static class JavaScirpt {
             ));
             return () => parsed.Raw;
         }
+        try {
+            compiledScript.Dispose();
+        } catch {
+        }
 
         string lastLoggedError = null;
         bool isDuplicateLogged = false;
 
         return () => {
             try {
-                string wrapped = FxValue.WrapJsBlock(restoredJsCode);
-                if (v8Manager.GetFxCompileError(wrapped) != null) {
+                if (v8Manager.GetFxCompileError(wrappedJsCode) != null) {
                     return parsed.Raw;
                 }
 
-                if (v8Manager.TryEvaluateFx(wrapped, out var result)) {
+                if (v8Manager.TryEvaluateFx(wrappedJsCode, out var result)) {
                     return result?.ToString() ?? string.Empty;
                 }
 
-                string runtimeError = v8Manager.GetFxRuntimeError(wrapped);
+                string runtimeError = v8Manager.GetFxRuntimeError(wrappedJsCode);
                 if (runtimeError != null) {
                     string errorMessage = $"[{nameof(JavaScirpt)}] Runtime error, Tag '{parsed.Raw}': {runtimeError}";
                     if (errorMessage == lastLoggedError) {

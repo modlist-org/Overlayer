@@ -14,6 +14,12 @@ public sealed class Replacer : IDisposable {
                 return;
             }
 
+            string newKey = TagCache.Instance.GetKey(value);
+            if(newKey != null && newKey == cachedKey) {
+                field = value;
+                return;
+            }
+
             if(cachedKey != null) {
                 TagCache.Instance.DecrementRef(cachedKey);
             }

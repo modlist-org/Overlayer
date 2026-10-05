@@ -7,7 +7,7 @@ namespace Overlayer.V8.Scripting.Clr;
 // boundary are auto-wrapped by ClearScript. Target may be an instance
 // or a type-name string (static access).
 public sealed class ClrAccess {
-    private readonly Dictionary<string, Func<object, object[], object>> invokers = [];
+    private readonly Dictionary<(object, string, int), Func<object, object[], object>> invokers = [];
     private readonly object gate = new();
 
     public sealed class ClrMember {
@@ -170,8 +170,8 @@ public sealed class ClrAccess {
     }
 
     private Func<object, object[], object> ResolveInvoker(object targetOrTypeName, string method, object[] args) {
-        string key = (targetOrTypeName is string s ? "T:" + s : "I:" + targetOrTypeName?.GetType().FullName)
-            + "|" + method + "/" + args.Length;
+        object keyTarget = targetOrTypeName is string ? targetOrTypeName : targetOrTypeName?.GetType();
+        var key = (keyTarget, method, args.Length);
         lock(gate) {
             if(invokers.TryGetValue(key, out var cached)) {
                 return cached;
