@@ -15,6 +15,7 @@ public sealed class CoreSettings : ISettingsFile {
     public FxValue<bool> MiddleClickToDefault = new(true);
     public FxValue<float> UIScale = new(1.0f);
     public FxValue<float> SliderSensitivity = new(1.0f);
+    public FxValue<float> AnimationSpeed = new(1.0f);
     public FxValue<bool> EnableJSScriptWatcher = new(true);
     public FxValue<string> SystemFontKey = FxValue<string>.FromValue(null);
     public FxValue<string> CodeFontKey = FxValue<string>.FromValue(null);
@@ -32,6 +33,7 @@ public sealed class CoreSettings : ISettingsFile {
             [nameof(MiddleClickToDefault)] = IOUtils.WriteFx(MiddleClickToDefault),
             [nameof(UIScale)] = IOUtils.WriteFx(UIScale),
             [nameof(SliderSensitivity)] = IOUtils.WriteFx(SliderSensitivity),
+            [nameof(AnimationSpeed)] = IOUtils.WriteFx(AnimationSpeed),
             [nameof(EnableJSScriptWatcher)] = IOUtils.WriteFx(EnableJSScriptWatcher),
             [nameof(SystemFontKey)] = IOUtils.WriteFx(SystemFontKey),
             [nameof(CodeFontKey)] = IOUtils.WriteFx(CodeFontKey),
@@ -50,6 +52,7 @@ public sealed class CoreSettings : ISettingsFile {
         MiddleClickToDefault = IOUtils.ReadFx(token, nameof(MiddleClickToDefault), MiddleClickToDefault);
         UIScale = IOUtils.ReadFx(token, nameof(UIScale), UIScale);
         SliderSensitivity = IOUtils.ReadFx(token, nameof(SliderSensitivity), SliderSensitivity);
+        AnimationSpeed = IOUtils.ReadFx(token, nameof(AnimationSpeed), AnimationSpeed);
         EnableJSScriptWatcher = IOUtils.ReadFx(token, nameof(EnableJSScriptWatcher), EnableJSScriptWatcher);
         SystemFontKey = IOUtils.ReadFx(token, nameof(SystemFontKey), SystemFontKey);
         CodeFontKey = IOUtils.ReadFx(token, nameof(CodeFontKey), CodeFontKey);

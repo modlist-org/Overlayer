@@ -306,7 +306,7 @@ internal sealed class OvInspectorBuilder(
         preserveAspectRow = FxToggle(card, "Preserve Aspect", cfg.PreserveAspect, false, "image_aspect");
         useSpriteMeshRow = FxToggle(card, "Use Sprite Mesh", cfg.UseSpriteMesh, false, "image_sprite_mesh");
         fillCenterRow = FxToggle(card, "Fill Center", cfg.FillCenter, true, "image_fill_center");
-        pixelsPerUnitRow = FxSlider(card, "Pixels Per Unit", cfg.PixelsPerUnitMultiplier, 1f, 0f, 10f, "image_pixels_per_unit", "F2", ClampMode.Slider, value => Mathf.Max(0f, value));
+        pixelsPerUnitRow = FxSlider(card, "Pixels Per Unit", cfg.PixelsPerUnitMultiplier, 1f, 0f, 10f, "image_pixels_per_unit", "F2", ClampMode.Slider, value => Math.Max(0d, value));
         fillMethodRow = FxEnum(card, "Fill Method", cfg.FillMethod, Image.FillMethod.Horizontal, "image_fill_method", () => {
             cfg.FillOrigin.Value = 0;
             ApplyAndSave();
@@ -1261,12 +1261,12 @@ internal sealed class OvInspectorBuilder(
         string source
     ) => $"{state}|{source?.GetHashCode() ?? 0}|{string.Join("|", diagnostics.Select(d => d.ToString()))}";
 
-    private RectTransform Slider(Transform parent, string label, float defaultValue, float min, float max, float value, Action<float> changed, string id, string format = "F2") => Slider(parent, label, defaultValue, min, max, value, changed, id, format, ClampMode.Slider, null);
+    private RectTransform Slider(Transform parent, string label, double defaultValue, double min, double max, double value, Action<double> changed, string id, string format = "F2") => Slider(parent, label, defaultValue, min, max, value, changed, id, format, ClampMode.Slider, null);
 
-    private RectTransform Slider(Transform parent, string label, float defaultValue, float min, float max, float value, Action<float> changed, string id, string format, ClampMode clampMode, Func<float, float> filter = null) {
+    private RectTransform Slider(Transform parent, string label, double defaultValue, double min, double max, double value, Action<double> changed, string id, string format, ClampMode clampMode, Func<double, double> filter = null) {
         label = InspectorLabel(label);
         var row = O5Factory.Row(O5KitAdapters.Ctx, parent, 50f);
-        var slider = O5Factory.Slider(O5KitAdapters.Ctx, row, defaultValue, min, max, value, format, clampMode, filter, newValue => {
+        var slider = O5Factory.Slider(O5KitAdapters.Ctx, row, defaultValue, min, max, value, format, clampMode, filter, filter, newValue => {
             changed(newValue);
             apply();
         }, _ => save(), label, id);
@@ -1408,19 +1408,19 @@ internal sealed class OvInspectorBuilder(
     }
 
     private RectTransform FxSlider(Transform parent, string label, FxValue<float> fx, float defaultValue, float min, float max, string id, string format = "F2") {
-        return FxBlock(parent, label, fx, g => Slider(g, label, defaultValue, min, max, fx.Value, value => fx.Value = value, id, format), id);
+        return FxBlock(parent, label, fx, g => Slider(g, label, defaultValue, min, max, fx.Value, value => fx.Value = (float)value, id, format), id);
     }
 
-    private RectTransform FxSlider(Transform parent, string label, FxValue<float> fx, float defaultValue, float min, float max, string id, string format, ClampMode clampMode, Func<float, float> filter = null) {
-        return FxBlock(parent, label, fx, g => Slider(g, label, defaultValue, min, max, fx.Value, value => fx.Value = value, id, format, clampMode, filter), id);
+    private RectTransform FxSlider(Transform parent, string label, FxValue<float> fx, float defaultValue, float min, float max, string id, string format, ClampMode clampMode, Func<double, double> filter = null) {
+        return FxBlock(parent, label, fx, g => Slider(g, label, defaultValue, min, max, fx.Value, value => fx.Value = (float)value, id, format, clampMode, filter), id);
     }
 
     private RectTransform FxIntSlider(Transform parent, string label, FxValue<int> fx, int defaultValue, float min, float max, string id, string format = "F0") {
-        return FxBlock(parent, label, fx, g => Slider(g, label, defaultValue, min, max, fx.Value, value => fx.Value = Mathf.RoundToInt(value), id, format), id);
+        return FxBlock(parent, label, fx, g => Slider(g, label, defaultValue, min, max, fx.Value, value => fx.Value = Mathf.RoundToInt((float)value), id, format), id);
     }
 
     private RectTransform FxDoubleSlider(Transform parent, string label, FxValue<double> fx, double defaultValue, float min, float max, string id, string format = "F1") {
-        return FxBlock(parent, label, fx, g => Slider(g, label, (float)defaultValue, min, max, (float)fx.Value, value => fx.Value = value, id, format, ClampMode.Slider), id);
+        return FxBlock(parent, label, fx, g => Slider(g, label, defaultValue, min, max, fx.Value, value => fx.Value = value, id, format, ClampMode.Slider), id);
     }
 
     private RectTransform FxToggle(Transform parent, string label, FxValue<bool> fx, bool defaultValue, string id) {
@@ -1627,8 +1627,8 @@ internal sealed class OvInspectorBuilder(
     }
 
     private void Vector2Sliders(Transform parent, string label, Vector2 defaults, float min, float max, Func<Vector2> get, Action<Vector2> set, string id, string format = "F2") {
-        Slider(parent, $"{label} X", defaults.x, min, max, get().x, value => set(new Vector2(value, get().y)), id + "_x", format);
-        Slider(parent, $"{label} Y", defaults.y, min, max, get().y, value => set(new Vector2(get().x, value)), id + "_y", format);
+        Slider(parent, $"{label} X", defaults.x, min, max, get().x, value => set(new Vector2((float)value, get().y)), id + "_x", format);
+        Slider(parent, $"{label} Y", defaults.y, min, max, get().y, value => set(new Vector2(get().x, (float)value)), id + "_y", format);
     }
 
     private Action NumericPropertyRow(
@@ -1671,21 +1671,22 @@ internal sealed class OvInspectorBuilder(
         var field = O5Factory.Slider(O5KitAdapters.Ctx, 
             parent,
             defaultValue,
-            -1f,
-            1f,
+            -1d,
+            1d,
             get(),
             format,
             ClampMode.None,
             null,
+            null,
             value => {
-                set(value);
+                set((float)value);
                 apply();
             },
             _ => save(),
             label,
             id,
             showFill: false,
-            dragStep: Mathf.Pow(10f, -decimals),
+            dragStep: Math.Pow(10d, -decimals),
             blockHoverWhileDragging: true
         );
         var element = field.Rect.gameObject.GetComponent<LayoutElement>();
@@ -1900,8 +1901,8 @@ internal sealed class OvInspectorBuilder(
         return RefreshValues;
     }
 
-    private static void SetDisplayedValue(O5Slider field, float value) {
-        if(!Mathf.Approximately(field.Value, value)) {
+    private static void SetDisplayedValue(O5Slider field, double value) {
+        if(Math.Abs(field.Value - value) > 0.0001) {
             field.Set(value, false);
         }
     }

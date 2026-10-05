@@ -188,14 +188,13 @@ public static class O5KitAdapters {
     public static void Setup() {
         _fonts = new OverlayerFontProvider();
         Ctx = new O5Context(
-            config: new O5Config {
-                UIScale = MainCore.Conf.UIScale.Value,
-                TooltipEnabled = MainCore.Conf.Tooltip.Value,
-                MiddleClickToDefault = MainCore.Conf.MiddleClickToDefault.Value,
-                SliderSensitivity = MainCore.Conf.SliderSensitivity.Value,
+            config: new O5Config(),
+            theme: O5Theme.Dark with {
+                ControlOutlineIdle = new Color32(255, 255, 255, 0),
             },
             sprites: new OverlayerSpriteProvider(),
             fonts: _fonts);
+        SyncConfig();
 
         O5ShortcutManager.IsSuspended = () => O5Kit.Control.O5InputBlocker.IsEditing;
         O5Kit.Behaviour.UIScrollController.ShouldConsumeParentScroll = () => UICodeInputField.ShouldConsumeParentScroll;
@@ -207,6 +206,19 @@ public static class O5KitAdapters {
     }
 
     public static void RefreshFonts() => _fonts?.RefreshExistingText();
+
+    /// <summary>Copies live settings into the O5Kit runtime config. Call after any related setting changes (O5Kit reads <see cref="O5Context.Config"/> live).</summary>
+    public static void SyncConfig() {
+        if (Ctx == null) {
+            return;
+        }
+
+        Ctx.Config.UIScale = MainCore.Conf.UIScale.Value;
+        Ctx.Config.TooltipEnabled = MainCore.Conf.Tooltip.Value;
+        Ctx.Config.MiddleClickToDefault = MainCore.Conf.MiddleClickToDefault.Value;
+        Ctx.Config.SliderSensitivity = MainCore.Conf.SliderSensitivity.Value;
+        Ctx.Config.AnimationSpeed = MainCore.Conf.AnimationSpeed.Value;
+    }
 
     public static void Teardown() {
         if(_enabledHandler != null) {

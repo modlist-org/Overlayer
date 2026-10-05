@@ -65,6 +65,17 @@ public static class UICore {
 
         CreatePanel();
         ResizeHandle.CreateResizeHandles(O5KitAdapters.Ctx, Panel, CanvasObj.GetComponent<RectTransform>());
+        for(int i = 0; i < Panel.childCount; i++) {
+            Transform child = Panel.GetChild(i);
+            if(child.GetComponent<ResizeHandle>() == null) {
+                continue;
+            }
+
+            var resizeDragTrigger = child.gameObject.AddComponent<EventTrigger>();
+            UnityUtils.AddEvents(resizeDragTrigger,
+                (EventTriggerType.Drag, _ => MarkPanelUnmaximizedByUser())
+            );
+        }
         O5KitAdapters.Ctx.Tooltip.Initialize(CanvasObj.transform);
         RegisterToggleShortcut();
 
@@ -391,6 +402,11 @@ public static class UICore {
         GameObject topBar = new("TopBar");
         topBar.transform.SetParent(panel.transform, false);
         topBar.AddComponent<DragHandler>();
+        var topBarClickTrigger = topBar.AddComponent<EventTrigger>();
+        UnityUtils.AddEvents(topBarClickTrigger,
+            (EventTriggerType.PointerClick, HandleTopBarPointerClick),
+            (EventTriggerType.Drag, _ => MarkPanelUnmaximizedByUser())
+        );
 
         var topImage = topBar.AddComponent<Image>();
         topImage.color = UIColors.TopBar;
@@ -556,9 +572,71 @@ public static class UICore {
     private static ITweenHandle resetSequence;
 
     private static bool isOpen = false;
+    private static bool isPanelMaximized;
+    private static Vector2 preMaximizePanelPosition;
+    private static Vector2 preMaximizePanelSize;
+    private static float lastTopBarClickTime = float.NegativeInfinity;
 
     public static Vector2 LastPanelPosition;
     public static Vector2 LastPanelSize;
+
+    private static void HandleTopBarPointerClick(BaseEventData eventData) {
+        PointerEventData pointer =
+#if ML && IL2CPP
+            eventData.TryCast<PointerEventData>();
+#else
+            eventData as PointerEventData;
+#endif
+        if(pointer == null || pointer.button != PointerEventData.InputButton.Left) {
+            return;
+        }
+
+        float now = Time.unscaledTime;
+        if(now - lastTopBarClickTime <= 0.2f) {
+            lastTopBarClickTime = float.NegativeInfinity;
+            TogglePanelMaximize();
+        } else {
+            lastTopBarClickTime = now;
+        }
+    }
+
+    private static void TogglePanelMaximize() {
+        if(Panel == null || CanvasObj == null) {
+            return;
+        }
+
+        panelTweener?.Kill();
+        resetSequence?.Kill();
+        Vector2 targetPosition;
+        Vector2 targetSize;
+        if(!isPanelMaximized) {
+            preMaximizePanelPosition = Panel.anchoredPosition;
+            preMaximizePanelSize = Panel.sizeDelta;
+            Canvas.ForceUpdateCanvases();
+            var canvasRect = CanvasObj.GetComponent<RectTransform>();
+            targetPosition = Vector2.zero;
+            targetSize = canvasRect.rect.size;
+            isPanelMaximized = true;
+        } else {
+            targetPosition = preMaximizePanelPosition;
+            targetSize = preMaximizePanelSize;
+            isPanelMaximized = false;
+        }
+
+        resetSequence = O5Seq.New()
+            .Append(done => Panel.TAnchorPos(targetPosition, 0.26f, O5Ease.OutExpo, done))
+            .Join(done => Panel.TSizeDelta(targetSize, 0.26f, O5Ease.OutExpo, done))
+            .Play();
+    }
+
+    private static void MarkPanelUnmaximizedByUser() {
+        if(!isPanelMaximized) {
+            return;
+        }
+
+        isPanelMaximized = false;
+        resetSequence?.Kill();
+    }
 
     public static Vector2 DefaultPanelSize => new(
         Math.Min(1280f / MainCore.Conf.UIScale, Screen.width / MainCore.Conf.UIScale),
@@ -694,6 +772,7 @@ public static class UICore {
     }
 
     public static void ResetScalePosition(bool noAnimate = false) {
+        isPanelMaximized = false;
         Vector2 targetSize = DefaultPanelSize;
 
         LastPanelPosition = Vector2.zero;

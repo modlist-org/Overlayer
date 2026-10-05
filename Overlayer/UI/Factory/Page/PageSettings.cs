@@ -191,6 +191,7 @@ internal static class PageSettings {
         tooltipToggle.OnChanged = toggle => {
             O5KitAdapters.Ctx.Tooltip.Hide();
             MainCore.Conf.Tooltip = toggle;
+            O5KitAdapters.SyncConfig();
             MainCore.ConfMgr.RequestSave();
 
             advTooltipToggle.SetBlocked(!toggle);
@@ -198,6 +199,7 @@ internal static class PageSettings {
         advTooltipToggle.OnChanged = toggle => {
             O5KitAdapters.Ctx.Tooltip.Hide();
             MainCore.Conf.AdvancedTooltip = toggle;
+            O5KitAdapters.SyncConfig();
             MainCore.ConfMgr.RequestSave();
         };
         tooltipToggle.Rect.AddToolTip(O5KitAdapters.Ctx, () => MainCore.Tr.Get("DESC_SHOW_TOOLTIP", "This is a Tooltip!"));
@@ -223,6 +225,7 @@ internal static class PageSettings {
             "Middle-click to set as default",
             "middle_click_default"
         );
+        middleClickToggle.OnChanged += _ => O5KitAdapters.SyncConfig();
         middleClickToggle.Rect.AddToolTip(O5KitAdapters.Ctx, () => MainCore.Tr.Get(
             "DESC_MIDDLE_CLICK_TO_SET_AS_DEFAULT",
             "Setting that restores an item to its default value when you middle-click on it.\nYou can identify it by a small dot at the top-left of the item"
@@ -241,10 +244,15 @@ internal static class PageSettings {
             MainCore.Conf.UIScale,
             "0.00x",
             ClampMode.All,
-            value => MathF.Round(value, 2),
-            value => MainCore.Conf.UIScale = value,
+            value => Math.Round(value, 2),
+            value => Math.Round(value, 2),
             value => {
-                MainCore.Conf.UIScale = value;
+                MainCore.Conf.UIScale = (float)value;
+                O5KitAdapters.SyncConfig();
+            },
+            value => {
+                MainCore.Conf.UIScale = (float)value;
+                O5KitAdapters.SyncConfig();
                 MainCore.ConfMgr.RequestSave();
 
                 scaleSeq?.Kill();
@@ -259,7 +267,7 @@ internal static class PageSettings {
                         O5KitAdapters.Ctx.Tween.TweenFloat(
                             () => scaleStart,
                             x => UICore.PanelScale = x,
-                            value,
+                            (float)value,
                             0.4f,
                             done,
                             O5Ease.OutExpo
@@ -285,10 +293,15 @@ internal static class PageSettings {
             MainCore.Conf.SliderSensitivity,
             "0.00x",
             ClampMode.Slider,
-            value => MathF.Round(value, 2),
-            value => MainCore.Conf.SliderSensitivity = value,
+            value => Math.Round(value, 2),
+            value => Math.Round(value, 2),
             value => {
-                MainCore.Conf.SliderSensitivity = value;
+                MainCore.Conf.SliderSensitivity = (float)value;
+                O5KitAdapters.SyncConfig();
+            },
+            value => {
+                MainCore.Conf.SliderSensitivity = (float)value;
+                O5KitAdapters.SyncConfig();
                 MainCore.ConfMgr.RequestSave();
             },
             "Slider Sensitivity",
@@ -296,6 +309,32 @@ internal static class PageSettings {
         );
         var sliderSensitivityTr = sliderSensitivity.Label.gameObject.AddComponent<TextLocalization>().Init("SLIDER_SENSITIVITY", "Slider Sensitivity");
         objects[sliderSensitivityTr] = (overlayerText.gameObject, sliderSensitivityRow.gameObject);
+
+        var animationSpeedRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
+        var animationSpeed = O5Factory.Slider(O5KitAdapters.Ctx,
+            animationSpeedRow,
+            defSet.AnimationSpeed,
+            0.0f,
+            3.0f,
+            MainCore.Conf.AnimationSpeed,
+            "0.00x",
+            ClampMode.Slider,
+            value => Math.Round(value, 2),
+            value => Math.Round(value, 2),
+            value => {
+                MainCore.Conf.AnimationSpeed = (float)value;
+                O5KitAdapters.SyncConfig();
+            },
+            value => {
+                MainCore.Conf.AnimationSpeed = (float)value;
+                O5KitAdapters.SyncConfig();
+                MainCore.ConfMgr.RequestSave();
+            },
+            "Animation Speed",
+            "animation_speed"
+        );
+        var animationSpeedTr = animationSpeed.Label.gameObject.AddComponent<TextLocalization>().Init("ANIMATION_SPEED", "Animation Speed");
+        objects[animationSpeedTr] = (overlayerText.gameObject, animationSpeedRow.gameObject);
 
         BuildFontPickers(content, objects, overlayerText);
     }

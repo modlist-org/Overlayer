@@ -28,11 +28,26 @@ public class OvCanvasSettingPage : IDisposable {
     public readonly RectTransform RectTransform;
     public readonly CanvasGroup CanvasGroup;
 
-    private readonly TextMeshProUGUI titleText;
     private readonly Action onBackAction;
 
     private OvCanvas currentCanvas;
     private OvObject selectedObject;
+    private CanvasTabState activeTab;
+    private readonly System.Collections.Generic.List<CanvasTabState> canvasTabs = [];
+    private RectTransform tabsContent;
+    private CanvasTabState draggedCanvasTab;
+    private RectTransform canvasTabDragPlaceholder;
+    private LayoutElement draggedCanvasTabLayout;
+    private Vector2 canvasTabDragOriginalAnchorMin;
+    private Vector2 canvasTabDragOriginalAnchorMax;
+    private Vector2 canvasTabDragOriginalPivot;
+    private Vector2 canvasTabDragOriginalSizeDelta;
+    private float canvasTabDragPointerOffsetX;
+    private float canvasTabDragPreviousCenterX;
+    private float canvasTabDragY;
+    private float canvasTabDragWidth;
+    private bool canvasTabDragReordered;
+    private bool suppressCanvasTabClick;
     private O5Button deleteButton;
     private OvCanvas armedDeleteCanvas;
     private DateTime armedDeleteTime;
@@ -54,8 +69,18 @@ public class OvCanvasSettingPage : IDisposable {
 
     private enum HierarchyDropZone { Before, Inside, After }
 
+    private sealed class CanvasTabState(OvCanvas canvas) {
+        public OvCanvas Canvas { get; } = canvas;
+        public RectTransform TabRect;
+        public OvObject SelectedObject;
+        public readonly System.Collections.Generic.HashSet<OvObject> CollapsedObjects = [];
+    }
+
 #pragma warning disable IDE0001
     private readonly System.Collections.Generic.List<O5Object> hierarchyUiObjects = [];
+    private readonly System.Collections.Generic.HashSet<OvObject> collapsedObjects = [];
+    private OvObject foldoutAnimTarget;
+    private float foldoutAnimFrom;
     private readonly System.Collections.Generic.List<O5Object> inspectorUiObjects = [];
     private readonly System.Collections.Generic.List<O5Object> permanentUiObjects = [];
 #pragma warning restore IDE0001
@@ -92,8 +117,8 @@ public class OvCanvasSettingPage : IDisposable {
         var backBtnRect = backBtnGo.AddComponent<RectTransform>();
         backBtnRect.anchorMin = new Vector2(0, 0.5f);
         backBtnRect.anchorMax = new Vector2(0, 0.5f);
-        backBtnRect.sizeDelta = new Vector2(90, 50);
-        backBtnRect.anchoredPosition = new Vector2(70, 0);
+        backBtnRect.sizeDelta = new Vector2(26, 26);
+        backBtnRect.anchoredPosition = new Vector2(34, 0);
         backBtnGo.AddComponent<EmptyGraphic>();
 
         GameObject backTxtGo = new("Text");
@@ -118,22 +143,56 @@ public class OvCanvasSettingPage : IDisposable {
             }
         };
 
-        // Title Text
-        GameObject titleGo = new("TitleText");
-        titleGo.transform.SetParent(headerGo.transform, false);
-        var titleRect = titleGo.AddComponent<RectTransform>();
-        titleRect.anchorMin = new Vector2(0f, 0.5f);
-        titleRect.anchorMax = new Vector2(0f, 0.5f);
-        titleRect.pivot = new Vector2(0f, 0.5f);
-        titleRect.sizeDelta = new Vector2(400, 50);
-        titleRect.anchoredPosition = new Vector2(145f, 0f);
+        // Canvas tabs
+        GameObject tabsViewport = new("CanvasTabsViewport");
+        tabsViewport.transform.SetParent(headerGo.transform, false);
+        var tabsViewportRect = tabsViewport.AddComponent<RectTransform>();
+        tabsViewportRect.anchorMin = Vector2.zero;
+        tabsViewportRect.anchorMax = Vector2.one;
+        tabsViewportRect.offsetMin = new Vector2(58f, 4f);
+        tabsViewportRect.offsetMax = new Vector2(-6f, -4f);
+        var tabsViewportImage = tabsViewport.AddComponent<Image>();
+        tabsViewportImage.color = Color.clear;
+        tabsViewportImage.raycastTarget = true;
+        tabsViewport.AddComponent<RectMask2D>();
 
-        titleText = titleGo.AddComponent<TextMeshProUGUI>();
-        titleText.font = MainCore.Res.Get<TMP_FontAsset>(Asset.SUIT_Medium);
-        titleText.fontSize = 24;
-        titleText.alignment = TextAlignmentOptions.Left;
-        titleText.color = Color.white;
-        titleGo.AddComponent<TextLocalization>().Init("CANVAS_TITLE", "Canvas Settings");
+        GameObject tabsContentObject = new("CanvasTabs");
+        tabsContentObject.transform.SetParent(tabsViewport.transform, false);
+        tabsContent = tabsContentObject.AddComponent<RectTransform>();
+        tabsContent.anchorMin = new Vector2(0f, 0f);
+        tabsContent.anchorMax = new Vector2(0f, 1f);
+        tabsContent.pivot = new Vector2(0f, 0.5f);
+        tabsContent.sizeDelta = Vector2.zero;
+        var tabsLayout = tabsContentObject.AddComponent<HorizontalLayoutGroup>();
+        tabsLayout.padding = new RectOffset(2, 2, 2, 2);
+        tabsLayout.spacing = 4f;
+        tabsLayout.childControlWidth = true;
+        tabsLayout.childControlHeight = false;
+        tabsLayout.childForceExpandWidth = false;
+        tabsLayout.childForceExpandHeight = false;
+        tabsLayout.childAlignment = TextAnchor.MiddleLeft;
+        var tabsFitter = tabsContentObject.AddComponent<ContentSizeFitter>();
+        tabsFitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
+        tabsFitter.verticalFit = ContentSizeFitter.FitMode.Unconstrained;
+        var tabsScroll = tabsViewport.AddComponent<ScrollRect>();
+        tabsScroll.content = tabsContent;
+        tabsScroll.viewport = tabsViewportRect;
+        tabsScroll.horizontal = true;
+        tabsScroll.vertical = false;
+        tabsScroll.movementType = ScrollRect.MovementType.Clamped;
+        tabsScroll.inertia = true;
+
+        GameObject tabDivider = new("TabDivider");
+        tabDivider.transform.SetParent(headerGo.transform, false);
+        var tabDividerRect = tabDivider.AddComponent<RectTransform>();
+        tabDividerRect.anchorMin = new Vector2(0f, 0f);
+        tabDividerRect.anchorMax = new Vector2(1f, 0f);
+        tabDividerRect.pivot = new Vector2(0.5f, 0f);
+        tabDividerRect.sizeDelta = new Vector2(0f, 1f);
+        tabDividerRect.anchoredPosition = Vector2.zero;
+        var tabDividerImage = tabDivider.AddComponent<Image>();
+        tabDividerImage.color = new Color32(255, 255, 255, 120);
+        tabDividerImage.raycastTarget = false;
 
         // Pad (Layout Area)
         GameObject pad = new("Pad");
@@ -144,7 +203,7 @@ public class OvCanvasSettingPage : IDisposable {
         padRect.anchorMax = Vector2.one;
         padRect.pivot = new Vector2(0.5f, 0.5f);
         padRect.offsetMin = new Vector2(18f, 18f);
-        padRect.offsetMax = new Vector2(-18f, -18f);
+        padRect.offsetMax = new Vector2(-18f, -68f);
 
         // 2-Column Horizontal Layout
         var padHLayout = pad.AddComponent<HorizontalLayoutGroup>();
@@ -172,7 +231,7 @@ public class OvCanvasSettingPage : IDisposable {
         hierVLayout.padding = new RectOffset {
             left = 10,
             right = 10,
-            top = 68,
+            top = 10,
             bottom = 10
         };
         hierVLayout.spacing = 10f;
@@ -180,19 +239,6 @@ public class OvCanvasSettingPage : IDisposable {
         hierVLayout.childControlHeight = true; // Enabled to honor child heights
         hierVLayout.childForceExpandWidth = true;
         hierVLayout.childForceExpandHeight = false;
-
-        // Hierarchy Title
-        GameObject hierTitle = new("HierarchyTitle");
-        hierTitle.transform.SetParent(hierarchyCol.transform, false);
-        var hierTitleTxt = hierTitle.AddComponent<TextMeshProUGUI>();
-        hierTitleTxt.font = MainCore.Res.Get<TMP_FontAsset>(Asset.SUIT_Medium);
-        hierTitleTxt.fontSize = 20f;
-        hierTitleTxt.text = MainCore.Tr.Get("HIERARCHY", "Hierarchy");
-        hierTitleTxt.color = Color.white;
-        hierTitleTxt.gameObject.AddComponent<TextLocalization>().Init("HIERARCHY", "Hierarchy");
-        var hierTitleLE = hierTitle.AddComponent<LayoutElement>();
-        hierTitleLE.preferredHeight = 30f;
-        hierTitleLE.minHeight = 30f;
 
         // Hierarchy Scroll View
         hierarchyContent = O5Factory.ScrollView(O5KitAdapters.Ctx, hierarchyCol.transform, 6f, expandLayout: true).content;
@@ -363,10 +409,9 @@ public class OvCanvasSettingPage : IDisposable {
 
                 DisarmDeleteButton();
                 var canvasToDelete = currentCanvas;
-                currentCanvas = null;
 
                 if(OverlayCore.DeleteOvCanvas(canvasToDelete)) {
-                    onBackAction?.Invoke();
+                    CloseCanvasTab(activeTab);
                 }
 
                 return;
@@ -407,6 +452,7 @@ public class OvCanvasSettingPage : IDisposable {
 
             // Switch selection to the browsed object
             selectedObject = nextSelect;
+            SaveActiveTabState();
 
             RebuildHierarchy();
             RebuildInspector();
@@ -441,19 +487,6 @@ public class OvCanvasSettingPage : IDisposable {
         inspVLayout.childControlHeight = true; // Enabled to honor child heights
         inspVLayout.childForceExpandWidth = true;
         inspVLayout.childForceExpandHeight = false;
-
-        // Inspector Title
-        GameObject inspTitle = new("InspectorTitle");
-        inspTitle.transform.SetParent(inspectorCol.transform, false);
-        var inspTitleTxt = inspTitle.AddComponent<TextMeshProUGUI>();
-        inspTitleTxt.font = MainCore.Res.Get<TMP_FontAsset>(Asset.SUIT_Medium);
-        inspTitleTxt.fontSize = 20f;
-        inspTitleTxt.text = MainCore.Tr.Get("INSPECTOR", "Inspector");
-        inspTitleTxt.color = Color.white;
-        inspTitleTxt.gameObject.AddComponent<TextLocalization>().Init("INSPECTOR", "Inspector");
-        var inspTitleLE = inspTitle.AddComponent<LayoutElement>();
-        inspTitleLE.preferredHeight = 30f;
-        inspTitleLE.minHeight = 30f;
 
         // Inspector Scroll View
         inspectorContent = O5Factory.ScrollView(O5KitAdapters.Ctx, inspectorCol.transform, 12f, expandLayout: true).content;
@@ -506,32 +539,441 @@ public class OvCanvasSettingPage : IDisposable {
     }
 
     public void Open(OvCanvas canvas, bool noAnimate = false) {
+        CanvasTabState tab = null;
+        foreach(var openTab in canvasTabs) {
+            if(openTab.Canvas == canvas) {
+                tab = openTab;
+                break;
+            }
+        }
+
+        if(tab == null) {
+            tab = new CanvasTabState(canvas);
+            canvasTabs.Add(tab);
+        }
+
+        ActivateCanvasTab(tab, noAnimate);
+    }
+
+    private void SaveActiveTabState() {
+        if(activeTab == null) {
+            return;
+        }
+
+        activeTab.SelectedObject = selectedObject;
+        activeTab.CollapsedObjects.Clear();
+        activeTab.CollapsedObjects.UnionWith(collapsedObjects);
+    }
+
+    private void ActivateCanvasTab(CanvasTabState tab, bool noAnimate = false) {
+        if(activeTab == tab && GameObject.activeSelf) {
+            return;
+        }
+
+        SaveActiveTabState();
+        activeTab = tab;
+        currentCanvas = tab.Canvas;
+        selectedObject = tab.SelectedObject;
+        collapsedObjects.Clear();
+        collapsedObjects.UnionWith(tab.CollapsedObjects);
+        foldoutAnimTarget = null;
         DisarmDeleteButton();
-        currentCanvas = canvas;
-        titleText.text = string.IsNullOrEmpty(canvas.Config.Name)
-            ? MainCore.Tr.Get("EMPTY", "(Empty)")
-            : canvas.Config.Name;
-        selectedObject = null;
 
         RebuildHierarchy();
         RebuildInspector();
+        RebuildCanvasTabs();
 
+        bool wasActive = GameObject.activeSelf;
         GameObject.SetActive(true);
-
         if(noAnimate) {
             CanvasGroup.alpha = 1f;
             CanvasGroup.blocksRaycasts = true;
-        } else {
+        } else if(!wasActive) {
             canvasFadeTween?.Kill();
             canvasFadeTween = CanvasGroup.TFade(1f, 0.25f, O5Ease.OutCubic, () => CanvasGroup.blocksRaycasts = true);
         }
+    }
+
+    private void CloseCanvasTab(CanvasTabState tab) {
+        int index = canvasTabs.IndexOf(tab);
+        if(index < 0) {
+            return;
+        }
+
+        bool wasActive = activeTab == tab;
+        if(wasActive) {
+            SaveActiveTabState();
+        }
+        canvasTabs.RemoveAt(index);
+
+        if(canvasTabs.Count == 0) {
+            activeTab = null;
+            currentCanvas = null;
+            selectedObject = null;
+            collapsedObjects.Clear();
+            RebuildCanvasTabs();
+            onBackAction?.Invoke();
+            return;
+        }
+
+        if(wasActive) {
+            ActivateCanvasTab(canvasTabs[Math.Min(index, canvasTabs.Count - 1)], true);
+        } else {
+            RebuildCanvasTabs();
+        }
+    }
+
+    private void RebuildCanvasTabs() {
+        if(tabsContent == null) {
+            return;
+        }
+
+        for(int i = tabsContent.childCount - 1; i >= 0; i--) {
+            GameObject child = tabsContent.GetChild(i).gameObject;
+            child.SetActive(false);
+            UnityEngine.Object.Destroy(child);
+        }
+
+        foreach(var tab in canvasTabs) {
+            tab.TabRect = null;
+        }
+
+        foreach(var tab in canvasTabs) {
+            GameObject tabObject = new("CanvasTab");
+            tabObject.transform.SetParent(tabsContent, false);
+            var tabRect = tabObject.AddComponent<RectTransform>();
+            tabRect.sizeDelta = new Vector2(0f, 34f);
+            tab.TabRect = tabRect;
+            var tabLE = tabObject.AddComponent<LayoutElement>();
+            tabLE.preferredWidth = 220f;
+            tabLE.minWidth = 120f;
+            tabLE.preferredHeight = 34f;
+            tabLE.minHeight = 34f;
+            var tabImage = tabObject.AddComponent<Image>();
+            tabImage.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P2048);
+            tabImage.type = Image.Type.Sliced;
+            tabImage.color = tab == activeTab ? UIColors.ObjectButton : UIColors.ObjectBG;
+
+            var tabLayout = tabObject.AddComponent<HorizontalLayoutGroup>();
+            tabLayout.padding = new RectOffset(12, 14, 2, 2);
+            tabLayout.spacing = 8f;
+            tabLayout.childControlWidth = true;
+            tabLayout.childControlHeight = true;
+            tabLayout.childForceExpandWidth = false;
+            tabLayout.childForceExpandHeight = true;
+            var tabTrigger = tabObject.AddComponent<EventTrigger>();
+            AddCanvasTabHoverHighlight(tabImage, tabTrigger, tab == activeTab);
+            UnityUtils.AddEvents(tabTrigger,
+                (EventTriggerType.PointerDown, _ => suppressCanvasTabClick = false),
+                (EventTriggerType.PointerClick, e => {
+                    PointerEventData pointer =
+#if ML && IL2CPP
+                        e.TryCast<PointerEventData>();
+#else
+                        e as PointerEventData;
+#endif
+                    if(suppressCanvasTabClick) {
+                        suppressCanvasTabClick = false;
+                        return;
+                    }
+                    if(pointer != null && pointer.button == InputButton.Left) {
+                        ActivateCanvasTab(tab);
+                    }
+                }),
+                (EventTriggerType.BeginDrag, e => {
+                    PointerEventData pointer =
+#if ML && IL2CPP
+                        e.TryCast<PointerEventData>();
+#else
+                        e as PointerEventData;
+#endif
+                    if(pointer == null || pointer.button != InputButton.Left) {
+                        return;
+                    }
+
+                    BeginCanvasTabDrag(tab, pointer);
+                }),
+                (EventTriggerType.Drag, e => {
+                    if(draggedCanvasTab != tab) {
+                        return;
+                    }
+
+                    PointerEventData pointer =
+#if ML && IL2CPP
+                        e.TryCast<PointerEventData>();
+#else
+                        e as PointerEventData;
+#endif
+                    if(pointer != null && MoveCanvasTab(tab, pointer)) {
+                        canvasTabDragReordered = true;
+                    }
+                }),
+                (EventTriggerType.EndDrag, _ => {
+                    if(draggedCanvasTab != tab) {
+                        return;
+                    }
+
+                    EndCanvasTabDrag(tab);
+                })
+            );
+
+            GameObject labelObject = new("CanvasTabLabel");
+            labelObject.transform.SetParent(tabObject.transform, false);
+            var labelRect = labelObject.AddComponent<RectTransform>();
+            var label = labelObject.AddComponent<TextMeshProUGUI>();
+            label.font = MainCore.Res.Get<TMP_FontAsset>(Asset.SUIT_Medium);
+            label.fontSize = 12f;
+            label.text = string.IsNullOrEmpty(tab.Canvas.Config.Name)
+                ? MainCore.Tr.Get("EMPTY", "(Empty)")
+                : tab.Canvas.Config.Name;
+            label.color = Color.white;
+            label.alignment = TextAlignmentOptions.Left;
+            label.verticalAlignment = VerticalAlignmentOptions.Middle;
+            label.textWrappingMode = TextWrappingModes.NoWrap;
+            label.overflowMode = TextOverflowModes.Ellipsis;
+            label.raycastTarget = false;
+            var labelLE = labelObject.AddComponent<LayoutElement>();
+            labelLE.flexibleWidth = 1f;
+            labelLE.minWidth = 40f;
+
+            GameObject closeObject = new("CloseTab");
+            closeObject.transform.SetParent(tabObject.transform, false);
+            var closeRect = closeObject.AddComponent<RectTransform>();
+            var closeLE = closeObject.AddComponent<LayoutElement>();
+            closeLE.preferredWidth = 12f;
+            closeLE.minWidth = 12f;
+            closeLE.preferredHeight = 12f;
+            closeLE.minHeight = 12f;
+            var closeImage = closeObject.AddComponent<Image>();
+            closeImage.sprite = MainCore.Spr.Get(UISprite.X128);
+            closeImage.preserveAspect = true;
+            closeImage.color = Color.white;
+            var closeTrigger = closeObject.AddComponent<EventTrigger>();
+            UnityUtils.AddEvents(closeTrigger,
+                (EventTriggerType.PointerClick, e => {
+                    PointerEventData pointer =
+#if ML && IL2CPP
+                        e.TryCast<PointerEventData>();
+#else
+                        e as PointerEventData;
+#endif
+                    if(pointer != null && pointer.button == InputButton.Left) {
+                        CloseCanvasTab(tab);
+                    }
+                })
+            );
+        }
+
+        Canvas.ForceUpdateCanvases();
+        LayoutRebuilder.ForceRebuildLayoutImmediate(tabsContent);
+        if(activeTab != null) {
+            for(int i = 0; i < canvasTabs.Count; i++) {
+                if(canvasTabs[i] == activeTab) {
+                    var scroll = tabsContent.GetComponentInParent<ScrollRect>();
+                    if(scroll != null) {
+                        var activeRect = tabsContent.GetChild(i) as RectTransform;
+                        float viewportWidth = scroll.viewport.rect.width;
+                        float contentWidth = tabsContent.rect.width;
+                        float maxOffset = Mathf.Max(0f, contentWidth - viewportWidth);
+                        float currentOffset = -tabsContent.anchoredPosition.x;
+                        float targetOffset = currentOffset;
+                        if(activeRect != null) {
+                            float tabLeft = activeRect.anchoredPosition.x;
+                            float tabRight = tabLeft + activeRect.rect.width;
+                            if(tabLeft < currentOffset) {
+                                targetOffset = tabLeft;
+                            } else if(tabRight > currentOffset + viewportWidth) {
+                                targetOffset = tabRight - viewportWidth;
+                            }
+                        }
+                        targetOffset = Mathf.Clamp(targetOffset, 0f, maxOffset);
+                        tabsContent.anchoredPosition = new Vector2(-targetOffset, tabsContent.anchoredPosition.y);
+                        scroll.StopMovement();
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
+    private void BeginCanvasTabDrag(CanvasTabState tab, PointerEventData pointer) {
+        if(canvasTabs.Count < 2 || tab.TabRect == null || !RectTransformUtility.ScreenPointToLocalPointInRectangle(
+            tabsContent,
+            pointer.position,
+            pointer.pressEventCamera,
+            out Vector2 localPointer
+        )) {
+            return;
+        }
+
+        RectTransform tabRect = tab.TabRect;
+        LayoutElement tabLayout = tabRect.GetComponent<LayoutElement>();
+        Vector3 tabCenter = tabsContent.InverseTransformPoint(tabRect.TransformPoint(tabRect.rect.center));
+        float width = tabRect.rect.width;
+        float height = tabRect.rect.height;
+
+        GameObject placeholderObject = new("CanvasTabDragPlaceholder");
+        placeholderObject.transform.SetParent(tabsContent, false);
+        canvasTabDragPlaceholder = placeholderObject.AddComponent<RectTransform>();
+        var placeholderLayout = placeholderObject.AddComponent<LayoutElement>();
+        placeholderLayout.minWidth = width;
+        placeholderLayout.preferredWidth = width;
+        placeholderLayout.minHeight = height;
+        placeholderLayout.preferredHeight = height;
+        placeholderLayout.flexibleWidth = 0f;
+        placeholderLayout.flexibleHeight = 0f;
+        canvasTabDragPlaceholder.SetSiblingIndex(tabRect.GetSiblingIndex());
+
+        draggedCanvasTab = tab;
+        draggedCanvasTabLayout = tabLayout;
+        draggedCanvasTabLayout.ignoreLayout = true;
+        canvasTabDragOriginalAnchorMin = tabRect.anchorMin;
+        canvasTabDragOriginalAnchorMax = tabRect.anchorMax;
+        canvasTabDragOriginalPivot = tabRect.pivot;
+        canvasTabDragOriginalSizeDelta = tabRect.sizeDelta;
+        canvasTabDragPointerOffsetX = localPointer.x - tabCenter.x;
+        canvasTabDragPreviousCenterX = tabCenter.x;
+        canvasTabDragY = tabCenter.y;
+        canvasTabDragWidth = width;
+        canvasTabDragReordered = false;
+
+        tabRect.anchorMin = new Vector2(0f, 0.5f);
+        tabRect.anchorMax = new Vector2(0f, 0.5f);
+        tabRect.pivot = new Vector2(0.5f, 0.5f);
+        tabRect.sizeDelta = new Vector2(width, height);
+        tabRect.anchoredPosition = new Vector2(tabCenter.x, tabCenter.y);
+        tabRect.SetAsLastSibling();
+        LayoutRebuilder.ForceRebuildLayoutImmediate(tabsContent);
+    }
+
+    private bool MoveCanvasTab(CanvasTabState tab, PointerEventData pointer) {
+        if(draggedCanvasTab != tab || canvasTabDragPlaceholder == null || !RectTransformUtility.ScreenPointToLocalPointInRectangle(
+            tabsContent,
+            pointer.position,
+            pointer.pressEventCamera,
+            out Vector2 localPointer
+        )) {
+            return false;
+        }
+
+        RectTransform firstSlot = GetCanvasTabSlotRect(canvasTabs[0]);
+        RectTransform lastSlot = GetCanvasTabSlotRect(canvasTabs[^1]);
+        float minCenter = GetCanvasTabLocalX(firstSlot, firstSlot.rect.xMin) + canvasTabDragWidth * 0.5f;
+        float maxCenter = GetCanvasTabLocalX(lastSlot, lastSlot.rect.xMax) - canvasTabDragWidth * 0.5f;
+        float centerX = Mathf.Clamp(localPointer.x - canvasTabDragPointerOffsetX, minCenter, maxCenter);
+        tab.TabRect.anchoredPosition = new Vector2(centerX, canvasTabDragY);
+
+        int currentIndex = canvasTabs.IndexOf(tab);
+        float deltaX = centerX - canvasTabDragPreviousCenterX;
+        canvasTabDragPreviousCenterX = centerX;
+        if(Mathf.Abs(deltaX) < 0.01f) {
+            canvasTabDragReordered = true;
+            return true;
+        }
+
+        float crossingEdge = centerX + Mathf.Sign(deltaX) * canvasTabDragWidth * 0.5f;
+        int insertIndex = 0;
+        foreach(var otherTab in canvasTabs) {
+            if(otherTab == tab) {
+                continue;
+            }
+
+            RectTransform otherSlot = GetCanvasTabSlotRect(otherTab);
+            float otherCenter = GetCanvasTabLocalX(otherSlot, otherSlot.rect.center.x);
+            if(otherCenter < crossingEdge) {
+                insertIndex++;
+            }
+        }
+
+        if(insertIndex == currentIndex) {
+            canvasTabDragReordered = true;
+            return true;
+        }
+
+        canvasTabs.RemoveAt(currentIndex);
+        canvasTabs.Insert(Math.Clamp(insertIndex, 0, canvasTabs.Count), tab);
+        for(int i = 0; i < canvasTabs.Count; i++) {
+            GetCanvasTabSlotRect(canvasTabs[i]).SetSiblingIndex(i);
+        }
+        tab.TabRect.SetAsLastSibling();
+
+        LayoutRebuilder.ForceRebuildLayoutImmediate(tabsContent);
+        canvasTabDragReordered = true;
+        return true;
+    }
+
+    private void EndCanvasTabDrag(CanvasTabState tab) {
+        if(draggedCanvasTab != tab) {
+            return;
+        }
+
+        suppressCanvasTabClick = canvasTabDragReordered;
+        if(canvasTabDragPlaceholder != null) {
+            canvasTabDragPlaceholder.SetParent(null, false);
+            UnityEngine.Object.Destroy(canvasTabDragPlaceholder.gameObject);
+            canvasTabDragPlaceholder = null;
+        }
+
+        if(tab.TabRect != null) {
+            tab.TabRect.anchorMin = canvasTabDragOriginalAnchorMin;
+            tab.TabRect.anchorMax = canvasTabDragOriginalAnchorMax;
+            tab.TabRect.pivot = canvasTabDragOriginalPivot;
+            tab.TabRect.sizeDelta = canvasTabDragOriginalSizeDelta;
+        }
+        if(draggedCanvasTabLayout != null) {
+            draggedCanvasTabLayout.ignoreLayout = false;
+        }
+
+        for(int i = 0; i < canvasTabs.Count; i++) {
+            canvasTabs[i].TabRect?.SetSiblingIndex(i);
+        }
+        LayoutRebuilder.ForceRebuildLayoutImmediate(tabsContent);
+
+        draggedCanvasTab = null;
+        draggedCanvasTabLayout = null;
+        canvasTabDragReordered = false;
+    }
+
+    private RectTransform GetCanvasTabSlotRect(CanvasTabState tab) {
+        return tab == draggedCanvasTab && canvasTabDragPlaceholder != null
+            ? canvasTabDragPlaceholder
+            : tab.TabRect;
+    }
+
+    private float GetCanvasTabLocalX(RectTransform rect, float x) {
+        Vector3 localPoint = tabsContent.InverseTransformPoint(
+            rect.TransformPoint(new Vector3(x, rect.rect.center.y, 0f))
+        );
+        return localPoint.x;
+    }
+
+    private static void AddCanvasTabHoverHighlight(Image background, EventTrigger trigger, bool active) {
+        Color normalColor = background.color;
+        Color hoverColor = active
+            ? O5KitAdapters.Ctx.Theme.ButtonHover
+            : Color.Lerp(normalColor, O5KitAdapters.Ctx.Theme.ButtonHover, 0.3f);
+        ITweenHandle hoverTween = null;
+
+        void Tint(Color color) {
+            hoverTween?.Kill();
+            hoverTween = background.TColor(color, 0.12f, O5Ease.OutSine);
+        }
+
+        UnityUtils.AddEvents(trigger,
+            (EventTriggerType.PointerEnter, () => Tint(hoverColor)),
+            (EventTriggerType.PointerExit, () => Tint(normalColor))
+        );
     }
 
     private void SelectObject(OvObject obj) {
         selectedObject = obj;
         if(obj != null) {
             DisarmDeleteButton();
+            for(OvObject parent = obj.Parent; parent != null; parent = parent.Parent) {
+                collapsedObjects.Remove(parent);
+            }
         }
+        SaveActiveTabState();
         RebuildHierarchy();
         RebuildInspector();
     }
@@ -663,7 +1105,10 @@ public class OvCanvasSettingPage : IDisposable {
         GameObject indent = new("Indent");
         indent.transform.SetParent(row, false);
         var indentLE = indent.AddComponent<LayoutElement>();
-        indentLE.preferredWidth = (depth + 1) * 16f;
+        indentLE.preferredWidth = depth * 16f;
+
+        bool hasChildren = obj.Children.Count > 0;
+        bool collapsed = hasChildren && collapsedObjects.Contains(obj);
 
         GameObject itemBtn = new("ItemButton");
         itemBtn.transform.SetParent(row, false);
@@ -677,7 +1122,38 @@ public class OvCanvasSettingPage : IDisposable {
         btnImg.type = Image.Type.Sliced;
         btnImg.color = (selectedObject == obj) ? UIColors.ObjectActive : UIColors.ObjectBG;
 
-        AddHierarchyDragHandle(itemBtn.transform);
+        RectTransform foldoutRect = null;
+        if(hasChildren) {
+            GameObject foldout = new("Foldout");
+            foldout.transform.SetParent(itemBtn.transform, false);
+            foldoutRect = foldout.AddComponent<RectTransform>();
+            foldoutRect.anchorMin = new Vector2(0f, 0.5f);
+            foldoutRect.anchorMax = new Vector2(0f, 0.5f);
+            foldoutRect.pivot = new Vector2(0.5f, 0.5f);
+            foldoutRect.anchoredPosition = new Vector2(14f, 0f);
+            foldoutRect.sizeDelta = new Vector2(12f, 12f);
+
+            var foldoutImg = foldout.AddComponent<Image>();
+            foldoutImg.sprite = O5KitAdapters.Ctx.Sprites.Icon("Triangle128");
+            foldoutImg.color = Color.white;
+            foldoutImg.preserveAspect = true;
+            float targetRot = collapsed ? 0f : 180f;
+            foldout.transform.localRotation = Quaternion.Euler(0f, 0f, targetRot);
+            if(obj == foldoutAnimTarget) {
+                foldoutAnimTarget = null;
+                float fromRot = foldoutAnimFrom;
+                var foldoutT = foldout.transform;
+                O5KitAdapters.Ctx.Tween.TweenFloat(
+                    () => 0f,
+                    t => {
+                        if(foldoutT) {
+                            foldoutT.localRotation = Quaternion.Euler(0f, 0f, Mathf.LerpUnclamped(fromRot, targetRot, t));
+                        }
+                    },
+                    1f, 0.4f, null, O5Ease.OutBack
+                );
+            }
+        }
 
         var tmp = O5Factory.ControlText(O5KitAdapters.Ctx, itemBtn.transform, 24f, true);
         tmp.text = obj.Config.Name;
@@ -705,6 +1181,19 @@ public class OvCanvasSettingPage : IDisposable {
                     return;
                 }
 
+                if(hasChildren && foldoutRect != null && RectTransformUtility.RectangleContainsScreenPoint(
+                    foldoutRect, ped.position, ped.pressEventCamera
+                )) {
+                    foldoutAnimFrom = collapsedObjects.Contains(obj) ? 0f : 180f;
+                    if(!collapsedObjects.Add(obj)) {
+                        collapsedObjects.Remove(obj);
+                    }
+                    foldoutAnimTarget = obj;
+                    SaveActiveTabState();
+                    RebuildHierarchy();
+                    return;
+                }
+
                 if(draggedObject == null) {
                     SelectObject(obj);
                 }
@@ -726,6 +1215,7 @@ public class OvCanvasSettingPage : IDisposable {
 
                 draggedObject = obj;
                 selectedObject = obj;
+                SaveActiveTabState();
                 dragCanvasGroup.alpha = 0.45f;
                 dragCanvasGroup.blocksRaycasts = false;
             }
@@ -750,33 +1240,12 @@ public class OvCanvasSettingPage : IDisposable {
         );
         itemBtnRect.offsetMax = Vector2.zero;
 
+        if(collapsed) {
+            return;
+        }
+
         for(int i = 0; i < obj.Children.Count; i++) {
             RenderHierarchyItem(obj.Children[i], depth + 1);
-        }
-    }
-
-    private static void AddHierarchyDragHandle(Transform parent) {
-        GameObject handle = new("DragHandle");
-        handle.transform.SetParent(parent, false);
-        RectTransform handleRect = handle.AddComponent<RectTransform>();
-        handleRect.anchorMin = new Vector2(0f, 0.5f);
-        handleRect.anchorMax = new Vector2(0f, 0.5f);
-        handleRect.pivot = new Vector2(0.5f, 0.5f);
-        handleRect.anchoredPosition = new Vector2(14f, 0f);
-        handleRect.sizeDelta = new Vector2(10f, 12f);
-
-        for(int i = 0; i < 3; i++) {
-            GameObject bar = new($"Bar{i}");
-            bar.transform.SetParent(handle.transform, false);
-            RectTransform barRect = bar.AddComponent<RectTransform>();
-            barRect.anchorMin = new Vector2(0.5f, 0.5f);
-            barRect.anchorMax = new Vector2(0.5f, 0.5f);
-            barRect.pivot = new Vector2(0.5f, 0.5f);
-            barRect.anchoredPosition = new Vector2(0f, 3f - (i * 3f));
-            barRect.sizeDelta = new Vector2(8f, 1.2f);
-            Image barImage = bar.AddComponent<Image>();
-            barImage.color = new Color(1f, 1f, 1f, 0.58f);
-            barImage.raycastTarget = false;
         }
     }
 
@@ -964,11 +1433,7 @@ public class OvCanvasSettingPage : IDisposable {
         );
 
         if(selectedObject == null) {
-            builder.BuildCanvas(currentCanvas, value => {
-                titleText.text = string.IsNullOrWhiteSpace(value)
-                    ? MainCore.Tr.Get("EMPTY", "(Empty)")
-                    : value;
-            });
+            builder.BuildCanvas(currentCanvas, _ => RebuildCanvasTabs());
         } else {
             builder.BuildObject(selectedObject);
         }
