@@ -155,7 +155,7 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
         }
 
         string text = input.text ?? string.Empty;
-        int caret = Math.Clamp(input.selectionFocusPosition, 0, text.Length);
+        int caret = Math.Min(Math.Max(input.selectionFocusPosition, 0), text.Length);
         if(suppressRefresh) {
             bool sameState = text == suppressedText && caret == suppressedCaret;
             suppressRefresh = false;
@@ -455,8 +455,8 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
         }
 
         string text = input.text ?? string.Empty;
-        int start = Math.Clamp(replacementStart, 0, text.Length);
-        int end = Math.Clamp(start + replacementLength, start, text.Length);
+        int start = Math.Min(Math.Max(replacementStart, 0), text.Length);
+        int end = Math.Min(Math.Max(start + replacementLength, start), text.Length);
         JsItem item = matches[index];
 
         string insertion = item.Name;
@@ -466,10 +466,10 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
             caretOffset = insertion.Length - 1;
         }
 
-        input.text = text[..start] + insertion + text[end..];
+        input.text = text.Substring(0, start) + insertion + text.Substring(end);
         input.ActivateInputField();
 
-        int caret = Math.Clamp(start + caretOffset, 0, (input.text ?? string.Empty).Length);
+        int caret = Math.Min(Math.Max(start + caretOffset, 0), (input.text ?? string.Empty).Length);
         input.selectionAnchorPosition = caret;
         input.selectionFocusPosition = caret;
         input.ForceLabelUpdate();
@@ -518,7 +518,7 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
         Vector3 localPosition = Vector3.zero;
 
         if(textInfo.characterCount > 0) {
-            int characterIndex = Math.Clamp(caret, 0, textInfo.characterCount - 1);
+            int characterIndex = Math.Min(Math.Max(caret, 0), textInfo.characterCount - 1);
             TMP_CharacterInfo character = textInfo.characterInfo[characterIndex];
             if(caret >= textInfo.characterCount) {
                 localPosition = new(character.xAdvance, character.bottomLeft.y - 4f, 0f);

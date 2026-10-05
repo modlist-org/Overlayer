@@ -27,7 +27,7 @@ public static class UserResourceManager {
             return path;
         }
 
-        return path.Replace(MainCore.Paths.RootPath, ModPathToken, StringComparison.OrdinalIgnoreCase);
+        return ReplaceOrdinalIgnoreCase(path, MainCore.Paths.RootPath, ModPathToken);
     }
 
     public static string FromUser(string path) {
@@ -36,12 +36,28 @@ public static class UserResourceManager {
         }
 
         if(path.StartsWith(ModPathToken, StringComparison.OrdinalIgnoreCase)) {
-            var relative = path[ModPathToken.Length..].TrimStart('/', '\\');
+            var relative = path.Substring(ModPathToken.Length).TrimStart('/', '\\');
 
             return Path.Combine(MainCore.Paths.RootPath, relative);
         }
 
         return path;
+    }
+
+    private static string ReplaceOrdinalIgnoreCase(string input, string oldValue, string newValue) {
+        if(string.IsNullOrEmpty(input) || string.IsNullOrEmpty(oldValue)) {
+            return input;
+        }
+        var sb = new System.Text.StringBuilder(input.Length);
+        int start = 0;
+        int index;
+        while((index = input.IndexOf(oldValue, start, StringComparison.OrdinalIgnoreCase)) >= 0) {
+            sb.Append(input, start, index - start);
+            sb.Append(newValue);
+            start = index + oldValue.Length;
+        }
+        sb.Append(input, start, input.Length - start);
+        return sb.ToString();
     }
 
     public static void Dispose() {

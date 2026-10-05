@@ -128,7 +128,7 @@ public sealed class TextEngineCore {
         int last = 0;
 
         foreach(var s in segs) {
-            int from = Math.Clamp(s.Index, 0, text.Length);
+            int from = Math.Min(Math.Max(s.Index, 0), text.Length);
             if(from > last) {
                 sb.Append(text, last, from - last);
             }
@@ -139,14 +139,14 @@ public sealed class TextEngineCore {
                 replacement = null;
             }
             if(replacement == null) {
-                int end = Math.Clamp(s.Index + s.Length, 0, text.Length);
+                int end = Math.Min(Math.Max(s.Index + s.Length, 0), text.Length);
                 if(end > from) {
                     sb.Append(text, from, end - from);
                 }
                 last = Math.Max(last, end);
             } else {
                 sb.Append(replacement);
-                last = Math.Max(last, Math.Clamp(s.Index + s.Length, 0, text.Length));
+                last = Math.Max(last, Math.Min(Math.Max(s.Index + s.Length, 0), text.Length));
             }
         }
 

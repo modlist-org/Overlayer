@@ -693,12 +693,12 @@ internal static class PageResources {
         string[] keys;
         if(currentMode == ResourceMode.Images) {
             keys = UserResourceManager.Spr.Keys
-                .Where(key => string.IsNullOrEmpty(query) || key.Contains(query, StringComparison.OrdinalIgnoreCase))
+                .Where(key => string.IsNullOrEmpty(query) || key.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0)
                 .OrderBy(key => key, StringComparer.OrdinalIgnoreCase)
                 .ToArray();
         } else {
             keys = UserResourceManager.Fnt.Keys
-                .Where(key => string.IsNullOrEmpty(query) || key.Contains(query, StringComparison.OrdinalIgnoreCase))
+                .Where(key => string.IsNullOrEmpty(query) || key.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0)
                 .OrderBy(key => key, StringComparer.OrdinalIgnoreCase)
                 .ToArray();
         }

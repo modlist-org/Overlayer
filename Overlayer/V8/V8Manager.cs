@@ -780,7 +780,7 @@ public class V8Manager : IRuntimeService {
             if(!File.Exists(path)) {
                 return;
             }
-            string json = await File.ReadAllTextAsync(path).ConfigureAwait(false);
+            string json = File.ReadAllText(path);
             var names = Newtonsoft.Json.JsonConvert.DeserializeObject<HashSet<string>>(json);
             if(names == null) {
                 return;
@@ -817,7 +817,7 @@ public class V8Manager : IRuntimeService {
         await _disabledScriptsSaveGate.WaitAsync().ConfigureAwait(false);
         try {
             string path = Path.Combine(ScriptFolderPath, DisabledScriptsFileName);
-            await File.WriteAllTextAsync(path, SerializeDisabledScripts()).ConfigureAwait(false);
+            File.WriteAllText(path, SerializeDisabledScripts());
         } catch(Exception e) {
             MainCore.Log.Wrn($"[{nameof(V8Manager)}] Failed to save disabled scripts: {e.Message}");
         } finally {

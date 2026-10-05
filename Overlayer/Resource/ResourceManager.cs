@@ -123,7 +123,7 @@ public sealed class ResourceManager(Assembly assembly, string resourcePath) : ID
 
         if(path.Contains("JetBrainsMonoNL")) {
             string fileName = Path.GetFileNameWithoutExtension(path);
-            string style = fileName.Split('-')[1];
+            string style = fileName.Split(new[]{'-'})[1];
 
             if(Enum.TryParse("SUIT_" + style, out Asset suitAsset)) {
                 string suitPath = assetMap[suitAsset];

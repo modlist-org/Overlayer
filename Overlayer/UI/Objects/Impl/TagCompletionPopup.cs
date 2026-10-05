@@ -145,7 +145,7 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
         }
 
         string text = input.text ?? string.Empty;
-        int caret = Math.Clamp(input.selectionFocusPosition, 0, text.Length);
+        int caret = Math.Min(Math.Max(input.selectionFocusPosition, 0), text.Length);
         if(suppressRefresh) {
             bool sameState = text == suppressedText && caret == suppressedCaret;
             suppressRefresh = false;
@@ -347,8 +347,8 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
         }
 
         string text = input.text ?? string.Empty;
-        int start = Math.Clamp(replacementStart, 0, text.Length);
-        int end = Math.Clamp(start + replacementLength, start, text.Length);
+        int start = Math.Min(Math.Max(replacementStart, 0), text.Length);
+        int end = Math.Min(Math.Max(start + replacementLength, start), text.Length);
         TagCore tag = matches[index];
         string name = tag.Name;
         bool hasClosingDelimiter = end < text.Length && text[end] == '}';
@@ -441,7 +441,7 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
 
     private void SetCaret(int caret) {
         int length = input.text?.Length ?? 0;
-        caret = Math.Clamp(caret, 0, length);
+        caret = Math.Min(Math.Max(caret, 0), length);
         input.selectionAnchorPosition = caret;
         input.selectionFocusPosition = caret;
         input.ForceLabelUpdate();
@@ -463,7 +463,7 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
 
         string currentText = input.text ?? string.Empty;
         SnippetStop active = snippetStops[snippetIndex];
-        int caret = Math.Clamp(input.selectionFocusPosition, 0, currentText.Length);
+        int caret = Math.Min(Math.Max(input.selectionFocusPosition, 0), currentText.Length);
         int delta = currentText.Length - snippetText.Length;
         int expectedEnd = active.End + delta;
         if(caret < active.Start || caret > expectedEnd) {
@@ -523,7 +523,7 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
         Vector3 localPosition = Vector3.zero;
 
         if(textInfo.characterCount > 0) {
-            int characterIndex = Math.Clamp(caret, 0, textInfo.characterCount - 1);
+            int characterIndex = Math.Min(Math.Max(caret, 0), textInfo.characterCount - 1);
             TMP_CharacterInfo character = textInfo.characterInfo[characterIndex];
             if(caret >= textInfo.characterCount) {
                 localPosition = new(character.xAdvance, character.bottomLeft.y - 4f, 0f);

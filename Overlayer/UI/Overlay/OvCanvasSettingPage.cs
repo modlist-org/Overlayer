@@ -857,7 +857,7 @@ public class OvCanvasSettingPage : IDisposable {
         }
 
         RectTransform firstSlot = GetCanvasTabSlotRect(canvasTabs[0]);
-        RectTransform lastSlot = GetCanvasTabSlotRect(canvasTabs[^1]);
+        RectTransform lastSlot = GetCanvasTabSlotRect(canvasTabs[canvasTabs.Count - 1]);
         float minCenter = GetCanvasTabLocalX(firstSlot, firstSlot.rect.xMin) + canvasTabDragWidth * 0.5f;
         float maxCenter = GetCanvasTabLocalX(lastSlot, lastSlot.rect.xMax) - canvasTabDragWidth * 0.5f;
         float centerX = Mathf.Clamp(localPointer.x - canvasTabDragPointerOffsetX, minCenter, maxCenter);
@@ -891,7 +891,7 @@ public class OvCanvasSettingPage : IDisposable {
         }
 
         canvasTabs.RemoveAt(currentIndex);
-        canvasTabs.Insert(Math.Clamp(insertIndex, 0, canvasTabs.Count), tab);
+        canvasTabs.Insert(Math.Min(Math.Max(insertIndex, 0), canvasTabs.Count), tab);
         for(int i = 0; i < canvasTabs.Count; i++) {
             GetCanvasTabSlotRect(canvasTabs[i]).SetSiblingIndex(i);
         }
@@ -1370,7 +1370,7 @@ public class OvCanvasSettingPage : IDisposable {
             currentCanvas.Attach(moving);
             currentCanvas.OvObjects.Remove(moving);
             int index = currentCanvas.OvObjects.IndexOf(target) + (zone == HierarchyDropZone.After ? 1 : 0);
-            currentCanvas.OvObjects.Insert(Math.Clamp(index, 0, currentCanvas.OvObjects.Count), moving);
+            currentCanvas.OvObjects.Insert(Math.Min(Math.Max(index, 0), currentCanvas.OvObjects.Count), moving);
             SyncRootSiblingOrder();
         }
 

@@ -40,8 +40,8 @@ public static class SignatureResolver {
                 format = rawArgs[0];
             }
         } else if(hasFormatFlag && rawArgs.Length > 0) {
-            format = rawArgs[^1];
-            args = rawArgs[..^1];
+            format = rawArgs[rawArgs.Length - 1];
+            args = rawArgs.Take(rawArgs.Length - 1).ToArray();
         }
 
         int valueParamCount = parameters.Length;

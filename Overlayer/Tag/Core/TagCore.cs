@@ -123,9 +123,9 @@ public class TagCore {
         Parameters = new ParameterInfo[paramNames.Length];
         for(int i = 0; i < paramNames.Length; i++) {
             string paramName = paramNames[i];
-            bool isOptional = paramName.EndsWith('?');
+            bool isOptional = paramName.EndsWith("?");
             if(isOptional) {
-                paramName = paramName[..^1];
+                paramName = paramName.Substring(0, paramName.Length - 1);
             }
 
             Parameters[i] = new JSParameterInfo(paramName, typeof(object), i, isOptional);

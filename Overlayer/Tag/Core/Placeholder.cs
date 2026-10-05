@@ -29,19 +29,16 @@ public readonly struct Placeholder(
     }
 
     public override int GetHashCode() {
-        HashCode hash = new();
-
-        hash.Add(Name);
-
-        if(Args == null) {
-            return hash.ToHashCode();
+        unchecked {
+            int hash = 17;
+            hash = hash * 31 + (Name?.GetHashCode() ?? 0);
+            if(Args != null) {
+                foreach(var t in Args) {
+                    hash = hash * 31 + (t?.GetHashCode() ?? 0);
+                }
+            }
+            return hash;
         }
-
-        foreach(var t in Args) {
-            hash.Add(t);
-        }
-
-        return hash.ToHashCode();
     }
 
     public static bool operator ==(

@@ -151,13 +151,13 @@ public class JSPatchHost(JSScriptLoader loader, string filePath) {
         if(t.StartsWith("...", StringComparison.Ordinal)) {
             return null;
         }
-        t = t.TrimStart();
+        t = t.TrimStart(new char[]{});
         if(t.Length == 0 || t[0] is '{' or '[' or '(') {
             return null;
         }
         int eq = t.IndexOf('=');
         if(eq >= 0) {
-            t = t[..eq].TrimEnd();
+            t = t.Substring(0, eq).TrimEnd(new char[]{});
         }
         int i = 0;
         while(i < t.Length && (char.IsLetterOrDigit(t[i]) || t[i] == '_' || t[i] == '$')) {
@@ -192,7 +192,7 @@ public class JSPatchHost(JSScriptLoader loader, string filePath) {
 
     private static bool HasRest(string source) {
         foreach(string p in SplitTopLevel(ParamsOf(source))) {
-            if(p.TrimStart().StartsWith("...", StringComparison.Ordinal)) {
+            if(p.TrimStart(new char[]{}).StartsWith("...", StringComparison.Ordinal)) {
                 return true;
             }
         }
@@ -220,8 +220,8 @@ public class JSPatchHost(JSScriptLoader loader, string filePath) {
             if(arrow < 0) {
                 return string.Empty;
             }
-            string head = source[..arrow].Trim();
-            return head.StartsWith("...", StringComparison.Ordinal) ? "...x" : head.Contains(',') ? head : head;
+            string head = source.Substring(0, arrow).Trim();
+            return head.StartsWith("...", StringComparison.Ordinal) ? "...x" : head.IndexOf(',') >= 0 ? head : head;
         }
         int depth = 0;
         for(int i = open; i < source.Length; i++) {

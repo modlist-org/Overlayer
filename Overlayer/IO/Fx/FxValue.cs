@@ -129,7 +129,12 @@ public abstract class FxValue {
             return true;
         }
 
-        return Enum.TryParse(enumType, text, true, out _);
+        try {
+            Enum.Parse(enumType, text, true);
+            return true;
+        } catch {
+            return false;
+        }
     }
 
     internal static float EvaluateNumericComponent(string expr) {
@@ -156,7 +161,11 @@ public sealed class FxValue<T> : FxValue, IFxValue, ISettingsFile, ICopyable<FxV
             RegisterConverter(raw => {
                 if (string.IsNullOrWhiteSpace(raw)) return default!;
                 if (int.TryParse(raw, out var intVal)) return (T)Enum.ToObject(typeof(T), intVal);
-                return Enum.TryParse(typeof(T), raw, true, out var parsed) ? (T)parsed : default!;
+                try {
+                    return (T)Enum.Parse(typeof(T), raw, true);
+                } catch {
+                    return default!;
+                }
             });
             return;
         }
