@@ -53,6 +53,7 @@ public class V8Manager : IRuntimeService {
     public void Initialize() => InitializationTask = InitializeAsync();
 
     public Task InitializeAsync() {
+        NativePreloader.EnsureLoaded();
         ImplFilePath = Path.Combine(MainCore.Paths.JSPath, ImplFileName);
         ImplDtsFilePath = Path.Combine(MainCore.Paths.JSPath, ImplDtsFileName);
         ScriptFolderPath = Path.Combine(MainCore.Paths.JSPath, ScriptFolderName);
