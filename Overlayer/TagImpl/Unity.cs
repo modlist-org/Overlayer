@@ -1,4 +1,3 @@
-using Overlayer.Compat;
 using Overlayer.Tag.Core;
 using UnityEngine.SceneManagement;
 
@@ -35,11 +34,7 @@ public static class Unity {
     public static int ScreenHeight => UnityEngine.Screen.height;
 
     [Tag(Desc = "[Unity] Current target refresh rate of the monitor")]
-    // CS0618: refreshRate is deprecated on modern Unity but is the only name
-    // present on old Unity (refreshRateRatio does not exist there).
-#pragma warning disable CS0618
-    public static int RefreshRate => UnityEngine.Screen.currentResolution.refreshRate;
-#pragma warning restore CS0618
+    public static int RefreshRate => (int)UnityEngine.Screen.currentResolution.refreshRateRatio.value;
 
     [Tag(Desc = "[Unity] Returns true if the game is in fullscreen mode")]
     public static bool IsFullScreen => UnityEngine.Screen.fullScreen;
@@ -48,7 +43,7 @@ public static class Unity {
     public static float TimeScale => UnityEngine.Time.timeScale;
 
     [Tag(Desc = "[Unity] Total time elapsed since game start, in seconds")]
-    public static double TimeSinceStart => UnityTimeCompat.UnscaledTimeAsDouble;
+    public static double TimeSinceStart => UnityEngine.Time.unscaledTimeAsDouble;
 
     [Tag(Desc = "[Unity] Time in seconds since the last frame\n(affected by timeScale)")]
     public static float DeltaTime => UnityEngine.Time.deltaTime;
@@ -57,7 +52,7 @@ public static class Unity {
     public static float UnscaledDeltaTime => UnityEngine.Time.unscaledDeltaTime;
 
     [Tag(Desc = "[Unity] Time in seconds since the start of the frame\n(affected by timeScale)")]
-    public static double Time => UnityTimeCompat.TimeAsDouble;
+    public static double Time => UnityEngine.Time.timeAsDouble;
 
     [Tag(Desc = "[Unity] Interval in seconds at which physics\nand other fixed frame rate updates are performed")]
     public static float FixedDeltaTime => UnityEngine.Time.fixedDeltaTime;

@@ -194,7 +194,7 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
         name.fontSize = 14f;
         name.alignment = TextAlignmentOptions.Left;
         name.verticalAlignment = VerticalAlignmentOptions.Middle;
-        TmpCompat.SetNoWrap(name);
+        name.textWrappingMode = TextWrappingModes.NoWrap;
         name.overflowMode = TextOverflowModes.Ellipsis;
         name.rectTransform.offsetMin = new(10f, 0f);
         name.rectTransform.offsetMax = new(-150f, 0f);
@@ -205,7 +205,7 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
         detail.fontSize = 11f;
         detail.alignment = TextAlignmentOptions.Right;
         detail.verticalAlignment = VerticalAlignmentOptions.Middle;
-        TmpCompat.SetNoWrap(detail);
+        detail.textWrappingMode = TextWrappingModes.NoWrap;
         detail.overflowMode = TextOverflowModes.Ellipsis;
         detail.color = new Color(1f, 1f, 1f, 0.48f);
         detail.rectTransform.offsetMin = new(150f, 0f);

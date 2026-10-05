@@ -729,7 +729,7 @@ public class OvCanvasSettingPage : IDisposable {
             label.color = Color.white;
             label.alignment = TextAlignmentOptions.Left;
             label.verticalAlignment = VerticalAlignmentOptions.Middle;
-            TmpCompat.SetNoWrap(label);
+            label.textWrappingMode = TextWrappingModes.NoWrap;
             label.overflowMode = TextOverflowModes.Ellipsis;
             label.raycastTarget = false;
             var labelLE = labelObject.AddComponent<LayoutElement>();

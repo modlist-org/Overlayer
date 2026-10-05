@@ -1,7 +1,4 @@
 #if !IL2CPP
-// CS0618: drag/angularDrag are deprecated on modern Unity but are the only names
-// present on old Unity (linearDamping/angularDamping do not exist there).
-#pragma warning disable CS0618
 using Newtonsoft.Json.Linq;
 using Overlayer.IO.Fx;
 using Overlayer.IO.Interface;
@@ -72,8 +69,8 @@ public class Rigidbody2DSettings : UnityComponentSettingsBase, ICopyable<Rigidbo
         com.simulated = _lastSimulated;
         com.useAutoMass = _lastUseAutoMass;
         com.mass = _lastMass;
-        com.drag = _lastLinearDamping;
-        com.angularDrag = _lastAngularDamping;
+        com.linearDamping = _lastLinearDamping;
+        com.angularDamping = _lastAngularDamping;
         com.gravityScale = _lastGravityScale;
         com.collisionDetectionMode = _lastCollisionDetectionMode;
         com.sleepMode = _lastSleepMode;
@@ -94,8 +91,8 @@ public class Rigidbody2DSettings : UnityComponentSettingsBase, ICopyable<Rigidbo
         Simulated.Value = com.simulated;
         UseAutoMass.Value = com.useAutoMass;
         Mass.Value = com.mass;
-        LinearDamping.Value = com.drag;
-        AngularDamping.Value = com.angularDrag;
+        LinearDamping.Value = com.linearDamping;
+        AngularDamping.Value = com.angularDamping;
         GravityScale.Value = com.gravityScale;
         CollisionDetectionMode.Value = com.collisionDetectionMode;
         SleepMode.Value = com.sleepMode;
@@ -106,8 +103,8 @@ public class Rigidbody2DSettings : UnityComponentSettingsBase, ICopyable<Rigidbo
         _lastSimulated = com.simulated;
         _lastUseAutoMass = com.useAutoMass;
         _lastMass = com.mass;
-        _lastLinearDamping = com.drag;
-        _lastAngularDamping = com.angularDrag;
+        _lastLinearDamping = com.linearDamping;
+        _lastAngularDamping = com.angularDamping;
         _lastGravityScale = com.gravityScale;
         _lastCollisionDetectionMode = com.collisionDetectionMode;
         _lastSleepMode = com.sleepMode;
@@ -132,8 +129,8 @@ public class Rigidbody2DSettings : UnityComponentSettingsBase, ICopyable<Rigidbo
         FxUtil.ApplyIfChanged(ref _lastSimulated, Simulated.Value, v => com.simulated = v);
         FxUtil.ApplyIfChanged(ref _lastUseAutoMass, UseAutoMass.Value, v => com.useAutoMass = v);
         FxUtil.ApplyIfChanged(ref _lastMass, Mass.Value, v => com.mass = v);
-        FxUtil.ApplyIfChanged(ref _lastLinearDamping, LinearDamping.Value, v => com.drag = v);
-        FxUtil.ApplyIfChanged(ref _lastAngularDamping, AngularDamping.Value, v => com.angularDrag = v);
+        FxUtil.ApplyIfChanged(ref _lastLinearDamping, LinearDamping.Value, v => com.linearDamping = v);
+        FxUtil.ApplyIfChanged(ref _lastAngularDamping, AngularDamping.Value, v => com.angularDamping = v);
         FxUtil.ApplyIfChanged(ref _lastGravityScale, GravityScale.Value, v => com.gravityScale = v);
         FxUtil.ApplyIfChanged(ref _lastCollisionDetectionMode, CollisionDetectionMode.Value, v => com.collisionDetectionMode = v);
         FxUtil.ApplyIfChanged(ref _lastSleepMode, SleepMode.Value, v => com.sleepMode = v);
@@ -192,5 +189,4 @@ public class Rigidbody2DSettings : UnityComponentSettingsBase, ICopyable<Rigidbo
         };
     }
 }
-#pragma warning restore CS0618
 #endif

@@ -1,5 +1,4 @@
 ﻿using Newtonsoft.Json.Linq;
-using Overlayer.Compat;
 using Overlayer.IO.Fx;
 using Overlayer.IO.Interface;
 using Overlayer.IO.User;
@@ -20,7 +19,7 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
     public FxValue<float> FontSize = new(48f);
     public FxValue<bool> RichText = new(true);
     public FxValue<TextAlignmentOptions> Alignment = new(TextAlignmentOptions.Center);
-    public FxValue<int> TextWrappingMode = new(TmpCompat.Normal);
+    public FxValue<TextWrappingModes> TextWrappingMode = new(TextWrappingModes.Normal);
     public FxValue<float> LineSpacing = new(0f);
     public FxValue<float> CharacterSpacing = new(0f);
     public FxValue<float> WordSpacing = new(0f);
@@ -44,7 +43,7 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
     private float _lastFontSize = 48f;
     private bool _lastRichText = true;
     private TextAlignmentOptions _lastAlignment = TextAlignmentOptions.Center;
-    private int _lastTextWrappingMode = TmpCompat.Normal;
+    private TextWrappingModes _lastTextWrappingMode = TextWrappingModes.Normal;
     private float _lastLineSpacing;
     private float _lastCharacterSpacing;
     private float _lastWordSpacing;
@@ -138,7 +137,7 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
         com.fontSize = _lastFontSize;
         com.richText = _lastRichText;
         com.alignment = _lastAlignment;
-        TmpCompat.SetWrappingMode(com, _lastTextWrappingMode);
+        com.textWrappingMode = _lastTextWrappingMode;
         com.lineSpacing = _lastLineSpacing;
         com.characterSpacing = _lastCharacterSpacing;
         com.wordSpacing = _lastWordSpacing;
@@ -191,7 +190,7 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
         FontSize.Value = com.fontSize;
         RichText.Value = com.richText;
         Alignment.Value = com.alignment;
-        TextWrappingMode.Value = TmpCompat.GetWrappingMode(com);
+        TextWrappingMode.Value = com.textWrappingMode;
         LineSpacing.Value = com.lineSpacing;
         CharacterSpacing.Value = com.characterSpacing;
         WordSpacing.Value = com.wordSpacing;
@@ -324,7 +323,7 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
         }
         RichText = IOUtils.ReadFx(token, nameof(RichText), RichText);
         Alignment = IOUtils.ReadFx(token, nameof(Alignment), Alignment);
-        TextWrappingMode = ReadWrappingMode(token, nameof(TextWrappingMode), TextWrappingMode);
+        TextWrappingMode = IOUtils.ReadFx(token, nameof(TextWrappingMode), TextWrappingMode);
         LineSpacing = IOUtils.ReadFx(token, nameof(LineSpacing), LineSpacing);
         CharacterSpacing = IOUtils.ReadFx(token, nameof(CharacterSpacing), CharacterSpacing);
         WordSpacing = IOUtils.ReadFx(token, nameof(WordSpacing), WordSpacing);
@@ -351,26 +350,6 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
         AutoSize = IOUtils.ReadFx(token, nameof(AutoSize), AutoSize);
         FontKey = IOUtils.ReadFx(token, nameof(FontKey), FontKey);
         FontSizeRange = IOUtils.ReadFx(token, nameof(FontSizeRange), FontSizeRange);
-    }
-
-    // Old files store the wrapping mode as an enum name ("Normal", "NoWrap", ...);
-    // the field is now int-based for old-TMP compatibility, so migrate on read.
-    private static FxValue<int> ReadWrappingMode(JToken token, string key, FxValue<int> fallback) {
-        if(token is JObject obj && obj.TryGetValue(key, out var child)) {
-            obj[key] = MigrateWrappingToken(child);
-        }
-        return IOUtils.ReadFx(token, key, fallback);
-    }
-
-    private static JToken MigrateWrappingToken(JToken child) {
-        if(child is JValue value && value.Type == JTokenType.String) {
-            return new JValue(TmpCompat.FromName(value.Value<string>(), TmpCompat.Normal));
-        }
-        if(child is JObject fx && fx.TryGetValue("Value", out var inner)
-            && inner is JValue innerValue && innerValue.Type == JTokenType.String) {
-            fx["Value"] = new JValue(TmpCompat.FromName(innerValue.Value<string>(), TmpCompat.Normal));
-        }
-        return child;
     }
 
     public TextMeshProUGUISettings Copy() {

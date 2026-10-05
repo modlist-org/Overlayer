@@ -44,8 +44,6 @@
     <Compile Include="..\Overlayer\Utility\Access\Access.cs" />
     <Compile Include="..\Overlayer\TextEngine\Parse\ParsedTag.cs" />
     <Compile Include="..\Overlayer\TextEngine\Parse\Parser.cs" />
-    <Compile Include="..\Overlayer\Compat\TmpCompat.cs" />
-    <Compile Include="..\Overlayer\Compat\UnityCompat.cs" />
   </ItemGroup>
 
 </Project>
