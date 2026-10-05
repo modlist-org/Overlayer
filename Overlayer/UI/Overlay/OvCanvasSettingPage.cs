@@ -256,6 +256,7 @@ public class OvCanvasSettingPage : IDisposable {
             newObj.Config.Name = "TextObject";
             newObj.Config.TextConfig = new TextMeshProUGUISettings();
             newObj.Config.TextEngineConfig = new OvTextSettings();
+            newObj.Config.ContentSizeFitterConfig ??= new ContentSizeFitterSettings();
 
             newObj.ApplyComponent();
             newObj.ApplyConfig();
