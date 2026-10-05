@@ -16,6 +16,7 @@ public sealed class KpsTracker : IRuntimeTick {
     private static readonly KeyCode[] KeyboardKeys = BuildKeyboardKeys();
     private readonly Queue<double> keyTimes = new();
     private readonly Dictionary<int, (double value, double next)> held = new();
+    private readonly object gate = new();
 
     public KpsTracker() {
         Instance = this;
@@ -27,7 +28,11 @@ public sealed class KpsTracker : IRuntimeTick {
     public bool SuppressUnityKeys { get; set; }
 
     public void ReportKeyPress() {
-        Enqueue(keyTimes, UnityEngine.Time.realtimeSinceStartup);
+        // Must run on the Unity main thread (Time API). SkyHook feeds this
+        // via MainThread.Enqueue; the lock only guards the queue itself.
+        lock(gate) {
+            Enqueue(keyTimes, UnityEngine.Time.realtimeSinceStartup);
+        }
     }
 
     public void Tick() {
@@ -39,18 +44,24 @@ public sealed class KpsTracker : IRuntimeTick {
                     keys++;
                 }
             }
-            for(int i = 0; i < keys; i++) {
-                Enqueue(keyTimes, now);
+            if(keys > 0) {
+                lock(gate) {
+                    for(int i = 0; i < keys; i++) {
+                        Enqueue(keyTimes, now);
+                    }
+                }
             }
         }
 
-        Prune(keyTimes, MaxWindowMs);
+        lock(gate) {
+            Prune(keyTimes, MaxWindowMs);
+        }
     }
 
     // The displayed value refreshes every window, but the recording
     // underneath stays exact: each press contributes e^-age (tau = 1s),
     // so a steady r presses/sec reads r, and bursts sum honestly.
-    // windowMs <= 0 freezes the first computed value indefinitely.
+    // windowMs <= 0 evaluates live every frame.
     public double Rate(int windowMs) {
         double now = UnityEngine.Time.realtimeSinceStartup;
         if(windowMs <= 0) {
@@ -69,16 +80,18 @@ public sealed class KpsTracker : IRuntimeTick {
     }
 
     private double DecaySum(double now) {
-        Prune(keyTimes, MaxWindowMs);
-        double value = 0d;
-        foreach(double pressed in keyTimes) {
-            double age = now - pressed;
-            if(age < 0d) {
-                continue;
+        lock(gate) {
+            Prune(keyTimes, MaxWindowMs);
+            double value = 0d;
+            foreach(double pressed in keyTimes) {
+                double age = now - pressed;
+                if(age < 0d) {
+                    continue;
+                }
+                value += Math.Exp(-age);
             }
-            value += Math.Exp(-age);
+            return value;
         }
-        return value;
     }
 
     private static void Enqueue(Queue<double> queue, double time) {
