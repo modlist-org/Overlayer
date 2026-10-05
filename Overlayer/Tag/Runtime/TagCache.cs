@@ -127,7 +127,7 @@ public sealed class TagCache {
             return null;
         }
         int sep = key.IndexOf(':');
-        return sep < 0 ? key : key.Substring(0, sep);
+        return sep < 0 ? key : key[..sep];
     }
 
     public string GetKey(ParsedTag parsed) => MakeKey(parsed);

@@ -877,8 +877,8 @@ internal sealed class OvInspectorBuilder(
                     int stringIndex = text.textInfo.characterInfo[charIndex].index;
                     var covering = displayedDiagnostics
                         .Where(d => {
-                            int start = Math.Min(Math.Max(d.Context.Index, 0), displayedText.Length);
-                            int end = Math.Min(Math.Max(start + Math.Max(1, d.Context.Length), start), displayedText.Length);
+                            int start = Math.Clamp(d.Context.Index, 0, displayedText.Length);
+                            int end = Math.Clamp(start + Math.Max(1, d.Context.Length), start, displayedText.Length);
                             return stringIndex >= start && stringIndex < end;
                         })
                         .OrderByDescending(d => d.Severity)
@@ -1075,8 +1075,8 @@ internal sealed class OvInspectorBuilder(
         float boundMaxY = boundMinY + rootHeight;
 
         foreach(var group in groups) {
-            int start = Math.Min(Math.Max(group.Key.Index, 0), source.Length);
-            int end = Math.Min(Math.Max(start + Math.Max(1, group.Key.Length), start), source.Length);
+            int start = Math.Clamp(group.Key.Index, 0, source.Length);
+            int end = Math.Clamp(start + Math.Max(1, group.Key.Length), start, source.Length);
             Color underlineColor = SeverityUnityColor(group.Max(d => d.Severity));
             var characters = sourceText.textInfo.characterInfo
                 .Take(sourceText.textInfo.characterCount)
@@ -1146,8 +1146,8 @@ internal sealed class OvInspectorBuilder(
         TagSyntaxKind?[] kinds = source == null ? [] : new TagSyntaxKind?[source.Length];
         if(source != null) {
             foreach(var span in spans) {
-                int start = Math.Min(Math.Max(span.Index, 0), kinds.Length);
-                int end = Math.Min(Math.Max(start + span.Length, start), kinds.Length);
+                int start = Math.Clamp(span.Index, 0, kinds.Length);
+                int end = Math.Clamp(start + span.Length, start, kinds.Length);
                 for(int i = start; i < end; i++) {
                     kinds[i] = span.Kind;
                 }
@@ -1245,7 +1245,7 @@ internal sealed class OvInspectorBuilder(
 
     private static int GetLine(string source, int index) {
         source ??= string.Empty;
-        int limit = Math.Min(Math.Max(index, 0), source.Length);
+        int limit = Math.Clamp(index, 0, source.Length);
         int line = 0;
         for(int i = 0; i < limit; i++) {
             if(source[i] == '\n') {

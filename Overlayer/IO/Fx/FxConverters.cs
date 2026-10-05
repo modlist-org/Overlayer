@@ -210,8 +210,8 @@ public static class FxConverters {
         }
 
         var text = input.Trim();
-        if (text.Length > 0 && text[0] == '[' && text[text.Length - 1] == ']') {
-            text = text.Substring(1, text.Length - 2);
+        if (text.StartsWith('[') && text.EndsWith(']')) {
+            text = text[1..^1];
         }
 
         var parts = new List<string>();

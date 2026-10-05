@@ -190,17 +190,8 @@ public struct GradientColor : ISettingsFile, ICopyable<GradientColor>, IEquatabl
     public override readonly bool Equals(object obj)
         => obj is GradientColor other && Equals(other);
 
-    public override readonly int GetHashCode() {
-        unchecked {
-            int hash = 17;
-            hash = hash * 31 + solidColor.GetHashCode();
-            hash = hash * 31 + data.topLeft.GetHashCode();
-            hash = hash * 31 + data.topRight.GetHashCode();
-            hash = hash * 31 + data.bottomLeft.GetHashCode();
-            hash = hash * 31 + data.bottomRight.GetHashCode();
-            return hash;
-        }
-    }
+    public override readonly int GetHashCode()
+        => HashCode.Combine(solidColor, data.topLeft, data.topRight, data.bottomLeft, data.bottomRight);
 
     public static bool operator ==(GradientColor a, GradientColor b) => a.Equals(b);
 

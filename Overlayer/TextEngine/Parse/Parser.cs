@@ -26,7 +26,7 @@ public static class Parser {
                     : m.Groups["args"].Success ? m.Groups["args"].Value : ""
                 let args = (string[])(string.IsNullOrWhiteSpace(argsRaw)
                     ? []
-                    : [.. argsRaw.Split(new[]{','}).Select(s => s.Trim())])
+                    : [.. argsRaw.Split(',').Select(s => s.Trim())])
                 select new ParsedTag(m.Value, name, args, m.Index, m.Length)).ToList();
 
         tags.AddRange(jsRanges.Select(r =>

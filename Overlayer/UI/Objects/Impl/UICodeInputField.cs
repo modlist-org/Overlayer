@@ -211,15 +211,15 @@ public sealed class UICodeInputField
 
     private HistoryState CaptureState(string value = null) {
         string current = value ?? text ?? string.Empty;
-        int anchor = Math.Min(Math.Max(selectionAnchorPosition, 0), current.Length);
-        int focus = Math.Min(Math.Max(selectionFocusPosition, 0), current.Length);
+        int anchor = Math.Clamp(selectionAnchorPosition, 0, current.Length);
+        int focus = Math.Clamp(selectionFocusPosition, 0, current.Length);
         return new HistoryState(current, anchor, focus);
     }
 
     private void RestoreSelection(HistoryState state) {
         int length = state.Text?.Length ?? 0;
-        selectionAnchorPosition = Math.Min(Math.Max(state.Anchor, 0), length);
-        selectionFocusPosition = Math.Min(Math.Max(state.Focus, 0), length);
+        selectionAnchorPosition = Math.Clamp(state.Anchor, 0, length);
+        selectionFocusPosition = Math.Clamp(state.Focus, 0, length);
     }
 
     private void PushUndo(HistoryState state) {
