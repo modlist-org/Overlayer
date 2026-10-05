@@ -9,7 +9,6 @@ namespace Overlayer.TextEngine.Core;
 
 public sealed class TextEngineCore {
     private readonly object _lock = new();
-    private Task _compileTask;
     private long compileGeneration;
 
     private volatile CompiledSegment[] segments = [];
@@ -52,11 +51,11 @@ public sealed class TextEngineCore {
 
             long generation = ++compileGeneration;
             string snapshot = Text;
-            _compileTask = Task.Run(() => CompileInternal(snapshot, generation));
+            _ = Task.Run(() => CompileInternal(snapshot, generation));
         }
     }
 
-    private async void CompileInternal(string snapshot, long generation) {
+    private void CompileInternal(string snapshot, long generation) {
         try {
             var tags = Parser.Parse(snapshot);
             var newSegments = tags.Count > 0 ? new CompiledSegment[tags.Count] : [];

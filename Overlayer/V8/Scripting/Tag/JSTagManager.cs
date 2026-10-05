@@ -34,4 +34,13 @@ public static class JSTagManager {
             return _jsTags.Keys.ToList();
         }
     }
+
+    /// <summary>Removes every entry, returning the removed tag names.</summary>
+    public static List<string> Clear() {
+        lock(_lock) {
+            var names = _jsTags.Keys.ToList();
+            _jsTags.Clear();
+            return names;
+        }
+    }
 }

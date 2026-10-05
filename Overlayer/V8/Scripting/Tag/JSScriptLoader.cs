@@ -16,7 +16,40 @@ public class JSScriptLoader {
     private readonly Dictionary<string, string> _fileHashes = [];
     private readonly Dictionary<string, List<string>> _fileToTags = [];
 
-    public async Task<bool> LoadAllScriptsAsync(string folderPath, V8ScriptEngine engine) {
+    /// <summary>Script file names (not full paths) skipped by the loader. Guarded by <see cref="_syncLock"/>; use the helpers below.</summary>
+    private readonly HashSet<string> _disabledFileNames = new(StringComparer.OrdinalIgnoreCase);
+
+    public bool IsFileDisabled(string fileName) {
+        lock(_syncLock) {
+            return _disabledFileNames.Contains(fileName);
+        }
+    }
+
+    /// <summary>Returns true when the set changed.</summary>
+    public bool SetFileDisabled(string fileName, bool disabled) {
+        lock(_syncLock) {
+            return disabled ? _disabledFileNames.Add(fileName) : _disabledFileNames.Remove(fileName);
+        }
+    }
+
+    public List<string> GetDisabledFileNames() {
+        lock(_syncLock) {
+            return [.. _disabledFileNames];
+        }
+    }
+
+    public void SetDisabledFileNames(IEnumerable<string> names) {
+        lock(_syncLock) {
+            _disabledFileNames.Clear();
+            foreach(string name in names) {
+                if(!string.IsNullOrWhiteSpace(name)) {
+                    _disabledFileNames.Add(name.Trim());
+                }
+            }
+        }
+    }
+
+    public async Task<bool> LoadAllScriptsAsync(string folderPath, V8ScriptEngine engine, bool syncChanges = true) {
         if(!await _debounceLock.WaitAsync(0)) {
             return false;
         }
@@ -36,6 +69,13 @@ public class JSScriptLoader {
                     }
 
                     foreach(var file in files) {
+                        if(IsDisabled(file)) {
+                            if(_fileHashes.ContainsKey(file)) {
+                                UnloadScript(file);
+                                hasChanges = true;
+                            }
+                            continue;
+                        }
                         string currentHash = TryGetFileHash(file);
                         if(currentHash == null) {
                             continue;
@@ -49,7 +89,7 @@ public class JSScriptLoader {
                         hasChanges = true;
                     }
 
-                    if(hasChanges) {
+                    if(hasChanges && syncChanges) {
                         SyncV8AndRecompile();
                     }
                 }
@@ -168,6 +208,9 @@ public class JSScriptLoader {
                 }
             }
             foreach(var file in files) {
+                if(IsDisabled(file)) {
+                    continue;
+                }
                 string hash = TryGetFileHash(file);
                 if(hash == null || !_fileHashes.TryGetValue(file, out var existing) || existing != hash) {
                     changed.Add(file);
@@ -189,15 +232,48 @@ public class JSScriptLoader {
         }
     }
 
-    public void ReloadFile(string filePath, V8ScriptEngine engine) {
-        string hash = TryGetFileHash(filePath);
-        if(hash == null) {
-            return;
-        }
+    /// <summary>Clears all load tracking. The next load re-executes every file (used after an engine rebuild).</summary>
+    public void ResetTracking() {
         lock(_syncLock) {
+            _fileHashes.Clear();
+            _fileToTags.Clear();
+        }
+    }
+
+    public void ReloadFile(string filePath, V8ScriptEngine engine) {
+        lock(_syncLock) {
+            if(IsDisabled(filePath)) {
+                if(_fileHashes.ContainsKey(filePath)) {
+                    UnloadScript(filePath);
+                    SyncV8AndRecompile();
+                }
+                return;
+            }
+            string hash = TryGetFileHash(filePath);
+            if(hash == null) {
+                return;
+            }
             UnloadScript(filePath);
             LoadScriptInternal(filePath, hash, engine);
             SyncV8AndRecompile();
+        }
+    }
+
+    public void UnloadScriptFile(string filePath) {
+        lock(_syncLock) {
+            if(!_fileHashes.ContainsKey(filePath)) {
+                return;
+            }
+            UnloadScript(filePath);
+            SyncV8AndRecompile();
+        }
+    }
+
+    private bool IsDisabled(string filePath) {
+        try {
+            return IsFileDisabled(Path.GetFileName(filePath));
+        } catch {
+            return false;
         }
     }
 

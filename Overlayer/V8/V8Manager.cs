@@ -1,6 +1,8 @@
 ﻿using Microsoft.ClearScript.V8;
+using Overlayer.Async;
 using Overlayer.Compat.Interface;
 using Overlayer.Core;
+using static Overlayer.Overlay.OvObject;
 using Overlayer.Tag.Core;
 using Overlayer.Tag.Runtime;
 using Overlayer.V8.Scripting.Diagnostic;
@@ -18,6 +20,10 @@ public class V8Manager : IRuntimeService {
     private readonly SemaphoreSlim _reloadGate = new(1, 1);
 
     private readonly JSScriptLoader _scriptLoader = new();
+    private readonly SemaphoreSlim _disabledScriptsSaveGate = new(1, 1);
+    private readonly object _toggleRebuildSync = new();
+    private Task _toggleRebuildTask;
+    private long _toggleRevision;
     public IReadOnlyList<JSDiagnostic> LoaderDiagnostics => _scriptLoader.Diagnostics;
 
     public IReadOnlyList<string> ScriptFiles => _scriptLoader.GetScriptFiles();
@@ -30,6 +36,7 @@ public class V8Manager : IRuntimeService {
     public const string ImplFileName = "impl.js";
     public const string ImplDtsFileName = "impl.d.ts";
     public const string ScriptFolderName = "Script";
+    private const string DisabledScriptsFileName = "DisabledScripts.json";
 
     public string ScriptFolderPath { get; private set; }
     public string ImplFilePath { get; private set; }
@@ -45,7 +52,7 @@ public class V8Manager : IRuntimeService {
 
     public void Initialize() => InitializationTask = InitializeAsync();
 
-    public async Task InitializeAsync() {
+    public Task InitializeAsync() {
         ImplFilePath = Path.Combine(MainCore.Paths.JSPath, ImplFileName);
         ImplDtsFilePath = Path.Combine(MainCore.Paths.JSPath, ImplDtsFileName);
         ScriptFolderPath = Path.Combine(MainCore.Paths.JSPath, ScriptFolderName);
@@ -54,26 +61,32 @@ public class V8Manager : IRuntimeService {
             Directory.CreateDirectory(ScriptFolderPath);
             MainCore.Log.Msg($"[{nameof(V8Manager)}] Script folder created at: {ScriptFolderPath}");
         }
-
         lock(_engineLock) {
             _engine = new V8ScriptEngine();
             BindEngine(_engine);
         }
 
-        await Task.CompletedTask;
+        return LoadDisabledScriptsAsync();
     }
 
     public async Task LoadScriptsAsync() {
+        await _reloadGate.WaitAsync().ConfigureAwait(false);
         try {
-            if(await _scriptLoader.LoadAllScriptsAsync(ScriptFolderPath, _engine)) {
-                foreach(var diag in LoaderDiagnostics) {
-                    MainCore.Log.Msg(diag.ToString());
+            try {
+                await InitializationTask.ConfigureAwait(false);
+                if(await _scriptLoader.LoadAllScriptsAsync(ScriptFolderPath, _engine, syncChanges: false).ConfigureAwait(false)) {
+                    foreach(var diag in LoaderDiagnostics) {
+                        MainCore.Log.Msg(diag.ToString());
+                    }
                 }
+            } catch(Exception e) {
+                MainCore.Log.Err($"[{nameof(V8Manager)}] Script load failed: {e.Message}");
             }
-        } catch(Exception e) {
-            MainCore.Log.Err($"[{nameof(V8Manager)}] Script load failed: {e.Message}");
+            await Task.Run(() => GenerateImplJs(force: true)).ConfigureAwait(false);
+            MainThread.Enqueue(TextEngineUpdater.RecompileAll);
+        } finally {
+            _reloadGate.Release();
         }
-        GenerateImplJs(force: true);
         UpdateWatcher();
     }
 
@@ -143,21 +156,48 @@ public class V8Manager : IRuntimeService {
             if(preview.changed.Count == 0 && preview.removed.Count == 0) {
                 return;
             }
+            await RebuildScriptsUnderGateAsync();
+        } finally {
+            _reloadGate.Release();
+        }
+    }
+
+    /// <summary>Disposes the engine and re-executes every enabled script. Call with <see cref="_reloadGate"/> held.</summary>
+    private async Task RebuildScriptsUnderGateAsync() {
+        await InitializationTask.ConfigureAwait(false);
+        await Task.Run(() => {
+            Scripting.Patch.JSPatchManager.RemoveAll();
+            TagCache.Instance.Clear();
+
+            List<string> jsTags;
             lock(_engineLock) {
                 ClearFxScriptCache();
+                jsTags = JSTagManager.Clear();
                 _engine.Dispose();
                 _engine = new V8ScriptEngine();
                 BindEngine(_engine);
             }
 
-            TagCache.Instance.Clear();
-
-            if(await _scriptLoader.LoadAllScriptsAsync(ScriptFolderPath, _engine)) {
-                foreach(var diag in LoaderDiagnostics) {
-                    MainCore.Log.Msg(diag.ToString());
-                }
-                GenerateImplJs(false);
+            if(jsTags.Count > 0) {
+                TagManager.Unregister([.. jsTags], recompile: false);
             }
+            _scriptLoader.ResetTracking();
+        }).ConfigureAwait(false);
+
+        if(await _scriptLoader.LoadAllScriptsAsync(ScriptFolderPath, _engine, syncChanges: false).ConfigureAwait(false)) {
+            foreach(var diag in LoaderDiagnostics) {
+                MainCore.Log.Msg(diag.ToString());
+            }
+        }
+        await Task.Run(() => GenerateImplJs(false)).ConfigureAwait(false);
+        MainThread.Enqueue(TextEngineUpdater.RecompileAll);
+    }
+
+    /// <summary>Forces a full rebuild regardless of file changes (e.g. after toggling a script on/off).</summary>
+    public async Task RebuildScriptsAsync() {
+        await _reloadGate.WaitAsync();
+        try {
+            await RebuildScriptsUnderGateAsync();
         } finally {
             _reloadGate.Release();
         }
@@ -263,8 +303,14 @@ public class V8Manager : IRuntimeService {
         sb.AppendLine(" * @param {string} target - \"Type::Method\" (auto-pick when unique) or \"Type::Method(Arg1, Arg2)\".");
         sb.AppendLine(" * @param {Object} options - { prefix, postfix } (at least one).");
         sb.AppendLine(" * prefix(args) may mutate args; return false to skip the original,");
-        sb.AppendLine(" * return { result: x } to skip with result x. Expanded (a, b) form matches overload arity.");
-        sb.AppendLine(" * postfix(args, result): return non-undefined to replace the result.");
+        sb.AppendLine(" * or return { result: x } to skip a non-void method with result x.");
+        sb.AppendLine(" * Packed callbacks are prefix(args) / postfix(args, result).");
+        sb.AppendLine(" * Expanded prefix(a, b) and postfix(a, b, result) select by arity.");
+        sb.AppendLine(" * A non-null, non-undefined postfix return replaces a non-void result.");
+        sb.AppendLine(" * A regular parameter named __instance (any position) receives the target");
+        sb.AppendLine(" * instance (null for static) and is excluded from overload arity.");
+        sb.AppendLine(" * It is the only Harmony-style special parameter; __args/__result are not bound.");
+        sb.AppendLine(" * Unity API calls are safe only when the patched method runs on Unity's main thread.");
         sb.AppendLine(" * @returns {number} Patch handle for RemovePatch, or -1 on error. Unpatched automatically on script reload.");
         sb.AppendLine(" */");
         sb.AppendLine("globalThis.AddPatch = function(target, options) {};");
@@ -310,9 +356,26 @@ public class V8Manager : IRuntimeService {
         sb.AppendLine("};");
         sb.AppendLine("interface RegisterTagOptions {");
         sb.AppendLine("    Type?: number;");
+        sb.AppendLine("    ReturnType?: string;");
         sb.AppendLine("    Desc?: string;");
         sb.AppendLine("}");
         sb.AppendLine("declare function RegisterTag(name: string, func: (...args: any[]) => any, options?: RegisterTagOptions): void;");
+        sb.AppendLine("interface JSPatchOptions {");
+        sb.AppendLine("    prefix?: (...args: any[]) => any;");
+        sb.AppendLine("    postfix?: (...args: any[]) => any;");
+        sb.AppendLine("}");
+        sb.AppendLine("/** Prefix callbacks use prefix(args); postfix callbacks use postfix(args, result). A plain parameter named __instance receives the target instance (null for static); it is the only Harmony-style special parameter. */");
+        sb.AppendLine("declare function AddPatch(target: string, options: JSPatchOptions): number;");
+        sb.AppendLine("declare function RemovePatch(handle: number): boolean;");
+        sb.AppendLine("interface OverlayerLog {");
+        sb.AppendLine("    Msg(message: any): void;");
+        sb.AppendLine("    Wrn(message: any): void;");
+        sb.AppendLine("    Err(message: any): void;");
+        sb.AppendLine("    Log(message: any): void;");
+        sb.AppendLine("    Warn(message: any): void;");
+        sb.AppendLine("    Error(message: any): void;");
+        sb.AppendLine("}");
+        sb.AppendLine("declare const Log: OverlayerLog;");
         sb.AppendLine("interface FxStore {");
         sb.AppendLine("    Get(key: string, fallback?: any): any;");
         sb.AppendLine("    Set(key: string, value: any): any;");
@@ -668,15 +731,135 @@ public class V8Manager : IRuntimeService {
     }
 
     public void ReloadScriptFile(string filePath) {
-        lock(_engineLock) {
-            if(_engine == null) {
-                return;
-            }
-            _scriptLoader.ReloadFile(filePath, _engine);
+        _ = ReloadScriptFileAsync(filePath);
+    }
+
+    public async Task ReloadScriptFileAsync(string filePath) {
+        await InitializationTask.ConfigureAwait(false);
+        await _reloadGate.WaitAsync().ConfigureAwait(false);
+        try {
+            await Task.Run(() => _scriptLoader.ReloadFile(filePath, _engine)).ConfigureAwait(false);
             foreach(var diag in LoaderDiagnostics) {
                 MainCore.Log.Msg(diag.ToString());
             }
-            GenerateImplJs(false);
+        } catch(Exception e) {
+            MainCore.Log.Err($"[{nameof(V8Manager)}] Script reload failed: {e.Message}");
+        } finally {
+            _reloadGate.Release();
+        }
+    }
+
+    public bool IsScriptEnabled(string filePath) {
+        try {
+            return !_scriptLoader.IsFileDisabled(Path.GetFileName(filePath));
+        } catch {
+            return true;
+        }
+    }
+
+    public async Task SetScriptEnabledAsync(string filePath, bool enabled) {
+        await InitializationTask.ConfigureAwait(false);
+        string name;
+        try {
+            name = Path.GetFileName(filePath);
+        } catch {
+            return;
+        }
+        if(!_scriptLoader.SetFileDisabled(name, !enabled)) {
+            return;
+        }
+        Task saveTask = SaveDisabledScriptsAsync();
+        Task rebuildTask = RequestToggleRebuildAsync();
+        await Task.WhenAll(saveTask, rebuildTask).ConfigureAwait(false);
+    }
+
+    private async Task LoadDisabledScriptsAsync() {
+        _scriptLoader.SetDisabledFileNames([]);
+        try {
+            string path = Path.Combine(ScriptFolderPath, DisabledScriptsFileName);
+            if(!File.Exists(path)) {
+                return;
+            }
+            string json = await File.ReadAllTextAsync(path).ConfigureAwait(false);
+            var names = Newtonsoft.Json.JsonConvert.DeserializeObject<HashSet<string>>(json);
+            if(names == null) {
+                return;
+            }
+            _scriptLoader.SetDisabledFileNames(names);
+            if(await Task.Run(PruneOrphanDisabledScripts).ConfigureAwait(false)) {
+                await SaveDisabledScriptsAsync().ConfigureAwait(false);
+            }
+        } catch(Exception e) {
+            MainCore.Log.Wrn($"[{nameof(V8Manager)}] Failed to load disabled scripts: {e.Message}");
+        }
+    }
+
+    private bool PruneOrphanDisabledScripts() {
+        HashSet<string> diskFiles;
+        try {
+            diskFiles = new HashSet<string>(
+                Directory.GetFiles(ScriptFolderPath, "*.js").Select(Path.GetFileName),
+                StringComparer.OrdinalIgnoreCase);
+        } catch {
+            return false;
+        }
+        bool removed = false;
+        foreach(string name in _scriptLoader.GetDisabledFileNames()) {
+            if(!diskFiles.Contains(name)) {
+                _scriptLoader.SetFileDisabled(name, false);
+                removed = true;
+            }
+        }
+        return removed;
+    }
+
+    private async Task SaveDisabledScriptsAsync() {
+        await _disabledScriptsSaveGate.WaitAsync().ConfigureAwait(false);
+        try {
+            string path = Path.Combine(ScriptFolderPath, DisabledScriptsFileName);
+            await File.WriteAllTextAsync(path, SerializeDisabledScripts()).ConfigureAwait(false);
+        } catch(Exception e) {
+            MainCore.Log.Wrn($"[{nameof(V8Manager)}] Failed to save disabled scripts: {e.Message}");
+        } finally {
+            _disabledScriptsSaveGate.Release();
+        }
+    }
+
+    private string SerializeDisabledScripts() => Newtonsoft.Json.JsonConvert.SerializeObject(
+        _scriptLoader.GetDisabledFileNames().OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList(),
+        Newtonsoft.Json.Formatting.Indented);
+
+    private Task RequestToggleRebuildAsync() {
+        lock(_toggleRebuildSync) {
+            _toggleRevision++;
+            return _toggleRebuildTask ??= RebuildToggledScriptsAsync();
+        }
+    }
+
+    private async Task RebuildToggledScriptsAsync() {
+        try {
+            while(true) {
+                // Coalesce rapid switches into one engine rebuild.
+                await Task.Delay(100).ConfigureAwait(false);
+                long revision;
+                lock(_toggleRebuildSync) {
+                    revision = _toggleRevision;
+                }
+
+                await RebuildScriptsAsync().ConfigureAwait(false);
+
+                lock(_toggleRebuildSync) {
+                    if(revision == _toggleRevision) {
+                        _toggleRebuildTask = null;
+                        return;
+                    }
+                }
+            }
+        } catch {
+            lock(_toggleRebuildSync) {
+                _toggleRebuildTask = null;
+            }
+            throw;
         }
     }
 
@@ -703,16 +886,17 @@ public class V8Manager : IRuntimeService {
         _watchDebounce?.Cancel();
         _watchDebounce?.Dispose();
         var cts = _watchDebounce = new CancellationTokenSource();
-        _ = Task.Delay(300, cts.Token).ContinueWith(async t => {
-            if(t.IsCanceled) {
-                return;
-            }
-            try {
-                await ReloadScriptsAsync();
-            } catch(Exception ex) {
-                MainCore.Log.Err($"[{nameof(V8Manager)}] Script reload failed: {ex.Message}");
-            }
-        }, TaskScheduler.Default);
+        _ = DebouncedReloadAsync(cts.Token);
+    }
+
+    private async Task DebouncedReloadAsync(CancellationToken cancellationToken) {
+        try {
+            await Task.Delay(300, cancellationToken).ConfigureAwait(false);
+            await ReloadScriptsAsync().ConfigureAwait(false);
+        } catch(OperationCanceledException) {
+        } catch(Exception e) {
+            MainCore.Log.Err($"[{nameof(V8Manager)}] Script reload failed: {e.Message}");
+        }
     }
 
     public void Dispose() {

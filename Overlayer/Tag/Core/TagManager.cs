@@ -13,23 +13,19 @@ public static class TagManager {
 
     public static int Count => _tags.Count;
 
-    public static Task RegisterAsync(Assembly asm) {
+    public static async Task RegisterAsync(Assembly asm) {
         lock(_lock) {
             if(_registeredAssemblies.Contains(asm)) {
                 MainCore.Log.Msg($"[{nameof(TagManager)}] Assembly '{asm.GetName().Name}' is already registered.");
-                return Task.CompletedTask;
+                return;
             }
             _registeredAssemblies.Add(asm);
         }
 
         MainCore.Log.Msg($"[{nameof(TagManager)}] Registration started for: {asm.GetName().Name}");
-
-        return Task.Run(() => RegisterInternal(asm));
-    }
-
-    private static void RegisterInternal(Assembly asm) {
         try {
-            var list = TagLoader.LoadAsync(asm).GetAwaiter().GetResult();
+            var list = await TagLoader.LoadAsync(asm).ConfigureAwait(false);
+            await MainCore.V8.InitializationTask.ConfigureAwait(false);
             MainCore.Log.Msg($"[{nameof(TagManager)}] Found tags in '{asm.GetName().Name}': {list.Count}");
 
             if(list.Count == 0) {
@@ -88,7 +84,7 @@ public static class TagManager {
         return true;
     }
 
-    public static bool Unregister(string[] tagNames) {
+    public static bool Unregister(string[] tagNames, bool recompile = true) {
         if(tagNames == null || tagNames.Length == 0) {
             return false;
         }
@@ -110,7 +106,9 @@ public static class TagManager {
             MainCore.Log.Msg($"[{nameof(TagManager)}] {removedCount} tags unregistered. Total tags: {_tags.Count}");
         }
 
-        MainThread.Enqueue(TextEngineUpdater.RecompileAll);
+        if(recompile) {
+            MainThread.Enqueue(TextEngineUpdater.RecompileAll);
+        }
 
         return true;
     }

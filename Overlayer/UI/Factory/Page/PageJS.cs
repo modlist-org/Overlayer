@@ -22,6 +22,8 @@ internal static class PageJS {
     private static RectTransform listContent;
     private static TextMeshProUGUI diagText;
     private static GameObject disabledPanel;
+    private static int refreshQueued;
+    private static readonly Dictionary<string, TextMeshProUGUI> scriptStatus = new(StringComparer.OrdinalIgnoreCase);
 
     public static void Create(RectTransform parent) {
         RectTransform root = CreateStretch(parent, "JSRoot");
@@ -131,7 +133,60 @@ internal static class PageJS {
     }
 
     private static void ReloadAll() {
-        _ = MainCore.V8.ReloadScriptsAsync().ContinueWith(_ => MainThread.Enqueue(Refresh));
+        _ = ReloadAllAsync();
+    }
+
+    private static async Task ReloadAllAsync() {
+        try {
+            await MainCore.V8.ReloadScriptsAsync();
+        } catch(Exception e) {
+            MainCore.Log.Err($"[JS] Reload failed: {e.Message}");
+        } finally {
+            QueueRefresh();
+        }
+    }
+
+    private static async Task SetScriptEnabledAsync(string file, bool enabled) {
+        bool success = false;
+        try {
+            await MainCore.V8.SetScriptEnabledAsync(file, enabled);
+            success = true;
+        } catch(Exception e) {
+            MainCore.Log.Err($"[JS] Script toggle failed: {e.Message}");
+        } finally {
+            if(success) {
+                MainThread.Enqueue(() => RefreshFileStatus(file));
+            } else {
+                QueueRefresh();
+            }
+        }
+    }
+
+    private static void RefreshFileStatus(string file) {
+        if(listContent == null) {
+            return;
+        }
+        if(!scriptStatus.TryGetValue(file, out var status) || status == null) {
+            Refresh();
+            return;
+        }
+        if(!MainCore.V8.IsScriptEnabled(file)) {
+            status.text = T("JS_DISABLED", "Disabled");
+            return;
+        }
+        int tags = MainCore.V8.ScriptFileTags(file).Count;
+        int patches = JSPatchManager.GetFilePatches(file).Count;
+        status.text = $"{tags} tags · {patches} patches";
+    }
+
+    private static void QueueRefresh() {
+        if(Interlocked.Exchange(ref refreshQueued, 1) != 0) {
+            return;
+        }
+        MainThread.Enqueue(() => {
+            Interlocked.Exchange(ref refreshQueued, 0);
+            Refresh();
+        });
     }
 
     private static void OpenFolder() {
@@ -149,8 +204,16 @@ internal static class PageJS {
         for(int i = listContent.childCount - 1; i >= 0; i--) {
             UnityEngine.Object.Destroy(listContent.GetChild(i).gameObject);
         }
-        foreach(string file in MainCore.V8.ScriptFiles) {
-            BuildFileRow(file);
+        scriptStatus.Clear();
+        string[] files;
+        try {
+            files = Directory.GetFiles(MainCore.V8.ScriptFolderPath, "*.js");
+            Array.Sort(files, StringComparer.OrdinalIgnoreCase);
+        } catch {
+            files = [];
+        }
+        foreach(string file in files) {
+            BuildFileRow(file, MainCore.V8.IsScriptEnabled(file));
         }
         if(diagText != null) {
             int errors = MainCore.V8.LoaderDiagnostics.Count;
@@ -161,12 +224,12 @@ internal static class PageJS {
         LayoutRebuilder.ForceRebuildLayoutImmediate(listContent);
     }
 
-    private static void BuildFileRow(string file) {
+    private static void BuildFileRow(string file, bool enabled) {
         int tags;
         int patches;
         try {
-            tags = MainCore.V8.ScriptFileTags(file).Count;
-            patches = JSPatchManager.GetFilePatches(file).Count;
+            tags = enabled ? MainCore.V8.ScriptFileTags(file).Count : 0;
+            patches = enabled ? JSPatchManager.GetFilePatches(file).Count : 0;
         } catch {
             tags = 0;
             patches = 0;
@@ -176,8 +239,10 @@ internal static class PageJS {
         layout.spacing = 8f;
         layout.childControlWidth = true;
         layout.childControlHeight = true;
-        layout.childForceExpandWidth = true;
+        layout.childForceExpandWidth = false;
         layout.childForceExpandHeight = true;
+
+        BuildScriptToggle(row, file, enabled);
 
         var name = O5Factory.ControlText(O5KitAdapters.Ctx, row, 22f, true);
         name.text = Path.GetFileName(file);
@@ -186,11 +251,44 @@ internal static class PageJS {
         nameLe.flexibleWidth = 1f;
 
         var counts = O5Factory.ControlText(O5KitAdapters.Ctx, row, 22f, true);
-        counts.text = $"{tags} tags · {patches} patches";
+        counts.text = enabled
+            ? $"{tags} tags · {patches} patches"
+            : T("JS_DISABLED", "Disabled");
         counts.alignment = TextAlignmentOptions.Right;
         var countsLe = counts.gameObject.AddComponent<LayoutElement>();
         countsLe.minWidth = 190f;
         countsLe.flexibleWidth = 0f;
+        scriptStatus[file] = counts;
+    }
+
+    private static void BuildScriptToggle(RectTransform row, string file, bool enabled) {
+        GameObject toggleGo = new("ScriptToggle");
+        toggleGo.transform.SetParent(row, false);
+        toggleGo.AddComponent<RectTransform>();
+        var toggleLe = toggleGo.AddComponent<LayoutElement>();
+        toggleLe.minWidth = 40f;
+        toggleLe.preferredWidth = 40f;
+        toggleLe.minHeight = 34f;
+        toggleLe.preferredHeight = 34f;
+        toggleLe.flexibleWidth = 0f;
+        toggleLe.flexibleHeight = 0f;
+
+        var toggle = O5Factory.Toggle(O5KitAdapters.Ctx,
+            toggleGo.transform,
+            null,
+            enabled,
+            value => _ = SetScriptEnabledAsync(file, value),
+            string.Empty,
+            $"js_script_enabled_{Path.GetFileName(file)}");
+        var hoverOutline = toggle.Rect.transform.Find("Hover");
+        if(hoverOutline != null) {
+            UnityEngine.Object.Destroy(hoverOutline.gameObject);
+        }
+        var toggleBg = toggle.Rect.GetComponent<Image>();
+        if(toggleBg != null) {
+            toggleBg.color = Color.clear;
+        }
+        toggleGo.transform.AddToolTip(O5KitAdapters.Ctx, () => T("JS_TOGGLE_SCRIPT", "Enable/disable script"));
     }
 
     private static RectTransform CreateStretch(Transform parent, string name) {
