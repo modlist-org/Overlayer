@@ -208,7 +208,7 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
         name.fontSize = 14f;
         name.alignment = TextAlignmentOptions.Left;
         name.verticalAlignment = VerticalAlignmentOptions.Middle;
-        name.textWrappingMode = TextWrappingModes.NoWrap;
+        TmpCompat.SetNoWrap(name);
         name.overflowMode = TextOverflowModes.Ellipsis;
         name.rectTransform.offsetMin = new(10f, 0f);
         name.rectTransform.offsetMax = new(-150f, 0f);
@@ -219,7 +219,7 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
         detail.fontSize = 11f;
         detail.alignment = TextAlignmentOptions.Right;
         detail.verticalAlignment = VerticalAlignmentOptions.Middle;
-        detail.textWrappingMode = TextWrappingModes.NoWrap;
+        TmpCompat.SetNoWrap(detail);
         detail.overflowMode = TextOverflowModes.Ellipsis;
         detail.color = new Color(1f, 1f, 1f, 0.48f);
         detail.rectTransform.offsetMin = new(150f, 0f);

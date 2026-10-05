@@ -1,6 +1,5 @@
 using Overlayer.Compat.Interface;
 using Overlayer.Tag.Core;
-using UnityEngine.Device;
 
 namespace Overlayer.TagImpl;
 
@@ -106,5 +105,5 @@ public static class Performance {
     public static double Fps(int windowMs = 0) => FpsTracker.Instance?.Fps(windowMs) ?? 0d;
 
     [Tag(Desc = "Total number of logical processor cores available on the system")]
-    public static int ProcessorCount => SystemInfo.processorCount;
+    public static int ProcessorCount => UnityEngine.SystemInfo.processorCount;
 }

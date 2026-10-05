@@ -264,7 +264,7 @@ internal sealed class OvInspectorBuilder(
         FxToggle(card, "Auto Size", cfg.AutoSize, false, "text_auto_size");
         FxVector2(card, "Font Range", cfg.FontSizeRange, new Vector2(16, 64), 1f, 512f, "text_font_range", "F1");
         FxEnum(card, "Alignment", cfg.Alignment, TextAlignmentOptions.Center, "text_alignment");
-        FxEnum(card, "Wrapping", cfg.TextWrappingMode, TextWrappingModes.Normal, "text_wrapping");
+        FxWrapping(card, cfg);
         FxEnum(card, "Overflow", cfg.OverFlowMode, TextOverflowModes.Overflow, "text_overflow");
         FxSlider(card, "Line Spacing", cfg.LineSpacing, 0f, -100f, 100f, "text_line_spacing", "F1");
         FxSlider(card, "Character Spacing", cfg.CharacterSpacing, 0f, -100f, 100f, "text_char_spacing", "F1");
@@ -509,7 +509,7 @@ internal sealed class OvInspectorBuilder(
         FxVector2(card, "Offset", cfg.Offset, Vector2.zero, -1024f, 1024f, "box_collider_offset", "F1");
         FxToggle(card, "Is Trigger", cfg.IsTrigger, false, "box_collider_trigger");
         FxToggle(card, "Used By Effector", cfg.UsedByEffector, false, "box_collider_effector");
-        FxEnum(card, "Composite Operation", cfg.CompositeOperation, Collider2D.CompositeOperation.None, "box_collider_composite");
+        FxCompositeOperation(card, cfg);
         FxSlider(card, "Edge Radius", cfg.EdgeRadius, 0f, 0f, 100f, "box_collider_edge_radius", "F2");
     }
 
@@ -752,11 +752,11 @@ internal sealed class OvInspectorBuilder(
         text.fontSize = 16f;
         text.characterSpacing = 0f;
         text.lineSpacing = 4f;
-        text.textWrappingMode = TextWrappingModes.NoWrap;
+        TmpCompat.SetNoWrap(text);
 
         input.Placeholder.fontSize = 16f;
         input.Placeholder.characterSpacing = 0f;
-        input.Placeholder.textWrappingMode = TextWrappingModes.NoWrap;
+        TmpCompat.SetNoWrap(input.Placeholder);
 
         RectTransform viewport = input.InputField.textViewport;
         Vector2 viewportMin = viewport.offsetMin;
@@ -784,7 +784,7 @@ internal sealed class OvInspectorBuilder(
         diagnosticsText.characterSpacing = 0f;
         diagnosticsText.alignment = TextAlignmentOptions.TopLeft;
         diagnosticsText.verticalAlignment = VerticalAlignmentOptions.Top;
-        diagnosticsText.textWrappingMode = TextWrappingModes.NoWrap;
+        TmpCompat.SetNoWrap(diagnosticsText);
         diagnosticsText.overflowMode = TextOverflowModes.Overflow;
         diagnosticsText.color = new Color(1f, 1f, 1f, 0.42f);
         diagnosticsText.raycastTarget = false;
@@ -824,7 +824,7 @@ internal sealed class OvInspectorBuilder(
         lineNumbers.lineSpacing = text.lineSpacing;
         lineNumbers.alignment = TextAlignmentOptions.TopRight;
         lineNumbers.verticalAlignment = VerticalAlignmentOptions.Top;
-        lineNumbers.textWrappingMode = TextWrappingModes.NoWrap;
+        TmpCompat.SetNoWrap(lineNumbers);
         lineNumbers.color = new Color(1f, 1f, 1f, 0.28f);
         lineNumbers.raycastTarget = false;
         var numbersRect = lineNumbers.rectTransform;
@@ -1436,6 +1436,49 @@ internal sealed class OvInspectorBuilder(
 
     private RectTransform FxEnum<T>(Transform parent, string label, FxValue<T> fx, T defaultValue, string id, Action completed = null) where T : struct, Enum {
         return FxBlock(parent, label, fx, g => EnumDropDown(g, label, defaultValue, fx.Value, value => fx.Value = value, id, completed), id, dropdown: true);
+    }
+
+    // int-backed wrapping dropdown. Uses fixed option names instead of the
+    // TextWrappingModes enum so old TMP (no such type) never fails at JIT time.
+    private RectTransform FxWrapping(Transform parent, TextMeshProUGUISettings cfg) {
+        string[] options = ["NoWrap", "Normal", "PreserveWhitespace", "PreserveWhitespaceNoWrap"];
+        return FxBlock(parent, "Wrapping", cfg.TextWrappingMode, g => {
+            string label = InspectorLabel("Wrapping");
+            int current = Math.Min(Math.Max(cfg.TextWrappingMode.Value, TmpCompat.NoWrap), TmpCompat.PreserveWhitespaceNoWrap);
+            var row = O5Factory.Row(O5KitAdapters.Ctx, g, 50f);
+            var dropdown = O5Factory.DropDown(O5KitAdapters.Ctx, row,
+                TmpCompat.ToName(TmpCompat.Normal), TmpCompat.ToName(current), options,
+                option => $"{label}: {option}", selected => {
+                    cfg.TextWrappingMode.Value = TmpCompat.FromName(selected, TmpCompat.Normal);
+                    ApplyAndSave();
+                }, "text_wrapping");
+            Track(dropdown);
+        }, "text_wrapping", dropdown: true);
+    }
+
+    // int-backed composite-operation dropdown (Collider2D.CompositeOperation is
+    // missing on old Unity). Hidden with a note where unsupported.
+    private void FxCompositeOperation(Transform parent, BoxCollider2DSettings cfg) {
+        if(!ColliderCompat.HasCompositeOperation) {
+            Label(parent, InspectorText("INSPECTOR_COMPOSITE_UNSUPPORTED",
+                "Composite Operation is not supported on this Unity version."));
+            return;
+        }
+        string[] options = ["None", "Merge", "Intersect", "Difference", "Flip"];
+        FxBlock(parent, "Composite Operation", cfg.CompositeOperation, g => {
+            string label = InspectorLabel("Composite Operation");
+            int current = Math.Min(Math.Max(cfg.CompositeOperation.Value,
+                ColliderCompat.CompositeNone), ColliderCompat.CompositeFlip);
+            var row = O5Factory.Row(O5KitAdapters.Ctx, g, 50f);
+            var dropdown = O5Factory.DropDown(O5KitAdapters.Ctx, row,
+                ColliderCompat.CompositeToName(ColliderCompat.CompositeNone),
+                ColliderCompat.CompositeToName(current), options,
+                option => $"{label}: {option}", selected => {
+                    cfg.CompositeOperation.Value = ColliderCompat.CompositeFromName(selected, ColliderCompat.CompositeNone);
+                    ApplyAndSave();
+                }, "box_collider_composite");
+            Track(dropdown);
+        }, "box_collider_composite", dropdown: true);
     }
 
     private RectTransform FxEnumMapped<TEnum>(Transform parent, string label, FxValue<int> fx, int defaultValue, string id, Func<int, TEnum> toEnum, Func<TEnum, int> fromEnum, Action completed = null) where TEnum : struct, Enum {

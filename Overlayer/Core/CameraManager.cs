@@ -35,7 +35,11 @@ public class CameraManager {
     }
 
     public Camera UpdateCamera() {
-        var found = (CustomCameraProvider?.Invoke()) ?? Camera.main ?? UnityEngine.Object.FindFirstObjectByType<Camera>();
+        // CS0618: FindObjectOfType is deprecated on modern Unity but is the only
+        // name present on old Unity (FindFirstObjectByType does not exist there).
+#pragma warning disable CS0618
+        var found = (CustomCameraProvider?.Invoke()) ?? Camera.main ?? UnityEngine.Object.FindObjectOfType<Camera>();
+#pragma warning restore CS0618
         SetCamera(found);
         return cachedCamera;
     }
