@@ -17,6 +17,19 @@ public static class OverlayCore {
     private static int pendingLayoutRefreshes;
     private static readonly HashSet<string> knownFiles = new(StringComparer.OrdinalIgnoreCase);
 
+    // Fired whenever the canvas list changes (create/import/clone/delete),
+    // including changes made programmatically outside the canvas UI
+    // (e.g. module importers), so tile lists can refresh themselves.
+    public static event Action OnCanvasesChanged;
+
+    private static void NotifyChanged() {
+        try {
+            OnCanvasesChanged?.Invoke();
+        } catch(Exception e) {
+            MainCore.Log.Err($"[{nameof(OverlayCore)}] Canvas change notification failed: {e.Message}");
+        }
+    }
+
     public static int GetCanvasIndex(OvCanvas canvas)
         => canvas == null ? -1 : Canvases.IndexOf(canvas);
 
@@ -37,6 +50,7 @@ public static class OverlayCore {
         var canvas = new OvCanvas();
         canvas.RectTransform.SetParent(Transform, false);
         Canvases.Add(canvas);
+        NotifyChanged();
         return canvas;
     }
 
@@ -76,6 +90,7 @@ public static class OverlayCore {
             Canvases.Add(canvas);
             SaveAllCanvases();
             MainCore.Log.Msg($"[{nameof(OverlayCore)}] Imported canvas '{canvas.Config.Name.Value}' from {filePath}");
+            NotifyChanged();
             return true;
         } catch(Exception e) {
             MainCore.Log.Err($"[{nameof(OverlayCore)}] Failed to import canvas: {e.Message}");
@@ -100,6 +115,7 @@ public static class OverlayCore {
             Canvases.Add(canvas);
             SaveAllCanvases();
             MainCore.Log.Msg($"[{nameof(OverlayCore)}] Cloned canvas '{source.Config.Name.Value}'");
+            NotifyChanged();
             return canvas;
         } catch(Exception e) {
             MainCore.Log.Err($"[{nameof(OverlayCore)}] Failed to clone canvas: {e.Message}");
@@ -114,6 +130,7 @@ public static class OverlayCore {
 
         canvas.Dispose();
         SaveAllCanvases();
+        NotifyChanged();
         return true;
     }
 

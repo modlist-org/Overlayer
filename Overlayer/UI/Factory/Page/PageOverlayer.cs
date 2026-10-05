@@ -31,6 +31,8 @@ internal static class PageOverlayer {
     private static CanvasGroup viewportCanvasGroup;
     private static GameObject disabledPanel;
     private static RectTransform contentRectRef;
+    private static Transform gridRef;
+    private static bool subscribedToCanvases;
 
     private static OvCanvasSettingPage settingPage;
 
@@ -59,6 +61,12 @@ internal static class PageOverlayer {
 
         var keeper = grid.AddComponent<GridRatioKeeper>();
         keeper.Setup(contentRectRef);
+        gridRef = grid.transform;
+
+        if(!subscribedToCanvases) {
+            subscribedToCanvases = true;
+            OverlayCore.OnCanvasesChanged += RefreshTilesExternal;
+        }
 
         var pageScroll = parent.gameObject.AddComponent<UIScrollController>();
         pageScroll.Ctx = O5KitAdapters.Ctx;
@@ -90,7 +98,23 @@ internal static class PageOverlayer {
 
         if(!MainCore.IsModEnabled) {
             ToggleUIStateByMod(grid.transform, false);
+        } else {
+            // The grid starts empty: build it now instead of waiting for the
+            // next toggle/import event.
+            ToggleUIStateByMod(grid.transform, true);
         }
+    }
+
+    private static void RefreshTilesExternal() {
+        // Canvas mutations can come from any thread (e.g. module importers
+        // running file dialogs); tile construction must run on the main
+        // thread, deferred by one frame at most.
+        MainThread.Enqueue(() => {
+            if(gridRef == null || !MainCore.IsModEnabled) {
+                return;
+            }
+            BuildAllTiles(gridRef);
+        });
     }
 
     private static void ToggleUIStateByMod(Transform transform, bool isEnabled) {
@@ -132,6 +156,7 @@ internal static class PageOverlayer {
         if(contentRectRef != null) {
             LayoutRebuilder.ForceRebuildLayoutImmediate(contentRectRef);
         }
+        transform.GetComponent<GridRatioKeeper>()?.RefreshNow();
     }
 
     private static void ClearAllTiles(Transform transform) {
@@ -669,7 +694,7 @@ internal static class PageOverlayer {
             if(Screen.width != lastScreenWidth || Screen.height != lastScreenHeight) {
                 lastScreenWidth = Screen.width;
                 lastScreenHeight = Screen.height;
-                UpdateGridCellSize();
+                UpdateGridCellSize(false);
             }
         }
 
@@ -678,12 +703,12 @@ internal static class PageOverlayer {
                 return;
             }
 
-            if(contentRect != null && rectTransform.rect.width != contentRect.rect.width) {
-                UpdateGridCellSize();
-            }
+            UpdateGridCellSize(false);
         }
 
-        private void UpdateGridCellSize() {
+        public void RefreshNow() => UpdateGridCellSize(true);
+
+        private void UpdateGridCellSize(bool force) {
             if(contentRect == null || gridLayout == null) {
                 return;
             }
@@ -693,12 +718,25 @@ internal static class PageOverlayer {
                 return;
             }
 
-            rectTransform.sizeDelta = new Vector2(targetWidth, rectTransform.sizeDelta.y);
+            int columns = Math.Max(1, gridLayout.constraintCount);
             var padding = gridLayout.padding;
-            float totalSpacing = gridLayout.spacing.x * (gridLayout.constraintCount - 1);
-            float usableWidth = targetWidth - padding.left - padding.right - totalSpacing;
+            float totalSpacing = gridLayout.spacing.x * (columns - 1);
+            float cellWidth = (targetWidth - padding.left - padding.right - totalSpacing) / columns;
 
-            float cellWidth = usableWidth / gridLayout.constraintCount;
+            if(cellWidth <= 0) {
+                return;
+            }
+
+            // Skip work when the grid already matches: this is what heals
+            // tiles that were built while the panel was hidden (zero-width)
+            // without needing another rebuild trigger.
+            if(!force
+                && Mathf.Abs(rectTransform.sizeDelta.x - targetWidth) <= 0.5f
+                && Mathf.Abs(gridLayout.cellSize.x - cellWidth) <= 0.5f) {
+                return;
+            }
+
+            rectTransform.sizeDelta = new Vector2(targetWidth, rectTransform.sizeDelta.y);
 
             float cellHeight = cellWidth / (16f / 9f);
 
