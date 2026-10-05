@@ -35,11 +35,6 @@
 			<SetConfiguration>Configuration=$(O5KitConfiguration)</SetConfiguration>
 			<SetTargetFramework>TargetFramework=$(O5KitTargetFramework)</SetTargetFramework>
 		</ProjectReference>
-		<!-- Hand-built System.Memory for legacy Mono (own assembly, GC-safe).
-		     ReferenceOutputAssembly=false: build ordering only, never linked. -->
-		<ProjectReference Include="$(MSBuildProjectDirectory)/Lib/SystemMemoryShim/SystemMemoryShim.csproj">
-			<ReferenceOutputAssembly>false</ReferenceOutputAssembly>
-		</ProjectReference>
 	</ItemGroup>
 
 	<ItemDefinitionGroup>
@@ -47,14 +42,6 @@
 			<Private>false</Private>
 		</Reference>
 	</ItemDefinitionGroup>
-
-	<!-- The SystemMemoryShim is its own project (see ProjectReference above);
-	     keep its sources and build outputs out of THIS compilation. -->
-	<ItemGroup>
-		<Compile Remove="Lib\SystemMemoryShim\**" />
-		<None Remove="Lib\SystemMemoryShim\**" />
-		<EmbeddedResource Remove="Lib\SystemMemoryShim\**" />
-	</ItemGroup>
 
 	<PropertyGroup Condition="$(Configuration.Contains('ML'))">
 		<DefineConstants>$(DefineConstants);ML</DefineConstants>
@@ -209,22 +196,10 @@
 		<EnableDefaultCompileItems>true</EnableDefaultCompileItems>
 		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
 		<ClearScriptVersion>7.5.1</ClearScriptVersion>
-		<EsprimaVersion>3.0.5</EsprimaVersion>
 		<NCalcVersion>7.0.2</NCalcVersion>
 		<ParlotVersion>1.5.8</ParlotVersion>
 		<SystemCollectionsImmutableVersion>10.0.10</SystemCollectionsImmutableVersion>
 		<NativeFileDialogVersion>1.2.0</NativeFileDialogVersion>
-		<!-- Legacy Mono pins (old Unity, e.g. 2019.4): netstandard2.1-facade types
-		     (Span, IAsyncDisposable, ...) do not exist there. For Mono builds the
-		     UserLibs below ship net471/net462/netstandard2.0-era binaries with
-		     identical assembly identities instead. IL2CPP builds are untouched.
-		     Pinned versions stay at or above every transitive floor (no downgrades).
-		     System.Memory is NOT pinned: every NuGet vintage vectorizes SpanHelpers
-		     over System.Numerics.Vectors (absent on legacy). Instead Mono ships the
-		     4KB Mono forwarder (Lib/LegacyMono), which maps Span onto mscorlib. -->
-		<LegacyTaskExtVersion>4.6.3</LegacyTaskExtVersion>
-		<LegacyBuffersVersion>4.6.1</LegacyBuffersVersion>
-		<LegacyBclVersion>10.0.10</LegacyBclVersion>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_ML|AnyCPU'">
@@ -267,14 +242,9 @@
 	  <PackageReference Include="Microsoft.ClearScript.V8.Native.osx-arm64" Version="$(ClearScriptVersion)" />
 	  <PackageReference Include="Microsoft.ClearScript.V8.Native.osx-x64" Version="$(ClearScriptVersion)" />
 	  <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
-	  <PackageReference Include="Esprima" Version="$(EsprimaVersion)" />
+	  <PackageReference Include="Esprima" Version="3.0.5" />
 	  <PackageReference Include="ncalc" Version="$(NCalcVersion)" />
 	  <PackageReference Include="NativeFileDialog.Extended" Version="$(NativeFileDialogVersion)" />
-	  <!-- Legacy-only support closure (see properties above). Conditioned on the
-	       Mono configurations so IL2CPP restore graphs stay untouched. -->
-	  <PackageReference Include="System.Threading.Tasks.Extensions" Version="$(LegacyTaskExtVersion)" Condition="!$(Configuration.Contains('IL2CPP'))" />
-	  <PackageReference Include="System.Buffers" Version="$(LegacyBuffersVersion)" Condition="!$(Configuration.Contains('IL2CPP'))" />
-	  <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="$(LegacyBclVersion)" Condition="!$(Configuration.Contains('IL2CPP'))" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -307,24 +277,6 @@
 			<NuGetUserLibs Include="$(NuGetPackageRoot)parlot/$(ParlotVersion)/lib/netstandard2.0/Parlot.dll" />
 			<NuGetUserLibs Include="$(NuGetPackageRoot)system.collections.immutable/$(SystemCollectionsImmutableVersion)/lib/netstandard2.0/System.Collections.Immutable.dll" />
 			<NuGetUserLibs Include="@(NativeFileDialogNative)" />
-			<!--
-			  Legacy Mono asset swap (old Unity without netstandard2.1 facade).
-			  The resolved (netstandard2.1-era) files are replaced with net471/net462-era
-			  binaries carrying identical assembly identities, plus the exact support
-			  closure ClearScript's net471 build was audited against. IL2CPP untouched.
-			-->
-			<NuGetUserLibs Remove="@(NuGetUserLibs)"
-				Condition="!$(Configuration.Contains('IL2CPP')) And ('%(Filename)' == 'ClearScript.Core' Or '%(Filename)' == 'ClearScript.V8' Or '%(Filename)' == 'Esprima' Or '%(Filename)' == 'System.Memory' Or '%(Filename)' == 'Microsoft.Bcl.AsyncInterfaces' Or '%(Filename)' == 'System.Threading.Tasks.Extensions' Or '%(Filename)' == 'System.Buffers')" />
-			<NuGetUserLibs Include="$(NuGetPackageRoot)microsoft.clearscript.core\$(ClearScriptVersion)\lib\net471\ClearScript.Core.dll" Condition="!$(Configuration.Contains('IL2CPP'))" />
-			<NuGetUserLibs Include="$(NuGetPackageRoot)microsoft.clearscript.v8\$(ClearScriptVersion)\lib\net471\ClearScript.V8.dll" Condition="!$(Configuration.Contains('IL2CPP'))" />
-			<NuGetUserLibs Include="$(NuGetPackageRoot)esprima\$(EsprimaVersion)\lib\net462\Esprima.dll" Condition="!$(Configuration.Contains('IL2CPP'))" />
-			<!-- No NuGet System.Memory works on legacy (all vintages vectorize SpanHelpers
-			     over System.Numerics.Vectors). Ship the hand-built shim instead
-			     (Lib/SystemMemoryShim, audited + tested). -->
-			<NuGetUserLibs Include="$(MSBuildProjectDirectory)/Lib/SystemMemoryShim/bin/$(Configuration)/netstandard2.0/System.Memory.dll" Condition="!$(Configuration.Contains('IL2CPP'))" />
-			<NuGetUserLibs Include="$(NuGetPackageRoot)microsoft.bcl.asyncinterfaces\$(LegacyBclVersion)\lib\netstandard2.0\Microsoft.Bcl.AsyncInterfaces.dll" Condition="!$(Configuration.Contains('IL2CPP'))" />
-			<NuGetUserLibs Include="$(NuGetPackageRoot)system.threading.tasks.extensions\$(LegacyTaskExtVersion)\lib\netstandard2.0\System.Threading.Tasks.Extensions.dll" Condition="!$(Configuration.Contains('IL2CPP'))" />
-			<NuGetUserLibs Include="$(NuGetPackageRoot)system.buffers\$(LegacyBuffersVersion)\lib\netstandard2.0\System.Buffers.dll" Condition="!$(Configuration.Contains('IL2CPP'))" />
 		</ItemGroup>
 		<Copy SourceFiles="@(NuGetUserLibs)" DestinationFolder="$(TargetDir)" SkipUnchangedFiles="true" />
 		<MakeDir Directories="$(TargetGamePath)/UserLibs" Condition="'@(NuGetUserLibs)' != ''" />
