@@ -29,6 +29,8 @@ public static class JSPatchManager {
         public int PostfixArity;
         public bool PrefixRest;
         public bool PostfixRest;
+        public int PrefixInstance = -1;
+        public int PostfixInstance = -1;
         public int Depth;
     }
 
@@ -42,7 +44,7 @@ public static class JSPatchManager {
 
     public static int Add(string file, MethodBase target, ScriptObject prefix, ScriptObject postfix,
         string prefixSource, string postfixSource, int prefixArity, int postfixArity,
-        bool prefixRest, bool postfixRest) {
+        bool prefixRest, bool postfixRest, int prefixInstance = -1, int postfixInstance = -1) {
         if(prefix == null && postfix == null) {
             throw new InvalidOperationException("AddPatch needs at least a prefix or a postfix function.");
         }
@@ -90,6 +92,8 @@ public static class JSPatchManager {
                 PostfixArity = postfixArity,
                 PrefixRest = prefixRest,
                 PostfixRest = postfixRest,
+                PrefixInstance = prefixInstance,
+                PostfixInstance = postfixInstance,
             };
             fwd.Handles.Add(handle);
             RefreshSnapshot(fwd);
@@ -246,31 +250,49 @@ public static class JSPatchManager {
         }
     }
 
-    private static object[] PrefixCallArgs(Registration reg, object[] args) {
-        if(reg.PrefixRest || reg.PrefixArity > 1) {
-            int n = reg.PrefixRest ? args.Length : Math.Min(reg.PrefixArity, args.Length);
-            var spread = new object[n];
-            Array.Copy(args, spread, n);
-            return spread;
+    private static object[] PrefixCallArgs(Registration reg, object[] args, object instance) {
+        int eff = reg.PrefixInstance >= 0 ? Math.Max(0, reg.PrefixArity - 1) : reg.PrefixArity;
+        object[] baseArgs;
+        if(reg.PrefixRest || eff > 1) {
+            int n = reg.PrefixRest ? args.Length : Math.Min(eff, args.Length);
+            baseArgs = new object[n];
+            Array.Copy(args, baseArgs, n);
+        } else if(eff == 0) {
+            baseArgs = [];
+        } else {
+            baseArgs = [args];
         }
-        if(reg.PrefixArity == 0) {
-            return [];
+        if(reg.PrefixInstance < 0) {
+            return baseArgs;
         }
-        return [args];
+        return InsertAt(baseArgs, Math.Min(reg.PrefixInstance, baseArgs.Length), instance);
     }
 
-    private static object[] PostfixCallArgs(Registration reg, object[] args, object result) {
-        if(reg.PostfixRest || reg.PostfixArity > 2) {
-            int n = (reg.PostfixRest || reg.PrefixRest) ? args.Length : Math.Min(reg.PostfixArity - 1, args.Length);
-            var spread = new object[n + 1];
-            Array.Copy(args, spread, n);
-            spread[n] = result;
-            return spread;
+    private static object[] PostfixCallArgs(Registration reg, object[] args, object result, object instance) {
+        int eff = reg.PostfixInstance >= 0 ? Math.Max(0, reg.PostfixArity - 1) : reg.PostfixArity;
+        object[] baseArgs;
+        if(reg.PostfixRest || eff > 2) {
+            int n = (reg.PostfixRest || reg.PrefixRest) ? args.Length : Math.Min(eff - 1, args.Length);
+            baseArgs = new object[n + 1];
+            Array.Copy(args, baseArgs, n);
+            baseArgs[n] = result;
+        } else if(eff == 0) {
+            baseArgs = [];
+        } else {
+            baseArgs = [args, result];
         }
-        if(reg.PostfixArity == 0) {
-            return [];
+        if(reg.PostfixInstance < 0) {
+            return baseArgs;
         }
-        return [args, result];
+        return InsertAt(baseArgs, Math.Min(reg.PostfixInstance, baseArgs.Length), instance);
+    }
+
+    private static object[] InsertAt(object[] arr, int index, object value) {
+        var r = new object[arr.Length + 1];
+        Array.Copy(arr, 0, r, 0, index);
+        r[index] = value;
+        Array.Copy(arr, index, r, index + 1, arr.Length - index);
+        return r;
     }
 
     private static bool IsSkipWithResult(object ret, out object result) {
@@ -319,7 +341,7 @@ public static class JSPatchManager {
     private static ParameterInfo[] TargetParameters(MethodBase target)
         => ParamCache.GetOrAdd(target, static t => t.GetParameters());
 
-    private static bool RunPrefixes(MethodBase target, object[] args, Type ret, out object result) {
+    private static bool RunPrefixes(MethodBase target, object instance, object[] args, Type ret, out object result) {
         result = null;
         var regs = ForTarget(target);
         if(regs == null) {
@@ -330,7 +352,7 @@ public static class JSPatchManager {
             if(reg.Prefix == null) {
                 continue;
             }
-            object ret2 = InvokeJs(reg, reg.Prefix, PrefixCallArgs(reg, args), "prefix");
+            object ret2 = InvokeJs(reg, reg.Prefix, PrefixCallArgs(reg, args, instance), "prefix");
             CoerceArgs(reg, args, parameters);
             if(ret2 is bool b && !b) {
                 return false;
@@ -343,7 +365,7 @@ public static class JSPatchManager {
         return true;
     }
 
-    private static void RunPostfixes(MethodBase target, object[] args, Type ret, ref object current) {
+    private static void RunPostfixes(MethodBase target, object instance, object[] args, Type ret, ref object current) {
         var regs = ForTarget(target);
         if(regs == null) {
             return;
@@ -352,7 +374,7 @@ public static class JSPatchManager {
             if(reg.Postfix == null) {
                 continue;
             }
-            object ret2 = InvokeJs(reg, reg.Postfix, PostfixCallArgs(reg, args, current), "postfix");
+            object ret2 = InvokeJs(reg, reg.Postfix, PostfixCallArgs(reg, args, current, instance), "postfix");
             if(ret2 != null && ret2 != Undefined.Value && ret != typeof(void)) {
                 current = Coerce(ret2, current, ret, reg, "result");
             }
@@ -360,15 +382,15 @@ public static class JSPatchManager {
     }
 
     private static bool PrefixVoidCore(object __instance, object[] __args, MethodBase __originalMethod) {
-        return RunPrefixes(__originalMethod, __args, typeof(void), out _);
+        return RunPrefixes(__originalMethod, __instance, __args, typeof(void), out _);
     }
 
     private static bool PrefixVoidStaticCore(object[] __args, MethodBase __originalMethod) {
-        return RunPrefixes(__originalMethod, __args, typeof(void), out _);
+        return RunPrefixes(__originalMethod, null, __args, typeof(void), out _);
     }
 
     private static bool PrefixCore<T>(object __instance, object[] __args, MethodBase __originalMethod, ref T __result) {
-        if(!RunPrefixes(__originalMethod, __args, typeof(T), out object result)) {
+        if(!RunPrefixes(__originalMethod, __instance, __args, typeof(T), out object result)) {
             if(result != null) {
                 __result = (T)result;
             }
@@ -378,7 +400,7 @@ public static class JSPatchManager {
     }
 
     private static bool PrefixStaticCore<T>(object[] __args, MethodBase __originalMethod, ref T __result) {
-        if(!RunPrefixes(__originalMethod, __args, typeof(T), out object result)) {
+        if(!RunPrefixes(__originalMethod, null, __args, typeof(T), out object result)) {
             if(result != null) {
                 __result = (T)result;
             }
@@ -389,17 +411,17 @@ public static class JSPatchManager {
 
     private static void PostfixVoidCore(object __instance, object[] __args, MethodBase __originalMethod) {
         object current = null;
-        RunPostfixes(__originalMethod, __args, typeof(void), ref current);
+        RunPostfixes(__originalMethod, __instance, __args, typeof(void), ref current);
     }
 
     private static void PostfixVoidStaticCore(object[] __args, MethodBase __originalMethod) {
         object current = null;
-        RunPostfixes(__originalMethod, __args, typeof(void), ref current);
+        RunPostfixes(__originalMethod, null, __args, typeof(void), ref current);
     }
 
     private static void PostfixCore<T>(object __instance, object[] __args, MethodBase __originalMethod, ref T __result) {
         object current = __result;
-        RunPostfixes(__originalMethod, __args, typeof(T), ref current);
+        RunPostfixes(__originalMethod, __instance, __args, typeof(T), ref current);
         if(current != null || !typeof(T).IsValueType || Nullable.GetUnderlyingType(typeof(T)) != null) {
             __result = (T)current;
         }
@@ -407,7 +429,7 @@ public static class JSPatchManager {
 
     private static void PostfixStaticCore<T>(object[] __args, MethodBase __originalMethod, ref T __result) {
         object current = __result;
-        RunPostfixes(__originalMethod, __args, typeof(T), ref current);
+        RunPostfixes(__originalMethod, null, __args, typeof(T), ref current);
         if(current != null || !typeof(T).IsValueType || Nullable.GetUnderlyingType(typeof(T)) != null) {
             __result = (T)current;
         }

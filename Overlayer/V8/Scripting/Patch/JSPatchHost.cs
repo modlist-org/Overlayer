@@ -75,16 +75,21 @@ public class JSPatchHost(JSScriptLoader loader, string filePath) {
         }
         int prefixArity = Arity(prefix, prefixSource, out bool prefixRest);
         int postfixArity = Arity(postfix, postfixSource, out bool postfixRest);
+        int prefixInstance = InstanceIndex(prefixSource, prefixArity);
+        int postfixInstance = InstanceIndex(postfixSource, postfixArity);
+        int prefixEff = prefixArity - (prefixInstance >= 0 ? 1 : 0);
+        int postfixEff = postfixArity - (postfixInstance >= 0 ? 1 : 0);
         MethodBase resolved;
         try {
-            resolved = Resolve(targetText.Trim(), prefixArity, postfixArity);
+            resolved = Resolve(targetText.Trim(), prefixEff, postfixEff);
         } catch(Exception e) {
             Diag(e.Message);
             return -1;
         }
         try {
             return JSPatchManager.Add(FilePath, resolved, prefix, postfix,
-                prefixSource, postfixSource, prefixArity, postfixArity, prefixRest, postfixRest);
+                prefixSource, postfixSource, prefixArity, postfixArity, prefixRest, postfixRest,
+                prefixInstance, postfixInstance);
         } catch(Exception e) {
             Diag(e.Message);
             return -1;
@@ -107,6 +112,63 @@ public class JSPatchHost(JSScriptLoader loader, string filePath) {
 
     private static ScriptObject AsFunc(object value) =>
         value is ScriptObject obj ? obj : null;
+
+    // Harmony-style: a parameter literally named `__instance` is bound to
+    // the target instance (null for static methods) and excluded from
+    // overload-arity matching. Any position works:
+    //   prefix: (args, __instance) => { ... }
+    //   postfix: (args, result, __instance) => { ... }
+    private static int InstanceIndex(string source, int arity) {
+        if(arity <= 0 || string.IsNullOrWhiteSpace(source)) {
+            return -1;
+        }
+        var names = ParamNames(source);
+        for(int i = 0; i < names.Count; i++) {
+            if(names[i] == "__instance") {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private static List<string> ParamNames(string source) {
+        string inner = ParamsOf(source).Trim();
+        if(inner.Length >= 2 && inner[0] == '(' && inner[^1] == ')') {
+            inner = inner[1..^1];
+        }
+        if(string.IsNullOrWhiteSpace(inner)) {
+            return [];
+        }
+        var names = new List<string>();
+        foreach(string part in SplitTopLevel(inner)) {
+            names.Add(SimpleName(part));
+        }
+        return names;
+    }
+
+    private static string SimpleName(string param) {
+        string t = param.Trim();
+        if(t.StartsWith("...", StringComparison.Ordinal)) {
+            return null;
+        }
+        t = t.TrimStart();
+        if(t.Length == 0 || t[0] is '{' or '[' or '(') {
+            return null;
+        }
+        int eq = t.IndexOf('=');
+        if(eq >= 0) {
+            t = t[..eq].TrimEnd();
+        }
+        int i = 0;
+        while(i < t.Length && (char.IsLetterOrDigit(t[i]) || t[i] == '_' || t[i] == '$')) {
+            i++;
+        }
+        string ident = t[..i];
+        if(ident.Length == 0 || t[i..].Trim().Length != 0) {
+            return null;
+        }
+        return ident;
+    }
 
     private static int Arity(ScriptObject fn, string source, out bool rest) {
         rest = false;
@@ -241,12 +303,12 @@ public class JSPatchHost(JSScriptLoader loader, string filePath) {
             }
             if(hits.Length == 0) {
                 throw new InvalidOperationException(
-                    $"No overload of {typeName}::{methodName} takes {wanted} args. Candidates: {string.Join("; ", candidates.Select(Sig))}");
+                    $"No overload of {typeName}::{methodName} takes {wanted} args (__instance does not count toward callback arity). Candidates: {string.Join("; ", candidates.Select(Sig))}");
             }
         }
         throw new InvalidOperationException(
             $"Ambiguous: {typeName}::{methodName} has {candidates.Length} overloads. Candidates: {string.Join("; ", candidates.Select(Sig))}. " +
-            "Declare the callback with matching arity or use \"Type::Method(Args)\".");
+            "Use a callback with matching expanded arity or specify \"Type::Method(Args)\". A parameter named __instance is excluded from callback arity.");
     }
 
     private static bool ParamsMatch(ParameterInfo[] parameters, string[] tokens) {
