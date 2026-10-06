@@ -16,8 +16,19 @@ public class JSScriptLoader {
     private readonly Dictionary<string, string> _fileHashes = [];
     private readonly Dictionary<string, List<string>> _fileToTags = [];
 
-    /// <summary>Script file names (not full paths) skipped by the loader. Guarded by <see cref="_syncLock"/>; use the helpers below.</summary>
+    /// <summary>Script names relative to the script folder ("a.js", "utils/b.js") skipped by the loader. Guarded by <see cref="_syncLock"/>; use the helpers below.</summary>
     private readonly HashSet<string> _disabledFileNames = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>All *.js files under <paramref name="root"/>, including subfolders. Skips dot-folders and node_modules.</summary>
+    public static string[] FindScripts(string root) => Directory
+        .GetFiles(root, "*.js", SearchOption.AllDirectories)
+        .Where(file => !RelativeName(root, file).Split('/').Any(part => part.StartsWith(".") || part.Equals("node_modules", StringComparison.OrdinalIgnoreCase)))
+        .ToArray();
+
+    /// <summary>Path of <paramref name="file"/> relative to <paramref name="root"/>, with '/' separators.</summary>
+    public static string RelativeName(string root, string file) => file.StartsWith(root, StringComparison.OrdinalIgnoreCase)
+        ? file[root.Length..].TrimStart('/', '\\').Replace('\\', '/')
+        : Path.GetFileName(file);
 
     public bool IsFileDisabled(string fileName) {
         lock(_syncLock) {
@@ -59,7 +70,7 @@ public class JSScriptLoader {
             await Task.Run(() => {
                 lock(_syncLock) {
                     Diagnostics.Clear();
-                    var files = Directory.GetFiles(folderPath, "*.js");
+                    var files = FindScripts(folderPath);
                     var currentFiles = new HashSet<string>(files);
 
                     var removedFiles = _fileHashes.Keys.Where(f => !currentFiles.Contains(f)).ToList();
@@ -129,6 +140,11 @@ public class JSScriptLoader {
                 (Func<object, bool>)patchHost.RemovePatch
             );
             engine.Execute(Scripting.Patch.JSPatchHost.BindingScript);
+            var uiHost = new Scripting.UI.JSUIHost(filePath);
+            engine.AddHostObject("__OverlayerAddTab", (Func<object, object, object, int>)uiHost.AddTab);
+            engine.AddHostObject("__OverlayerRebuildTab", (Func<object, object, bool>)uiHost.RebuildTab);
+            engine.AddHostObject("__OverlayerRemoveTab", (Func<object, bool>)uiHost.RemoveTab);
+            engine.Execute(Scripting.UI.JSUIHost.BindingScript);
             string source = ReadScriptSource(filePath);
             if(source == null) {
                 Diagnostics.Add(new JSDiagnostic(JSTagDiagnosticId.ScriptError, JSSeverity.Error, filePath,
@@ -162,6 +178,7 @@ public class JSScriptLoader {
 
     private void UnloadScript(string filePath) {
         Scripting.Patch.JSPatchManager.RemoveFile(filePath);
+        Scripting.UI.JSUIHost.RemoveFile(filePath);
         if(_fileToTags.TryGetValue(filePath, out var tags)) {
             if(tags != null && tags.Count > 0) {
                 foreach(var tag in tags) {
@@ -197,7 +214,7 @@ public class JSScriptLoader {
         lock(_syncLock) {
             string[] files;
             try {
-                files = Directory.GetFiles(folderPath, "*.js");
+                files = FindScripts(folderPath);
             } catch {
                 return (changed, removed);
             }
@@ -271,7 +288,7 @@ public class JSScriptLoader {
 
     private bool IsDisabled(string filePath) {
         try {
-            return IsFileDisabled(Path.GetFileName(filePath));
+            return IsFileDisabled(RelativeName(MainCore.V8.ScriptFolderPath, filePath));
         } catch {
             return false;
         }

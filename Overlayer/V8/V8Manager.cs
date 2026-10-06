@@ -146,6 +146,7 @@ public class V8Manager : IRuntimeService {
             BindEngine(_engine);
         }
         Scripting.Patch.JSPatchManager.RemoveAll();
+        Scripting.UI.JSUIHost.RemoveAll();
         LoadImplJs();
     }
 
@@ -167,6 +168,7 @@ public class V8Manager : IRuntimeService {
         await InitializationTask.ConfigureAwait(false);
         await Task.Run(() => {
             Scripting.Patch.JSPatchManager.RemoveAll();
+            Scripting.UI.JSUIHost.RemoveAll();
             TagCache.Instance.Clear();
 
             List<string> jsTags;
@@ -316,6 +318,22 @@ public class V8Manager : IRuntimeService {
         sb.AppendLine("globalThis.AddPatch = function(target, options) {};");
         sb.AppendLine("globalThis.RemovePatch = function(handle) {};\n");
 
+        sb.AppendLine("/**");
+        sb.AppendLine(" * Adds a menu tab, like a module does. build(tab) runs on the main thread.");
+        sb.AppendLine(" * tab: Header(text), Text(text, size?), Button(text, fn), Toggle(text, value, fn),");
+        sb.AppendLine(" *   Slider(text, min, max, value, fn, format?), Input(placeholder, value, fn, multiline?),");
+        sb.AppendLine(" *   Dropdown(values[], value, fn), Color(label, color, fn), Card(title) -> nested tab, Row(spacing?) -> side-by-side builder, Clear(), Root (Transform).");
+        sb.AppendLine(" * Controls return the O5Kit object (e.g. slider.Set(3), toggle.Value).");
+        sb.AppendLine(" * @param {string} name");
+        sb.AppendLine(" * @param {Function} build");
+        sb.AppendLine(" * @param {Object} [options] - { icon: \"Gear128\" } (UISprite name).");
+        sb.AppendLine(" * @returns {number} Tab handle for RemoveTab, or -1. Removed automatically on script reload.");
+        sb.AppendLine(" */");
+        sb.AppendLine("globalThis.AddTab = function(name, build, options) {};");
+        sb.AppendLine("/** RebuildTab(handle, build?): clear the tab and run build (or the original) again next frame. */");
+        sb.AppendLine("globalThis.RebuildTab = function(handle, build) {};");
+        sb.AppendLine("globalThis.RemoveTab = function(handle) {};\n");
+
         sb.AppendLine("/* Tags */\n");
 
         foreach(var tag in tags.OrderBy(t => t.Name)) {
@@ -367,6 +385,23 @@ public class V8Manager : IRuntimeService {
         sb.AppendLine("/** Prefix callbacks use prefix(args); postfix callbacks use postfix(args, result). A plain parameter named __instance receives the target instance (null for static); it is the only Harmony-style special parameter. */");
         sb.AppendLine("declare function AddPatch(target: string, options: JSPatchOptions): number;");
         sb.AppendLine("declare function RemovePatch(handle: number): boolean;");
+        sb.AppendLine("interface JSUIBuilder {");
+        sb.AppendLine("    readonly Root: any;");
+        sb.AppendLine("    Header(text: string): any;");
+        sb.AppendLine("    Text(text: string, size?: number): any;");
+        sb.AppendLine("    Button(text: string, onClick: () => void): any;");
+        sb.AppendLine("    Toggle(text: string, value: boolean, onChanged: (value: boolean) => void): any;");
+        sb.AppendLine("    Slider(text: string, min: number, max: number, value: number, onChanged: (value: number) => void, format?: string): any;");
+        sb.AppendLine("    Input(placeholder: string, value: string, onChanged: (value: string) => void, multiline?: boolean): any;");
+        sb.AppendLine("    Dropdown(values: string[], value: string, onChanged: (value: string) => void): any;");
+        sb.AppendLine("    Color(label: string, value: any, onChanged: (value: any) => void): any;");
+        sb.AppendLine("    Card(title: string): JSUIBuilder;");
+        sb.AppendLine("    Row(spacing?: number): JSUIBuilder;");
+        sb.AppendLine("    Clear(): void;");
+        sb.AppendLine("}");
+        sb.AppendLine("declare function AddTab(name: string, build: (tab: JSUIBuilder) => void, options?: { icon?: string }): number;");
+        sb.AppendLine("declare function RebuildTab(handle: number, build?: (tab: JSUIBuilder) => void): boolean;");
+        sb.AppendLine("declare function RemoveTab(handle: number): boolean;");
         sb.AppendLine("interface OverlayerLog {");
         sb.AppendLine("    Msg(message: any): void;");
         sb.AppendLine("    Wrn(message: any): void;");
@@ -751,7 +786,7 @@ public class V8Manager : IRuntimeService {
 
     public bool IsScriptEnabled(string filePath) {
         try {
-            return !_scriptLoader.IsFileDisabled(Path.GetFileName(filePath));
+            return !_scriptLoader.IsFileDisabled(JSScriptLoader.RelativeName(ScriptFolderPath, filePath));
         } catch {
             return true;
         }
@@ -761,7 +796,7 @@ public class V8Manager : IRuntimeService {
         await InitializationTask.ConfigureAwait(false);
         string name;
         try {
-            name = Path.GetFileName(filePath);
+            name = JSScriptLoader.RelativeName(ScriptFolderPath, filePath);
         } catch {
             return;
         }
@@ -798,7 +833,7 @@ public class V8Manager : IRuntimeService {
         HashSet<string> diskFiles;
         try {
             diskFiles = new HashSet<string>(
-                Directory.GetFiles(ScriptFolderPath, "*.js").Select(Path.GetFileName),
+                JSScriptLoader.FindScripts(ScriptFolderPath).Select(file => JSScriptLoader.RelativeName(ScriptFolderPath, file)),
                 StringComparer.OrdinalIgnoreCase);
         } catch {
             return false;
@@ -867,7 +902,8 @@ public class V8Manager : IRuntimeService {
         bool enabled = MainCore.Conf.EnableJSScriptWatcher;
         if(enabled && _watcher == null) {
             _watcher = new FileSystemWatcher(ScriptFolderPath, "*.js") {
-                NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite
+                NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite,
+                IncludeSubdirectories = true
             };
             _watcher.Changed += OnScriptChanged;
             _watcher.Created += OnScriptChanged;

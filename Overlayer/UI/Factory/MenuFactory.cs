@@ -159,6 +159,26 @@ public static class MenuFactory {
         return menuItem;
     }
 
+    /// <summary>Destroys the menu item for <paramref name="state"/>; falls back to the Overlayer page if it was selected.</summary>
+    public static void RemoveItem(int state) {
+        int index = items.FindIndex(it => it.state == state);
+        if(index < 0) {
+            return;
+        }
+
+        MenuItem item = items[index];
+        item.hoverSeq?.Kill();
+        items.RemoveAt(index);
+
+        if(UICore.CurrentMenuState == state) {
+            SetState((int)OriginalMenuState.Overlayer);
+        }
+
+        if(item.obj) {
+            UnityEngine.Object.Destroy(item.obj);
+        }
+    }
+
     private static void SetState(int to) {
         int from = UICore.CurrentMenuState;
 
