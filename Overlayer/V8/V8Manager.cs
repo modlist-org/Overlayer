@@ -37,6 +37,8 @@ public class V8Manager : IRuntimeService {
     public const string ImplDtsFileName = "impl.d.ts";
     public const string ScriptFolderName = "Script";
     private const string DisabledScriptsFileName = "DisabledScripts.json";
+    private const string PrefsFileName = "Prefs.json";
+    private PrefsStore _prefs;
 
     public string ScriptFolderPath { get; private set; }
     public string ImplFilePath { get; private set; }
@@ -93,8 +95,10 @@ public class V8Manager : IRuntimeService {
     private void BindEngine(V8ScriptEngine engine) {
         engine.AddHostObject(nameof(TagAccessHelper), new TagAccessHelper());
         engine.AddHostObject(nameof(Store), Store);
+        engine.AddHostObject("Prefs", _prefs ??= new PrefsStore(Path.Combine(ScriptFolderPath, PrefsFileName)));
         engine.AddHostObject("Clr", new Scripting.Clr.ClrAccess());
         engine.AddHostObject("Unity", new Scripting.Unity.UnityAccess());
+        engine.AddHostObject("Net", new Scripting.Net.NetAccess());
         engine.AddHostType("GameObject", typeof(UnityEngine.GameObject));
         engine.AddHostType("Transform", typeof(UnityEngine.Transform));
         engine.AddHostType("RectTransform", typeof(UnityEngine.RectTransform));

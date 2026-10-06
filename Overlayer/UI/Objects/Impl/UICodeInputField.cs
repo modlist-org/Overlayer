@@ -26,6 +26,7 @@ public sealed class UICodeInputField
     public Func<KeyCode, bool> HandleKey;
     public Action OnFieldDisabled;
     public Action OnFieldDestroyed;
+    public Action OnDoubleClick;
     public bool CanUndo => undoHistory.Count > 0;
     public bool CanRedo => redoHistory.Count > 0;
 
@@ -149,6 +150,13 @@ public sealed class UICodeInputField
         float wheel = Mathf.Abs(delta.y) > 0.01f ? delta.y : delta.x;
         if(Mathf.Abs(wheel) > 0.0001f) {
             ScrollHorizontal(wheel * 32f);
+        }
+    }
+
+    public override void OnPointerDown(PointerEventData eventData) {
+        base.OnPointerDown(eventData);
+        if(eventData.clickCount == 2) {
+            OnDoubleClick?.Invoke();
         }
     }
 

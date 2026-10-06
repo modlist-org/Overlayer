@@ -1007,9 +1007,100 @@ internal sealed class OvInspectorBuilder(
             }
         }
 
+        O5ColorPicker hexPicker = null;
+        RectTransform hexAnchor = null;
+        int hexStart = 0;
+        int hexLength = 0;
+        bool hexLower = false;
+        bool hexAlpha = false;
+
+        void OnHexPicked(Color color) {
+            string source = codeInput.text ?? string.Empty;
+            if(hexStart + hexLength > source.Length) {
+                return;
+            }
+
+            string hex = hexAlpha || color.a < 1f
+                ? ColorUtility.ToHtmlStringRGBA(color)
+                : ColorUtility.ToHtmlStringRGB(color);
+            if(hexLower) {
+                hex = hex.ToLowerInvariant();
+            }
+
+            codeInput.text = source[..hexStart] + hex + source[(hexStart + hexLength)..];
+            hexLength = hex.Length;
+        }
+
+        codeInput.OnDoubleClick = () => {
+            string source = codeInput.text ?? string.Empty;
+            if(!TryFindHexColor(source, codeInput.stringPosition, out int start, out int length)
+                || !ColorUtility.TryParseHtmlString("#" + source.Substring(start, length), out Color color)) {
+                return;
+            }
+
+            string hex = source.Substring(start, length);
+            hexStart = start;
+            hexLength = length;
+            hexLower = hex.Any(char.IsLower);
+            hexAlpha = length is 4 or 8;
+
+            if(hexPicker == null) {
+                var anchorObj = new GameObject("HexColorPickerAnchor");
+                anchorObj.transform.SetParent(input.InputField.transform, false);
+                hexAnchor = anchorObj.AddComponent<RectTransform>();
+                hexAnchor.anchorMin = hexAnchor.anchorMax = hexAnchor.pivot = new Vector2(0f, 1f);
+                hexAnchor.sizeDelta = Vector2.one;
+                var anchorGroup = anchorObj.AddComponent<CanvasGroup>();
+                anchorGroup.alpha = 0f;
+                anchorGroup.interactable = false;
+                anchorGroup.blocksRaycasts = false;
+                hexPicker = O5Factory.ColorPicker(O5KitAdapters.Ctx, hexAnchor, UICore.CanvasObj.GetComponent<RectTransform>(),
+                    UICore.Canvas ? UICore.Canvas.worldCamera : null, null, color, OnHexPicked, _ => save(), id + "_hexpick");
+                controls.Add(hexPicker);
+            }
+
+            // Popup opens just below the clicked point.
+            RectTransformUtility.ScreenPointToWorldPointInRectangle(hexAnchor, O5Input.MousePosition, null, out Vector3 world);
+            hexAnchor.position = world;
+            hexAnchor.anchoredPosition -= new Vector2(0f, 24f);
+            hexPicker.Set(color, false);
+            hexPicker.SetExpanded(true);
+        };
+
         RefreshDiagnostics();
         controls.Add(new O5Watcher(O5KitAdapters.Ctx, id + "_diagnostics", diagnosticsRect, RefreshDiagnostics));
         Track(input);
+    }
+
+    // Finds a hex color (3/4/6/8 digits) around position. Without a leading '#', only 6/8 digit
+    // tokens that mix digits and letters or are all-uppercase count, so words like "Add" or numbers are skipped.
+    private static bool TryFindHexColor(string source, int position, out int start, out int length) {
+        static bool IsWordChar(char c) => char.IsLetterOrDigit(c) || c == '_';
+
+        start = Math.Clamp(position, 0, source.Length);
+        int end = start;
+        while(start > 0 && Uri.IsHexDigit(source[start - 1])) {
+            start--;
+        }
+        while(end < source.Length && Uri.IsHexDigit(source[end])) {
+            end++;
+        }
+
+        length = end - start;
+        if(length is not (3 or 4 or 6 or 8) || (end < source.Length && IsWordChar(source[end]))) {
+            return false;
+        }
+
+        if(start > 0 && source[start - 1] == '#') {
+            return true;
+        }
+
+        if(length < 6 || (start > 0 && IsWordChar(source[start - 1]))) {
+            return false;
+        }
+
+        string hex = source.Substring(start, length);
+        return hex.Any(char.IsLetter) && (hex.Any(char.IsDigit) || hex == hex.ToUpperInvariant());
     }
 
     private static void UpdateLineNumbers(
