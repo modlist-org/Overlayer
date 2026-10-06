@@ -1,4 +1,4 @@
-using Overlayer.Tween;
+﻿using Overlayer.Tween;
 using Overlayer.IO.Fx;
 using Overlayer.Compat;
 using O5Kit.Core;
@@ -34,7 +34,8 @@ internal sealed class OvInspectorBuilder(
     Action apply,
     Action save,
     Action rebuild,
-    Action hierarchyChanged
+    Action hierarchyChanged,
+    List<(RectTransform Card, UnityComponentSettingsBase Settings)> componentCards = null
 ) {
     private enum AnchorMode { Custom = -1, Min, Middle, Max, Stretch }
 
@@ -104,6 +105,9 @@ internal sealed class OvInspectorBuilder(
         }
         if(obj.Config.GraphConfig != null) {
             BuildGraph(obj, obj.Config.GraphConfig);
+        }
+        if(obj.Config.RainConfig != null) {
+            BuildRain(obj, obj.Config.RainConfig);
         }
         if(obj.Config.ImageConfig != null) {
             BuildImage(obj, obj.Config.ImageConfig);
@@ -274,7 +278,7 @@ internal sealed class OvInspectorBuilder(
         FxSlider(card, "Outline Width", cfg.OutlineWidth, 0.05f, 0f, 0.25f, "text_outline_width");
         FxSlider(card, "Outline Softness", cfg.OutlineSoftness, 0f, 0f, 1f, "text_outline_softness");
         FxSlider(card, "Face Dilate", cfg.FaceDilate, 0f, -1f, 1f, "text_face_dilate");
-        FxColor(card, "Outline", cfg.OutlineColor, Color.black, "text_outline_color");
+        FxGradient(card, cfg.OutlineColor, Color.black, "text_outline_color", "Outline");
         FxToggle(card, "Material Shadow", cfg.EnableShadow, true, "text_shadow");
         FxVector2(card, "Shadow Offset", cfg.ShadowOffset, new Vector2(0.75f, -0.75f), -1f, 1f, "text_shadow_offset", "F2");
         FxSlider(card, "Shadow Dilate", cfg.ShadowDilate, 1f, 0f, 1f, "text_shadow_dilate");
@@ -288,7 +292,7 @@ internal sealed class OvInspectorBuilder(
             RefreshComponents(obj);
         });
 
-        SpriteDropDown(card, cfg);
+        SpriteDropDown(card, cfg.SpriteKey);
         FxColor(card, "Color", cfg.Color, Color.white, "image_color");
         FxToggle(card, "Raycast Target", cfg.RaycastTarget, true, "image_raycast");
         RectTransform preserveAspectRow = null;
@@ -448,6 +452,25 @@ internal sealed class OvInspectorBuilder(
         FxColor(card, "Fill Color", cfg.FillColor, new Color(1f, 1f, 1f, 0.25f), "graph_fill_color");
     }
 
+    private void BuildRain(OvObject obj, RainSettings cfg) {
+        var (_, card) = ComponentCard("Rain", cfg, () => {
+            obj.Config.RainConfig = null;
+            RefreshComponents(obj);
+        });
+
+        Label(card, "Trail grows while Active is true and flies off when it turns false. Use F on Active for a condition, e.g. IsSkyHookKeyHeld(\"Q\").");
+        FxToggle(card, "Active", cfg.Active, true, "rain_active");
+        FxSlider(card, "Speed", cfg.Speed, 400f, 0f, 3000f, "rain_speed", "F0");
+        FxSlider(card, "Length", cfg.Length, 400f, 0f, 3000f, "rain_length", "F0");
+        FxSlider(card, "Width (0 = object)", cfg.Width, 0f, 0f, 1000f, "rain_width", "F0");
+        FxVector2(card, "Offset", cfg.Offset, Vector2.zero, -2000f, 2000f, "rain_offset", "F1");
+        FxSlider(card, "Fade In", cfg.FadeIn, 0f, 0f, 1000f, "rain_fade_in", "F0");
+        FxSlider(card, "Fade Out", cfg.FadeOut, 100f, 0f, 1000f, "rain_fade_out", "F0");
+        FxGradient(card, cfg.Color, Color.white, "rain_color", "Color");
+        SpriteDropDown(card, cfg.SpriteKey, "rain_sprite");
+        FxIntSlider(card, "Max Trails", cfg.MaxTrails, 32, 1, 256, "rain_max_trails", "F0");
+    }
+
     private void BuildColorRange(OvObject obj, ColorRangeSettings cfg) {
         var (_, card) = ComponentCard("Color Range", cfg, () => {
             obj.Config.ColorRangeConfig = null;
@@ -551,6 +574,10 @@ internal sealed class OvInspectorBuilder(
         if(obj.Config.GraphConfig == null) {
             options.Add("Graph");
         }
+
+        if(obj.Config.RainConfig == null) {
+            options.Add("Rain");
+        }
         
         if(obj.Config.ShadowConfig == null) {
             options.Add("Shadow");
@@ -603,6 +630,9 @@ internal sealed class OvInspectorBuilder(
                     break;
                 case "Graph":
                     obj.Config.GraphConfig = new GraphSettings();
+                    break;
+                case "Rain":
+                    obj.Config.RainConfig = new RainSettings();
                     break;
                 case "Shadow":
                     obj.Config.ShadowConfig = new ShadowSettings();
@@ -676,6 +706,7 @@ internal sealed class OvInspectorBuilder(
                 enabledChanged();
             }
         }, remove);
+        componentCards?.Add((built.Item1, settings));
         return built;
     }
 
@@ -1461,8 +1492,8 @@ internal sealed class OvInspectorBuilder(
         return FxBlock(parent, label, fx, g => ColorSliders(g, label, defaults, () => fx.Value, value => fx.Value = value, id), id);
     }
 
-    private RectTransform FxGradient(Transform parent, FxValue<GradientColor> fx, Color defaults, string idPrefix) {
-        return FxBlock(parent, "Gradient", fx, g => {
+    private RectTransform FxGradient(Transform parent, FxValue<GradientColor> fx, Color defaults, string idPrefix, string label = "Gradient") {
+        return FxBlock(parent, label, fx, g => {
             Toggle(g, "Gradient", false, !fx.Value.SolidColor, value => {
                 var color = fx.Value;
                 color.SolidColor = !value;
@@ -2700,28 +2731,36 @@ internal sealed class OvInspectorBuilder(
         image.raycastTarget = false;
     }
 
-    private void SpriteDropDown(Transform parent, ImageSettings cfg) {
+    private void SpriteDropDown(Transform parent, FxValue<string> spriteKey, string id = "image_sprite") {
         const string none = "None";
-        var options = UserResourceManager.Spr.Keys.OrderBy(key => key).ToList();
-        if(!string.IsNullOrEmpty(cfg.SpriteKey.Value) && !options.Contains(cfg.SpriteKey.Value)) {
-            options.Insert(0, cfg.SpriteKey.Value);
+        var folders = UserResourceManager.Config.Data.ImageFolders;
+        var options = UserResourceManager.Spr.Keys
+            .OrderBy(key => UserResourceSettings.FolderOf(folders, key), StringComparer.OrdinalIgnoreCase)
+            .ThenBy(key => key, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if(!string.IsNullOrEmpty(spriteKey.Value) && !options.Contains(spriteKey.Value)) {
+            options.Insert(0, spriteKey.Value);
         }
         options.Insert(0, none);
 
-        string current = string.IsNullOrEmpty(cfg.SpriteKey.Value) ? none : cfg.SpriteKey.Value;
-        FxBlock(parent, "Sprite", cfg.SpriteKey, group => {
+        string current = string.IsNullOrEmpty(spriteKey.Value) ? none : spriteKey.Value;
+        FxBlock(parent, "Sprite", spriteKey, group => {
         var row = O5Factory.Row(O5KitAdapters.Ctx, group, 50f);
-        var dropdown = O5Factory.DropDown(O5KitAdapters.Ctx, row, none, current, options, option => $"{InspectorLabel("Sprite")}: {InspectorLabel(option)}", selected => {
-            cfg.SpriteKey.Value = selected == none ? null : selected;
+        var dropdown = O5Factory.DropDown(O5KitAdapters.Ctx, row, none, current, options, option => $"{InspectorLabel("Sprite")}: {(option == none ? InspectorLabel(option) : UserResourceSettings.FullName(folders, option))}", selected => {
+            spriteKey.Value = selected == none ? null : selected;
             ApplyAndSave();
-        }, "image_sprite");
+        }, id);
         Track(dropdown);
-        }, "image_sprite", dropdown: true);
+        }, id, dropdown: true);
     }
 
     private void FontDropDown(Transform parent, TextMeshProUGUISettings cfg) {
         const string none = "Default";
-        var options = UserResourceManager.Fnt.Keys.OrderBy(key => key).ToList();
+        var folders = UserResourceManager.Config.Data.FontFolders;
+        var options = UserResourceManager.Fnt.Keys
+            .OrderBy(key => UserResourceSettings.FolderOf(folders, key), StringComparer.OrdinalIgnoreCase)
+            .ThenBy(key => key, StringComparer.OrdinalIgnoreCase)
+            .ToList();
         if(!string.IsNullOrEmpty(cfg.FontKey.Value) && !options.Contains(cfg.FontKey.Value)) {
             options.Insert(0, cfg.FontKey.Value);
         }
@@ -2730,7 +2769,7 @@ internal sealed class OvInspectorBuilder(
         string current = string.IsNullOrEmpty(cfg.FontKey.Value) ? none : cfg.FontKey.Value;
         FxBlock(parent, "Font", cfg.FontKey, group => {
         var row = O5Factory.Row(O5KitAdapters.Ctx, group, 50f);
-        var dropdown = O5Factory.DropDown(O5KitAdapters.Ctx, row, none, current, options, option => $"{InspectorLabel("Font")}: {InspectorLabel(option)}", selected => {
+        var dropdown = O5Factory.DropDown(O5KitAdapters.Ctx, row, none, current, options, option => $"{InspectorLabel("Font")}: {(option == none ? InspectorLabel(option) : UserResourceSettings.FullName(folders, option))}", selected => {
             cfg.FontKey.Value = selected == none ? null : selected;
             ApplyAndSave();
         }, "text_font");

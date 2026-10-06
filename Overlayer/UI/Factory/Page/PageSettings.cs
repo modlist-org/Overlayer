@@ -12,6 +12,7 @@ using O5Kit.Behaviour;
 using Overlayer.Utility;
 using Overlayer.IO.Fx;
 using Overlayer.IO.User;
+using Overlayer.Update;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -337,6 +338,102 @@ internal static class PageSettings {
         objects[animationSpeedTr] = (overlayerText.gameObject, animationSpeedRow.gameObject);
 
         BuildFontPickers(content, objects, overlayerText);
+
+        BuildUpdates(content, defSet);
+    }
+
+    private static Action refreshUpdates;
+
+    private static void BuildUpdates(GameObject content, CoreSettings defSet) {
+        if(!UpdateService.Supported) {
+            return;
+        }
+
+        var updatesText = O5Factory.ControlTextH1(O5KitAdapters.Ctx, O5Factory.Row(O5KitAdapters.Ctx, content.transform));
+        updatesText.gameObject.AddComponent<TextLocalization>().Init("UPDATES", "Updates");
+
+        var autoRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
+        var autoToggle = O5Factory.Toggle(O5KitAdapters.Ctx,
+            autoRow,
+            defSet.AutoUpdate,
+            MainCore.Conf.AutoUpdate,
+            toggle => {
+                MainCore.Conf.AutoUpdate = toggle;
+                MainCore.ConfMgr.RequestSave();
+            },
+            "Auto Update",
+            "auto_update"
+        );
+        autoToggle.Rect.AddToolTip(O5KitAdapters.Ctx, () => MainCore.Tr.Get(
+            "DESC_AUTO_UPDATE",
+            "Checks GitHub for a newer Overlayer at launch and installs it in the background.\nThe update takes effect the next time the game starts."
+        ));
+        var autoToggleTr = autoToggle.Label.gameObject.AddComponent<TextLocalization>().Init("AUTO_UPDATE", "Auto Update");
+        objects[autoToggleTr] = (updatesText.gameObject, autoRow.gameObject);
+
+        var betaRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
+        var betaToggle = O5Factory.Toggle(O5KitAdapters.Ctx,
+            betaRow,
+            defSet.UpdateBeta,
+            MainCore.Conf.UpdateBeta,
+            toggle => {
+                MainCore.Conf.UpdateBeta = toggle;
+                MainCore.ConfMgr.RequestSave();
+            },
+            "Include Beta Releases",
+            "update_beta"
+        );
+        betaToggle.Rect.AddToolTip(O5KitAdapters.Ctx, () => MainCore.Tr.Get(
+            "DESC_UPDATE_BETA",
+            "Also offers releases marked as pre-release on GitHub."
+        ));
+        var betaToggleTr = betaToggle.Label.gameObject.AddComponent<TextLocalization>().Init("UPDATE_BETA", "Include Beta Releases");
+        objects[betaToggleTr] = (updatesText.gameObject, betaRow.gameObject);
+
+        const float buttonWidth = 160f;
+        const float buttonSpacing = 8f;
+        var statusRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
+        var statusText = O5Factory.ControlText(O5KitAdapters.Ctx, statusRow, 22f, true);
+        statusText.overflowMode = TextOverflowModes.Ellipsis;
+        statusText.rectTransform.offsetMax = new Vector2(-(2f * (buttonWidth + buttonSpacing)), 0f);
+        var installBtn = O5Factory.Button(O5KitAdapters.Ctx, statusRow, () => UpdateService.Install(), "Install", "update_install");
+        var checkBtn = O5Factory.Button(O5KitAdapters.Ctx, statusRow, () => UpdateService.Check(), "Check", "update_check");
+        PinRight(installBtn.Rect, 0f, buttonWidth);
+        PinRight(checkBtn.Rect, buttonWidth + buttonSpacing, buttonWidth);
+        installBtn.Label.gameObject.AddComponent<TextLocalization>().Init("UPDATE_INSTALL", "Install");
+        checkBtn.Label.gameObject.AddComponent<TextLocalization>().Init("UPDATE_CHECK", "Check");
+
+        refreshUpdates = () => {
+            UpdateStatus status = UpdateService.Status;
+            string tag = UpdateService.Available?.Tag;
+            statusText.text = status switch {
+                UpdateStatus.Checking => MainCore.Tr.Get("UPDATE_CHECKING", "Checking for updates..."),
+                UpdateStatus.UpToDate => string.Format(MainCore.Tr.Get("UPDATE_UP_TO_DATE", "Up to date ({0})"), Info.Version),
+                UpdateStatus.Available => string.Format(MainCore.Tr.Get("UPDATE_AVAILABLE", "{0} is available"), tag),
+                UpdateStatus.Installing => string.Format(MainCore.Tr.Get("UPDATE_INSTALLING", "Installing {0}..."), tag),
+                UpdateStatus.Installed => string.Format(MainCore.Tr.Get("UPDATE_INSTALLED", "{0} installed. Restart the game to apply."), tag),
+                UpdateStatus.Failed => string.Format(MainCore.Tr.Get("UPDATE_FAILED", "Update failed: {0}"), UpdateService.Error),
+                _ => string.Format(MainCore.Tr.Get("UPDATE_CURRENT", "Current version: {0}"), Info.Version),
+            };
+            checkBtn.SetBlocked(status is UpdateStatus.Checking or UpdateStatus.Installing or UpdateStatus.Installed);
+            installBtn.SetBlocked(status != UpdateStatus.Available);
+        };
+        if(!updatesHooked) {
+            updatesHooked = true;
+            UpdateService.OnChanged += () => refreshUpdates?.Invoke();
+            MainCore.Tr.OnLanguageChanged += _ => refreshUpdates?.Invoke();
+        }
+        refreshUpdates();
+    }
+
+    private static bool updatesHooked;
+
+    private static void PinRight(RectTransform rect, float right, float width) {
+        rect.pivot = new(1f, 1f);
+        rect.anchorMin = new(1f, 1f);
+        rect.anchorMax = new(1f, 1f);
+        rect.anchoredPosition = new(-right, 0f);
+        rect.sizeDelta = new(width, 50f);
     }
 
     private static void BuildFontPickers(GameObject content, Dictionary<TextLocalization, (GameObject, GameObject)> objects, TextMeshProUGUI overlayerText) {
@@ -542,10 +639,14 @@ internal static class PageSettings {
     private static string DefaultFontName() => "Default";
 
     private static string FontOptionLabel(string key)
-        => key == BuiltinFontOption ? DefaultFontName() : key;
+        => key == BuiltinFontOption ? DefaultFontName() : UserResourceSettings.FullName(UserResourceManager.Config.Data.FontFolders, key);
 
     private static string[] FontOptions(bool includeBuiltin = false, string includeKey = null) {
-        var keys = UserResourceManager.Fnt.Keys.OrderBy(k => k, StringComparer.OrdinalIgnoreCase).ToList();
+        var folders = UserResourceManager.Config.Data.FontFolders;
+        var keys = UserResourceManager.Fnt.Keys
+            .OrderBy(k => UserResourceSettings.FolderOf(folders, k), StringComparer.OrdinalIgnoreCase)
+            .ThenBy(k => k, StringComparer.OrdinalIgnoreCase)
+            .ToList();
         if(includeBuiltin) {
             keys.Insert(0, BuiltinFontOption);
         }

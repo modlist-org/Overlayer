@@ -17,6 +17,8 @@ public sealed class CoreSettings : ISettingsFile {
     public FxValue<float> SliderSensitivity = new(1.0f);
     public FxValue<float> AnimationSpeed = new(1.0f);
     public FxValue<bool> EnableJSScriptWatcher = new(true);
+    public FxValue<bool> AutoUpdate = new(true);
+    public FxValue<bool> UpdateBeta = new(false);
     public FxValue<string> SystemFontKey = FxValue<string>.FromValue(null);
     public FxValue<string> CodeFontKey = FxValue<string>.FromValue(null);
     public FxValue<List<string>> SystemFontFallbacks = new(new List<string>());
@@ -35,6 +37,8 @@ public sealed class CoreSettings : ISettingsFile {
             [nameof(SliderSensitivity)] = IOUtils.WriteFx(SliderSensitivity),
             [nameof(AnimationSpeed)] = IOUtils.WriteFx(AnimationSpeed),
             [nameof(EnableJSScriptWatcher)] = IOUtils.WriteFx(EnableJSScriptWatcher),
+            [nameof(AutoUpdate)] = IOUtils.WriteFx(AutoUpdate),
+            [nameof(UpdateBeta)] = IOUtils.WriteFx(UpdateBeta),
             [nameof(SystemFontKey)] = IOUtils.WriteFx(SystemFontKey),
             [nameof(CodeFontKey)] = IOUtils.WriteFx(CodeFontKey),
             [nameof(SystemFontFallbacks)] = IOUtils.WriteFx(SystemFontFallbacks),
@@ -54,6 +58,8 @@ public sealed class CoreSettings : ISettingsFile {
         SliderSensitivity = IOUtils.ReadFx(token, nameof(SliderSensitivity), SliderSensitivity);
         AnimationSpeed = IOUtils.ReadFx(token, nameof(AnimationSpeed), AnimationSpeed);
         EnableJSScriptWatcher = IOUtils.ReadFx(token, nameof(EnableJSScriptWatcher), EnableJSScriptWatcher);
+        AutoUpdate = IOUtils.ReadFx(token, nameof(AutoUpdate), AutoUpdate);
+        UpdateBeta = IOUtils.ReadFx(token, nameof(UpdateBeta), UpdateBeta);
         SystemFontKey = IOUtils.ReadFx(token, nameof(SystemFontKey), SystemFontKey);
         CodeFontKey = IOUtils.ReadFx(token, nameof(CodeFontKey), CodeFontKey);
         SystemFontFallbacks = IOUtils.ReadFx(token, nameof(SystemFontFallbacks), SystemFontFallbacks);

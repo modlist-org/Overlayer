@@ -45,6 +45,7 @@ internal static class PageResources {
 
     private enum ResourceMode { Images, Fonts }
     private static ResourceMode currentMode = ResourceMode.Images;
+    private static readonly HashSet<string> collapsedFolders = new(StringComparer.Ordinal);
 
     public static void Create(RectTransform parent) {
         RectTransform root = CreateStretch(parent, "ResourcesRoot");
@@ -107,7 +108,7 @@ internal static class PageResources {
         keyInput.Placeholder.gameObject.AddComponent<TextLocalization>().Init("RESOURCE_NAME", "Resource name");
         keyInput.Rect.AddToolTip(O5KitAdapters.Ctx, () => MainCore.Tr.Get(
             "RESOURCE_NAME_TOOLTIP",
-            "Name used by Image components to reference this resource."
+            "Name used by Image components to reference this resource. Use folder/name to put it in a folder."
         ));
         ResizeInput(keyInput.Rect, 190f);
 
@@ -269,7 +270,7 @@ internal static class PageResources {
                 return;
             }
             string source = UserResourceManager.FromUser(pathInput.Value?.Trim());
-            string key = SanitizeKey(keyInput.Value);
+            var (key, folder) = SplitName(keyInput.Value);
 
             if(string.IsNullOrWhiteSpace(source)) {
                 SetStatus("CHOOSE_IMAGE_FIRST", "Choose an image first.", UIColors.ObjectActiveMathErr);
@@ -307,11 +308,11 @@ internal static class PageResources {
                 } catch(Exception e) {
                     return (Bytes: (byte[])null, Path: target, Error: e.Message);
                 }
-            }).ContinueWith(task => MainThread.Enqueue(() => FinishImport(task, key)));
+            }).ContinueWith(task => MainThread.Enqueue(() => FinishImport(task, key, folder)));
         } else {
             // Fonts
             string source = UserResourceManager.FromUser(pathInput.Value?.Trim());
-            string key = SanitizeKey(keyInput.Value);
+            var (key, folder) = SplitName(keyInput.Value);
 
             if(string.IsNullOrWhiteSpace(source)) {
                 SetStatus("CHOOSE_FONT_FIRST", "Choose a font first.", UIColors.ObjectActiveMathErr);
@@ -349,13 +350,14 @@ internal static class PageResources {
                 } catch(Exception e) {
                     return (Path: string.Empty, Bytes: (byte[])null, Error: e.Message);
                 }
-            }).ContinueWith(task => MainThread.Enqueue(() => FinishFontImport(task, key)));
+            }).ContinueWith(task => MainThread.Enqueue(() => FinishFontImport(task, key, folder)));
         }
     }
 
     private static void FinishImport(
         Task<(byte[] Bytes, string Path, string Error)> task,
-        string key
+        string key,
+        string folder
     ) {
         if(!MainCore.IsModEnabled) {
             return;
@@ -400,6 +402,7 @@ internal static class PageResources {
             return;
         }
 
+        SetFolder(UserResourceManager.Config.Data.ImageFolders, key, folder);
         UserResourceManager.Config.RequestSave(50);
         O5KitAdapters.RefreshFonts();
         pathInput.Set(string.Empty);
@@ -411,7 +414,8 @@ internal static class PageResources {
 
     private static void FinishFontImport(
         Task<(string Path, byte[] Bytes, string Error)> task,
-        string key
+        string key,
+        string folder
     ) {
         if(!MainCore.IsModEnabled) {
             return;
@@ -433,6 +437,7 @@ internal static class PageResources {
             return;
         }
 
+        SetFolder(UserResourceManager.Config.Data.FontFolders, key, folder);
         UserResourceManager.Config.RequestSave(50);
         pathInput.Set(string.Empty);
         keyInput.Set(string.Empty);
@@ -690,18 +695,12 @@ internal static class PageResources {
         }
 
         string query = searchInput?.Value?.Trim() ?? string.Empty;
-        string[] keys;
-        if(currentMode == ResourceMode.Images) {
-            keys = UserResourceManager.Spr.Keys
-                .Where(key => string.IsNullOrEmpty(query) || key.Contains(query, StringComparison.OrdinalIgnoreCase))
-                .OrderBy(key => key, StringComparer.OrdinalIgnoreCase)
-                .ToArray();
-        } else {
-            keys = UserResourceManager.Fnt.Keys
-                .Where(key => string.IsNullOrEmpty(query) || key.Contains(query, StringComparison.OrdinalIgnoreCase))
-                .OrderBy(key => key, StringComparer.OrdinalIgnoreCase)
-                .ToArray();
-        }
+        Dictionary<string, string> folders = CurrentFolders;
+        string[] keys = (currentMode == ResourceMode.Images ? UserResourceManager.Spr.Keys : UserResourceManager.Fnt.Keys)
+            .Where(key => string.IsNullOrEmpty(query) || FullName(folders, key).Contains(query, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(key => FolderOf(folders, key), StringComparer.OrdinalIgnoreCase)
+            .ThenBy(key => key, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
 
         if(keys.Length == 0) {
             string text = currentMode == ResourceMode.Images
@@ -713,11 +712,28 @@ internal static class PageResources {
             element.minHeight = 100f;
             element.preferredHeight = 100f;
         } else {
-            foreach(string key in keys) {
-                if(currentMode == ResourceMode.Images) {
-                    CreateCard(listContent, key);
-                } else {
-                    CreateFontCard(listContent, key);
+            // Unfiled resources sort first and get no header.
+            foreach(var group in keys.GroupBy(key => FolderOf(folders, key))) {
+                string folder = group.Key;
+                string collapseId = $"{currentMode}:{folder}";
+                bool collapsed = folder.Length > 0 && query.Length == 0 && collapsedFolders.Contains(collapseId);
+                if(folder.Length > 0) {
+                    FolderHeader.Create(listContent, folder, group.Count(), collapsed, () => {
+                        if(!collapsedFolders.Remove(collapseId)) {
+                            collapsedFolders.Add(collapseId);
+                        }
+                        BuildList();
+                    }, "resource_folder_" + collapseId);
+                }
+                if(collapsed) {
+                    continue;
+                }
+                foreach(string key in group) {
+                    if(currentMode == ResourceMode.Images) {
+                        CreateCard(listContent, key);
+                    } else {
+                        CreateFontCard(listContent, key);
+                    }
                 }
             }
         }
@@ -816,6 +832,7 @@ internal static class PageResources {
         if(!UserResourceManager.Spr.TryGet(key, out var spriteValue)) {
             return;
         }
+        Dictionary<string, string> folders = UserResourceManager.Config.Data.ImageFolders;
 
         GameObject cardObject = new(key);
         cardObject.transform.SetParent(parent, false);
@@ -909,7 +926,7 @@ internal static class PageResources {
                 editing = true;
                 confirm = false;
                 name.gameObject.SetActive(false);
-                renameInput.Set(key, false);
+                renameInput.Set(FullName(folders, key), false);
                 renameInput.Rect.gameObject.SetActive(true);
                 rename.Label.text = T("SAVE", "Save");
                 rename.NormalColor = UIColors.ObjectActive;
@@ -922,7 +939,16 @@ internal static class PageResources {
                 return;
             }
 
-            if(Rename(key, renameInput.Value)) {
+            var (newKey, newFolder) = SplitName(renameInput.Value);
+            if(string.Equals(key, newKey, StringComparison.Ordinal)) {
+                if(MoveFolder(folders, key, newFolder)) {
+                    BuildList();
+                }
+                return;
+            }
+            if(Rename(key, newKey)) {
+                folders.Remove(key);
+                SetFolder(folders, newKey, newFolder);
                 SetStatus("RENAMED_RESOURCE", "Renamed {0}.", UIColors.ObjectActiveMathOk, key);
                 BuildList();
             }
@@ -956,6 +982,7 @@ internal static class PageResources {
         if(!UserResourceManager.Fnt.TryGet(key, out var fontAsset)) {
             return;
         }
+        Dictionary<string, string> folders = UserResourceManager.Config.Data.FontFolders;
 
         GameObject cardObject = new(key);
         cardObject.transform.SetParent(parent, false);
@@ -1028,7 +1055,7 @@ internal static class PageResources {
                 editing = true;
                 confirm = false;
                 name.gameObject.SetActive(false);
-                renameInput.Set(key, false);
+                renameInput.Set(FullName(folders, key), false);
                 renameInput.Rect.gameObject.SetActive(true);
                 rename.Label.text = T("SAVE", "Save");
                 rename.NormalColor = UIColors.ObjectActive;
@@ -1041,13 +1068,15 @@ internal static class PageResources {
                 return;
             }
 
-            string newKey = SanitizeKey(renameInput.Value);
+            var (newKey, newFolder) = SplitName(renameInput.Value);
             if(string.IsNullOrWhiteSpace(newKey)) {
                 SetStatus("ENTER_RESOURCE_NAME", "Enter a resource name.", UIColors.ObjectActiveMathErr);
                 return;
             }
             if(string.Equals(key, newKey, StringComparison.Ordinal)) {
-                SetStatus("NAME_UNCHANGED", "Name unchanged.", UIColors.ObjectActive);
+                if(MoveFolder(folders, key, newFolder)) {
+                    BuildList();
+                }
                 return;
             }
             if(UserResourceManager.Fnt.Keys.Contains(newKey)) {
@@ -1060,6 +1089,8 @@ internal static class PageResources {
                 return;
             }
 
+            folders.Remove(key);
+            SetFolder(folders, newKey, newFolder);
             UserResourceManager.Config.RequestSave(50);
             SetStatus("RENAMED_RESOURCE_TO", "Renamed {0} to {1}.", UIColors.ObjectActiveMathOk, key, newKey);
             BuildList();
@@ -1105,8 +1136,7 @@ internal static class PageResources {
         O5Effects.HoverOutline(O5KitAdapters.Ctx, cardObject, cardObject.AddComponent<EventTrigger>());
     }
 
-    private static bool Rename(string oldKey, string value) {
-        string newKey = SanitizeKey(value);
+    private static bool Rename(string oldKey, string newKey) {
         if(string.IsNullOrWhiteSpace(newKey)) {
             SetStatus("ENTER_RESOURCE_NAME", "Enter a resource name.", UIColors.ObjectActiveMathErr);
             return false;
@@ -1174,6 +1204,47 @@ internal static class PageResources {
                 } catch { }
             });
         }
+    }
+
+    private static Dictionary<string, string> CurrentFolders => currentMode == ResourceMode.Images
+        ? UserResourceManager.Config.Data.ImageFolders
+        : UserResourceManager.Config.Data.FontFolders;
+
+    private static string FolderOf(Dictionary<string, string> folders, string key) => UserResourceSettings.FolderOf(folders, key);
+
+    private static string FullName(Dictionary<string, string> folders, string key) => UserResourceSettings.FullName(folders, key);
+
+    /// <summary>"ui/icons/heart" -> ("heart", "ui/icons"). Keys never contain '/', so the split is unambiguous.</summary>
+    private static (string Key, string Folder) SplitName(string value) {
+        value = value?.Trim() ?? string.Empty;
+        int slash = value.LastIndexOfAny(['/', '\\']);
+        if(slash < 0) {
+            return (SanitizeKey(value), string.Empty);
+        }
+        string folder = string.Join("/", value[..slash]
+            .Split('/', '\\')
+            .Select(SanitizeKey)
+            .Where(part => part.Length > 0));
+        return (SanitizeKey(value[(slash + 1)..]), folder);
+    }
+
+    private static void SetFolder(Dictionary<string, string> folders, string key, string folder) {
+        if(string.IsNullOrEmpty(folder)) {
+            folders.Remove(key);
+        } else {
+            folders[key] = folder;
+        }
+    }
+
+    private static bool MoveFolder(Dictionary<string, string> folders, string key, string folder) {
+        if(string.Equals(FolderOf(folders, key), folder, StringComparison.Ordinal)) {
+            SetStatus("NAME_UNCHANGED", "Name unchanged.", UIColors.ObjectActive);
+            return false;
+        }
+        SetFolder(folders, key, folder);
+        UserResourceManager.Config.RequestSave(50);
+        SetStatus("MOVED_RESOURCE", "Moved {0}.", UIColors.ObjectActiveMathOk, key);
+        return true;
     }
 
     private static string SanitizeKey(string value) {

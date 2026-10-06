@@ -91,6 +91,7 @@ public sealed class OvObject : ISettingsFile {
         Config.MovingManConfig?.ToUnity(GameObject);
         Config.ColorRangeConfig?.ToUnity(GameObject);
         Config.GraphConfig?.ToUnity(GameObject);
+        Config.RainConfig?.ToUnity(GameObject);
         Config.ImageConfig?.ToUnity(GameObject);
         Config.MaskConfig?.ToUnity(GameObject);
         Config.ShadowConfig?.ToUnity(GameObject);
@@ -123,6 +124,7 @@ public sealed class OvObject : ISettingsFile {
             Config.MovingManConfig?.RefreshFx(GameObject);
             Config.ColorRangeConfig?.RefreshFx(GameObject);
             Config.GraphConfig?.RefreshFx(GameObject);
+            Config.RainConfig?.RefreshFx(GameObject);
             Config.ImageConfig?.RefreshFx(GameObject);
             Config.MaskConfig?.RefreshFx(GameObject);
             Config.ShadowConfig?.RefreshFx(GameObject);
@@ -187,6 +189,7 @@ public sealed class OvObject : ISettingsFile {
         var movingMan = EnsureComponent<MovingManComponent>(Config.MovingManConfig != null);
         var colorRange = EnsureComponent<ColorRangeComponent>(tc && Config.ColorRangeConfig != null);
         EnsureComponent<OvGraphComponent>(Config.GraphConfig != null);
+        EnsureComponent<OvRainComponent>(Config.RainConfig != null);
         var text = GameObject.GetComponent<TextMeshProUGUI>();
         movingMan?.Init(text, RectTransform);
         colorRange?.Init(text);

@@ -36,6 +36,8 @@ internal static class PageOverlayer {
 
     private static OvCanvasSettingPage settingPage;
 
+    public static void Tick() => settingPage?.Tick();
+
     public static void Create(RectTransform parent) {
         MainCore.Log.Msg("Creating Overlayer Page UI...");
         var (viewportRect, contentRect, _) = O5Factory.ScrollView(O5KitAdapters.Ctx, parent, 0f);
@@ -575,7 +577,7 @@ internal static class PageOverlayer {
         if(string.IsNullOrWhiteSpace(baseName)) {
             baseName = "Canvas";
         }
-        _ = Task.Run(() => {
+        _ = Overlayer.UI.Utility.NativeDialogThread.Run(() => {
             try {
                 string dir = OverlayCore.ExportDir;
                 if(!Directory.Exists(dir)) {
@@ -605,7 +607,7 @@ internal static class PageOverlayer {
     }
 
     private static void BeginImportCanvas(Transform grid) {
-        _ = Task.Run(() => {
+        _ = Overlayer.UI.Utility.NativeDialogThread.Run(() => {
             try {
                 string dir = OverlayCore.ExportDir;
                 if(!Directory.Exists(dir)) {

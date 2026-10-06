@@ -33,6 +33,13 @@ public static class JavaScirpt {
     public readonly struct JSDiagnosticData(JSErrorId id, object data) {
         public readonly JSErrorId Id = id;
         public readonly object Data = data;
+
+        public override string ToString() => Id switch {
+            JSErrorId.MissingExpression => "JSExpr: missing expression",
+            JSErrorId.EngineNull => "JSExpr: JavaScript engine not initialized",
+            JSErrorId.SyntaxError => (Data as Exception)?.Message ?? "JSExpr: syntax error",
+            _ => Id.ToString()
+        };
     }
 
     [Tag(

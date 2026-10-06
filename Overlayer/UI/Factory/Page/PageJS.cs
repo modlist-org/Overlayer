@@ -5,6 +5,7 @@ using Overlayer.IO;
 using Overlayer.Localization;
 using Overlayer.UI.Utility;
 using Overlayer.V8.Scripting.Patch;
+using Overlayer.V8.Scripting.Tag;
 using O5Kit.Control;
 using O5Kit.Factory;
 using UnityEngine;
@@ -24,6 +25,7 @@ internal static class PageJS {
     private static GameObject disabledPanel;
     private static int refreshQueued;
     private static readonly Dictionary<string, TextMeshProUGUI> scriptStatus = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly HashSet<string> collapsedFolders = new(StringComparer.OrdinalIgnoreCase);
 
     public static void Create(RectTransform parent) {
         RectTransform root = CreateStretch(parent, "JSRoot");
@@ -205,15 +207,28 @@ internal static class PageJS {
             UnityEngine.Object.Destroy(listContent.GetChild(i).gameObject);
         }
         scriptStatus.Clear();
+        string root = MainCore.V8.ScriptFolderPath;
         string[] files;
         try {
-            files = Directory.GetFiles(MainCore.V8.ScriptFolderPath, "*.js");
-            Array.Sort(files, StringComparer.OrdinalIgnoreCase);
+            files = JSScriptLoader.FindScripts(root);
         } catch {
             files = [];
         }
-        foreach(string file in files) {
-            BuildFileRow(file, MainCore.V8.IsScriptEnabled(file));
+        var folders = files
+            .GroupBy(file => FolderOf(JSScriptLoader.RelativeName(root, file)), StringComparer.OrdinalIgnoreCase)
+            .OrderBy(group => group.Key, StringComparer.OrdinalIgnoreCase);
+        foreach(var folder in folders) {
+            string[] folderFiles = folder.OrderBy(Path.GetFileName, StringComparer.OrdinalIgnoreCase).ToArray();
+            bool inFolder = folder.Key.Length > 0;
+            if(inFolder) {
+                BuildFolderRow(folder.Key, folderFiles);
+                if(collapsedFolders.Contains(folder.Key)) {
+                    continue;
+                }
+            }
+            foreach(string file in folderFiles) {
+                BuildFileRow(file, MainCore.V8.IsScriptEnabled(file), inFolder);
+            }
         }
         if(diagText != null) {
             int errors = MainCore.V8.LoaderDiagnostics.Count;
@@ -224,7 +239,35 @@ internal static class PageJS {
         LayoutRebuilder.ForceRebuildLayoutImmediate(listContent);
     }
 
-    private static void BuildFileRow(string file, bool enabled) {
+    private static string FolderOf(string relativeName) {
+        int slash = relativeName.LastIndexOf('/');
+        return slash < 0 ? string.Empty : relativeName[..slash];
+    }
+
+    private static void BuildFolderRow(string folder, string[] files) {
+        RectTransform row = O5Factory.Row(O5KitAdapters.Ctx, listContent, 40f);
+        var layout = row.gameObject.AddComponent<HorizontalLayoutGroup>();
+        layout.spacing = 8f;
+        layout.childControlWidth = true;
+        layout.childControlHeight = true;
+        layout.childForceExpandWidth = false;
+        layout.childForceExpandHeight = true;
+
+        bool allEnabled = files.All(MainCore.V8.IsScriptEnabled);
+        BuildToggle(row, allEnabled, value => {
+            _ = Task.WhenAll(files.Select(file => SetScriptEnabledAsync(file, value))).ContinueWith(_ => QueueRefresh());
+        }, $"js_folder_enabled_{folder}", T("JS_TOGGLE_FOLDER", "Enable/disable all scripts in folder"));
+
+        var header = FolderHeader.Create(row, folder, files.Length, collapsedFolders.Contains(folder), () => {
+            if(!collapsedFolders.Remove(folder)) {
+                collapsedFolders.Add(folder);
+            }
+            Refresh();
+        }, $"js_folder_{folder}");
+        header.Rect.GetComponent<LayoutElement>().flexibleWidth = 1f;
+    }
+
+    private static void BuildFileRow(string file, bool enabled, bool indent) {
         int tags;
         int patches;
         try {
@@ -241,8 +284,11 @@ internal static class PageJS {
         layout.childControlHeight = true;
         layout.childForceExpandWidth = false;
         layout.childForceExpandHeight = true;
+        layout.padding = new RectOffset(indent ? 28 : 0, 0, 0, 0);
 
-        BuildScriptToggle(row, file, enabled);
+        BuildToggle(row, enabled, value => _ = SetScriptEnabledAsync(file, value),
+            $"js_script_enabled_{JSScriptLoader.RelativeName(MainCore.V8.ScriptFolderPath, file)}",
+            T("JS_TOGGLE_SCRIPT", "Enable/disable script"));
 
         var name = O5Factory.ControlText(O5KitAdapters.Ctx, row, 22f, true);
         name.text = Path.GetFileName(file);
@@ -261,7 +307,7 @@ internal static class PageJS {
         scriptStatus[file] = counts;
     }
 
-    private static void BuildScriptToggle(RectTransform row, string file, bool enabled) {
+    private static void BuildToggle(RectTransform row, bool enabled, Action<bool> onChange, string id, string tip) {
         GameObject toggleGo = new("ScriptToggle");
         toggleGo.transform.SetParent(row, false);
         toggleGo.AddComponent<RectTransform>();
@@ -277,9 +323,9 @@ internal static class PageJS {
             toggleGo.transform,
             null,
             enabled,
-            value => _ = SetScriptEnabledAsync(file, value),
+            onChange,
             string.Empty,
-            $"js_script_enabled_{Path.GetFileName(file)}");
+            id);
         var hoverOutline = toggle.Rect.transform.Find("Hover");
         if(hoverOutline != null) {
             UnityEngine.Object.Destroy(hoverOutline.gameObject);
@@ -288,7 +334,7 @@ internal static class PageJS {
         if(toggleBg != null) {
             toggleBg.color = Color.clear;
         }
-        toggleGo.transform.AddToolTip(O5KitAdapters.Ctx, () => T("JS_TOGGLE_SCRIPT", "Enable/disable script"));
+        toggleGo.transform.AddToolTip(O5KitAdapters.Ctx, () => tip);
     }
 
     private static RectTransform CreateStretch(Transform parent, string name) {

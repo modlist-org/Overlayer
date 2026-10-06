@@ -4,7 +4,7 @@ using Overlayer.Core;
 namespace Overlayer.UI.Utility;
 
 internal static class NativeImageFilePicker {
-    public static Task<string> PickAsync(string defaultPath = null) => Task.Run(() => {
+    public static Task<string> PickAsync(string defaultPath = null) => NativeDialogThread.Run(() => {
         try {
             return NFD.OpenDialog(
                 defaultPath ?? Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),

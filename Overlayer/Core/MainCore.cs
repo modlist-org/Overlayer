@@ -48,6 +48,7 @@ public static class MainCore {
     public static void Tick() {
         Runtime?.Tick();
         OverlayCore.Tick();
+        UI.Factory.Page.PageOverlayer.Tick();
     }
 
     public static void Dispose() {

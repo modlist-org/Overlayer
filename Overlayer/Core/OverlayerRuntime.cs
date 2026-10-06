@@ -56,6 +56,7 @@ public sealed class OverlayerRuntime {
         Version = new Version(Info.Version);
         Assembly = Assembly.GetExecutingAssembly();
         Harmony = host.OverlayerHarmony;
+        UI.Utility.NativeDialogThread.Install(Harmony);
         Logger = new OverlayerLogger(
             host.OverlayerLogger
         );
@@ -106,6 +107,8 @@ public sealed class OverlayerRuntime {
         SetModEnabled(Config.Data.Active, false);
 
         Logger.Msg("Hello");
+
+        Update.UpdateService.Initialize();
 
         ModuleService.DiscoverAndRegisterModules();
         ModuleService.InitializeAllModules();

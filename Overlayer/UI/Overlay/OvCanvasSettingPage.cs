@@ -23,7 +23,7 @@ using TMPro;
 
 namespace Overlayer.UI.Overlay;
 
-public class OvCanvasSettingPage : IDisposable {
+public partial class OvCanvasSettingPage : IDisposable {
     public readonly GameObject GameObject;
     public readonly RectTransform RectTransform;
     public readonly CanvasGroup CanvasGroup;
@@ -367,22 +367,7 @@ public class OvCanvasSettingPage : IDisposable {
             }
             clone.ApplyConfig();
 
-            if(source.Parent != null) {
-                OvObject parent = source.Parent;
-                int index = parent.Children.IndexOf(source);
-
-                parent.Attach(clone);
-                parent.SetChildIndex(clone, index + 1);
-            } else {
-                int index = currentCanvas.OvObjects.IndexOf(source);
-
-                currentCanvas.Attach(clone);
-                currentCanvas.OvObjects.Remove(clone);
-                currentCanvas.OvObjects.Insert(index + 1, clone);
-
-                SyncRootSiblingOrder();
-            }
-
+            InsertAfter(source, clone);
             SelectObject(clone);
             SaveConfig();
         }, MainCore.Spr.Get(UISprite.Clone128), "btn_hier_clone", height: 36f);
@@ -1396,6 +1381,26 @@ public class OvCanvasSettingPage : IDisposable {
         return false;
     }
 
+    // Places obj right after anchor (same parent), or at the end of the canvas root when anchor is null.
+    private void InsertAfter(OvObject anchor, OvObject obj) {
+        if(anchor?.Parent != null) {
+            OvObject parent = anchor.Parent;
+            int index = parent.Children.IndexOf(anchor);
+
+            parent.Attach(obj);
+            parent.SetChildIndex(obj, index + 1);
+            return;
+        }
+
+        int rootIndex = anchor != null ? currentCanvas.OvObjects.IndexOf(anchor) : -1;
+        currentCanvas.Attach(obj);
+        if(rootIndex >= 0) {
+            currentCanvas.OvObjects.Remove(obj);
+            currentCanvas.OvObjects.Insert(rootIndex + 1, obj);
+        }
+        SyncRootSiblingOrder();
+    }
+
     private void SyncRootSiblingOrder() {
         for(int i = 0; i < currentCanvas.OvObjects.Count; i++) {
             currentCanvas.OvObjects[i].GameObject.transform.SetSiblingIndex(i);
@@ -1429,8 +1434,10 @@ public class OvCanvasSettingPage : IDisposable {
             apply,
             SaveConfig,
             RebuildInspector,
-            RebuildHierarchy
+            RebuildHierarchy,
+            componentCards
         );
+        componentCards.Clear();
 
         if(selectedObject == null) {
             builder.BuildCanvas(currentCanvas, _ => RebuildCanvasTabs());

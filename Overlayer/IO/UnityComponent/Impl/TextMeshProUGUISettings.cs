@@ -24,7 +24,7 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
     public FxValue<float> CharacterSpacing = new(0f);
     public FxValue<float> WordSpacing = new(0f);
     public FxValue<bool> EnableOutline = new(false);
-    public FxValue<Color> OutlineColor = new(UnityEngine.Color.black);
+    public FxValue<GradientColor> OutlineColor = new(new GradientColor(UnityEngine.Color.black, true));
     public FxValue<float> OutlineWidth = new(0.05f);
     public FxValue<float> FaceDilate = new(0f);
     public FxValue<float> OutlineSoftness = new(0f);
@@ -48,7 +48,8 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
     private float _lastCharacterSpacing;
     private float _lastWordSpacing;
     private bool _lastEnableOutline;
-    private Color _lastOutlineColor = UnityEngine.Color.black;
+    private GradientColor _lastOutlineColor = new(UnityEngine.Color.black, true);
+    private Texture2D _outlineGradientTex;
     private float _lastOutlineWidth = 0.05f;
     private float _lastFaceDilate;
     private float _lastOutlineSoftness;
@@ -143,14 +144,23 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
         com.wordSpacing = _lastWordSpacing;
         var mat = com.fontMaterial;
         float outlineWidth = _lastEnableOutline ? Mathf.Clamp01(_lastOutlineWidth) : 0f;
+        // TMP outline has no vertex color; a gradient goes through the outline texture instead.
+        bool outlineGradient = !_lastOutlineColor.SolidColor && mat.HasProperty(ShaderUtilities.ID_OutlineTex);
+        Color outlineBase = outlineGradient ? UnityEngine.Color.white : _lastOutlineColor.TL;
         Color appliedOutlineColor = _lastEnableOutline
-            ? _lastOutlineColor
-            : new Color(_lastOutlineColor.r, _lastOutlineColor.g, _lastOutlineColor.b, 0f);
+            ? outlineBase
+            : new Color(outlineBase.r, outlineBase.g, outlineBase.b, 0f);
         float outlineSoftness = _lastEnableOutline ? Mathf.Clamp01(_lastOutlineSoftness) : 0f;
         com.outlineColor = appliedOutlineColor;
         com.outlineWidth = outlineWidth;
         mat = com.fontMaterial;
         mat.SetColor(ShaderUtilities.ID_OutlineColor, appliedOutlineColor);
+        if(mat.HasProperty(ShaderUtilities.ID_OutlineTex)) {
+            mat.SetTexture(ShaderUtilities.ID_OutlineTex, outlineGradient ? OutlineGradientTexture() : Texture2D.whiteTexture);
+            // Map per-character UV 0..1 onto the 2x2 texel centers so it matches the face vertex gradient.
+            mat.SetTextureScale(ShaderUtilities.ID_OutlineTex, outlineGradient ? new Vector2(0.5f, 0.5f) : Vector2.one);
+            mat.SetTextureOffset(ShaderUtilities.ID_OutlineTex, outlineGradient ? new Vector2(0.25f, 0.25f) : Vector2.zero);
+        }
         mat.SetFloat(ShaderUtilities.ID_OutlineWidth, outlineWidth);
         mat.SetFloat(ShaderUtilities.ID_FaceDilate, _lastFaceDilate);
         mat.SetFloat(ShaderUtilities.ID_OutlineSoftness, outlineSoftness);
@@ -178,6 +188,22 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
         com.enableVertexGradient = true;
     }
 
+    private Texture2D OutlineGradientTexture() {
+        if(_outlineGradientTex == null) {
+            _outlineGradientTex = new Texture2D(2, 2, TextureFormat.RGBA32, false) {
+                filterMode = FilterMode.Bilinear,
+                wrapMode = TextureWrapMode.Clamp
+            };
+        }
+        // Row 0 is the bottom of the texture.
+        _outlineGradientTex.SetPixels(new[] {
+            _lastOutlineColor.BL, _lastOutlineColor.BR,
+            _lastOutlineColor.TL, _lastOutlineColor.TR
+        });
+        _outlineGradientTex.Apply();
+        return _outlineGradientTex;
+    }
+
     public override bool FromUnity(GameObject source) {
         var com = source.GetComponent<TextMeshProUGUI>();
         if(com == null) {
@@ -195,7 +221,9 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
         CharacterSpacing.Value = com.characterSpacing;
         WordSpacing.Value = com.wordSpacing;
         var mat = com.fontMaterial;
-        OutlineColor.Value = mat.GetColor(ShaderUtilities.ID_OutlineColor);
+        if(OutlineColor.Value.SolidColor) {
+            OutlineColor.Value = new GradientColor(mat.GetColor(ShaderUtilities.ID_OutlineColor), true);
+        }
         OutlineWidth.Value = mat.GetFloat(ShaderUtilities.ID_OutlineWidth);
         FaceDilate.Value = mat.GetFloat(ShaderUtilities.ID_FaceDilate);
         OutlineSoftness.Value = mat.GetFloat(ShaderUtilities.ID_OutlineSoftness);
