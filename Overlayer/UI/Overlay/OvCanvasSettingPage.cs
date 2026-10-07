@@ -382,6 +382,17 @@ public partial class OvCanvasSettingPage : IDisposable {
                     return;
                 }
 
+                if(Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)) {
+                    DisarmDeleteButton();
+                    var skippedDelete = currentCanvas;
+
+                    if(OverlayCore.DeleteOvCanvas(skippedDelete)) {
+                        CloseCanvasTab(activeTab);
+                    }
+
+                    return;
+                }
+
                 if(armedDeleteCanvas != currentCanvas ||
                     (DateTime.Now - armedDeleteTime).TotalSeconds > 5) {
                     armedDeleteCanvas = currentCanvas;

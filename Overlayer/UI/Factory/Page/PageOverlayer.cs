@@ -2,8 +2,10 @@ using Overlayer.Tween;
 using Overlayer.Compat;
 using Overlayer.Core;
 using Overlayer.Async;
+using Overlayer.IO.User;
 using Overlayer.Localization;
 using Overlayer.Overlay;
+using Overlayer.Package;
 using Overlayer.Resource;
 using O5Kit.Factory;
 using O5Kit.Control;
@@ -35,6 +37,10 @@ internal static class PageOverlayer {
     private static bool subscribedToCanvases;
 
     private static OvCanvasSettingPage settingPage;
+    private static OvCanvasPropsPage propsPage;
+    private static bool subscribedToPackages;
+
+    private static readonly Dictionary<OvCanvas, (Texture2D tex, Sprite sprite, string path, DateTime mtime)> thumbCache = [];
 
     public static void Tick() => settingPage?.Tick();
 
@@ -85,6 +91,17 @@ internal static class PageOverlayer {
             BuildAllTiles(grid.transform);
         });
 
+        propsPage = new OvCanvasPropsPage(parent, () => {
+            propsPage.Close(true);
+            FadeCanvasGroup(viewportCanvasGroup, 1f, true);
+            BuildAllTiles(grid.transform);
+        });
+
+        if(!subscribedToPackages) {
+            subscribedToPackages = true;
+            PackageStore.OnChanged += RefreshTilesExternal;
+        }
+
         MainCore.OnModEnabledChanged += (isEnabled, isDispose) => {
             if(!isDispose) {
                 ToggleUIStateByMod(grid.transform, isEnabled);
@@ -122,6 +139,7 @@ internal static class PageOverlayer {
     private static void ToggleUIStateByMod(Transform transform, bool isEnabled) {
         if(!isEnabled) {
             settingPage?.Close(true);
+            propsPage?.Close(true);
             FadeCanvasGroup(viewportCanvasGroup, 1f, true, true);
             if(disabledPanel != null) {
                 disabledPanel.SetActive(true);
@@ -150,6 +168,10 @@ internal static class PageOverlayer {
             }
         }
 
+        foreach(var pkg in PackageStore.Packages) {
+            CreatePackageTile(transform, pkg, () => BuildAllTiles(transform));
+        }
+
         CreateCanvasActionTile(transform, () => {
             OverlayCore.CreateOvCanvas();
             BuildAllTiles(transform);
@@ -164,6 +186,17 @@ internal static class PageOverlayer {
     private static void ClearAllTiles(Transform transform) {
         if(transform == null) {
             return;
+        }
+
+        try {
+            O5KitAdapters.Ctx?.Tooltip?.Hide();
+        } catch {
+        }
+
+        foreach(var key in thumbCache.Keys.ToArray()) {
+            if(!OverlayCore.Canvases.Contains(key)) {
+                DropTileThumb(key);
+            }
         }
 
         foreach(Transform child in transform) {
@@ -222,6 +255,7 @@ internal static class PageOverlayer {
         bgImg.type = Image.Type.Sliced;
         bgImg.color = UIColors.ObjectBG;
         bgImg.raycastTarget = true;
+        ApplyThumbBg(bg, bgImg, GetTileThumb(canvas));
 
         GameObject textGo = new("CanvasNameText");
         textGo.transform.SetParent(bg.transform, false);
@@ -241,7 +275,9 @@ internal static class PageOverlayer {
         txt.raycastTarget = false;
 
         var tileTrigger = bg.AddComponent<EventTrigger>();
-        O5Effects.HoverOutline(O5KitAdapters.Ctx, bg, tileTrigger);
+        var hoverImg = O5Effects.HoverOutline(O5KitAdapters.Ctx, bg, tileTrigger);
+        hoverImg.transform.SetAsLastSibling();
+        hoverImg.raycastTarget = false;
         AddTileHoverScale(bg, tileTrigger);
 
         var tileControls = new List<GameObject>();
@@ -265,8 +301,6 @@ internal static class PageOverlayer {
         O5Button exportBtn = TileButton(bg.transform, TileIcon("Upload128.png", UISprite.Upload128), "Export",
             $"tile_export_{canvas.GetHashCode()}", () => { });
         exportBtn.OnClick = () => {
-            exportBtn.OnPressExit();
-            exportBtn.OnHoverExit();
             BeginExportCanvas(canvas);
         };
         var exportRect = exportBtn.Rect;
@@ -318,9 +352,326 @@ internal static class PageOverlayer {
         tileControls.Add(exportRect.gameObject);
         tileControls.Add(cloneRect.gameObject);
         tileControls.Add(toggleGo);
+
+        OvCanvas armedDeleteFor = null;
+        DateTime armedDeleteAt = default;
+        var delBtn = TileButton(bg.transform, BuiltinIcon(UISprite.X128), "X",
+            $"tile_del_{canvas.GetHashCode()}", () => { });
+        delBtn.OnClick = () => {
+            if(ShiftSkipConfirm()) {
+                OverlayCore.DeleteOvCanvas(canvas);
+                onChanged?.Invoke();
+                return;
+            }
+            if(!ReferenceEquals(armedDeleteFor, canvas)
+                || (DateTime.Now - armedDeleteAt).TotalSeconds > 5) {
+                armedDeleteFor = canvas;
+                armedDeleteAt = DateTime.Now;
+                delBtn.NormalColor = UIColors.SoftRed;
+                if(delBtn.Icon != null) {
+                    delBtn.Icon.color = UIColors.SoftRed;
+                }
+                if(delBtn.Label != null) {
+                    delBtn.Label.text = "!";
+                }
+                delBtn.UpdateVisual();
+                return;
+            }
+            OverlayCore.DeleteOvCanvas(canvas);
+            onChanged?.Invoke();
+        };
+        var delRect = delBtn.Rect;
+        delRect.anchorMin = new Vector2(0f, 0f);
+        delRect.anchorMax = new Vector2(0f, 0f);
+        delRect.pivot = new Vector2(0f, 0f);
+        delRect.anchoredPosition = new Vector2(130f, 10f);
+        delRect.sizeDelta = new Vector2(34f, 34f);
+        tileControls.Add(delRect.gameObject);
+
+        var propsRect = TileButton(bg.transform, null, "...",
+            $"tile_props_{canvas.GetHashCode()}", () => {
+                FadeCanvasGroup(viewportCanvasGroup, 0f, false);
+                propsPage?.Open(canvas);
+            }).Rect;
+        propsRect.anchorMin = new Vector2(1f, 0f);
+        propsRect.anchorMax = new Vector2(1f, 0f);
+        propsRect.pivot = new Vector2(1f, 0f);
+        propsRect.anchoredPosition = new Vector2(-130f, 10f);
+        propsRect.sizeDelta = new Vector2(110f, 34f);
+        tileControls.Add(propsRect.gameObject);
+
         ApplyTileEnabledVisual(bgImg, txt, canvas.Config.Enabled.Value);
 
         return bg;
+    }
+
+    private static Sprite GetTileThumb(OvCanvas canvas) {
+        if(canvas?.Props == null || string.IsNullOrWhiteSpace(canvas.Props.ThumbnailPath)) {
+            return null;
+        }
+        string disk;
+        try {
+            disk = UserResourceManager.FromUser(canvas.Props.ThumbnailPath);
+        } catch {
+            return null;
+        }
+        if(string.IsNullOrEmpty(disk) || !File.Exists(disk)) {
+            return null;
+        }
+        DateTime mtime = File.GetLastWriteTimeUtc(disk);
+        if(thumbCache.TryGetValue(canvas, out var cached)
+            && cached.sprite
+            && cached.path == disk
+            && cached.mtime == mtime) {
+            return cached.sprite;
+        }
+        DropTileThumb(canvas);
+        try {
+            var tex = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+            if(!tex.LoadImage(File.ReadAllBytes(disk))) {
+                UnityEngine.Object.Destroy(tex);
+                return null;
+            }
+            tex.filterMode = FilterMode.Bilinear;
+            var sprite = Sprite.Create(tex, new Rect(0f, 0f, tex.width, tex.height), new Vector2(0.5f, 0.5f));
+            thumbCache[canvas] = (tex, sprite, disk, mtime);
+            return sprite;
+        } catch {
+            return null;
+        }
+    }
+
+    private static void DropTileThumb(OvCanvas canvas) {
+        if(canvas != null && thumbCache.Remove(canvas, out var dropped) && dropped.tex) {
+            UnityEngine.Object.Destroy(dropped.tex);
+        }
+    }
+
+    private static void ApplyThumbBg(GameObject tile, Image bgImg, Sprite thumb) {
+        if(thumb == null) {
+            return;
+        }
+        var maskGo = new GameObject("ThumbMask");
+        maskGo.transform.SetParent(tile.transform, false);
+        var maskRect = maskGo.AddComponent<RectTransform>();
+        maskRect.anchorMin = Vector2.zero;
+        maskRect.anchorMax = Vector2.one;
+        maskRect.offsetMin = Vector2.zero;
+        maskRect.offsetMax = Vector2.zero;
+        var maskImg = maskGo.AddComponent<Image>();
+        maskImg.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P1024);
+        maskImg.type = Image.Type.Sliced;
+        maskGo.AddComponent<Mask>().showMaskGraphic = false;
+
+        var thumbGo = new GameObject("Thumb");
+        thumbGo.transform.SetParent(maskGo.transform, false);
+        var thumbRect = thumbGo.AddComponent<RectTransform>();
+        thumbRect.anchorMin = thumbRect.anchorMax = thumbRect.pivot = new Vector2(0.5f, 0.5f);
+        thumbRect.sizeDelta = Vector2.zero;
+        var thumbImg = thumbGo.AddComponent<Image>();
+        thumbImg.sprite = thumb;
+        thumbImg.raycastTarget = false;
+        var fitter = thumbGo.AddComponent<AspectRatioFitter>();
+        fitter.aspectMode = AspectRatioFitter.AspectMode.EnvelopeParent;
+        float aspect = 1f;
+        try {
+            if(thumb.rect.height > 0f) {
+                aspect = thumb.rect.width / thumb.rect.height;
+            }
+        } catch {
+        }
+        fitter.aspectRatio = aspect;
+
+        var dim = new GameObject("Dim");
+        dim.transform.SetParent(maskGo.transform, false);
+        var dimRect = dim.AddComponent<RectTransform>();
+        dimRect.anchorMin = Vector2.zero;
+        dimRect.anchorMax = Vector2.one;
+        dimRect.offsetMin = Vector2.zero;
+        dimRect.offsetMax = Vector2.zero;
+        var dimImg = dim.AddComponent<Image>();
+        dimImg.color = new Color(0f, 0f, 0f, 0.45f);
+        dimImg.raycastTarget = false;
+    }
+
+    static GameObject CreatePackageTile(Transform parent, PackageEntry entry, Action onChanged = null) {
+        var bg = new GameObject($"PKG_{entry.Id}");
+        bg.transform.SetParent(parent, false);
+
+        bg.AddComponent<RectTransform>();
+
+        var bgImg = bg.AddComponent<Image>();
+        bgImg.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P2048);
+        bgImg.type = Image.Type.Sliced;
+        bgImg.color = UIColors.PanelBG;
+        bgImg.raycastTarget = true;
+        ApplyThumbBg(bg, bgImg, entry.ThumbnailSprite);
+
+        GameObject textGo = new("CanvasNameText");
+        textGo.transform.SetParent(bg.transform, false);
+
+        var textRect = textGo.AddComponent<RectTransform>();
+        textRect.anchorMin = Vector2.zero;
+        textRect.anchorMax = Vector2.one;
+        textRect.offsetMin = new Vector2(20, 20);
+        textRect.offsetMax = new Vector2(-20, -20);
+
+        var txt = textGo.AddComponent<TextMeshProUGUI>();
+        string pkgName = entry.Manifest?.Package?.Name;
+        if(string.IsNullOrEmpty(pkgName)) {
+            pkgName = "(Empty)";
+        }
+        txt.text = pkgName;
+        txt.font = MainCore.Res.Get<TMP_FontAsset>(Asset.SUIT_Medium);
+        txt.fontSize = 22;
+        txt.alignment = TextAlignmentOptions.Center;
+        txt.color = Color.white;
+        txt.raycastTarget = false;
+
+        GameObject badgeGo = new("PkgBadge");
+        badgeGo.transform.SetParent(bg.transform, false);
+        var badgeRect = badgeGo.AddComponent<RectTransform>();
+        badgeRect.anchorMin = new Vector2(0f, 1f);
+        badgeRect.anchorMax = new Vector2(0f, 1f);
+        badgeRect.pivot = new Vector2(0f, 1f);
+        badgeRect.anchoredPosition = new Vector2(10f, -10f);
+        badgeRect.sizeDelta = new Vector2(64f, 26f);
+        var badge = badgeGo.AddComponent<TextMeshProUGUI>();
+        badge.text = "PKG";
+        badge.font = MainCore.Res.Get<TMP_FontAsset>(Asset.SUIT_Medium);
+        badge.fontSize = 15;
+        badge.alignment = TextAlignmentOptions.Center;
+        badge.color = new Color(0.55f, 0.9f, 1f);
+        badge.raycastTarget = false;
+
+        string pkgTip = BuildPackageTooltip(entry);
+        if(!string.IsNullOrEmpty(pkgTip)) {
+            bg.transform.AddToolTip(O5KitAdapters.Ctx, pkgTip);
+        }
+
+        var tileControls = new List<GameObject>();
+
+        var copyRect = TileButton(bg.transform, BuiltinIcon(UISprite.Download128), "Copy",
+            $"tile_promote_{entry.Id}", () => BeginPromote(entry)).Rect;
+        copyRect.anchorMin = new Vector2(0f, 0f);
+        copyRect.anchorMax = new Vector2(0f, 0f);
+        copyRect.pivot = new Vector2(0f, 0f);
+        copyRect.anchoredPosition = new Vector2(10f, 10f);
+        copyRect.sizeDelta = new Vector2(110f, 34f);
+
+        bool confirmDelete = false;
+        DateTime pkgArmedAt = default;
+        var deleteBtn = TileButton(bg.transform, BuiltinIcon(UISprite.X128), "X",
+            $"tile_pkgdel_{entry.Id}", () => { });
+        deleteBtn.OnClick = () => {
+            if(ShiftSkipConfirm()) {
+                PackageStore.Remove(entry.Id);
+                return;
+            }
+            if(!confirmDelete || (DateTime.Now - pkgArmedAt).TotalSeconds > 5) {
+                confirmDelete = true;
+                pkgArmedAt = DateTime.Now;
+                if(deleteBtn.Label != null) {
+                    deleteBtn.Label.text = "!";
+                }
+                if(deleteBtn.Icon != null) {
+                    deleteBtn.Icon.color = UIColors.SoftRed;
+                }
+                deleteBtn.NormalColor = UIColors.SoftRed;
+                deleteBtn.UpdateVisual();
+                return;
+            }
+            PackageStore.Remove(entry.Id);
+        };
+        var deleteRect = deleteBtn.Rect;
+        deleteRect.anchorMin = new Vector2(0f, 0f);
+        deleteRect.anchorMax = new Vector2(0f, 0f);
+        deleteRect.pivot = new Vector2(0f, 0f);
+        deleteRect.anchoredPosition = new Vector2(130f, 10f);
+        deleteRect.sizeDelta = new Vector2(34f, 34f);
+
+        var toggleGo = new GameObject("EnabledToggle");
+        toggleGo.transform.SetParent(bg.transform, false);
+        var toggleRect = toggleGo.AddComponent<RectTransform>();
+        toggleRect.anchorMin = new Vector2(1f, 1f);
+        toggleRect.anchorMax = new Vector2(1f, 1f);
+        toggleRect.pivot = new Vector2(1f, 1f);
+        toggleRect.anchoredPosition = new Vector2(-10f, -10f);
+        toggleRect.sizeDelta = new Vector2(64f, 34f);
+        var enabledToggle = O5Factory.Toggle(O5KitAdapters.Ctx,
+            toggleGo.transform,
+            null,
+            entry.Enabled,
+            toggle => {
+                var toggleWarnings = PackageStore.SetEnabled(entry, toggle);
+                ApplyTileEnabledVisual(bgImg, txt, entry.Enabled);
+                if(toggleWarnings.Count > 0) {
+                    O5cpDialogs.ShowWarnings("Package warnings", toggleWarnings);
+                }
+            },
+            string.Empty,
+            $"tile_pkgenabled_{entry.Id}");
+        var hoverOutline = enabledToggle.Rect.transform.Find("Hover");
+        if(hoverOutline != null) {
+            UnityEngine.Object.Destroy(hoverOutline.gameObject);
+        }
+        var toggleBg = enabledToggle.Rect.GetComponent<Image>();
+        if(toggleBg != null) {
+            toggleBg.color = Color.clear;
+        }
+        tileControls.Add(copyRect.gameObject);
+        tileControls.Add(deleteRect.gameObject);
+        tileControls.Add(toggleGo);
+        ApplyTileEnabledVisual(bgImg, txt, entry.Enabled);
+
+        return bg;
+    }
+
+    private static string BuildPackageTooltip(PackageEntry entry) {
+        var pkg = entry?.Manifest?.Package;
+        if(pkg == null) {
+            return string.Empty;
+        }
+        var lines = new List<string>();
+        if(!string.IsNullOrWhiteSpace(pkg.Author)) {
+            lines.Add($"by {pkg.Author.Trim()}");
+        }
+        if(!string.IsNullOrWhiteSpace(pkg.Version)) {
+            lines.Add(pkg.Version.Trim());
+        }
+        if(!string.IsNullOrWhiteSpace(pkg.License)) {
+            lines.Add(pkg.License.Trim());
+        }
+        if(!string.IsNullOrWhiteSpace(pkg.Description)) {
+            if(lines.Count > 0) {
+                lines.Add("--");
+            }
+            lines.Add(pkg.Description.Trim());
+        }
+        return string.Join("\n", lines);
+    }
+
+    private static bool ShiftSkipConfirm()
+        => Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+
+    private static void BeginPromote(PackageEntry entry) {
+        if(entry == null) {
+            return;
+        }
+        var plan = O5cpPromote.BuildPlan(entry);
+        if(plan.Items.Any(i => i.IsConflict)) {
+            O5cpDialogs.ShowPromoteConflicts(entry, plan, () => {
+                var canvas = OverlayCore.PromotePackage(entry, plan, out var warnings);
+                if(canvas != null && warnings.Count > 0) {
+                    O5cpDialogs.ShowWarnings("Copy warnings", warnings);
+                }
+            });
+            return;
+        }
+        var promoted = OverlayCore.PromotePackage(entry, plan, out var promoteWarnings);
+        if(promoted != null && promoteWarnings.Count > 0) {
+            O5cpDialogs.ShowWarnings("Copy warnings", promoteWarnings);
+        }
     }
 
     private static void ApplyTileEnabledVisual(Image bgImg, TextMeshProUGUI nameText, bool enabled) {
@@ -328,6 +679,13 @@ internal static class PageOverlayer {
         bg.a = enabled ? 1f : 0.4f;
         bgImg.color = bg;
         nameText.color = enabled ? Color.white : UIColors.ObjectInactive;
+        var dim = bgImg.transform.Find("ThumbMask/Dim");
+        if(dim != null) {
+            var dimImg = dim.GetComponent<Image>();
+            if(dimImg != null) {
+                dimImg.color = new Color(0f, 0f, 0f, enabled ? 0.45f : 0.75f);
+            }
+        }
     }
 
     private static readonly Dictionary<string, Sprite> tileIconCache = [];
@@ -573,35 +931,57 @@ internal static class PageOverlayer {
     }
 
     private static void BeginExportCanvas(OvCanvas canvas) {
-        string baseName = string.Join("_", (canvas.Config.Name.Value ?? "Canvas").Split(Path.GetInvalidFileNameChars()));
-        if(string.IsNullOrWhiteSpace(baseName)) {
-            baseName = "Canvas";
+        if(canvas == null) {
+            return;
         }
-        _ = Overlayer.UI.Utility.NativeDialogThread.Run(() => {
-            try {
-                string dir = OverlayCore.ExportDir;
-                if(!Directory.Exists(dir)) {
-                    Directory.CreateDirectory(dir);
-                }
-                return NativeFileDialog.Extended.NFD.SaveDialog(
-                    dir,
-                    $"{baseName}.json",
-                    new Dictionary<string, string> { ["JSON"] = "json" }
-                );
-            } catch(Exception e) {
-                MainCore.Log.Err($"[CanvasExport] File dialog failed: {e.Message}");
-                return null;
+        O5cpDialogs.ShowExportOptions(options => {
+            if(canvas.GameObject == null) {
+                return;
             }
-        }).ContinueWith(task => {
-            MainThread.Enqueue(() => {
-                if(!MainCore.IsModEnabled) {
-                    return;
+            string baseName = string.Join("_", (canvas.Config.Name.Value ?? "Canvas").Split(Path.GetInvalidFileNameChars()));
+            if(string.IsNullOrWhiteSpace(baseName)) {
+                baseName = "Canvas";
+            }
+            _ = Overlayer.UI.Utility.NativeDialogThread.Run(() => {
+                try {
+                    return NativeFileDialog.Extended.NFD.SaveDialog(
+                        ExportDialogDir(),
+                        $"{baseName}.o5cp",
+                        new Dictionary<string, string> { ["Overlayer Package"] = "o5cp" }
+                    );
+                } catch(Exception e) {
+                    MainCore.Log.Err($"[CanvasExport] File dialog failed: {e.Message}");
+                    return null;
                 }
-                string path = task.Status == TaskStatus.RanToCompletion ? task.Result : null;
-                if(string.IsNullOrWhiteSpace(path)) {
-                    return;
-                }
-                OverlayCore.ExportCanvas(canvas, path);
+            }).ContinueWith(task => {
+                MainThread.Enqueue(() => {
+                    if(!MainCore.IsModEnabled) {
+                        return;
+                    }
+                    if(canvas.GameObject == null) {
+                        return;
+                    }
+                    string path = task.Status == TaskStatus.RanToCompletion ? task.Result : null;
+                    if(string.IsNullOrWhiteSpace(path)) {
+                        return;
+                    }
+                    try {
+                        var result = O5cpExporter.Export(canvas, path, options);
+                        if(result == null) {
+                            MainCore.Log.Err("[CanvasExport] Package export failed.");
+                            return;
+                        }
+                        foreach(string warning in result.Warnings) {
+                            MainCore.Log.Wrn($"[CanvasExport] {warning}");
+                        }
+                        MainCore.Log.Msg($"[CanvasExport] Exported package to {path}");
+                        if(result.Warnings.Count > 0) {
+                            O5cpDialogs.ShowWarnings("Export warnings", result.Warnings);
+                        }
+                    } catch(Exception e) {
+                        MainCore.Log.Err($"[CanvasExport] Package export failed: {e.Message}");
+                    }
+                });
             });
         });
     }
@@ -609,13 +989,12 @@ internal static class PageOverlayer {
     private static void BeginImportCanvas(Transform grid) {
         _ = Overlayer.UI.Utility.NativeDialogThread.Run(() => {
             try {
-                string dir = OverlayCore.ExportDir;
-                if(!Directory.Exists(dir)) {
-                    Directory.CreateDirectory(dir);
-                }
                 return NativeFileDialog.Extended.NFD.OpenDialog(
-                    dir,
-                    new Dictionary<string, string> { ["JSON"] = "json" }
+                    ExportDialogDir(),
+                    new Dictionary<string, string> {
+                        ["Overlayer Package"] = "o5cp",
+                        ["JSON"] = "json",
+                    }
                 );
             } catch(Exception e) {
                 MainCore.Log.Err($"[CanvasImport] File dialog failed: {e.Message}");
@@ -628,11 +1007,59 @@ internal static class PageOverlayer {
                 }
                 string path = task.Status == TaskStatus.RanToCompletion ? task.Result : null;
                 if(!string.IsNullOrWhiteSpace(path)) {
-                    OverlayCore.ImportCanvas(path);
+                    if(path.EndsWith(".o5cp", StringComparison.OrdinalIgnoreCase)) {
+                        BeginInstallPackage(path, grid);
+                    } else {
+                        OverlayCore.ImportCanvas(path);
+                    }
                 }
                 BuildAllTiles(grid);
             });
         });
+    }
+
+    private static string ExportDialogDir() {
+        try {
+            string root = MainCore.Paths.RootPath;
+            if(Directory.Exists(root)) {
+                return root;
+            }
+        } catch {
+        }
+        return null;
+    }
+
+    private static void BeginInstallPackage(string path, Transform grid) {
+        PackageStore.StagedPackage staged;
+        try {
+            staged = PackageStore.Stage(path, out var stageWarnings);
+            foreach(string warning in stageWarnings) {
+                MainCore.Log.Wrn($"[CanvasImport] {warning}");
+            }
+            if(staged == null) {
+                if(stageWarnings.Count > 0) {
+                    O5cpDialogs.ShowWarnings("Import warnings", stageWarnings);
+                }
+                return;
+            }
+        } catch(Exception e) {
+            MainCore.Log.Err($"[CanvasImport] Stage failed: {e.Message}");
+            return;
+        }
+        PackageEntry entry;
+        try {
+            entry = PackageStore.CommitStaged(staged, out var warnings);
+            foreach(string warning in warnings) {
+                MainCore.Log.Wrn($"[CanvasImport] {warning}");
+            }
+            if(entry != null && warnings.Count > 0) {
+                O5cpDialogs.ShowWarnings("Import warnings", warnings);
+            }
+        } catch(Exception e) {
+            MainCore.Log.Err($"[CanvasImport] Install failed: {e.Message}");
+            staged.Dispose();
+        }
+        BuildAllTiles(grid);
     }
 
     private static ITweenHandle fadeTween;
