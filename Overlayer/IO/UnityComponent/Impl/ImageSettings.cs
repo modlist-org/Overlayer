@@ -2,6 +2,7 @@
 using Overlayer.IO.Fx;
 using Overlayer.IO.Interface;
 using Overlayer.IO.User;
+using Overlayer.Package;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -95,7 +96,7 @@ public class ImageSettings : UnityComponentSettingsBase, ICopyable<ImageSettings
                 x => x.sprite == com.sprite,
                 out var key
             );
-            SpriteKey.Value = key;
+            SpriteKey.Value = O5cpFormat.IsPackageKey(key) ? string.Empty : key;
         } else {
             SpriteKey.Value = string.Empty;
         }

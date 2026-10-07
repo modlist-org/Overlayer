@@ -3,6 +3,7 @@ using Overlayer.Compat;
 using Overlayer.Core;
 using Overlayer.IO;
 using Overlayer.Localization;
+using Overlayer.Package;
 using Overlayer.UI.Utility;
 using Overlayer.V8.Scripting.Patch;
 using Overlayer.V8.Scripting.Tag;
@@ -210,7 +211,9 @@ internal static class PageJS {
         string root = MainCore.V8.ScriptFolderPath;
         string[] files;
         try {
-            files = JSScriptLoader.FindScripts(root);
+            files = JSScriptLoader.FindScripts(root)
+                .Where(file => !O5cpFormat.IsPackageScript(file))
+                .ToArray();
         } catch {
             files = [];
         }
@@ -231,7 +234,7 @@ internal static class PageJS {
             }
         }
         if(diagText != null) {
-            int errors = MainCore.V8.LoaderDiagnostics.Count;
+            int errors = MainCore.V8.LoaderDiagnostics.Count(d => !O5cpFormat.IsPackageScript(d.FilePath));
             diagText.text = errors == 0
                 ? T("JS_NO_ERRORS", "No script errors.")
                 : string.Format(T("JS_ERROR_COUNT", "{0} script errors (see log)."), errors);

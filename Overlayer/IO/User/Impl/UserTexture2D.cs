@@ -2,6 +2,7 @@
 using O5Kit.Compat;
 using Overlayer.Core;
 using Overlayer.IO.Unity;
+using Overlayer.Package;
 using UnityEngine;
 
 namespace Overlayer.IO.User.Impl;
@@ -125,6 +126,9 @@ public class UserTexture2D : UserResourceBase<(Texture2D texture, Texture2DSetti
         var obj = new JObject();
 
         foreach(var (key, (path, value)) in Cache) {
+            if(O5cpFormat.IsPackageKey(key)) {
+                continue;
+            }
             obj[key] = new JObject {
                 ["Path"] = UserResourceManager.ToUser(path),
                 [nameof(Texture2DSettings)] = value.settings.Serialize()
@@ -143,6 +147,9 @@ public class UserTexture2D : UserResourceBase<(Texture2D texture, Texture2DSetti
         }
 
         foreach(var property in obj.Properties()) {
+            if(O5cpFormat.IsPackageKey(property.Name)) {
+                continue;
+            }
             if(property.Value is not JObject entry) {
                 MainCore.Log.Wrn(
                     $"[{nameof(UserTexture2D)}] Invalid entry {{ \"{property.Name}\": null }}"

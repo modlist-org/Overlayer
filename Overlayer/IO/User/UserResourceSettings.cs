@@ -2,6 +2,7 @@ using Newtonsoft.Json.Linq;
 using Overlayer.Core;
 using Overlayer.IO.Interface;
 using Overlayer.IO.User.Impl;
+using Overlayer.Package;
 
 namespace Overlayer.IO.User;
 
@@ -51,6 +52,9 @@ public sealed class UserResourceSettings : ISettingsFile, IDisposable {
     private static JObject SerializeFolders(Dictionary<string, string> folders, ICollection<string> keys) {
         var result = new JObject();
         foreach(var (key, folder) in folders) {
+            if(O5cpFormat.IsPackageKey(key)) {
+                continue;
+            }
             if(keys.Contains(key) && !string.IsNullOrEmpty(folder)) {
                 result[key] = folder;
             }
@@ -64,6 +68,9 @@ public sealed class UserResourceSettings : ISettingsFile, IDisposable {
             return;
         }
         foreach(var property in obj.Properties()) {
+            if(O5cpFormat.IsPackageKey(property.Name)) {
+                continue;
+            }
             folders[property.Name] = property.Value.ToString();
         }
     }

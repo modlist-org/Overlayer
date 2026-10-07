@@ -1,6 +1,7 @@
 ﻿using Newtonsoft.Json.Linq;
 using Overlayer.Core;
 using Overlayer.IO.Interface;
+using Overlayer.Package;
 using UnityEngine;
 
 #if ML && IL2CPP
@@ -68,6 +69,9 @@ public class UserFont : UserResourceBase<TMP_FontAsset>, ISettingsFile {
         var obj = new JObject();
 
         foreach(var (key, (path, _)) in Cache) {
+            if(O5cpFormat.IsPackageKey(key)) {
+                continue;
+            }
             obj[key] = UserResourceManager.ToUser(path);
         }
 
@@ -82,6 +86,9 @@ public class UserFont : UserResourceBase<TMP_FontAsset>, ISettingsFile {
 
         foreach(var property in obj.Properties()) {
             var key = property.Name;
+            if(O5cpFormat.IsPackageKey(key)) {
+                continue;
+            }
             var path = UserResourceManager.FromUser(property.Value.ToString());
 
             var result = Load(key, path);

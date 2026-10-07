@@ -2,6 +2,7 @@
 using Overlayer.Core;
 using Overlayer.IO.Interface;
 using Overlayer.IO.Unity;
+using Overlayer.Package;
 using UnityEngine;
 
 namespace Overlayer.IO.User.Impl;
@@ -61,6 +62,9 @@ public class UserSprite : UserResourceBase<(Sprite sprite, string textureKey, Sp
         var obj = new JObject();
 
         foreach(var (key, (_, value)) in Cache) {
+            if(O5cpFormat.IsPackageKey(key)) {
+                continue;
+            }
             obj[key] = new JObject {
                 ["TextureKey"] = value.textureKey,
                 [nameof(SpriteSettings)] = value.settings.Serialize()
@@ -175,6 +179,9 @@ public class UserSprite : UserResourceBase<(Sprite sprite, string textureKey, Sp
         }
 
         foreach(var property in obj.Properties()) {
+            if(O5cpFormat.IsPackageKey(property.Name)) {
+                continue;
+            }
             if(property.Value is not JObject entry) {
                 continue;
             }

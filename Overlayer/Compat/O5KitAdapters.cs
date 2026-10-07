@@ -2,6 +2,7 @@ using O5Kit.Core;
 using O5Kit.Input;
 using Overlayer.Core;
 using Overlayer.IO.User;
+using Overlayer.Package;
 using Overlayer.Resource;
 using O5Kit.Control;
 using Overlayer.UI.Objects.Impl;
@@ -69,6 +70,9 @@ public sealed class OverlayerFontProvider : IFontProvider {
             var directUserFonts = new HashSet<TMP_FontAsset>();
             if(!enabled) {
                 foreach(string key in UserResourceManager.Fnt.Keys) {
+                    if(O5cpFormat.IsPackageKey(key)) {
+                        continue;
+                    }
                     if(UserResourceManager.Fnt.TryGet(key, out var userFont) && userFont != null) {
                         directUserFonts.Add(userFont);
                     }

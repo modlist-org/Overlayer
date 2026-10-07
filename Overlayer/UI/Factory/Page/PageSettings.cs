@@ -12,6 +12,7 @@ using O5Kit.Behaviour;
 using Overlayer.Utility;
 using Overlayer.IO.Fx;
 using Overlayer.IO.User;
+using Overlayer.Package;
 using Overlayer.Update;
 using UnityEngine;
 using UnityEngine.UI;
@@ -519,6 +520,7 @@ internal static class PageSettings {
         O5Factory.Button(O5KitAdapters.Ctx, addRow, () => {
             var chain = fallbacks.Value ?? [];
             string first = UserResourceManager.Fnt.Keys
+                .Where(k => !O5cpFormat.IsPackageKey(k))
                 .OrderBy(k => k, StringComparer.OrdinalIgnoreCase)
                 .FirstOrDefault(k => k != fx.Value && !chain.Contains(k));
             if(first == null) {
@@ -644,6 +646,7 @@ internal static class PageSettings {
     private static string[] FontOptions(bool includeBuiltin = false, string includeKey = null) {
         var folders = UserResourceManager.Config.Data.FontFolders;
         var keys = UserResourceManager.Fnt.Keys
+            .Where(k => !O5cpFormat.IsPackageKey(k))
             .OrderBy(k => UserResourceSettings.FolderOf(folders, k), StringComparer.OrdinalIgnoreCase)
             .ThenBy(k => k, StringComparer.OrdinalIgnoreCase)
             .ToList();

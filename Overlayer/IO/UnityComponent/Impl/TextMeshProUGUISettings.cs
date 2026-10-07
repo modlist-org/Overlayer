@@ -2,6 +2,7 @@
 using Overlayer.IO.Fx;
 using Overlayer.IO.Interface;
 using Overlayer.IO.User;
+using Overlayer.Package;
 using UnityEngine;
 
 #if ML && IL2CPP
@@ -212,7 +213,7 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
 
         Text.Value = com.text;
         Color.Value = com.colorGradient;
-        FontKey.Value = UserResourceManager.Fnt.Keys.FirstOrDefault(key => UserResourceManager.Fnt.TryGet(key, out var font) && font == com.font);
+        FontKey.Value = UserResourceManager.Fnt.Keys.FirstOrDefault(key => !O5cpFormat.IsPackageKey(key) && UserResourceManager.Fnt.TryGet(key, out var font) && font == com.font);
         FontSize.Value = com.fontSize;
         RichText.Value = com.richText;
         Alignment.Value = com.alignment;

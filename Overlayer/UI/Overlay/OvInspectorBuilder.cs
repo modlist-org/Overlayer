@@ -7,6 +7,7 @@ using Overlayer.IO.UnityComponent;
 using Overlayer.IO.Overlay;
 using Overlayer.IO.User;
 using Overlayer.Overlay;
+using Overlayer.Package;
 using O5Kit.Input;
 using Overlayer.Core;
 using Overlayer.Resource;
@@ -2896,6 +2897,7 @@ internal sealed class OvInspectorBuilder(
         const string none = "None";
         var folders = UserResourceManager.Config.Data.ImageFolders;
         var options = UserResourceManager.Spr.Keys
+            .Where(key => !O5cpFormat.IsPackageKey(key))
             .OrderBy(key => UserResourceSettings.FolderOf(folders, key), StringComparer.OrdinalIgnoreCase)
             .ThenBy(key => key, StringComparer.OrdinalIgnoreCase)
             .ToList();
@@ -2919,6 +2921,7 @@ internal sealed class OvInspectorBuilder(
         const string none = "Default";
         var folders = UserResourceManager.Config.Data.FontFolders;
         var options = UserResourceManager.Fnt.Keys
+            .Where(key => !O5cpFormat.IsPackageKey(key))
             .OrderBy(key => UserResourceSettings.FolderOf(folders, key), StringComparer.OrdinalIgnoreCase)
             .ThenBy(key => key, StringComparer.OrdinalIgnoreCase)
             .ToList();

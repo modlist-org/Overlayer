@@ -5,6 +5,7 @@ using Overlayer.IO.User;
 using Overlayer.IO.User.Impl;
 using Overlayer.Localization;
 using Overlayer.Overlay;
+using Overlayer.Package;
 using Overlayer.Resource;
 using O5Kit.Factory;
 using O5Kit.Control;
@@ -280,7 +281,7 @@ internal static class PageResources {
                 SetStatus("ENTER_RESOURCE_NAME", "Enter a resource name.", UIColors.ObjectActiveMathErr);
                 return;
             }
-            if(UserResourceManager.T2D.Keys.Contains(key) || UserResourceManager.Spr.Keys.Contains(key)) {
+            if(O5cpFormat.IsPackageKey(key) || UserResourceManager.T2D.Keys.Contains(key) || UserResourceManager.Spr.Keys.Contains(key)) {
                 SetStatus("RESOURCE_NAME_ALREADY_EXISTS", "Resource name already exists.", UIColors.ObjectActiveMathErr);
                 return;
             }
@@ -322,7 +323,7 @@ internal static class PageResources {
                 SetStatus("ENTER_RESOURCE_NAME", "Enter a resource name.", UIColors.ObjectActiveMathErr);
                 return;
             }
-            if(UserResourceManager.Fnt.Keys.Contains(key)) {
+            if(O5cpFormat.IsPackageKey(key) || UserResourceManager.Fnt.Keys.Contains(key)) {
                 SetStatus("RESOURCE_NAME_ALREADY_EXISTS", "Resource name already exists.", UIColors.ObjectActiveMathErr);
                 return;
             }
@@ -697,6 +698,7 @@ internal static class PageResources {
         string query = searchInput?.Value?.Trim() ?? string.Empty;
         Dictionary<string, string> folders = CurrentFolders;
         string[] keys = (currentMode == ResourceMode.Images ? UserResourceManager.Spr.Keys : UserResourceManager.Fnt.Keys)
+            .Where(key => !O5cpFormat.IsPackageKey(key))
             .Where(key => string.IsNullOrEmpty(query) || FullName(folders, key).Contains(query, StringComparison.OrdinalIgnoreCase))
             .OrderBy(key => FolderOf(folders, key), StringComparer.OrdinalIgnoreCase)
             .ThenBy(key => key, StringComparer.OrdinalIgnoreCase)
@@ -1079,7 +1081,7 @@ internal static class PageResources {
                 }
                 return;
             }
-            if(UserResourceManager.Fnt.Keys.Contains(newKey)) {
+            if(O5cpFormat.IsPackageKey(newKey) || UserResourceManager.Fnt.Keys.Contains(newKey)) {
                 SetStatus("RESOURCE_NAME_ALREADY_EXISTS", "Resource name already exists.", UIColors.ObjectActiveMathErr);
                 return;
             }
@@ -1143,6 +1145,10 @@ internal static class PageResources {
         }
         if(string.Equals(oldKey, newKey, StringComparison.Ordinal)) {
             SetStatus("NAME_UNCHANGED", "Name unchanged.", UIColors.ObjectActive);
+            return false;
+        }
+        if(O5cpFormat.IsPackageKey(newKey)) {
+            SetStatus("RESOURCE_NAME_ALREADY_EXISTS", "Resource name already exists.", UIColors.ObjectActiveMathErr);
             return false;
         }
         if(
