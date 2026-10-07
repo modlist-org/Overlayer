@@ -68,10 +68,10 @@ public class CanvasSettings : UnityComponentSettingsBase, ICopyable<CanvasSettin
             return;
         }
 
-        FxUtil.ApplyIfChanged(ref _lastRenderMode, RenderMode.Value, v => com.renderMode = v);
-        FxUtil.ApplyIfChanged(ref _lastSortingOrder, SortingOrder.Value, v => com.sortingOrder = v);
-        FxUtil.ApplyIfChanged(ref _lastPixelPerfect, PixelPerfect.Value, v => com.pixelPerfect = v);
-        FxUtil.ApplyIfChanged(ref _lastOverrideSorting, OverrideSorting.Value, v => com.overrideSorting = v);
+        if(FxUtil.Changed(ref _lastRenderMode, RenderMode.Value)) com.renderMode = _lastRenderMode;
+        if(FxUtil.Changed(ref _lastSortingOrder, SortingOrder.Value)) com.sortingOrder = _lastSortingOrder;
+        if(FxUtil.Changed(ref _lastPixelPerfect, PixelPerfect.Value)) com.pixelPerfect = _lastPixelPerfect;
+        if(FxUtil.Changed(ref _lastOverrideSorting, OverrideSorting.Value)) com.overrideSorting = _lastOverrideSorting;
     }
 
     public override JToken Serialize() {

@@ -137,20 +137,20 @@ public class ImageSettings : UnityComponentSettingsBase, ICopyable<ImageSettings
         }
 
         RefreshEnabled(com);
-        FxUtil.ApplyIfChanged(ref _lastColor, Color.Value, v => com.color = v);
+        if(FxUtil.Changed(ref _lastColor, Color.Value)) com.color = _lastColor;
         if(FxUtil.ApplyIfChanged(ref _lastSpriteKey, SpriteKey.Value, _ => { })) {
             com.sprite = UserResourceManager.Spr.TryGet(_lastSpriteKey, out var value) ? value.sprite : null;
         }
-        FxUtil.ApplyIfChanged(ref _lastPreserveAspect, PreserveAspect.Value, v => com.preserveAspect = v);
-        FxUtil.ApplyIfChanged(ref _lastRaycastTarget, RaycastTarget.Value, v => com.raycastTarget = v);
-        FxUtil.ApplyIfChanged(ref _lastUseSpriteMesh, UseSpriteMesh.Value, v => com.useSpriteMesh = v);
-        FxUtil.ApplyIfChanged(ref _lastType, Type.Value, v => com.type = v);
-        FxUtil.ApplyIfChanged(ref _lastFillCenter, FillCenter.Value, v => com.fillCenter = v);
-        FxUtil.ApplyIfChanged(ref _lastPixelsPerUnitMultiplier, PixelsPerUnitMultiplier.Value, v => com.pixelsPerUnitMultiplier = v);
-        FxUtil.ApplyIfChanged(ref _lastFillMethod, FillMethod.Value, v => com.fillMethod = v);
-        FxUtil.ApplyIfChanged(ref _lastFillAmount, FillAmount.Value, v => com.fillAmount = v);
-        FxUtil.ApplyIfChanged(ref _lastFillOrigin, FillOrigin.Value, v => com.fillOrigin = v);
-        FxUtil.ApplyIfChanged(ref _lastFillClockwise, FillClockwise.Value, v => com.fillClockwise = v);
+        if(FxUtil.Changed(ref _lastPreserveAspect, PreserveAspect.Value)) com.preserveAspect = _lastPreserveAspect;
+        if(FxUtil.Changed(ref _lastRaycastTarget, RaycastTarget.Value)) com.raycastTarget = _lastRaycastTarget;
+        if(FxUtil.Changed(ref _lastUseSpriteMesh, UseSpriteMesh.Value)) com.useSpriteMesh = _lastUseSpriteMesh;
+        if(FxUtil.Changed(ref _lastType, Type.Value)) com.type = _lastType;
+        if(FxUtil.Changed(ref _lastFillCenter, FillCenter.Value)) com.fillCenter = _lastFillCenter;
+        if(FxUtil.Changed(ref _lastPixelsPerUnitMultiplier, PixelsPerUnitMultiplier.Value)) com.pixelsPerUnitMultiplier = _lastPixelsPerUnitMultiplier;
+        if(FxUtil.Changed(ref _lastFillMethod, FillMethod.Value)) com.fillMethod = _lastFillMethod;
+        if(FxUtil.Changed(ref _lastFillAmount, FillAmount.Value)) com.fillAmount = _lastFillAmount;
+        if(FxUtil.Changed(ref _lastFillOrigin, FillOrigin.Value)) com.fillOrigin = _lastFillOrigin;
+        if(FxUtil.Changed(ref _lastFillClockwise, FillClockwise.Value)) com.fillClockwise = _lastFillClockwise;
     }
 
     public override JToken Serialize() {

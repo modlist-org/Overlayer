@@ -124,20 +124,37 @@ public sealed class TextEngineCore {
             return text;
         }
 
+        // Tags return the same string instance while their value is unchanged,
+        // so skip rebuilding the output when every replacement is identical.
+        // ponytail: assumes Get() runs on one thread (main); memo state is unsynchronized.
+        var reps = memoSegs == segs && memoReps != null ? scratchReps ??= new string[segs.Length] : new string[segs.Length];
+        bool same = memoSegs == segs && ReferenceEquals(memoText, text) && memoReps != null;
+        for(int i = 0; i < segs.Length; i++) {
+            string r;
+            try {
+                r = segs[i].Replacer.Get();
+            } catch {
+                r = null;
+            }
+            reps[i] = r;
+            if(same && !ReferenceEquals(r, memoReps[i])) {
+                same = false;
+            }
+        }
+        if(same) {
+            return memoResult;
+        }
+
         var sb = new StringBuilder(text.Length);
         int last = 0;
 
-        foreach(var s in segs) {
+        for(int i = 0; i < segs.Length; i++) {
+            var s = segs[i];
             int from = Math.Clamp(s.Index, 0, text.Length);
             if(from > last) {
                 sb.Append(text, last, from - last);
             }
-            string replacement;
-            try {
-                replacement = s.Replacer.Get();
-            } catch {
-                replacement = null;
-            }
+            string replacement = reps[i];
             if(replacement == null) {
                 int end = Math.Clamp(s.Index + s.Length, 0, text.Length);
                 if(end > from) {
@@ -154,8 +171,19 @@ public sealed class TextEngineCore {
             sb.Append(text, last, text.Length - last);
         }
 
-        return sb.ToString();
+        // Swap buffers: reps becomes the memo, old memo becomes next scratch.
+        scratchReps = memoSegs == segs ? memoReps : null;
+        memoReps = reps;
+        memoSegs = segs;
+        memoText = text;
+        return memoResult = sb.ToString();
     }
+
+    private CompiledSegment[] memoSegs;
+    private string[] memoReps;
+    private string[] scratchReps;
+    private string memoText;
+    private string memoResult;
 
     private static readonly long FrameIntervalTicks = TimeSpan.FromMilliseconds(80).Ticks;
     private static readonly string[] LoadingFrames = [".", "..", "..."];

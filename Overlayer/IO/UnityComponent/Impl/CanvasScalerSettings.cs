@@ -84,12 +84,12 @@ public class CanvasScalerSettings : UnityComponentSettingsBase, ICopyable<Canvas
             return;
         }
 
-        FxUtil.ApplyIfChanged(ref _lastUiScaleMode, UiScaleMode.Value, v => com.uiScaleMode = v);
-        FxUtil.ApplyIfChanged(ref _lastReferenceResolution, ReferenceResolution.Value, v => com.referenceResolution = v);
-        FxUtil.ApplyIfChanged(ref _lastMatchWidthOrHeight, MatchWidthOrHeight.Value, v => com.matchWidthOrHeight = v);
-        FxUtil.ApplyIfChanged(ref _lastScreenMatchMode, ScreenMatchMode.Value, v => com.screenMatchMode = v);
-        FxUtil.ApplyIfChanged(ref _lastScaleFactor, ScaleFactor.Value, v => com.scaleFactor = v);
-        FxUtil.ApplyIfChanged(ref _lastDynamicPixelsPerUnit, DynamicPixelsPerUnit.Value, v => com.dynamicPixelsPerUnit = v);
+        if(FxUtil.Changed(ref _lastUiScaleMode, UiScaleMode.Value)) com.uiScaleMode = _lastUiScaleMode;
+        if(FxUtil.Changed(ref _lastReferenceResolution, ReferenceResolution.Value)) com.referenceResolution = _lastReferenceResolution;
+        if(FxUtil.Changed(ref _lastMatchWidthOrHeight, MatchWidthOrHeight.Value)) com.matchWidthOrHeight = _lastMatchWidthOrHeight;
+        if(FxUtil.Changed(ref _lastScreenMatchMode, ScreenMatchMode.Value)) com.screenMatchMode = _lastScreenMatchMode;
+        if(FxUtil.Changed(ref _lastScaleFactor, ScaleFactor.Value)) com.scaleFactor = _lastScaleFactor;
+        if(FxUtil.Changed(ref _lastDynamicPixelsPerUnit, DynamicPixelsPerUnit.Value)) com.dynamicPixelsPerUnit = _lastDynamicPixelsPerUnit;
     }
 
     public override JToken Serialize() {

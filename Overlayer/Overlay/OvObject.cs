@@ -112,14 +112,14 @@ public sealed class OvObject : ISettingsFile {
         }
 
         if(HasAnyFx) {
-            FxUtil.ApplyIfChanged(ref _lastName, Config.Name.Value, v => GameObject.name = v);
-            FxUtil.ApplyIfChanged(ref _lastEnabled, Config.Enabled.Value, v => GameObject.SetActive(v));
+            if(FxUtil.Changed(ref _lastName, Config.Name.Value)) GameObject.name = _lastName;
+            if(FxUtil.Changed(ref _lastEnabled, Config.Enabled.Value)) GameObject.SetActive(_lastEnabled);
             Config.RectTransformConfig?.RefreshFx(GameObject);
             Config.CanvasGroupConfig?.RefreshFx(GameObject);
             Config.TextConfig?.RefreshFx(GameObject);
             if(Config.TextEngineConfig != null && TextUpdater != null) {
-                FxUtil.ApplyIfChanged(ref _lastPlayingText, Config.TextEngineConfig.PlayingText.Value, v => TextUpdater.PlayingEngine.Text = v);
-                FxUtil.ApplyIfChanged(ref _lastNotPlayingText, Config.TextEngineConfig.NotPlayingText.Value, v => TextUpdater.NotPlayingEngine.Text = v);
+                if(FxUtil.Changed(ref _lastPlayingText, Config.TextEngineConfig.PlayingText.Value)) TextUpdater.PlayingEngine.Text = _lastPlayingText;
+                if(FxUtil.Changed(ref _lastNotPlayingText, Config.TextEngineConfig.NotPlayingText.Value)) TextUpdater.NotPlayingEngine.Text = _lastNotPlayingText;
             }
             Config.MovingManConfig?.RefreshFx(GameObject);
             Config.ColorRangeConfig?.RefreshFx(GameObject);
@@ -141,7 +141,7 @@ public sealed class OvObject : ISettingsFile {
             } else if(Config.HasRectMask2D.Value) {
                 var rectMask = GameObject.GetComponent<RectMask2D>();
                 if(rectMask != null) {
-                    FxUtil.ApplyIfChanged(ref _lastRectMask2DEnabled, Config.RectMask2DEnabled.Value, v => rectMask.enabled = v);
+                    if(FxUtil.Changed(ref _lastRectMask2DEnabled, Config.RectMask2DEnabled.Value)) rectMask.enabled = _lastRectMask2DEnabled;
                 }
             }
         }

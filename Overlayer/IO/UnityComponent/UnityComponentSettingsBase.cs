@@ -23,7 +23,11 @@ public abstract class UnityComponentSettingsBase : ISettingsFile {
     }
 
     protected bool RefreshEnabled(Behaviour component) {
-        return FxUtil.ApplyIfChanged(ref _lastEnabled, ComponentEnabled.Value, v => component.enabled = v);
+        if(!FxUtil.Changed(ref _lastEnabled, ComponentEnabled.Value)) {
+            return false;
+        }
+        component.enabled = _lastEnabled;
+        return true;
     }
 
     protected JObject SerializeComponent(JObject properties) {

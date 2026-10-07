@@ -49,7 +49,7 @@ public class MaskSettings : UnityComponentSettingsBase, ICopyable<MaskSettings> 
         }
 
         RefreshEnabled(com);
-        FxUtil.ApplyIfChanged(ref _lastShowMaskGraphic, ShowMaskGraphic.Value, v => com.showMaskGraphic = v);
+        if(FxUtil.Changed(ref _lastShowMaskGraphic, ShowMaskGraphic.Value)) com.showMaskGraphic = _lastShowMaskGraphic;
     }
 
     public override JToken Serialize() {

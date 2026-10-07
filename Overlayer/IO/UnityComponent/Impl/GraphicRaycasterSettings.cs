@@ -47,7 +47,7 @@ public class GraphicRaycasterSettings : UnityComponentSettingsBase, ICopyable<Gr
             return;
         }
 
-        FxUtil.ApplyIfChanged(ref _lastEnabled, Enabled.Value, v => com.enabled = v);
+        if(FxUtil.Changed(ref _lastEnabled, Enabled.Value)) com.enabled = _lastEnabled;
     }
 
     public override JToken Serialize() {

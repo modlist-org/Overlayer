@@ -99,14 +99,14 @@ public sealed class MovingManSettings : UnityComponentSettingsBase, ICopyable<Mo
         }
 
         RefreshEnabled(component);
-        FxUtil.ApplyIfChanged(ref _lastTagName, TagName.Value, v => component.TagName = v);
-        FxUtil.ApplyIfChanged(ref _lastTarget, Target.Value, v => component.Target = v);
-        FxUtil.ApplyIfChanged(ref _lastStartSize, StartSize.Value, v => component.StartSize = v);
-        FxUtil.ApplyIfChanged(ref _lastEndSize, EndSize.Value, v => component.EndSize = v);
-        FxUtil.ApplyIfChanged(ref _lastDefaultSize, DefaultSize.Value, v => component.DefaultSize = v);
-        FxUtil.ApplyIfChanged(ref _lastSpeed, Speed.Value, v => component.Speed = v);
-        FxUtil.ApplyIfChanged(ref _lastInvert, Invert.Value, v => component.Invert = v);
-        FxUtil.ApplyIfChanged(ref _lastEase, Ease.Value, v => component.Ease = v);
+        if(FxUtil.Changed(ref _lastTagName, TagName.Value)) component.TagName = _lastTagName;
+        if(FxUtil.Changed(ref _lastTarget, Target.Value)) component.Target = _lastTarget;
+        if(FxUtil.Changed(ref _lastStartSize, StartSize.Value)) component.StartSize = _lastStartSize;
+        if(FxUtil.Changed(ref _lastEndSize, EndSize.Value)) component.EndSize = _lastEndSize;
+        if(FxUtil.Changed(ref _lastDefaultSize, DefaultSize.Value)) component.DefaultSize = _lastDefaultSize;
+        if(FxUtil.Changed(ref _lastSpeed, Speed.Value)) component.Speed = _lastSpeed;
+        if(FxUtil.Changed(ref _lastInvert, Invert.Value)) component.Invert = _lastInvert;
+        if(FxUtil.Changed(ref _lastEase, Ease.Value)) component.Ease = _lastEase;
     }
 
     public override JToken Serialize() => SerializeComponent(new JObject {

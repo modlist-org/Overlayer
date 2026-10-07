@@ -1,15 +1,22 @@
 using Overlayer.Tag.Core;
+using System.Collections.Concurrent;
 using System.Reflection;
 
 namespace Overlayer.Patch.Lazy;
 
 public static class NeedsPatchResolver {
+    // Attributes are static metadata; Touch() resolves on every JS tag access, so scan each member once.
+    private static readonly ConcurrentDictionary<MemberInfo, IReadOnlyList<Type>> cache = new();
+
     public static IReadOnlyList<Type> GetRequiredPatchTypes(TagCore tag) {
         var member = tag?.Member;
         if(member == null) {
             return [];
         }
+        return cache.GetOrAdd(member, Scan);
+    }
 
+    private static IReadOnlyList<Type> Scan(MemberInfo member) {
         var types = new List<Type>();
         Collect(member, types);
 
@@ -26,7 +33,7 @@ public static class NeedsPatchResolver {
             }
         }
 
-        return types.Count == 0 ? [] : [.. types.Distinct()];
+        return types.Count == 0 ? Array.Empty<Type>() : [.. types.Distinct()];
     }
 
     private static void Collect(MemberInfo member, List<Type> types) {

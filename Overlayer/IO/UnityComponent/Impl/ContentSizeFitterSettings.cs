@@ -58,8 +58,8 @@ public class ContentSizeFitterSettings : UnityComponentSettingsBase, ICopyable<C
 
         RefreshEnabled(component);
         bool changed = false;
-        changed |= FxUtil.ApplyIfChanged(ref _lastHorizontalFit, HorizontalFit.Value, v => component.horizontalFit = v);
-        changed |= FxUtil.ApplyIfChanged(ref _lastVerticalFit, VerticalFit.Value, v => component.verticalFit = v);
+        if(FxUtil.Changed(ref _lastHorizontalFit, HorizontalFit.Value)) { component.horizontalFit = _lastHorizontalFit; changed = true; }
+        if(FxUtil.Changed(ref _lastVerticalFit, VerticalFit.Value)) { component.verticalFit = _lastVerticalFit; changed = true; }
         if(changed) {
             LayoutRebuilder.MarkLayoutForRebuild(target.GetComponent<RectTransform>());
         }

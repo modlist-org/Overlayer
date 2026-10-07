@@ -74,8 +74,8 @@ public class OvCanvas : ISettingsFile {
             return;
         }
 
-        FxUtil.ApplyIfChanged(ref _lastName, Config.Name.Value, v => GameObject.name = v);
-        FxUtil.ApplyIfChanged(ref _lastEnabled, Config.Enabled.Value, v => GameObject.SetActive(v));
+        if(FxUtil.Changed(ref _lastName, Config.Name.Value)) GameObject.name = _lastName;
+        if(FxUtil.Changed(ref _lastEnabled, Config.Enabled.Value)) GameObject.SetActive(_lastEnabled);
         Config.RectTransformConfig?.RefreshFx(GameObject);
         Config.CanvasGroupConfig?.RefreshFx(GameObject);
         Config.CanvasConfig?.RefreshFx(GameObject);

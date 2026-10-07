@@ -46,6 +46,7 @@
     <Compile Include="..\Overlayer\TextEngine\Parse\ParsedTag.cs" />
     <Compile Include="..\Overlayer\TextEngine\Parse\Parser.cs" />
     <Compile Include="..\Overlayer\Update\UpdatePackage.cs" />
+    <Compile Include="..\Overlayer\Utility\StringUtils.cs" />
   </ItemGroup>
 
 </Project>

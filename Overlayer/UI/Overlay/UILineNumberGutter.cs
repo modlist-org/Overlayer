@@ -24,12 +24,19 @@ internal sealed class UILineNumberGutter
             return;
         }
 
+        // Only write on change so an idle editor doesn't dirty the canvas every frame.
         Vector2 position = LineNumbers.anchoredPosition;
-        position.y = Source.anchoredPosition.y;
-        LineNumbers.anchoredPosition = position;
+        float y = Source.anchoredPosition.y;
+        if(position.y != y) {
+            position.y = y;
+            LineNumbers.anchoredPosition = position;
+        }
 
         Vector2 size = LineNumbers.sizeDelta;
-        size.y = Source.sizeDelta.y;
-        LineNumbers.sizeDelta = size;
+        float height = Source.sizeDelta.y;
+        if(size.y != height) {
+            size.y = height;
+            LineNumbers.sizeDelta = size;
+        }
     }
 }

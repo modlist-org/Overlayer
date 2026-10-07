@@ -143,10 +143,12 @@ public static class JsScopeAnalyzer {
         return result;
     }
 
+    private static readonly string[] Keywords = ["function", "const", "let", "var", "class"];
+
     private static bool MatchKeyword(string source, int index, out string keyword, out int after) {
         keyword = null;
         after = index;
-        foreach (var candidate in new[] { "function", "const", "let", "var", "class" }) {
+        foreach (var candidate in Keywords) {
             if (source.Length - index < candidate.Length) {
                 continue;
             }

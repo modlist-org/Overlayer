@@ -40,7 +40,8 @@ public class TagCore {
     public int RequiredParameterCount { get; }
     public Type ReturnType { get; }
 
-    private Delegate _compiledDelegate;
+    private Func<object[], object> _compiledDelegate;
+    private readonly bool _variadic;
 
     public bool IsMethod => MemberType == TagMemberType.Method;
     public bool IsProperty => MemberType == TagMemberType.Property;
@@ -79,6 +80,10 @@ public class TagCore {
                 ReturnType = typeof(void);
                 break;
         }
+
+        // Cached: NormalizeArgs used to look this attribute up on every call.
+        _variadic = Parameters.Length > 0
+            && Parameters[Parameters.Length - 1].GetCustomAttribute<ParamArrayAttribute>() != null;
 
         RequiredParameterCount = 0;
         foreach(var p in Parameters) {
@@ -178,10 +183,8 @@ public class TagCore {
         return type.IsValueType ? Activator.CreateInstance(type) : null;
     }
 
-    private static object[] NormalizeArgs(ParameterInfo[] parameters, object[] args) {
+    private static object[] NormalizeArgs(ParameterInfo[] parameters, bool variadic, object[] args) {
         args ??= [];
-        bool variadic = parameters.Length > 0
-            && parameters[parameters.Length - 1].GetCustomAttribute<ParamArrayAttribute>() != null;
         int fixedCount = variadic ? parameters.Length - 1 : parameters.Length;
         var normalized = new object[parameters.Length];
         for(int i = 0; i < parameters.Length; i++) {
@@ -264,10 +267,15 @@ public class TagCore {
         // The compiled delegate unboxes positionally, so normalize first:
         // coerce every element to its parameter type (JS numbers often arrive
         // as double), pack params arrays, and pad missing arguments.
-        // NOTE: the (object) cast is load-bearing. DynamicInvoke takes
-        // params object[], and without it the array would spread instead of
-        // binding to the delegate's single object[] parameter.
-        return _compiledDelegate.DynamicInvoke((object)NormalizeArgs(Parameters, args));
+        // Direct typed call instead of DynamicInvoke (reflection per call);
+        // target exceptions are still wrapped in TargetInvocationException
+        // like DynamicInvoke did, since callers (TagAccessHelper) rely on it.
+        object[] normalized = NormalizeArgs(Parameters, _variadic, args);
+        try {
+            return _compiledDelegate(normalized);
+        } catch(Exception e) {
+            throw new TargetInvocationException(e);
+        }
     }
 
     public override string ToString() {

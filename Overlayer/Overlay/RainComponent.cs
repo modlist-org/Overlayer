@@ -37,6 +37,7 @@ public sealed class OvRainComponent
 
     private OvRainGraphic graphic;
     private RainTrail current;
+    private bool meshHasTrails;
 
     private void EnsureGraphic() {
         if(graphic != null) {
@@ -57,6 +58,7 @@ public sealed class OvRainComponent
 
     private void OnDisable() {
         current = null;
+        meshHasTrails = false;
         if(graphic != null) {
             graphic.Trails.Clear();
             graphic.gameObject.SetActive(false);
@@ -104,7 +106,12 @@ public sealed class OvRainComponent
             graphic.Sprite = sprite;
             graphic.SetMaterialDirty();
         }
-        graphic.SetVerticesDirty();
+        // Idle rain (no trails now or last frame) keeps an empty mesh; skip the rebuild.
+        bool hasTrails = trails.Count > 0;
+        if(hasTrails || meshHasTrails) {
+            graphic.SetVerticesDirty();
+        }
+        meshHasTrails = hasTrails;
     }
 
     // Rain area sits on the object's top edge: Length tall, Width wide (0 = object width).

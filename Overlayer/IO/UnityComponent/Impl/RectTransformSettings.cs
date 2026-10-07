@@ -131,9 +131,9 @@ public class RectTransformSettings : UnityComponentSettingsBase, ICopyable<RectT
             return;
         }
 
-        if(AnchorMin.HasFx) FxUtil.ApplyIfChanged(ref _lastAnchorMin, AnchorMin.Value, v => com.anchorMin = v);
-        if(AnchorMax.HasFx) FxUtil.ApplyIfChanged(ref _lastAnchorMax, AnchorMax.Value, v => com.anchorMax = v);
-        if(Pivot.HasFx) FxUtil.ApplyIfChanged(ref _lastPivot, Pivot.Value, v => com.pivot = v);
+        if(AnchorMin.HasFx) if(FxUtil.Changed(ref _lastAnchorMin, AnchorMin.Value)) com.anchorMin = _lastAnchorMin;
+        if(AnchorMax.HasFx) if(FxUtil.Changed(ref _lastAnchorMax, AnchorMax.Value)) com.anchorMax = _lastAnchorMax;
+        if(Pivot.HasFx) if(FxUtil.Changed(ref _lastPivot, Pivot.Value)) com.pivot = _lastPivot;
         var position = com.anchoredPosition3D;
         var xy = AnchoredPosition.HasFx ? AnchoredPosition.Value : new Vector2(position.x, position.y);
         var z = AnchoredPositionZ.HasFx ? AnchoredPositionZ.Value : position.z;
@@ -144,7 +144,7 @@ public class RectTransformSettings : UnityComponentSettingsBase, ICopyable<RectT
             _lastAnchoredPositionZ = z;
             com.anchoredPosition3D = new Vector3(_lastAnchoredPosition.x, _lastAnchoredPosition.y, _lastAnchoredPositionZ);
         }
-        if(SizeDelta.HasFx) FxUtil.ApplyIfChanged(ref _lastSizeDelta, SizeDelta.Value, v => com.sizeDelta = v);
+        if(SizeDelta.HasFx) if(FxUtil.Changed(ref _lastSizeDelta, SizeDelta.Value)) com.sizeDelta = _lastSizeDelta;
         var angles = com.localEulerAngles;
         var rotationXY = RotationXY.HasFx ? RotationXY.Value : new Vector2(angles.x, angles.y);
         var rotationZ = Rotation.HasFx ? Rotation.Value : angles.z;
@@ -155,7 +155,7 @@ public class RectTransformSettings : UnityComponentSettingsBase, ICopyable<RectT
             _lastRotation = rotationZ;
             com.localEulerAngles = new Vector3(_lastRotationXY.x, _lastRotationXY.y, _lastRotation);
         }
-        if(Scale.HasFx) FxUtil.ApplyIfChanged(ref _lastScale, Scale.Value, v => com.localScale = v);
+        if(Scale.HasFx) if(FxUtil.Changed(ref _lastScale, Scale.Value)) com.localScale = _lastScale;
     }
 
     public override JToken Serialize() {

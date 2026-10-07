@@ -23,6 +23,8 @@ public sealed class SafeMemberConfig {
 public abstract class SafeMemberBase {
     private readonly object _gate = new();
     private bool _attempted;
+    // Set after resolution finishes so hot Get/TrySet/TryInvoke skip the lock.
+    private volatile bool _done;
 
     protected SafeMemberConfig Config { get; }
     protected bool Resolved { get; set; }
@@ -40,6 +42,9 @@ public abstract class SafeMemberBase {
     }
 
     public bool Resolve() {
+        if(_done) {
+            return Resolved;
+        }
         lock(_gate) {
             if(_attempted) {
                 return Resolved;
@@ -53,6 +58,7 @@ public abstract class SafeMemberBase {
             if(!Resolved) {
                 SafeAccess.WarnOnce($"[SafeMember] Not found: {DisplayName}");
             }
+            _done = true;
             return Resolved;
         }
     }

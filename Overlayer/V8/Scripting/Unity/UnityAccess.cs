@@ -24,6 +24,9 @@ namespace Overlayer.V8.Scripting.Unity;
 // Failures return null / false instead of throwing.
 public sealed class UnityAccess {
     private readonly Dictionary<string, Type> typeCache = [];
+    // Misses remember the assembly count they scanned; a full scan (GetTypes on
+    // every assembly) only reruns once a new assembly has loaded.
+    private readonly Dictionary<string, int> missCache = [];
     private readonly object gate = new();
 
     private static object Norm(object value)
@@ -62,9 +65,15 @@ public sealed class UnityAccess {
                 return cached;
             }
         }
+        var assemblies = AppDomain.CurrentDomain.GetAssemblies();
+        lock(gate) {
+            if(missCache.TryGetValue(name, out int scanned) && scanned == assemblies.Length) {
+                return null;
+            }
+        }
         Type direct = Type.GetType(name, false);
         if(direct == null) {
-            foreach(var asm in AppDomain.CurrentDomain.GetAssemblies()) {
+            foreach(var asm in assemblies) {
                 Type[] types;
                 try {
                     types = asm.GetTypes();
@@ -82,9 +91,12 @@ public sealed class UnityAccess {
                 }
             }
         }
-        if(direct != null) {
-            lock(gate) {
+        lock(gate) {
+            if(direct != null) {
                 typeCache[name] = direct;
+                missCache.Remove(name);
+            } else {
+                missCache[name] = assemblies.Length;
             }
         }
         return direct;

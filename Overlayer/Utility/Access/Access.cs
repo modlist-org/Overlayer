@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Linq.Expressions;
 using System.Reflection;
 
@@ -6,6 +7,8 @@ namespace Overlayer.Utility.Access;
 public static class Access {
     private static readonly Dictionary<string, Type> typeCache = [];
     private static readonly object syncLock = new();
+    // Compiled delegates are cached: Expression.Compile is ~100us+ and callers (ClrAccess static Get/Set/Create) hit these per script call.
+    private static readonly ConcurrentDictionary<(Type, string, string, string), Delegate> compiled = new();
 
     public static Type FindType(string typeName) {
         if(string.IsNullOrEmpty(typeName)) {
@@ -43,7 +46,10 @@ public static class Access {
         return Creator(typeName, ArgTypes(args))(args ?? []);
     }
 
-    public static Func<object[], object> Creator(string typeName, Type[] argTypes = null) {
+    public static Func<object[], object> Creator(string typeName, Type[] argTypes = null)
+        => Cached((typeof(object[]), typeName, ".ctor", ArgKey(argTypes)), () => BuildCreator(typeName, argTypes));
+
+    private static Func<object[], object> BuildCreator(string typeName, Type[] argTypes) {
         var type = RequireType(typeName);
         const BindingFlags flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
         ConstructorInfo match = null;
@@ -72,7 +78,10 @@ public static class Access {
         return Expression.Lambda<Func<object[], object>>(body, args).Compile();
     }
 
-    public static Func<object, T> Getter<T>(string typeName, string member) {
+    public static Func<object, T> Getter<T>(string typeName, string member)
+        => Cached((typeof(Func<object, T>), typeName, member, null), () => BuildGetter<T>(typeName, member));
+
+    private static Func<object, T> BuildGetter<T>(string typeName, string member) {
         var (type, field, property) = ResolveFieldOrProperty(typeName, member);
         var inst = Expression.Parameter(typeof(object), "instance");
         if(field != null) {
@@ -89,7 +98,10 @@ public static class Access {
         return Expression.Lambda<Func<object, T>>(pbody, inst).Compile();
     }
 
-    public static Action<object, T> Setter<T>(string typeName, string member) {
+    public static Action<object, T> Setter<T>(string typeName, string member)
+        => Cached((typeof(Action<object, T>), typeName, member, null), () => BuildSetter<T>(typeName, member));
+
+    private static Action<object, T> BuildSetter<T>(string typeName, string member) {
         var (type, field, property) = ResolveFieldOrProperty(typeName, member);
         var inst = Expression.Parameter(typeof(object), "instance");
         var val = Expression.Parameter(typeof(T), "value");
@@ -110,7 +122,10 @@ public static class Access {
         return Expression.Lambda<Action<object, T>>(pbody, inst, val).Compile();
     }
 
-    public static Func<object, object[], T> Invoker<T>(string typeName, string member, Type[] argTypes = null) {
+    public static Func<object, object[], T> Invoker<T>(string typeName, string member, Type[] argTypes = null)
+        => Cached((typeof(Func<object, object[], T>), typeName, member, ArgKey(argTypes)), () => BuildInvoker<T>(typeName, member, argTypes));
+
+    private static Func<object, object[], T> BuildInvoker<T>(string typeName, string member, Type[] argTypes) {
         var type = RequireType(typeName);
         const BindingFlags flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance;
         MethodInfo match = null;
@@ -159,6 +174,26 @@ public static class Access {
             return (type, null, property);
         }
         throw new MissingMemberException(type.FullName, member);
+    }
+
+    // Failures throw out of build and are not cached, same as before.
+    private static TDelegate Cached<TDelegate>((Type, string, string, string) key, Func<TDelegate> build) where TDelegate : Delegate {
+        if(key.Item2 != null && compiled.TryGetValue(key, out var hit)) {
+            return (TDelegate)hit;
+        }
+        var built = build();
+        if(key.Item2 != null) {
+            compiled[key] = built;
+        }
+        return built;
+    }
+
+    // ponytail: arg types keyed by assembly-qualified name; two same-named types from different load contexts would collide.
+    private static string ArgKey(Type[] argTypes) {
+        if(argTypes == null) {
+            return null;
+        }
+        return "(" + string.Join(",", argTypes.Select(t => t?.AssemblyQualifiedName)) + ")";
     }
 
     private static Type[] ArgTypes(object[] args) {

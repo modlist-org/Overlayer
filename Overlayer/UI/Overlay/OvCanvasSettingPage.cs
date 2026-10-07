@@ -561,6 +561,7 @@ public partial class OvCanvasSettingPage : IDisposable {
         selectedObject = tab.SelectedObject;
         collapsedObjects.Clear();
         collapsedObjects.UnionWith(tab.CollapsedObjects);
+        multiSelected.Clear();
         foldoutAnimTarget = null;
         DisarmDeleteButton();
 
@@ -952,6 +953,7 @@ public partial class OvCanvasSettingPage : IDisposable {
 
     private void SelectObject(OvObject obj) {
         selectedObject = obj;
+        multiSelected.Clear();
         if(obj != null) {
             DisarmDeleteButton();
             for(OvObject parent = obj.Parent; parent != null; parent = parent.Parent) {
@@ -1105,7 +1107,9 @@ public partial class OvCanvasSettingPage : IDisposable {
         var btnImg = itemBtn.AddComponent<Image>();
         btnImg.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P2048);
         btnImg.type = Image.Type.Sliced;
-        btnImg.color = (selectedObject == obj) ? UIColors.ObjectActive : UIColors.ObjectBG;
+        btnImg.color = selectedObject == obj ? UIColors.ObjectActive
+            : multiSelected.Contains(obj) ? UIColors.ObjectButton
+            : UIColors.ObjectBG;
 
         RectTransform foldoutRect = null;
         if(hasChildren) {
@@ -1179,7 +1183,12 @@ public partial class OvCanvasSettingPage : IDisposable {
                     return;
                 }
 
-                if(draggedObject == null) {
+                if(draggedObject != null) {
+                    return;
+                }
+                if(ShiftHeld() && selectedObject != null) {
+                    ToggleMultiSelect(obj);
+                } else {
                     SelectObject(obj);
                 }
             }
@@ -1425,14 +1434,21 @@ public partial class OvCanvasSettingPage : IDisposable {
         }
 
         Action apply = selectedObject != null
-            ? selectedObject.ApplyConfig
+            ? () => {
+                selectedObject.ApplyConfig();
+                PropagateMultiSelect();
+            }
             : currentCanvas.ApplyConfig;
+        SnapshotMultiSelect();
 
         var builder = new OvInspectorBuilder(
             inspectorContent,
             inspectorUiObjects,
             apply,
-            SaveConfig,
+            () => {
+                PropagateMultiSelect();
+                SaveConfig();
+            },
             RebuildInspector,
             RebuildHierarchy,
             componentCards

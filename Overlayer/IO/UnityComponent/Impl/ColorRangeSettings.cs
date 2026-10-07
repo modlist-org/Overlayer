@@ -85,12 +85,12 @@ public sealed class ColorRangeSettings : UnityComponentSettingsBase, ICopyable<C
         }
 
         RefreshEnabled(component);
-        FxUtil.ApplyIfChanged(ref _lastTagName, TagName.Value, v => component.TagName = v);
-        FxUtil.ApplyIfChanged(ref _lastMinimum, Minimum.Value, v => component.Minimum = v);
-        FxUtil.ApplyIfChanged(ref _lastMaximum, Maximum.Value, v => component.Maximum = v);
-        FxUtil.ApplyIfChanged(ref _lastMinimumColor, MinimumColor.Value, v => component.MinimumColor = v);
-        FxUtil.ApplyIfChanged(ref _lastMaximumColor, MaximumColor.Value, v => component.MaximumColor = v);
-        FxUtil.ApplyIfChanged(ref _lastEase, Ease.Value, v => component.Ease = v);
+        if(FxUtil.Changed(ref _lastTagName, TagName.Value)) component.TagName = _lastTagName;
+        if(FxUtil.Changed(ref _lastMinimum, Minimum.Value)) component.Minimum = _lastMinimum;
+        if(FxUtil.Changed(ref _lastMaximum, Maximum.Value)) component.Maximum = _lastMaximum;
+        if(FxUtil.Changed(ref _lastMinimumColor, MinimumColor.Value)) component.MinimumColor = _lastMinimumColor;
+        if(FxUtil.Changed(ref _lastMaximumColor, MaximumColor.Value)) component.MaximumColor = _lastMaximumColor;
+        if(FxUtil.Changed(ref _lastEase, Ease.Value)) component.Ease = _lastEase;
     }
 
     public override JToken Serialize() => SerializeComponent(new JObject {

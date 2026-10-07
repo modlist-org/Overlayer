@@ -68,10 +68,10 @@ public class CanvasGroupSettings : UnityComponentSettingsBase, ICopyable<CanvasG
         }
 
         RefreshEnabled(com);
-        FxUtil.ApplyIfChanged(ref _lastAlpha, Alpha.Value, v => com.alpha = v);
-        FxUtil.ApplyIfChanged(ref _lastInteractable, Interactable.Value, v => com.interactable = v);
-        FxUtil.ApplyIfChanged(ref _lastBlocksRaycasts, BlocksRaycasts.Value, v => com.blocksRaycasts = v);
-        FxUtil.ApplyIfChanged(ref _lastIgnoreParentGroups, IgnoreParentGroups.Value, v => com.ignoreParentGroups = v);
+        if(FxUtil.Changed(ref _lastAlpha, Alpha.Value)) com.alpha = _lastAlpha;
+        if(FxUtil.Changed(ref _lastInteractable, Interactable.Value)) com.interactable = _lastInteractable;
+        if(FxUtil.Changed(ref _lastBlocksRaycasts, BlocksRaycasts.Value)) com.blocksRaycasts = _lastBlocksRaycasts;
+        if(FxUtil.Changed(ref _lastIgnoreParentGroups, IgnoreParentGroups.Value)) com.ignoreParentGroups = _lastIgnoreParentGroups;
     }
 
     public override JToken Serialize() {

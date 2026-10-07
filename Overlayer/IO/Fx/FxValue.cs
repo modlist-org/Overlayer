@@ -197,6 +197,21 @@ public sealed class FxValue<T> : FxValue, IFxValue, ISettingsFile, ICopyable<FxV
 
     private T staticValue = default!;
 
+    // Cached WrapJsBlock result keyed by the source string reference; a
+    // single immutable pair so a cross-thread read never sees a torn update.
+    private Tuple<string, string> wrappedJs;
+
+    private string GetWrappedJs(string rendered) {
+        var cached = wrappedJs;
+        if (cached != null && ReferenceEquals(cached.Item1, rendered)) {
+            return cached.Item2;
+        }
+
+        var wrapped = WrapJsBlock(rendered);
+        wrappedJs = Tuple.Create(rendered, wrapped);
+        return wrapped;
+    }
+
     public T Value {
         get => Evaluate();
         set => staticValue = value;
@@ -296,7 +311,7 @@ public sealed class FxValue<T> : FxValue, IFxValue, ISettingsFile, ICopyable<FxV
         var typeCode = Type.GetTypeCode(targetType);
         if(targetType == typeof(string)) {
             try {
-                if (TryEvaluateJs(WrapJsBlock(rendered), out var jsResult) && jsResult != null) {
+                if (TryEvaluateJs(GetWrappedJs(rendered), out var jsResult) && jsResult != null) {
                     var text = Convert.ToString(jsResult, CultureInfo.InvariantCulture);
                     if (!string.IsNullOrEmpty(text)) {  
                         return (T)(object)text;
@@ -307,7 +322,7 @@ public sealed class FxValue<T> : FxValue, IFxValue, ISettingsFile, ICopyable<FxV
             return (T)(object)(Engine.Get() ?? rendered);
         }
         if(!targetType.IsEnum && (typeCode == TypeCode.Boolean || (typeCode >= TypeCode.SByte && typeCode <= TypeCode.Decimal))) {
-            if (TryEvaluateJs(WrapJsBlock(rendered), out var jsResult)) {
+            if (TryEvaluateJs(GetWrappedJs(rendered), out var jsResult)) {
                 try {
                     return (T)Convert.ChangeType(jsResult, targetType, CultureInfo.InvariantCulture);
                 } catch {
@@ -465,6 +480,18 @@ public sealed class FxValue<T> : FxValue, IFxValue, ISettingsFile, ICopyable<FxV
 }
 
 public static class FxUtil {
+    // Delegate-free variant of ApplyIfChanged for per-frame paths: callers
+    // write `if(Changed(ref cache, value)) target = cache;` so no closure is
+    // allocated each tick.
+    public static bool Changed<T>(ref T cache, T current) {
+        if (EqualityComparer<T>.Default.Equals(cache, current)) {
+            return false;
+        }
+
+        cache = current;
+        return true;
+    }
+
     public static bool ApplyIfChanged<T>(ref T cache, T current, Action<T> apply) {
         if (EqualityComparer<T>.Default.Equals(cache, current)) {
             return false;

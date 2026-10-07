@@ -64,9 +64,9 @@ public class OutlineSettings : UnityComponentSettingsBase, ICopyable<OutlineSett
         }
 
         RefreshEnabled(com);
-        FxUtil.ApplyIfChanged(ref _lastEffectColor, EffectColor.Value, v => com.effectColor = v);
-        FxUtil.ApplyIfChanged(ref _lastEffectDistance, EffectDistance.Value, v => com.effectDistance = v);
-        FxUtil.ApplyIfChanged(ref _lastUseGraphicAlpha, UseGraphicAlpha.Value, v => com.useGraphicAlpha = v);
+        if(FxUtil.Changed(ref _lastEffectColor, EffectColor.Value)) com.effectColor = _lastEffectColor;
+        if(FxUtil.Changed(ref _lastEffectDistance, EffectDistance.Value)) com.effectDistance = _lastEffectDistance;
+        if(FxUtil.Changed(ref _lastUseGraphicAlpha, UseGraphicAlpha.Value)) com.useGraphicAlpha = _lastUseGraphicAlpha;
     }
 
     public override JToken Serialize() {

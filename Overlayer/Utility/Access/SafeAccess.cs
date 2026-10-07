@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Linq.Expressions;
 using System.Reflection;
 
@@ -133,9 +134,10 @@ public static class SafeAccess {
 
     public static Action<string> Logger { get; set; }
 
-    private static readonly Dictionary<(Type, string), Func<object, object>> readers = [];
-    private static readonly Dictionary<(Type, string, int), Func<object, object[], object>> callers = [];
-    private static readonly Dictionary<(Type, string), Action<object, object>> writers = [];
+    // Concurrent so cache hits (every script-side read/write/call) skip syncLock; misses still build under it.
+    private static readonly ConcurrentDictionary<(Type, string), Func<object, object>> readers = new();
+    private static readonly ConcurrentDictionary<(Type, string, int), Func<object, object[], object>> callers = new();
+    private static readonly ConcurrentDictionary<(Type, string), Action<object, object>> writers = new();
 
     public static bool TryRead(object target, string member, out object value) {
         value = null;
@@ -145,10 +147,12 @@ public static class SafeAccess {
         Func<object, object> reader;
         try {
             var key = (target.GetType(), member);
-            lock(syncLock) {
-                if(!readers.TryGetValue(key, out reader)) {
-                    reader = BuildReader(key.Item1, member);
-                    readers[key] = reader;
+            if(!readers.TryGetValue(key, out reader)) {
+                lock(syncLock) {
+                    if(!readers.TryGetValue(key, out reader)) {
+                        reader = BuildReader(key.Item1, member);
+                        readers[key] = reader;
+                    }
                 }
             }
         } catch {
@@ -174,10 +178,12 @@ public static class SafeAccess {
         Func<object, object[], object> caller;
         try {
             var key = (target.GetType(), method, args.Length);
-            lock(syncLock) {
-                if(!callers.TryGetValue(key, out caller)) {
-                    caller = BuildCaller(key.Item1, method, args.Length);
-                    callers[key] = caller;
+            if(!callers.TryGetValue(key, out caller)) {
+                lock(syncLock) {
+                    if(!callers.TryGetValue(key, out caller)) {
+                        caller = BuildCaller(key.Item1, method, args.Length);
+                        callers[key] = caller;
+                    }
                 }
             }
         } catch {
@@ -201,10 +207,12 @@ public static class SafeAccess {
         Action<object, object> writer;
         try {
             var key = (target.GetType(), member);
-            lock(syncLock) {
-                if(!writers.TryGetValue(key, out writer)) {
-                    writer = BuildWriter(key.Item1, member);
-                    writers[key] = writer;
+            if(!writers.TryGetValue(key, out writer)) {
+                lock(syncLock) {
+                    if(!writers.TryGetValue(key, out writer)) {
+                        writer = BuildWriter(key.Item1, member);
+                        writers[key] = writer;
+                    }
                 }
             }
         } catch {

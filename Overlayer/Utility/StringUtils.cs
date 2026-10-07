@@ -45,13 +45,18 @@ public static class StringUtils {
             return string.Empty;
         }
 
-        char[] chars = [.. input.Where(char.IsLetterOrDigit).Select(char.ToLowerInvariant)];
-        return new string(chars);
+        var sb = new System.Text.StringBuilder(input.Length);
+        foreach(char c in input) {
+            if(char.IsLetterOrDigit(c)) {
+                sb.Append(char.ToLowerInvariant(c));
+            }
+        }
+        return sb.ToString();
     }
 
     private static readonly string[] ChosungTable = [
-        "ㄱ", "ㄲ", "ㄴ", "ד", "ㄹ", "ㅁ", "ㅂ", "ㅃ", "ㅅ", "ㅆ",
-        "ㅇ", "ㅈ", "ㅉ", "ㅊ", "ㅋ", "ㅌ", "ㅍ", "ㅎ"
+        "ㄱ", "ㄲ", "ㄴ", "ㄷ", "ㄸ", "ㄹ", "ㅁ", "ㅂ", "ㅃ", "ㅅ",
+        "ㅆ", "ㅇ", "ㅈ", "ㅉ", "ㅊ", "ㅋ", "ㅌ", "ㅍ", "ㅎ"
     ];
     /// <summary>
     /// 한국기업이좋아하는 초★성★변★환★기

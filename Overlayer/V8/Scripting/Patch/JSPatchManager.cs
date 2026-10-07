@@ -307,7 +307,8 @@ public static class JSPatchManager {
         return false;
     }
 
-    private static object Coerce(object value, object original, Type t, Registration reg, string where) {
+    // argIndex >= 0 names the warning "arg{i}" lazily, so the per-call path builds no strings.
+    private static object Coerce(object value, object original, Type t, Registration reg, string where, int argIndex = -1) {
         if(value == null || value == Undefined.Value) {
             if(t.IsValueType && Nullable.GetUnderlyingType(t) == null) {
                 return original;
@@ -326,6 +327,7 @@ public static class JSPatchManager {
             }
             return Convert.ChangeType(value, t, CultureInfo.InvariantCulture);
         } catch {
+            where ??= $"arg{argIndex}";
             WarnOnce($"{reg.File}|{reg.Handle}|{where}", $"{reg.File}: cannot convert {value.GetType().Name} to {t.Name}, keeping original");
             return original;
         }
@@ -334,7 +336,7 @@ public static class JSPatchManager {
     private static void CoerceArgs(Registration reg, object[] args, ParameterInfo[] parameters) {
         for(int i = 0; i < args.Length && i < parameters.Length; i++) {
             object original = args[i];
-            args[i] = Coerce(args[i], original, parameters[i].ParameterType, reg, $"arg{i}");
+            args[i] = Coerce(args[i], original, parameters[i].ParameterType, reg, null, i);
         }
     }
 

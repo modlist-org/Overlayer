@@ -45,6 +45,8 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
     private string suppressedText;
     private int suppressedCaret;
     private int hoveredIndex = -1;
+    private string matchedQuery;
+    private readonly List<(TagCore Tag, int Score)> scored = [];
 
     public TagCompletionPopup(UICodeInputField input, TMP_Text sourceText) {
         this.input = input;
@@ -162,6 +164,15 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
 
         replacementStart = start;
         replacementLength = caret - start;
+        // Refresh runs every frame; only re-filter when the query changes.
+        // ponytail: tags registered while the popup stays open show up on the next keystroke.
+        if(visible && query == matchedQuery) {
+            popupRect.SetAsLastSibling();
+            PositionPopup(caret);
+            return;
+        }
+
+        matchedQuery = query;
         RebuildMatches(query);
         if(matches.Count == 0) {
             Hide();
@@ -271,24 +282,23 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
             : null;
 
         matches.Clear();
+        scored.Clear();
         foreach(TagCore tag in TagManager.GetAllTags()) {
-            int score = string.IsNullOrEmpty(query)
-                ? 0
-                : tag.Name.StartsWith(query, StringComparison.OrdinalIgnoreCase)
-                    ? 1000 - tag.Name.Length
-                    : Fuzz.WeightedRatio(query, tag.Name);
-
+            int score = GetScore(query, tag.Name);
             if(string.IsNullOrEmpty(query) || score >= 45) {
-                matches.Add(tag);
+                scored.Add((tag, score));
             }
         }
 
-        matches.Sort((left, right) => {
-            int leftScore = GetScore(query, left.Name);
-            int rightScore = GetScore(query, right.Name);
-            int score = rightScore.CompareTo(leftScore);
-            return score != 0 ? score : StringComparer.OrdinalIgnoreCase.Compare(left.Name, right.Name);
+        // Scores are computed once per tag instead of inside the comparer.
+        scored.Sort(static (left, right) => {
+            int score = right.Score.CompareTo(left.Score);
+            return score != 0 ? score : StringComparer.OrdinalIgnoreCase.Compare(left.Tag.Name, right.Tag.Name);
         });
+        foreach(var entry in scored) {
+            matches.Add(entry.Tag);
+        }
+        scored.Clear();
 
         selectedIndex = 0;
         if(previousSelection != null) {

@@ -650,9 +650,17 @@ public static class UICore {
 
         O5ShortcutManager.HandleUpdate();
 
-        O5Object.TickAll();
+        // Controls only live under the UI canvas; skip ticking them while it is hidden.
+        // One trailing tick after hiding lets input fields release their input block.
+        bool active = CanvasObj.activeSelf;
+        if(active || wasCanvasActive) {
+            O5Object.TickAll();
+        }
+        wasCanvasActive = active;
         O5KitAdapters.Ctx.Tooltip.Tick();
     }
+
+    private static bool wasCanvasActive;
 
     private static Vector2 GetRandomOffscreenPosition() {
         float halfW = Screen.width * 0.5f;

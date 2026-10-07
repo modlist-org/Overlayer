@@ -39,6 +39,10 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
     private string suppressedText;
     private int suppressedCaret;
     private int hoveredIndex = -1;
+    private string matchedQuery;
+    private string matchedQualifier;
+    private string matchedText;
+    private readonly List<(JsItem Item, int Score)> scored = [];
 
     private static readonly string[] Keywords = [
         "const", "let", "var", "function", "return", "if", "else",
@@ -176,6 +180,17 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
 
         replacementStart = start;
         replacementLength = caret - start;
+        // Refresh runs every frame; only re-collect/re-score when the inputs change.
+        // ponytail: tags registered while the popup stays open show up on the next keystroke.
+        if(visible && query == matchedQuery && qualifier == matchedQualifier && text == matchedText) {
+            popupRect.SetAsLastSibling();
+            PositionPopup(caret);
+            return;
+        }
+
+        matchedQuery = query;
+        matchedQualifier = qualifier;
+        matchedText = text;
         RebuildMatches(query, qualifier);
         if(matches.Count == 0) {
             Hide();
@@ -285,39 +300,33 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
             : null;
 
         matches.Clear();
+        scored.Clear();
         foreach(var item in CollectItems(qualifier)) {
-            int score = string.IsNullOrEmpty(query)
-                ? 0
-                : item.Name.StartsWith(query, StringComparison.OrdinalIgnoreCase)
-                    ? 1000 - item.Name.Length
-                    : Fuzz.WeightedRatio(query, item.Name);
-
+            int score = GetScore(query, item.Name);
             if(string.IsNullOrEmpty(query) || score >= 45) {
-                matches.Add(item);
+                scored.Add((item, score));
             }
         }
 
         if(qualifier == null) {
             foreach(var (name, detail, callable) in JsScopeAnalyzer.GetDeclared(input.text ?? string.Empty)) {
-                matches.RemoveAll(m => m.Name == name);
-                int score = string.IsNullOrEmpty(query)
-                    ? 0
-                    : name.StartsWith(query, StringComparison.OrdinalIgnoreCase)
-                        ? 1000 - name.Length
-                        : Fuzz.WeightedRatio(query, name);
-
+                scored.RemoveAll(m => m.Item.Name == name);
+                int score = GetScore(query, name);
                 if(string.IsNullOrEmpty(query) || score >= 45) {
-                    matches.Add(new JsItem(name, detail, callable));
+                    scored.Add((new JsItem(name, detail, callable), score));
                 }
             }
         }
 
-        matches.Sort((left, right) => {
-            int leftScore = GetScore(query, left.Name);
-            int rightScore = GetScore(query, right.Name);
-            int score = rightScore.CompareTo(leftScore);
-            return score != 0 ? score : StringComparer.OrdinalIgnoreCase.Compare(left.Name, right.Name);
+        // Scores are computed once per item instead of inside the comparer.
+        scored.Sort(static (left, right) => {
+            int score = right.Score.CompareTo(left.Score);
+            return score != 0 ? score : StringComparer.OrdinalIgnoreCase.Compare(left.Item.Name, right.Item.Name);
         });
+        foreach(var entry in scored) {
+            matches.Add(entry.Item);
+        }
+        scored.Clear();
 
         selectedIndex = 0;
         if(previousSelection != null) {

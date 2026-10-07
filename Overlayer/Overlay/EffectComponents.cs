@@ -61,42 +61,44 @@ public sealed class MovingManComponent
 
         double value = Effects.MovingMan(TagName, StartSize, EndSize, DefaultSize, Speed, Invert, Ease);
         float floatValue = (float)value;
-        if(Target.HasFlag(MovingManTarget.TextSize)) {
+        // Bitwise checks: Enum.HasFlag boxes on Mono, 12x per frame per object.
+        MovingManTarget target = Target;
+        if((target & MovingManTarget.TextSize) != 0) {
             Text?.fontSize = Mathf.Max(0f, floatValue);
         }
-        if(Target.HasFlag(MovingManTarget.PositionX)) {
+        if((target & MovingManTarget.PositionX) != 0) {
             SetPosition(0, floatValue);
         }
-        if(Target.HasFlag(MovingManTarget.PositionY)) {
+        if((target & MovingManTarget.PositionY) != 0) {
             SetPosition(1, floatValue);
         }
-        if(Target.HasFlag(MovingManTarget.PositionZ)) {
+        if((target & MovingManTarget.PositionZ) != 0) {
             Vector3 position = Rect.anchoredPosition3D;
             position.z = floatValue;
             Rect.anchoredPosition3D = position;
         }
-        if(Target.HasFlag(MovingManTarget.RotationX)) {
+        if((target & MovingManTarget.RotationX) != 0) {
             SetRotation(0, floatValue);
         }
-        if(Target.HasFlag(MovingManTarget.RotationY)) {
+        if((target & MovingManTarget.RotationY) != 0) {
             SetRotation(1, floatValue);
         }
-        if(Target.HasFlag(MovingManTarget.RotationZ)) {
+        if((target & MovingManTarget.RotationZ) != 0) {
             SetRotation(2, floatValue);
         }
-        if(Target.HasFlag(MovingManTarget.ScaleX)) {
+        if((target & MovingManTarget.ScaleX) != 0) {
             SetScale(0, floatValue);
         }
-        if(Target.HasFlag(MovingManTarget.ScaleY)) {
+        if((target & MovingManTarget.ScaleY) != 0) {
             SetScale(1, floatValue);
         }
-        if(Target.HasFlag(MovingManTarget.ScaleZ)) {
+        if((target & MovingManTarget.ScaleZ) != 0) {
             SetScale(2, floatValue);
         }
-        if(Target.HasFlag(MovingManTarget.SizeDeltaX)) {
+        if((target & MovingManTarget.SizeDeltaX) != 0) {
             SetSizeDelta(0, floatValue);
         }
-        if(Target.HasFlag(MovingManTarget.SizeDeltaY)) {
+        if((target & MovingManTarget.SizeDeltaY) != 0) {
             SetSizeDelta(1, floatValue);
         }
     }
@@ -156,12 +158,24 @@ public sealed class ColorRangeComponent
         }
 
         Text.color = Color.white;
-        Text.colorGradient = new VertexGradient(
+        var gradient = new VertexGradient(
             Color.LerpUnclamped(MinimumColor.TL, MaximumColor.TL, progress),
             Color.LerpUnclamped(MinimumColor.TR, MaximumColor.TR, progress),
             Color.LerpUnclamped(MinimumColor.BL, MaximumColor.BL, progress),
             Color.LerpUnclamped(MinimumColor.BR, MaximumColor.BR, progress)
         );
-        Text.enableVertexGradient = true;
+        // TMP's colorGradient/enableVertexGradient setters always dirty the
+        // mesh; skip them when nothing changed so a static progress doesn't
+        // force a text rebuild every frame.
+        var currentGradient = Text.colorGradient;
+        if(!currentGradient.topLeft.Equals(gradient.topLeft)
+            || !currentGradient.topRight.Equals(gradient.topRight)
+            || !currentGradient.bottomLeft.Equals(gradient.bottomLeft)
+            || !currentGradient.bottomRight.Equals(gradient.bottomRight)) {
+            Text.colorGradient = gradient;
+        }
+        if(!Text.enableVertexGradient) {
+            Text.enableVertexGradient = true;
+        }
     }
 }

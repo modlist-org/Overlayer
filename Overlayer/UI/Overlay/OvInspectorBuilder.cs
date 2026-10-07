@@ -897,10 +897,12 @@ internal sealed class OvInspectorBuilder(
         void PollDiagnosticHover() {
             string tip = null;
             string key = null;
-            if (!textComposing && !diagnosticsCompiling
+            if (!textComposing && !diagnosticsCompiling && displayedDiagnostics.Length > 0
                 && RectTransformUtility.RectangleContainsScreenPoint(
                     text.rectTransform, O5Input.MousePosition, null)) {
-                text.ForceMeshUpdate();
+                if (text.havePropertiesChanged) {
+                    text.ForceMeshUpdate();
+                }
                 int charIndex = TMP_TextUtilities.FindIntersectingCharacter(
                     text, O5Input.MousePosition, null, true);
 
@@ -937,12 +939,24 @@ internal sealed class OvInspectorBuilder(
 
         controls.Add(new O5Watcher(O5KitAdapters.Ctx, id + "_diaghover", text.rectTransform, PollDiagnosticHover));
 
+        // Runs every LateUpdate for every visible code field, so the mesh rebuild and the
+        // recolor are skipped unless the text, its geometry, or the highlight inputs changed.
+        Vector3 meshLayoutKey = default;
+        TagSyntaxKind?[] highlightKinds = null;
+        string highlightSource = null;
+        TagSyntaxSpan[] highlightSpans = null;
+        int highlightGeometryKey = 0;
+        Color32 highlightPlain = default;
+        HighlightProbe highlightProbe = HighlightProbe.None;
+
         codeInput.AfterLabelUpdate = (sourceText, composing) => {
             textComposing = composing;
-            int geometryKey = BuildTextGeometryKey(sourceText);
+            int geometryKey = BuildTextGeometryKey(sourceText, ref meshLayoutKey);
+            bool hoverRebuilt = false;
             if(hoverGeometryKey != geometryKey || hoverComposing != composing) {
                 hoverGeometryKey = geometryKey;
                 hoverComposing = composing;
+                hoverRebuilt = true;
                 RebuildDiagnosticHoverTargets(
                     diagnosticHoverRect,
                     sourceText,
@@ -950,7 +964,24 @@ internal sealed class OvInspectorBuilder(
                     composing || diagnosticsCompiling ? [] : displayedDiagnostics
                 );
             }
-            ApplySyntaxHighlighting(sourceText, composing ? null : displayedText, composing ? [] : syntaxSpans);
+
+            string source = composing ? null : displayedText;
+            TagSyntaxSpan[] spans = composing ? Array.Empty<TagSyntaxSpan>() : syntaxSpans;
+            bool dirty = hoverRebuilt;
+            if(highlightKinds == null || !ReferenceEquals(source, highlightSource) || !ReferenceEquals(spans, highlightSpans)) {
+                highlightSource = source;
+                highlightSpans = spans;
+                highlightKinds = BuildSyntaxKinds(source, spans);
+                dirty = true;
+            }
+
+            Color32 plain = sourceText.color;
+            if(dirty || geometryKey != highlightGeometryKey || !SameColor(plain, highlightPlain)
+                || !highlightProbe.IsIntact(sourceText)) {
+                highlightGeometryKey = geometryKey;
+                highlightPlain = plain;
+                highlightProbe = ApplySyntaxHighlighting(sourceText, highlightKinds);
+            }
             completionPopup?.Refresh(composing);
         };
 
@@ -1239,8 +1270,16 @@ internal sealed class OvInspectorBuilder(
         }
     }
 
-    private static int BuildTextGeometryKey(TMP_Text text) {
-        text.ForceMeshUpdate();
+    // layoutKey = (width, height, canvas scale) of the last forced rebuild.
+    // ponytail: other TMP dirtying (reparenting, animated properties) isn't tracked; HighlightProbe
+    // repaints on the next frame if that wipes the colors.
+    private static int BuildTextGeometryKey(TMP_Text text, ref Vector3 layoutKey) {
+        Rect layoutRect = text.rectTransform.rect;
+        Vector3 currentLayout = new(layoutRect.width, layoutRect.height, text.canvas ? text.canvas.scaleFactor : 1f);
+        if(text.havePropertiesChanged || currentLayout != layoutKey) {
+            layoutKey = currentLayout;
+            text.ForceMeshUpdate();
+        }
         unchecked {
             int hash = 17;
             Rect rect = text.rectTransform.rect;
@@ -1260,11 +1299,7 @@ internal sealed class OvInspectorBuilder(
         }
     }
 
-    private static void ApplySyntaxHighlighting(
-        TMP_Text text,
-        string source,
-        TagSyntaxSpan[] spans
-    ) {
+    private static TagSyntaxKind?[] BuildSyntaxKinds(string source, TagSyntaxSpan[] spans) {
         TagSyntaxKind?[] kinds = source == null ? [] : new TagSyntaxKind?[source.Length];
         if(source != null) {
             foreach(var span in spans) {
@@ -1275,7 +1310,11 @@ internal sealed class OvInspectorBuilder(
                 }
             }
         }
+        return kinds;
+    }
 
+    private static HighlightProbe ApplySyntaxHighlighting(TMP_Text text, TagSyntaxKind?[] kinds) {
+        HighlightProbe probe = HighlightProbe.None;
         Color32 plain = text.color;
         var textInfo = text.textInfo;
         for(int i = 0; i < textInfo.characterCount; i++) {
@@ -1294,8 +1333,39 @@ internal sealed class OvInspectorBuilder(
             colors[vertex + 1] = color;
             colors[vertex + 2] = color;
             colors[vertex + 3] = color;
+            if(probe.Material < 0 && !SameColor(color, plain)) {
+                probe = new HighlightProbe(material, vertex, color);
+            }
         }
         text.UpdateVertexData(TMP_VertexDataUpdateFlags.Colors32);
+        return probe;
+    }
+
+    private static bool SameColor(Color32 a, Color32 b)
+        => a.r == b.r && a.g == b.g && a.b == b.b && a.a == b.a;
+
+    // One highlighted vertex remembered after recoloring. A mesh rebuild resets every vertex to the
+    // plain color, so if this one lost its color the highlight has to be reapplied.
+    // With nothing highlighted a rebuild produces the same colors, so there is nothing to check.
+    private readonly struct HighlightProbe(int material, int vertex, Color32 color) {
+        public static readonly HighlightProbe None = new(-1, 0, default);
+        public readonly int Material = material;
+        private readonly int vertex = vertex;
+        private readonly Color32 color = color;
+
+        public bool IsIntact(TMP_Text text) {
+            if(Material < 0) {
+                return true;
+            }
+
+            var meshInfo = text.textInfo.meshInfo;
+            if(Material >= meshInfo.Length) {
+                return false;
+            }
+
+            var colors = meshInfo[Material].colors32;
+            return colors != null && vertex < colors.Length && SameColor(colors[vertex], color);
+        }
     }
 
     private static Color32 SyntaxColor(TagSyntaxKind kind) => kind switch {

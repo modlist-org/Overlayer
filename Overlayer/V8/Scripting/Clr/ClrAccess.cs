@@ -8,6 +8,10 @@ namespace Overlayer.V8.Scripting.Clr;
 // or a type-name string (static access).
 public sealed class ClrAccess {
     private readonly Dictionary<(object, string, int), Func<object, object[], object>> invokers = [];
+    private readonly Dictionary<(string, string), Func<object, object>> staticGetters = [];
+    private readonly Dictionary<(string, string), Action<object, object>> staticSetters = [];
+    // ponytail: key joins arg type names (one string alloc per Create), still far cheaper than recompiling the ctor lambda.
+    private readonly Dictionary<(string, string), Func<object[], object>> creators = [];
     private readonly object gate = new();
 
     public sealed class ClrMember {
@@ -122,12 +126,23 @@ public sealed class ClrAccess {
         for(int i = 0; i < args.Length; i++) {
             argTypes[i] = args[i]?.GetType() ?? typeof(object);
         }
-        return Utility.Access.Access.Creator(typeName, argTypes)(args);
+        var key = (typeName, string.Join(",", argTypes.Select(t => t.AssemblyQualifiedName)));
+        Func<object[], object> creator;
+        lock(gate) {
+            creators.TryGetValue(key, out creator);
+        }
+        if(creator == null) {
+            creator = Utility.Access.Access.Creator(typeName, argTypes);
+            lock(gate) {
+                creators[key] = creator;
+            }
+        }
+        return creator(args);
     }
 
     public object Get(object targetOrTypeName, string member) {
         if(targetOrTypeName is string typeName) {
-            return Utility.Access.Access.Getter<object>(typeName, member)(null);
+            return StaticGetter(typeName, member)(null);
         }
         if(targetOrTypeName == null) {
             return null;
@@ -138,7 +153,7 @@ public sealed class ClrAccess {
 
     public void Set(object targetOrTypeName, string member, object value) {
         if(targetOrTypeName is string typeName) {
-            Utility.Access.Access.Setter<object>(typeName, member)(null, value);
+            StaticSetter(typeName, member)(null, value);
             return;
         }
         if(targetOrTypeName == null) {
@@ -154,6 +169,36 @@ public sealed class ClrAccess {
 
     public object Invoke(string typeName, string method, params object[] args) {
         return Call(typeName, method, args);
+    }
+
+    // Access.Getter/Setter compile an expression tree per call; cache by name.
+    // Failures are not cached, so they keep throwing the same exception.
+    private Func<object, object> StaticGetter(string typeName, string member) {
+        var key = (typeName, member);
+        lock(gate) {
+            if(staticGetters.TryGetValue(key, out var cached)) {
+                return cached;
+            }
+        }
+        var built = Utility.Access.Access.Getter<object>(typeName, member);
+        lock(gate) {
+            staticGetters[key] = built;
+        }
+        return built;
+    }
+
+    private Action<object, object> StaticSetter(string typeName, string member) {
+        var key = (typeName, member);
+        lock(gate) {
+            if(staticSetters.TryGetValue(key, out var cached)) {
+                return cached;
+            }
+        }
+        var built = Utility.Access.Access.Setter<object>(typeName, member);
+        lock(gate) {
+            staticSetters[key] = built;
+        }
+        return built;
     }
 
     private object StaticTarget(object targetOrTypeName)
@@ -184,12 +229,12 @@ public sealed class ClrAccess {
 
     private static Func<object, object[], object> BuildInvoker(object targetOrTypeName, string method, object[] args) {
         Type type;
-        object fixedTarget = null;
+        bool hasInstance = false;
         if(targetOrTypeName is string typeName) {
             type = Utility.Access.Access.RequireType(typeName);
         } else if(targetOrTypeName != null) {
             type = targetOrTypeName.GetType();
-            fixedTarget = targetOrTypeName;
+            hasInstance = true;
         } else {
             throw new MissingMemberException(string.Empty, method);
         }
@@ -220,12 +265,9 @@ public sealed class ClrAccess {
         if(match == null) {
             throw new MissingMemberException(type.FullName, method);
         }
-        if(fixedTarget != null && !match.IsStatic) {
-            var captured = fixedTarget;
-            var partial = BuildCall(match, true);
-            return (ignored, a) => partial(captured, a);
-        }
-        return BuildCall(match, false);
+        // Invokers are cached per type, so the instance must come from the
+        // caller (StaticTarget) rather than be captured from the first call.
+        return BuildCall(match, hasInstance && !match.IsStatic);
     }
 
     private static bool IsNumericPair(Type param, Type arg) {

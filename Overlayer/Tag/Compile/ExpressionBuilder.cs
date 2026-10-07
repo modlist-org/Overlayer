@@ -10,29 +10,18 @@ public static class ExpressionBuilder {
     public static Expression Build(TagCore tag, ResolvedSignature sig, List<CompileDiagnostic> diag) {
         var parameters = tag.Parameters;
 
-        var argsConst = Expression.Constant(sig.Args);
-        var converted = Expression.Variable(typeof(object[]), "converted");
-
-        var body = new List<Expression> {
-            Expression.Assign(
-                converted,
-                Expression.NewArrayBounds(typeof(object), Expression.Constant(parameters.Length))
-            )
-        };
+        // Args are validated by SignatureResolver, so convert them once here
+        // instead of re-parsing strings and allocating an object[] every frame.
+        var values = new Expression[parameters.Length];
 
         for(int i = 0; i < parameters.Length; i++) {
             Expression value;
 
             if(i < sig.Args.Length) {
-                value = Expression.Call(
-                    typeof(ArgConverter),
-                    nameof(ArgConverter.Convert),
-                    Type.EmptyTypes,
-                    Expression.ArrayIndex(argsConst, Expression.Constant(i)),
-                    Expression.Constant(parameters[i].ParameterType)
+                value = Expression.Constant(
+                    ArgConverter.Convert(sig.Args[i], parameters[i].ParameterType),
+                    typeof(object)
                 );
-
-                value = Expression.Convert(value, typeof(object));
             } else {
                 object defaultValue = null;
                 try {
@@ -47,18 +36,13 @@ public static class ExpressionBuilder {
                 }
             }
 
-            body.Add(
-                Expression.Assign(
-                    Expression.ArrayAccess(converted, Expression.Constant(i)),
-                    value
-                )
-            );
+            values[i] = value;
         }
 
         Expression call = tag.MemberType switch {
             TagMemberType.Method => Expression.Call(
                 (MethodInfo)tag.Member,
-                BuildCallArgs(tag.Parameters, converted)
+                BuildCallArgs(tag.Parameters, values)
             ),
 
             TagMemberType.Property => Expression.Property(null, (PropertyInfo)tag.Member),
@@ -69,7 +53,7 @@ public static class ExpressionBuilder {
                 Expression.Property(Expression.Constant(tag), nameof(TagCore.JSFunction)),
                 typeof(ScriptObject).GetMethod(nameof(ScriptObject.Invoke), [typeof(bool), typeof(object[])])!,
                 Expression.Constant(false),
-                converted
+                Expression.NewArrayInit(typeof(object), values)
             ),
 
             _ => throw new NotSupportedException($"Unsupported member type: {tag.MemberType}")
@@ -98,52 +82,113 @@ public static class ExpressionBuilder {
             }
         } else if(tag.ReturnType == typeof(string)) {
             result = Expression.Coalesce(call, Expression.Constant(""));
-        } else if(sig.HasFormat && typeof(IFormattable).IsAssignableFrom(tag.ReturnType)) {
-            var formattable = Expression.Convert(call, typeof(IFormattable));
+        } else if(MemoKeyType(tag.ReturnType) is Type keyType) {
+            // Numeric tags often hold their value across many frames; reuse
+            // the last string instead of re-formatting (and allocating) it.
+            // ponytail: memo ignores CurrentCulture changes while the value is
+            // unchanged; key the memo on culture too if that ever matters.
+            var value = Expression.Variable(tag.ReturnType, "value");
+            var key = Expression.Variable(keyType, "key");
+            var memoType = typeof(StringMemo<>).MakeGenericType(keyType);
+            var memo = Expression.Constant(Activator.CreateInstance(memoType));
 
-            var method = typeof(IFormattable).GetMethod(
+            result = Expression.Block(
+                [value, key],
+                Expression.Assign(value, call),
+                Expression.Assign(key, keyType == tag.ReturnType
+                    ? value
+                    // Bitwise key: 0.0 == -0.0 but they can format differently.
+                    : Expression.Call(
+                        typeof(BitConverter),
+                        nameof(BitConverter.DoubleToInt64Bits),
+                        Type.EmptyTypes,
+                        Expression.Convert(value, typeof(double))
+                    )),
+                Expression.Condition(
+                    Expression.Call(memo, memoType.GetMethod(nameof(StringMemo<int>.Matches))!, key),
+                    Expression.Field(memo, memoType.GetField(nameof(StringMemo<int>.Text))!),
+                    Expression.Call(memo, memoType.GetMethod(nameof(StringMemo<int>.Store))!, key,
+                        FormatValue(tag.ReturnType, value, sig))
+                )
+            );
+        } else {
+            result = FormatValue(tag.ReturnType, call, sig);
+        }
+
+        return result;
+    }
+
+    private static Expression FormatValue(Type type, Expression value, ResolvedSignature sig) {
+        if(sig.HasFormat && typeof(IFormattable).IsAssignableFrom(type)) {
+            // Call the type's own ToString(string, IFormatProvider) when it has
+            // one, so value types are not boxed to IFormattable every frame.
+            var direct = type.GetMethod(
                 nameof(IFormattable.ToString),
                 [typeof(string), typeof(IFormatProvider)]
             );
 
-            result = Expression.Call(
-                formattable,
-                method,
+            return Expression.Call(
+                direct != null ? value : Expression.Convert(value, typeof(IFormattable)),
+                direct ?? typeof(IFormattable).GetMethod(
+                    nameof(IFormattable.ToString),
+                    [typeof(string), typeof(IFormatProvider)]
+                ),
                 Expression.Constant(sig.Format),
                 Expression.Constant(null, typeof(IFormatProvider))
             );
-        } else {
-            var m = tag.ReturnType.GetMethod(
-                nameof(ToString),
-                Type.EmptyTypes
-            );
-
-            result = m != null ? Expression.Call(call, m) : Expression.Call(
-                call,
-                typeof(object).GetMethod(nameof(ToString))!
-            );
         }
 
-        body.Add(result);
+        var m = type.GetMethod(
+            nameof(ToString),
+            Type.EmptyTypes
+        );
 
-        return Expression.Block([converted], body);
+        return m != null ? Expression.Call(value, m) : Expression.Call(
+            value,
+            typeof(object).GetMethod(nameof(ToString))!
+        );
+    }
+
+    // Primitive numerics only: their Equals matches their formatted output
+    // (decimal does not: 1.0m == 1.00m). Floating point keys on bits.
+    private static Type MemoKeyType(Type type) {
+        if(type == typeof(double) || type == typeof(float)) {
+            return typeof(long);
+        }
+        return type == typeof(int) || type == typeof(long) || type == typeof(uint)
+            || type == typeof(ulong) || type == typeof(short) || type == typeof(ushort)
+            || type == typeof(byte) || type == typeof(sbyte)
+            ? type
+            : null;
     }
 
     private static Expression[] BuildCallArgs(
     ParameterInfo[] parameters,
-    Expression converted) {
+    Expression[] values) {
         var list = new Expression[parameters.Length];
 
         for(int i = 0; i < parameters.Length; i++) {
-            var index = Expression.Constant(i);
-            var access = Expression.ArrayIndex(converted, index);
-
             list[i] = Expression.Convert(
-                access,
+                values[i],
                 parameters[i].ParameterType
             );
         }
 
         return list;
+    }
+}
+
+public sealed class StringMemo<TKey> where TKey : struct, IEquatable<TKey> {
+    private bool has;
+    private TKey key;
+    public string Text;
+
+    public bool Matches(TKey value) => has && key.Equals(value);
+
+    public string Store(TKey value, string text) {
+        Text = text;
+        key = value;
+        has = true;
+        return text;
     }
 }

@@ -83,12 +83,12 @@ public class BoxCollider2DSettings : UnityComponentSettingsBase, ICopyable<BoxCo
             return;
         }
 
-        FxUtil.ApplyIfChanged(ref _lastSize, Size.Value, v => com.size = v);
-        FxUtil.ApplyIfChanged(ref _lastOffset, Offset.Value, v => com.offset = v);
-        FxUtil.ApplyIfChanged(ref _lastIsTrigger, IsTrigger.Value, v => com.isTrigger = v);
-        FxUtil.ApplyIfChanged(ref _lastUsedByEffector, UsedByEffector.Value, v => com.usedByEffector = v);
-        FxUtil.ApplyIfChanged(ref _lastCompositeOperation, CompositeOperation.Value, v => com.compositeOperation = v);
-        FxUtil.ApplyIfChanged(ref _lastEdgeRadius, EdgeRadius.Value, v => com.edgeRadius = v);
+        if(FxUtil.Changed(ref _lastSize, Size.Value)) com.size = _lastSize;
+        if(FxUtil.Changed(ref _lastOffset, Offset.Value)) com.offset = _lastOffset;
+        if(FxUtil.Changed(ref _lastIsTrigger, IsTrigger.Value)) com.isTrigger = _lastIsTrigger;
+        if(FxUtil.Changed(ref _lastUsedByEffector, UsedByEffector.Value)) com.usedByEffector = _lastUsedByEffector;
+        if(FxUtil.Changed(ref _lastCompositeOperation, CompositeOperation.Value)) com.compositeOperation = _lastCompositeOperation;
+        if(FxUtil.Changed(ref _lastEdgeRadius, EdgeRadius.Value)) com.edgeRadius = _lastEdgeRadius;
     }
 
     public override JToken Serialize() {

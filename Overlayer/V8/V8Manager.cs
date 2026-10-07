@@ -98,7 +98,6 @@ public class V8Manager : IRuntimeService {
         engine.AddHostObject("Prefs", _prefs ??= new PrefsStore(Path.Combine(ScriptFolderPath, PrefsFileName)));
         engine.AddHostObject("Clr", new Scripting.Clr.ClrAccess());
         engine.AddHostObject("Unity", new Scripting.Unity.UnityAccess());
-        engine.AddHostObject("Net", new Scripting.Net.NetAccess());
         engine.AddHostType("GameObject", typeof(UnityEngine.GameObject));
         engine.AddHostType("Transform", typeof(UnityEngine.Transform));
         engine.AddHostType("RectTransform", typeof(UnityEngine.RectTransform));
