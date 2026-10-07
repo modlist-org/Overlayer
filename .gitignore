@@ -443,3 +443,5 @@ Directory.Build.props
 # Overlayer release packaging (local only)
 dist/
 tool/build-refs.zip
+
+.claude
