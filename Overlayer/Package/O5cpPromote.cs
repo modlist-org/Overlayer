@@ -98,9 +98,12 @@ public static class O5cpPromote {
             foreach(var item in plan.Items.Where(i => i.Kind == "sprite")) {
                 ResolveSprite(entry, item, finalKeys, warnings);
             }
-            string canvasPath = Path.Combine(entry.Dir,
-                entry.Manifest.CanvasFile.Replace('/', Path.DirectorySeparatorChar));
-            JToken canvasJson = JToken.Parse(File.ReadAllText(canvasPath));
+            byte[] canvasBytes = PackageStore.GetPackageBytes(entry, entry.Manifest.CanvasFile);
+            if(canvasBytes == null) {
+                warnings.Add($"canvas file missing in package: {entry.Manifest.CanvasFile}");
+                return null;
+            }
+            JToken canvasJson = JToken.Parse(System.Text.Encoding.UTF8.GetString(canvasBytes));
             string Unprefix(string key) {
                 if(key.StartsWith(prefix, StringComparison.Ordinal)) {
                     string orig = key[prefix.Length..];
