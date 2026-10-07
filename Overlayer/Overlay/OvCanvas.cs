@@ -3,6 +3,7 @@ using Overlayer.Core;
 using Overlayer.IO.Fx;
 using Overlayer.IO.Interface;
 using Overlayer.IO.Overlay;
+using Overlayer.Package;
 using UnityEngine;
 using UnityEngine.UI;
 using Object = UnityEngine.Object;
@@ -21,6 +22,11 @@ public class OvCanvas : ISettingsFile {
     private readonly Action<Camera> onCameraChangedHandler;
     
     public OvCanvasSettings Config = new();
+
+    public O5cpProps Props = new();
+
+    internal bool IsPackage { get; set; }
+    internal string PackageId { get; set; }
 
     internal string SourceFile { get; set; }
 
@@ -149,11 +155,24 @@ public class OvCanvas : ISettingsFile {
             [nameof(Config)] = Config.Serialize()
         };
 
+        if(Props != null && !IsDefaultProps(Props)) {
+            json[O5cpProps.JsonKey] = Props.Serialize();
+        }
+
         if(OvObjects != null && OvObjects.Count > 0) {
             json[nameof(OvObjects)] = new JArray(OvObjects.Select(x => x.Serialize()));
         }
 
         return json;
+    }
+
+    private static bool IsDefaultProps(O5cpProps props) {
+        return string.IsNullOrEmpty(props.ThumbnailPath)
+            && string.IsNullOrEmpty(props.Author)
+            && string.IsNullOrEmpty(props.Description)
+            && (props.Version is null or "1.0.0")
+            && string.IsNullOrEmpty(props.License)
+            && (props.ExtraScripts == null || props.ExtraScripts.Count == 0);
     }
 
     public void Deserialize(JToken token) {
@@ -164,6 +183,8 @@ public class OvCanvas : ISettingsFile {
         if(token[nameof(Config)] != null) {
             Config.Deserialize(token[nameof(Config)]);
         }
+
+        Props = O5cpProps.Parse(token[O5cpProps.JsonKey]);
 
         if(token[nameof(OvObjects)] is JArray array) {
             for(int i = OvObjects.Count - 1; i >= 0; i--) {

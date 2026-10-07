@@ -772,6 +772,22 @@ public class V8Manager : IRuntimeService {
         _ = ReloadScriptFileAsync(filePath);
     }
 
+    public void UnloadScriptFile(string filePath) {
+        _ = UnloadScriptFileAsync(filePath);
+    }
+
+    public async Task UnloadScriptFileAsync(string filePath) {
+        await InitializationTask.ConfigureAwait(false);
+        await _reloadGate.WaitAsync().ConfigureAwait(false);
+        try {
+            await Task.Run(() => _scriptLoader.UnloadScriptFile(filePath)).ConfigureAwait(false);
+        } catch(Exception e) {
+            MainCore.Log.Err($"[{nameof(V8Manager)}] Script unload failed: {e.Message}");
+        } finally {
+            _reloadGate.Release();
+        }
+    }
+
     public async Task ReloadScriptFileAsync(string filePath) {
         await InitializationTask.ConfigureAwait(false);
         await _reloadGate.WaitAsync().ConfigureAwait(false);
