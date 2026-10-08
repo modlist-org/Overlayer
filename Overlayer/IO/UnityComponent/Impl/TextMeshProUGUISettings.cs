@@ -144,9 +144,17 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
         com.characterSpacing = _lastCharacterSpacing;
         com.wordSpacing = _lastWordSpacing;
         var mat = com.fontMaterial;
+        if(mat != null && !_lastOutlineColor.SolidColor && !mat.HasProperty(ShaderUtilities.ID_OutlineTex)) {
+            try {
+                Shader sdf = Shader.Find("TextMeshPro/Distance Field");
+                if(sdf != null) {
+                    mat.shader = sdf;
+                }
+            } catch {
+            }
+        }
         float outlineWidth = _lastEnableOutline ? Mathf.Clamp01(_lastOutlineWidth) : 0f;
-        // TMP outline has no vertex color; a gradient goes through the outline texture instead.
-        bool outlineGradient = !_lastOutlineColor.SolidColor && mat.HasProperty(ShaderUtilities.ID_OutlineTex);
+        bool outlineGradient = mat != null && !_lastOutlineColor.SolidColor && mat.HasProperty(ShaderUtilities.ID_OutlineTex);
         Color outlineBase = outlineGradient ? UnityEngine.Color.white : _lastOutlineColor.TL;
         Color appliedOutlineColor = _lastEnableOutline
             ? outlineBase
