@@ -339,6 +339,10 @@
     "O5CP_SCRIPTS": "Extra JS files",
     "O5CP_SCRIPTS_NOTE": "JS the exporter cannot trace (patches, object access) must be listed here.",
     "O5CP_ADD_SCRIPT": "Add JS",
-    "O5CP_INCLUDE_JS": "Include JS (auto tracked)"
+    "O5CP_INCLUDE_JS": "Include JS (auto tracked)",
+    "O5CP_PRESETS_TITLE": "Presets",
+    "O5CP_PRESET_IMPORT": "Import",
+    "O5CP_PRESET_EMPTY": "No presets.",
+    "O5CP_PRESET_FILE": "File"
   }
 }

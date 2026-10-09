@@ -46,6 +46,7 @@ public static class OverlayCore {
 
         LoadAllCanvases();
         PackageStore.Initialize();
+        PresetStore.Initialize();
     }
 
     public static OvCanvas CreateOvCanvas() {

@@ -176,6 +176,49 @@ internal static class O5cpDialogs {
         BarButtonLeft(bar, T("CANCEL", "Close"), 0f, 0f, 150f, modal.Close, "o5cp_close_warnings");
     }
 
+    public static void ShowPresets(Action<Package.PackagePreset> onPick) {
+        Package.PresetStore.RefreshFilePresets();
+        var presets = Package.PresetStore.Presets;
+        var modal = ShowModal("O5cpPresetDialog", new Vector2(560f, 480f),
+            T("O5CP_PRESETS_TITLE", "Presets"));
+        var panel = modal.Root.transform.Find("Panel").gameObject;
+        var body = BodyArea(panel, 64f);
+        var bar = ButtonBar(panel, 40f);
+
+        var (_, content, _) = O5Factory.ScrollView(O5KitAdapters.Ctx, body, 8f, 8f, true);
+        if(presets.Count == 0) {
+            var row = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
+            var label = O5Factory.ControlText(O5KitAdapters.Ctx, row, 18f, true);
+            label.text = T("O5CP_PRESET_EMPTY", "No presets.");
+        } else {
+            foreach(var preset in presets) {
+                var captured = preset;
+                var row = O5Factory.Row(O5KitAdapters.Ctx, content.transform, 44f);
+                var label = O5Factory.ControlText(O5KitAdapters.Ctx, row, 17f, true);
+                string source = string.IsNullOrEmpty(captured.Module)
+                    ? T("O5CP_PRESET_FILE", "File")
+                    : captured.Module;
+                label.text = $"{captured.Name}  ·  {source}";
+                label.rectTransform.anchorMax = new Vector2(0.62f, 1f);
+                label.rectTransform.offsetMax = new Vector2(-8f, 0f);
+
+                var importBtn = O5Factory.Button(O5KitAdapters.Ctx, row, () => { },
+                    T("O5CP_PRESET_IMPORT", "Import"), $"o5cp_preset_{captured.Id}", 36f);
+                var importRect = importBtn.Rect;
+                importRect.anchorMin = new Vector2(0.62f, 0.5f);
+                importRect.anchorMax = new Vector2(1f, 0.5f);
+                importRect.pivot = new Vector2(1f, 0.5f);
+                importRect.offsetMin = new Vector2(0f, -18f);
+                importRect.offsetMax = Vector2.zero;
+                importBtn.OnClick = () => {
+                    modal.Close();
+                    onPick?.Invoke(captured);
+                };
+            }
+        }
+        BarButtonLeft(bar, T("CANCEL", "Close"), 0f, 0f, 150f, modal.Close, "o5cp_close_presets");
+    }
+
     public static void ShowPromoteConflicts(
         Package.PackageEntry entry,
         Package.O5cpPromotePlan plan,

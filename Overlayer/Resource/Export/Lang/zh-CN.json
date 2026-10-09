@@ -325,6 +325,10 @@
     "O5CP_SCRIPTS": "额外 JS 文件",
     "O5CP_SCRIPTS_NOTE": "导出器无法追踪的 JS（补丁、对象访问）请在此添加。",
     "O5CP_ADD_SCRIPT": "添加 JS",
-    "O5CP_INCLUDE_JS": "包含 JS（自动追踪）"
+    "O5CP_INCLUDE_JS": "包含 JS（自动追踪）",
+    "O5CP_PRESETS_TITLE": "预设",
+    "O5CP_PRESET_IMPORT": "导入",
+    "O5CP_PRESET_EMPTY": "没有预设。",
+    "O5CP_PRESET_FILE": "文件"
   }
 }

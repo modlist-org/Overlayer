@@ -175,7 +175,7 @@ internal static class PageOverlayer {
         CreateCanvasActionTile(transform, () => {
             OverlayCore.CreateOvCanvas();
             BuildAllTiles(transform);
-        }, () => BeginImportCanvas(transform));
+        }, () => BeginImportCanvas(transform), () => BeginImportPreset(transform));
 
         if(contentRectRef != null) {
             LayoutRebuilder.ForceRebuildLayoutImmediate(contentRectRef);
@@ -755,7 +755,7 @@ internal static class PageOverlayer {
         return false;
     }
 
-    private static GameObject CreateCanvasActionTile(Transform parent, Action create, Action import) {
+    private static GameObject CreateCanvasActionTile(Transform parent, Action create, Action import, Action preset) {
         var go = new GameObject("CanvasActionsTile");
         go.transform.SetParent(parent, false);
         var root = go.AddComponent<RectTransform>();
@@ -769,11 +769,13 @@ internal static class PageOverlayer {
         var left = CreateDiagonalHalf(go.transform, false);
         var right = CreateDiagonalHalf(go.transform, true);
         CreateTileActionIcon(left.transform, BuiltinIcon(UISprite.Plus128), 0.25f);
-        CreateTileActionIcon(right.transform, TileIcon("Download128.png", UISprite.Download128), 0.75f);
+        var importIcon = CreateTileActionIcon(right.transform, TileIcon("Download128.png", UISprite.Download128), 0.75f, 0.73f);
+        var presetIcon = CreateTileActionIcon(right.transform, BuiltinIcon(UISprite.Star128), 0.75f, 0.27f);
+        CreateZoneDivider(go.transform);
 
         var trigger = go.AddComponent<EventTrigger>();
         var handler = go.AddComponent<OventHandler>();
-        AddActionHalfHoverScale(handler, root, left, right);
+        AddActionHalfHoverScale(handler, root, left, right, importIcon, presetIcon);
         handler.OnClick += button => {
             if(button != InputButton.Left) {
                 return;
@@ -788,8 +790,10 @@ internal static class PageOverlayer {
             float split = rect.xMin + rect.width * splitX;
             if(local.x < split) {
                 create?.Invoke();
-            } else {
+            } else if(local.y >= (rect.yMin + rect.yMax) * 0.5f) {
                 import?.Invoke();
+            } else {
+                preset?.Invoke();
             }
         };
 
@@ -832,20 +836,22 @@ internal static class PageOverlayer {
     }
 
     private static void AddActionHalfHoverScale(OventHandler handler, RectTransform root,
-        DiagonalTileGraphic left, DiagonalTileGraphic right) {
+        DiagonalTileGraphic left, DiagonalTileGraphic right, GameObject importIcon, GameObject presetIcon) {
         left.rectTransform.pivot = new Vector2(0.25f, 0.5f);
         right.rectTransform.pivot = new Vector2(0.75f, 0.5f);
         ITweenHandle leftTween = null;
-        ITweenHandle rightTween = null;
+        ITweenHandle importTween = null;
+        ITweenHandle presetTween = null;
         int active = -1;
 
-        void SetScale(Transform target, bool isLeft, float value) {
-            if(isLeft) {
-                leftTween?.Kill();
-            } else {
-                rightTween?.Kill();
-            }
-            var tween = O5KitAdapters.Ctx.Tween.TweenFloat(
+        void SetScale(Transform target, int slot, float value) {
+            ITweenHandle tween = slot switch {
+                0 => leftTween,
+                2 => importTween,
+                _ => presetTween,
+            };
+            tween?.Kill();
+            var next = O5KitAdapters.Ctx.Tween.TweenFloat(
                 () => target ? target.localScale.x : value,
                 v => {
                     if(target) {
@@ -856,11 +862,21 @@ internal static class PageOverlayer {
                 0.22f,
                 ease: O5Ease.OutExpo
             );
-            if(isLeft) {
-                leftTween = tween;
-            } else {
-                rightTween = tween;
+            switch(slot) {
+                case 0: leftTween = next; break;
+                case 2: importTween = next; break;
+                default: presetTween = next; break;
             }
+        }
+
+        int ZoneIndex(Vector2 local, Rect rect) {
+            float y = Mathf.InverseLerp(rect.yMin, rect.yMax, local.y);
+            float splitX = Mathf.Lerp(0.28f, 0.72f, y);
+            if(local.x < rect.xMin + rect.width * splitX) {
+                return 0;
+            }
+            float midY = (rect.yMin + rect.yMax) * 0.5f;
+            return local.y >= midY ? 1 : 2;
         }
 
         handler.OnHoverUpdate = () => {
@@ -869,25 +885,27 @@ internal static class PageOverlayer {
                 return;
             }
             Rect rect = root.rect;
-            float y = Mathf.InverseLerp(rect.yMin, rect.yMax, local.y);
-            float splitX = Mathf.Lerp(0.28f, 0.72f, y);
-            int next = local.x < rect.xMin + rect.width * splitX ? 0 : 1;
+            int next = ZoneIndex(local, rect);
             if(next == active) {
                 return;
             }
             active = next;
             left.color = next == 0 ? UIColors.ObjectActiveLightBright : UIColors.ObjectButton;
-            right.color = next == 1 ? UIColors.ObjectActiveLightBright : UIColors.ObjectButton;
-            SetScale(left.transform, true, next == 0 ? 1.02f : 1f);
-            SetScale(right.transform, false, next == 1 ? 1.02f : 1f);
+            right.color = next == 0 ? UIColors.ObjectButton : UIColors.ObjectActiveLightBright;
+            SetScale(left.transform, 0, next == 0 ? 1.02f : 1f);
+            SetScale(importIcon.transform, 2, next == 1 ? 1.15f : 1f);
+            SetScale(presetIcon.transform, 3, next == 2 ? 1.15f : 1f);
         };
 
         void ResetHover() {
             active = -1;
             leftTween?.Kill();
-            rightTween?.Kill();
+            importTween?.Kill();
+            presetTween?.Kill();
             left.transform.localScale = Vector3.one;
             right.transform.localScale = Vector3.one;
+            importIcon.transform.localScale = Vector3.one;
+            presetIcon.transform.localScale = Vector3.one;
             left.color = right.color = UIColors.ObjectButton;
         }
         handler.OnDisabled += ResetHover;
@@ -913,20 +931,35 @@ internal static class PageOverlayer {
         return graphic;
     }
 
-    private static void CreateTileActionIcon(Transform parent, Sprite sprite, float anchorX) {
-        if(sprite == null) {
-            return;
-        }
+    private static GameObject CreateTileActionIcon(Transform parent, Sprite sprite, float anchorX, float anchorY = 0.5f) {
         var go = new GameObject("ActionIcon");
         go.transform.SetParent(parent, false);
+        if(sprite == null) {
+            return go;
+        }
         var rect = go.AddComponent<RectTransform>();
-        rect.anchorMin = rect.anchorMax = new Vector2(anchorX, 0.5f);
+        rect.anchorMin = rect.anchorMax = new Vector2(anchorX, anchorY);
         rect.pivot = new Vector2(0.5f, 0.5f);
         rect.anchoredPosition = Vector2.zero;
         rect.sizeDelta = new Vector2(56f, 56f);
         var image = go.AddComponent<Image>();
         image.sprite = sprite;
         image.preserveAspect = true;
+        image.raycastTarget = false;
+        return go;
+    }
+
+    private static void CreateZoneDivider(Transform parent) {
+        var go = new GameObject("ZoneDivider");
+        go.transform.SetParent(parent, false);
+        var rect = go.AddComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0.42f, 0.5f);
+        rect.anchorMax = new Vector2(1f, 0.5f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = Vector2.zero;
+        rect.sizeDelta = new Vector2(0f, 2f);
+        var image = go.AddComponent<Image>();
+        image.color = new Color(1f, 1f, 1f, 0.18f);
         image.raycastTarget = false;
     }
 
@@ -1015,6 +1048,38 @@ internal static class PageOverlayer {
                 }
                 BuildAllTiles(grid);
             });
+        });
+    }
+
+    private static void BeginImportPreset(Transform grid) {
+        if(!MainCore.IsModEnabled) {
+            return;
+        }
+        O5cpDialogs.ShowPresets(preset => {
+            if(!MainCore.IsModEnabled) {
+                return;
+            }
+            byte[] data;
+            try {
+                data = preset.ReadBytes?.Invoke();
+            } catch(Exception e) {
+                MainCore.Log.Err($"[CanvasImport] Preset read failed: {e.Message}");
+                O5cpDialogs.ShowWarnings("Import warnings", [$"preset read failed: {e.Message}"]);
+                return;
+            }
+            PackageEntry entry;
+            try {
+                entry = PackageStore.InstallBytes(data, out var warnings);
+                foreach(string warning in warnings) {
+                    MainCore.Log.Wrn($"[CanvasImport] {warning}");
+                }
+                if(entry != null && warnings.Count > 0) {
+                    O5cpDialogs.ShowWarnings("Import warnings", warnings);
+                }
+            } catch(Exception e) {
+                MainCore.Log.Err($"[CanvasImport] Preset install failed: {e.Message}");
+            }
+            BuildAllTiles(grid);
         });
     }
 

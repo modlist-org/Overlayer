@@ -325,6 +325,10 @@
     "O5CP_SCRIPTS": "추가 JS 파일",
     "O5CP_SCRIPTS_NOTE": "내보내기가 추적할 수 없는 JS(패치, 오브젝트 접근)는 여기에 추가하세요.",
     "O5CP_ADD_SCRIPT": "JS 추가",
-    "O5CP_INCLUDE_JS": "JS 포함 (자동 추적)"
+    "O5CP_INCLUDE_JS": "JS 포함 (자동 추적)",
+    "O5CP_PRESETS_TITLE": "프리셋",
+    "O5CP_PRESET_IMPORT": "가져오기",
+    "O5CP_PRESET_EMPTY": "프리셋 없음.",
+    "O5CP_PRESET_FILE": "파일"
   }
 }

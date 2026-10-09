@@ -175,6 +175,31 @@ public static class PackageStore {
         return entry;
     }
 
+    public static PackageEntry InstallBytes(byte[] data, out List<string> warnings) {
+        warnings = [];
+        if(data == null || data.Length == 0) {
+            return null;
+        }
+        string tmp = Path.Combine(MainCore.Paths.TempPath, $"preset_{Guid.NewGuid():N}.o5cp");
+        try {
+            Directory.CreateDirectory(MainCore.Paths.TempPath);
+            File.WriteAllBytes(tmp, data);
+            var entry = Install(tmp, out warnings);
+            return entry;
+        } catch(Exception e) {
+            warnings.Add($"bad package: {e.Message}");
+            MainCore.Log.Err($"[{nameof(PackageStore)}] InstallBytes failed: {e.Message}");
+            return null;
+        } finally {
+            try {
+                if(File.Exists(tmp)) {
+                    File.Delete(tmp);
+                }
+            } catch {
+            }
+        }
+    }
+
     public static StagedPackage Stage(string o5cpPath, out List<string> warnings) {
         warnings = [];
         if(string.IsNullOrWhiteSpace(o5cpPath) || !File.Exists(o5cpPath)) {

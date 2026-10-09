@@ -13,6 +13,7 @@ public sealed class PathService(string rootPath) {
     public string UserImagePath => Path.Combine(RootPath, "Resources", "Images");
     public string UserFontPath => Path.Combine(RootPath, "Resources", "Fonts");
     public string PackagesPath => Path.Combine(RootPath, "Packages");
+    public string PresetsPath => Path.Combine(RootPath, "Presets");
 
     public void Initialize() {
         Directory.CreateDirectory(RootPath);
@@ -23,5 +24,6 @@ public sealed class PathService(string rootPath) {
         Directory.CreateDirectory(UserImagePath);
         Directory.CreateDirectory(UserFontPath);
         Directory.CreateDirectory(PackagesPath);
+        Directory.CreateDirectory(PresetsPath);
     }
 }
