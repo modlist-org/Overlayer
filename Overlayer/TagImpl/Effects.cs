@@ -14,7 +14,7 @@ public static class Effects {
     private static readonly Dictionary<string, AnimationState> easedValues = [];
     private static readonly Dictionary<string, AnimationState> movingValues = [];
 
-    [Tag(TagType = TagType.ProcessFormat)]
+    [Tag(TagType = TagType.ProcessFormat, Desc = "Smoothly follows a tag value with easing\nEx) {EasedValue:Combo} / {EasedValue:Combo,0,500,OutExpo}\nargs are comma-separated: tag, digits, milliseconds, ease")]
     public static double EasedValue(string tagName, int digits = -1, double speed = 500,
         O5Ease ease = O5Ease.Linear) {
         if(!TryReadNumber(tagName, out double value)) {

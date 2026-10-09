@@ -12,7 +12,12 @@ public sealed class SignatureResolverTests {
         public static double FullComboValue => 12345.0;
         public static string MissValue => "GaugeFail";
         public static double Stream(double a, double b) => a + b;
+        public static double Meter(int windowMs = 0) => windowMs;
+        public static int Margin(string margin) => margin.Length;
+        public static double Smooth(string tag, int digits = -1, int speed = 500, DummyEase ease = DummyEase.Linear) => speed;
     }
+
+    private enum DummyEase { Linear, OutExpo }
 
     private static TagCore MethodTag(string name, string method, TagType type)
         => new(name, typeof(DummyTags).GetMethod(method, BindingFlags.Public | BindingFlags.Static)!, type);
@@ -113,5 +118,69 @@ public sealed class SignatureResolverTests {
 
         Assert.False(sig.IsExecutable);
         Assert.Contains(diag, d => d.Id == DiagnosticId.ArgTooFew);
+    }
+
+    [Fact]
+    public void Method_AllArgsBindAsValues_NoFormat() {
+        var diag = new List<CompileDiagnostic>();
+        var sig = Resolve(MethodTag("Smooth", nameof(DummyTags.Smooth), TagType.ProcessFormat), ["Combo", "0", "500", "OutExpo"], diag);
+
+        Assert.True(sig.IsExecutable);
+        Assert.False(sig.HasFormat);
+        Assert.Equal(["Combo", "0", "500", "OutExpo"], sig.Args);
+        Assert.Empty(diag);
+    }
+
+    [Fact]
+    public void Method_FullArgsPlusFormat_SplitsFormat() {
+        var diag = new List<CompileDiagnostic>();
+        var sig = Resolve(MethodTag("Smooth", nameof(DummyTags.Smooth), TagType.ProcessFormat), ["Combo", "0", "500", "OutExpo", "F1"], diag);
+
+        Assert.True(sig.IsExecutable);
+        Assert.True(sig.HasFormat);
+        Assert.Equal("F1", sig.Format);
+        Assert.Equal(["Combo", "0", "500", "OutExpo"], sig.Args);
+    }
+
+    [Fact]
+    public void Method_PartialArgsBindAsValues_NoFormat() {
+        var diag = new List<CompileDiagnostic>();
+        var sig = Resolve(MethodTag("Smooth", nameof(DummyTags.Smooth), TagType.ProcessFormat), ["Combo", "0"], diag);
+
+        Assert.True(sig.IsExecutable);
+        Assert.False(sig.HasFormat);
+        Assert.Equal(["Combo", "0"], sig.Args);
+    }
+
+    [Fact]
+    public void Method_LoneArgOnOptionalParams_StaysFormat() {
+        var diag = new List<CompileDiagnostic>();
+        var sig = Resolve(MethodTag("Meter", nameof(DummyTags.Meter), TagType.ProcessFormat), ["0"], diag);
+
+        Assert.True(sig.IsExecutable);
+        Assert.True(sig.HasFormat);
+        Assert.Equal("0", sig.Format);
+        Assert.Empty(sig.Args);
+    }
+
+    [Fact]
+    public void Method_LoneArgOnRequiredParam_BindsAsValue() {
+        var diag = new List<CompileDiagnostic>();
+        var sig = Resolve(MethodTag("Margin", nameof(DummyTags.Margin), TagType.ProcessFormat), ["Perfect"], diag);
+
+        Assert.True(sig.IsExecutable);
+        Assert.False(sig.HasFormat);
+        Assert.Equal(["Perfect"], sig.Args);
+    }
+
+    [Fact]
+    public void Method_BadValueArg_FallsBackToFormat() {
+        var diag = new List<CompileDiagnostic>();
+        var sig = Resolve(MethodTag("Smooth", nameof(DummyTags.Smooth), TagType.ProcessFormat), ["Combo", "xyz"], diag);
+
+        Assert.True(sig.IsExecutable);
+        Assert.True(sig.HasFormat);
+        Assert.Equal("xyz", sig.Format);
+        Assert.Equal(["Combo"], sig.Args);
     }
 }

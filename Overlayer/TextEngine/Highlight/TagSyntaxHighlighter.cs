@@ -160,7 +160,7 @@ public static class TagSyntaxHighlighter {
         }
 
         bool format = tag.Parameters.Length == 0 ||
-            ((tag.TagType & TagType.ProcessFormat) != 0 && index == count - 1);
+            ((tag.TagType & TagType.ProcessFormat) != 0 && (count <= 1 || index == count - 1 && count > tag.Parameters.Length));
         return format ? TagSyntaxKind.Format : TagSyntaxKind.Argument;
     }
 }

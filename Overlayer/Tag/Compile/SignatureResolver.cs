@@ -32,6 +32,7 @@ public static class SignatureResolver {
 
         string[] args = rawArgs;
         string format = null;
+        int minRequired = tag.RequiredParameterCount;
 
         if(parameters.Length == 0) {
             // C# tags keep the legacy rule (sole arg is always the format).
@@ -40,12 +41,17 @@ public static class SignatureResolver {
                 format = rawArgs[0];
             }
         } else if(hasFormatFlag && rawArgs.Length > 0) {
-            format = rawArgs[^1];
-            args = rawArgs[..^1];
+            // Trailing format steals the last arg only when the args cannot
+            // all bind as values. Otherwise value params past the first
+            // would be unreachable (e.g. EasedValue's digits/speed/ease).
+            // Lone-arg keeps the legacy rule so `{Fps:0}` still formats.
+            if(!TryTakeAllAsValues(rawArgs, parameters, minRequired)) {
+                format = rawArgs[^1];
+                args = rawArgs[..^1];
+            }
         }
 
         int valueParamCount = parameters.Length;
-        int minRequired = tag.RequiredParameterCount;
         if(format != null) {
             valueParamCount++;
         }
@@ -122,5 +128,22 @@ public static class SignatureResolver {
             HasFormat = format != null,
             State = state
         };
+    }
+
+    private static bool TryTakeAllAsValues(string[] rawArgs, System.Reflection.ParameterInfo[] parameters, int minRequired) {
+        if(rawArgs.Length > parameters.Length || rawArgs.Length < minRequired) {
+            return false;
+        }
+        if(rawArgs.Length <= 1 && minRequired == 0) {
+            return false;
+        }
+        for(int i = 0; i < rawArgs.Length; i++) {
+            try {
+                ArgConverter.Convert(rawArgs[i], parameters[i].ParameterType);
+            } catch {
+                return false;
+            }
+        }
+        return true;
     }
 }
