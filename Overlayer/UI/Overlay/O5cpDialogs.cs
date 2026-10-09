@@ -205,11 +205,11 @@ internal static class O5cpDialogs {
                 var importBtn = O5Factory.Button(O5KitAdapters.Ctx, row, () => { },
                     T("O5CP_PRESET_IMPORT", "Import"), $"o5cp_preset_{captured.Id}", 36f);
                 var importRect = importBtn.Rect;
-                importRect.anchorMin = new Vector2(0.62f, 0.5f);
-                importRect.anchorMax = new Vector2(1f, 0.5f);
+                importRect.anchorMin = new Vector2(0.62f, 0f);
+                importRect.anchorMax = new Vector2(1f, 1f);
                 importRect.pivot = new Vector2(1f, 0.5f);
-                importRect.offsetMin = new Vector2(0f, -18f);
-                importRect.offsetMax = Vector2.zero;
+                importRect.offsetMin = new Vector2(0f, 4f);
+                importRect.offsetMax = new Vector2(0f, -4f);
                 importBtn.OnClick = () => {
                     modal.Close();
                     onPick?.Invoke(captured);
@@ -254,11 +254,11 @@ internal static class O5cpDialogs {
             var choiceBtn = O5Factory.Button(O5KitAdapters.Ctx, row, () => { },
                 ChoiceText(item.Choice), $"o5cp_choice_{item.Kind}_{item.Key}", 36f);
             var choiceRect = choiceBtn.Rect;
-            choiceRect.anchorMin = new Vector2(0.62f, 0.5f);
-            choiceRect.anchorMax = new Vector2(1f, 0.5f);
+            choiceRect.anchorMin = new Vector2(0.62f, 0f);
+            choiceRect.anchorMax = new Vector2(1f, 1f);
             choiceRect.pivot = new Vector2(1f, 0.5f);
-            choiceRect.offsetMin = new Vector2(0f, -18f);
-            choiceRect.offsetMax = Vector2.zero;
+            choiceRect.offsetMin = new Vector2(0f, 4f);
+            choiceRect.offsetMax = new Vector2(0f, -4f);
             choiceBtn.OnClick = () => {
                 item.Choice = item.Choice switch {
                     Package.O5cpConflictChoice.Overwrite => Package.O5cpConflictChoice.Rename,

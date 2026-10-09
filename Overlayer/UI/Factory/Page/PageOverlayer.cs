@@ -767,15 +767,16 @@ internal static class PageOverlayer {
         background.raycastTarget = true;
 
         var left = CreateDiagonalHalf(go.transform, false);
-        var right = CreateDiagonalHalf(go.transform, true);
-        CreateTileActionIcon(left.transform, BuiltinIcon(UISprite.Plus128), 0.25f);
-        var importIcon = CreateTileActionIcon(right.transform, TileIcon("Download128.png", UISprite.Download128), 0.75f, 0.73f);
-        var presetIcon = CreateTileActionIcon(right.transform, BuiltinIcon(UISprite.Star128), 0.75f, 0.27f);
-        CreateZoneDivider(go.transform);
+        var presetZone = CreateDiagonalHalf(go.transform, true, 1);
+        var importZone = CreateDiagonalHalf(go.transform, true, 2);
+        var createIcon = CreateTileActionIcon(left.transform, BuiltinIcon(UISprite.Plus128), 0.25f);
+        var presetIcon = CreateTileActionIcon(presetZone.transform, BuiltinIcon(UISprite.Star128), 0.75f, 0.73f);
+        var importIcon = CreateTileActionIcon(importZone.transform, TileIcon("Download128.png", UISprite.Download128), 0.75f, 0.27f);
 
         var trigger = go.AddComponent<EventTrigger>();
         var handler = go.AddComponent<OventHandler>();
-        AddActionHalfHoverScale(handler, root, left, right, importIcon, presetIcon);
+        AddActionHalfHoverScale(handler, root, left, presetZone, importZone,
+            createIcon, presetIcon, importIcon);
         handler.OnClick += button => {
             if(button != InputButton.Left) {
                 return;
@@ -788,12 +789,13 @@ internal static class PageOverlayer {
             float y = Mathf.InverseLerp(rect.yMin, rect.yMax, local.y);
             float splitX = Mathf.Lerp(0.28f, 0.72f, y);
             float split = rect.xMin + rect.width * splitX;
+            float halfGap = DiagonalTileGraphic.Gap * 0.5f;
             if(local.x < split) {
                 create?.Invoke();
-            } else if(local.y >= (rect.yMin + rect.yMax) * 0.5f) {
-                import?.Invoke();
-            } else {
+            } else if(local.y > (rect.yMin + rect.yMax) * 0.5f + halfGap) {
                 preset?.Invoke();
+            } else if(local.y < (rect.yMin + rect.yMax) * 0.5f - halfGap) {
+                import?.Invoke();
             }
         };
 
@@ -805,7 +807,6 @@ internal static class PageOverlayer {
             }),
             (EventTriggerType.PointerExit, () => {
                 hover?.Kill();
-                left.color = right.color = UIColors.ObjectButton;
                 hover = background.TColor(UIColors.PanelBG, 0.12f, O5Ease.OutSine);
             })
         );
@@ -836,22 +837,22 @@ internal static class PageOverlayer {
     }
 
     private static void AddActionHalfHoverScale(OventHandler handler, RectTransform root,
-        DiagonalTileGraphic left, DiagonalTileGraphic right, GameObject importIcon, GameObject presetIcon) {
+        DiagonalTileGraphic left, DiagonalTileGraphic presetZone, DiagonalTileGraphic importZone,
+        GameObject createIcon, GameObject presetIcon, GameObject importIcon) {
         left.rectTransform.pivot = new Vector2(0.25f, 0.5f);
-        right.rectTransform.pivot = new Vector2(0.75f, 0.5f);
-        ITweenHandle leftTween = null;
+        presetZone.rectTransform.pivot = new Vector2(0.75f, 0.75f);
+        importZone.rectTransform.pivot = new Vector2(0.75f, 0.25f);
+        ITweenHandle createTween = null;
+        ITweenHandle presetZoneTween = null;
+        ITweenHandle importZoneTween = null;
+        ITweenHandle createIconTween = null;
         ITweenHandle importTween = null;
         ITweenHandle presetTween = null;
         int active = -1;
 
-        void SetScale(Transform target, int slot, float value) {
-            ITweenHandle tween = slot switch {
-                0 => leftTween,
-                2 => importTween,
-                _ => presetTween,
-            };
+        ITweenHandle SetScale(Transform target, ITweenHandle tween, float value) {
             tween?.Kill();
-            var next = O5KitAdapters.Ctx.Tween.TweenFloat(
+            return O5KitAdapters.Ctx.Tween.TweenFloat(
                 () => target ? target.localScale.x : value,
                 v => {
                     if(target) {
@@ -862,11 +863,6 @@ internal static class PageOverlayer {
                 0.22f,
                 ease: O5Ease.OutExpo
             );
-            switch(slot) {
-                case 0: leftTween = next; break;
-                case 2: importTween = next; break;
-                default: presetTween = next; break;
-            }
         }
 
         int ZoneIndex(Vector2 local, Rect rect) {
@@ -876,7 +872,10 @@ internal static class PageOverlayer {
                 return 0;
             }
             float midY = (rect.yMin + rect.yMax) * 0.5f;
-            return local.y >= midY ? 1 : 2;
+            float halfGap = DiagonalTileGraphic.Gap * 0.5f;
+            if(local.y > midY + halfGap) return 1;
+            if(local.y < midY - halfGap) return 2;
+            return -1;
         }
 
         handler.OnHoverUpdate = () => {
@@ -891,22 +890,31 @@ internal static class PageOverlayer {
             }
             active = next;
             left.color = next == 0 ? UIColors.ObjectActiveLightBright : UIColors.ObjectButton;
-            right.color = next == 0 ? UIColors.ObjectButton : UIColors.ObjectActiveLightBright;
-            SetScale(left.transform, 0, next == 0 ? 1.02f : 1f);
-            SetScale(importIcon.transform, 2, next == 1 ? 1.15f : 1f);
-            SetScale(presetIcon.transform, 3, next == 2 ? 1.15f : 1f);
+            presetZone.color = next == 1 ? UIColors.ObjectActiveLightBright : UIColors.ObjectButton;
+            importZone.color = next == 2 ? UIColors.ObjectActiveLightBright : UIColors.ObjectButton;
+            createTween = SetScale(left.transform, createTween, next == 0 ? 1.03f : 1f);
+            presetZoneTween = SetScale(presetZone.transform, presetZoneTween, next == 1 ? 1.03f : 1f);
+            importZoneTween = SetScale(importZone.transform, importZoneTween, next == 2 ? 1.03f : 1f);
+            createIconTween = SetScale(createIcon.transform, createIconTween, next == 0 ? 1.15f : 1f);
+            presetTween = SetScale(presetIcon.transform, presetTween, next == 1 ? 1.15f : 1f);
+            importTween = SetScale(importIcon.transform, importTween, next == 2 ? 1.15f : 1f);
         };
 
         void ResetHover() {
             active = -1;
-            leftTween?.Kill();
+            createTween?.Kill();
+            presetZoneTween?.Kill();
+            importZoneTween?.Kill();
+            createIconTween?.Kill();
             importTween?.Kill();
             presetTween?.Kill();
             left.transform.localScale = Vector3.one;
-            right.transform.localScale = Vector3.one;
+            presetZone.transform.localScale = Vector3.one;
+            importZone.transform.localScale = Vector3.one;
+            createIcon.transform.localScale = Vector3.one;
             importIcon.transform.localScale = Vector3.one;
             presetIcon.transform.localScale = Vector3.one;
-            left.color = right.color = UIColors.ObjectButton;
+            left.color = presetZone.color = importZone.color = UIColors.ObjectButton;
         }
         handler.OnDisabled += ResetHover;
         var trigger = root.GetComponent<EventTrigger>();
@@ -915,8 +923,9 @@ internal static class PageOverlayer {
         }
     }
 
-    private static DiagonalTileGraphic CreateDiagonalHalf(Transform parent, bool right) {
-        var go = new GameObject(right ? "ImportHalf" : "CreateHalf");
+    private static DiagonalTileGraphic CreateDiagonalHalf(Transform parent, bool right, int rightSection = 0) {
+        string name = !right ? "CreateHalf" : rightSection == 1 ? "PresetHalf" : rightSection == 2 ? "ImportHalf" : "RightHalf";
+        var go = new GameObject(name);
         go.transform.SetParent(parent, false);
         var rect = go.AddComponent<RectTransform>();
         rect.anchorMin = Vector2.zero;
@@ -926,6 +935,7 @@ internal static class PageOverlayer {
         rect.offsetMax = Vector2.zero;
         var graphic = go.AddComponent<DiagonalTileGraphic>();
         graphic.RightHalf = right;
+        graphic.RightSection = rightSection;
         graphic.color = UIColors.ObjectButton;
         graphic.raycastTarget = false;
         return graphic;
@@ -947,20 +957,6 @@ internal static class PageOverlayer {
         image.preserveAspect = true;
         image.raycastTarget = false;
         return go;
-    }
-
-    private static void CreateZoneDivider(Transform parent) {
-        var go = new GameObject("ZoneDivider");
-        go.transform.SetParent(parent, false);
-        var rect = go.AddComponent<RectTransform>();
-        rect.anchorMin = new Vector2(0.42f, 0.5f);
-        rect.anchorMax = new Vector2(1f, 0.5f);
-        rect.pivot = new Vector2(0.5f, 0.5f);
-        rect.anchoredPosition = Vector2.zero;
-        rect.sizeDelta = new Vector2(0f, 2f);
-        var image = go.AddComponent<Image>();
-        image.color = new Color(1f, 1f, 1f, 0.18f);
-        image.raycastTarget = false;
     }
 
     private static void BeginExportCanvas(OvCanvas canvas) {
