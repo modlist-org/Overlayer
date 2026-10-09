@@ -45,10 +45,10 @@ public sealed class PrefsStore(string path) {
             return _values;
         }
         try {
-            _values = File.Exists(path) ? JObject.Parse(File.ReadAllText(path)) : new JObject();
+            _values = File.Exists(path) ? JObject.Parse(File.ReadAllText(path)) : [];
         } catch (Exception e) {
             MainCore.Log.Wrn($"[{nameof(PrefsStore)}] Failed to read {path}: {e.Message}");
-            _values = new JObject();
+            _values = [];
         }
         return _values;
     }

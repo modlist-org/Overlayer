@@ -65,7 +65,7 @@ public class TextLocalization
     }
 
     public static void RefreshAll() {
-        var list = instances.ToList();
+        List<TextLocalization> list = [.. instances];
         foreach (var t in list) {
             if (t != null && !t.Equals(null)) {
                 t.UpdateText();

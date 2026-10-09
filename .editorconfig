@@ -31,6 +31,20 @@ csharp_new_line_before_members_in_anonymous_types = false
 # Don't force LINQ query clauses onto separate lines
 csharp_new_line_between_query_expression_clauses = false
 
-# IDE0330 (use System.Threading.Lock) is off: Lock only exists on .NET 9+,
-# this repo still targets netstandard2.1 / old Unity Mono
+# ==========================================
+# 4. No System.Threading.Lock (netstandard2.1 / old Unity Mono)
+# ==========================================
+# Lock only exists on .NET 9+, keep IDE0330 off
 dotnet_diagnostic.IDE0330.severity = none
+
+# ==========================================
+# 5. Collection expressions as warnings
+# ==========================================
+# Lets "dotnet format style" rewrite ToArray()/ToList() to [...]
+dotnet_diagnostic.IDE0300.severity = warning
+dotnet_diagnostic.IDE0301.severity = warning
+dotnet_diagnostic.IDE0302.severity = warning
+dotnet_diagnostic.IDE0303.severity = warning
+dotnet_diagnostic.IDE0304.severity = warning
+dotnet_diagnostic.IDE0305.severity = warning
+dotnet_diagnostic.IDE0057.severity = warning

@@ -208,7 +208,7 @@ public class Translator {
                     // Process each key-value pair in the block.
                     foreach (var kv in block) {
                         if (kv.Value is JArray arr) {
-                            arrayDict[kv.Key] = arr.Select(v => v.ToString()).ToArray();
+                            arrayDict[kv.Key] = [.. arr.Select(v => v.ToString())];
                         } else {
                             stringDict[kv.Key] = kv.Value?.ToString() ?? "";
                         }
@@ -382,10 +382,9 @@ public class Translator {
             names.Add(FALLBACK_LANGUAGE);
         }
 
-        names.AddRange(translations.Keys
+        names.AddRange([.. translations.Keys
             .OrderBy(k => k, StringComparer.OrdinalIgnoreCase)
-            .Select(lang => GetForLanguage("0NATIVELANG", lang, lang))
-            .ToList()
+            .Select(lang => GetForLanguage("0NATIVELANG", lang, lang))]
         );
 
         return [.. names];

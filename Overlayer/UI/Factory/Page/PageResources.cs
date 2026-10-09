@@ -432,7 +432,7 @@ internal static class PageResources {
         }
 
         var fontResult = UserResourceManager.Fnt.Load(key, result.Path);
-        if (fontResult != UserFont.Result.Success || !UserResourceManager.Fnt.TryGet(key, out var fontValue)) {
+        if (fontResult != UserFont.Result.Success || !UserResourceManager.Fnt.TryGet(key, out _)) {
             FinishBusy();
             SetStatus("FONT_LOAD_FAILED", "Font load failed: {0}", UIColors.ObjectActiveMathErr, fontResult);
             return;
@@ -697,12 +697,11 @@ internal static class PageResources {
 
         string query = searchInput?.Value?.Trim() ?? string.Empty;
         Dictionary<string, string> folders = CurrentFolders;
-        string[] keys = (currentMode == ResourceMode.Images ? UserResourceManager.Spr.Keys : UserResourceManager.Fnt.Keys)
+        string[] keys = [.. (currentMode == ResourceMode.Images ? UserResourceManager.Spr.Keys : UserResourceManager.Fnt.Keys)
             .Where(key => !O5cpFormat.IsPackageKey(key))
             .Where(key => string.IsNullOrEmpty(query) || FullName(folders, key).Contains(query, StringComparison.OrdinalIgnoreCase))
             .OrderBy(key => FolderOf(folders, key), StringComparer.OrdinalIgnoreCase)
-            .ThenBy(key => key, StringComparer.OrdinalIgnoreCase)
-            .ToArray();
+            .ThenBy(key => key, StringComparer.OrdinalIgnoreCase)];
 
         if (keys.Length == 0) {
             string text = currentMode == ResourceMode.Images
@@ -1259,7 +1258,7 @@ internal static class PageResources {
         }
 
         char[] invalid = Path.GetInvalidFileNameChars();
-        string result = new(value.Trim().Select(c => invalid.Contains(c) ? '_' : c).ToArray());
+        string result = new([.. value.Trim().Select(c => invalid.Contains(c) ? '_' : c)]);
         return result.Trim().Trim('.', ' ');
     }
 

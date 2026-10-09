@@ -148,10 +148,10 @@ public sealed class OvRainGraphic
 #endif
 {
     public OvRainComponent Owner;
-    public readonly List<RainTrail> Trails = new();
+    public readonly List<RainTrail> Trails = [];
     public Sprite Sprite;
 
-    private readonly List<float> cuts = new();
+    private readonly List<float> cuts = [];
 
     public override Texture mainTexture => Sprite != null ? Sprite.texture : s_WhiteTexture;
 

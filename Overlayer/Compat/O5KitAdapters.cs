@@ -164,7 +164,7 @@ public sealed class OverlayerFontProvider : IFontProvider {
         }
         composite = UnityEngine.Object.Instantiate(chain[0]);
         composite.name = chain[0].name + "_WithFallbacks";
-        composite.fallbackFontAssetTable = chain.Skip(1).ToList();
+        composite.fallbackFontAssetTable = [.. chain.Skip(1)];
         compositeCache[sig] = composite;
         return composite;
     }

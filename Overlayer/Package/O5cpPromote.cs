@@ -305,8 +305,8 @@ public static class O5cpPromote {
 
     private static string SuggestRename(string key) {
         int slash = key.LastIndexOf('/');
-        string head = slash >= 0 ? key.Substring(0, slash + 1) : string.Empty;
-        string tail = slash >= 0 ? key.Substring(slash + 1) : key;
+        string head = slash >= 0 ? key[..(slash + 1)] : string.Empty;
+        string tail = slash >= 0 ? key[(slash + 1)..] : key;
         return $"{head}{tail} (imported)";
     }
 

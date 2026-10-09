@@ -39,16 +39,17 @@ public static class FormatValidator {
             return true;
         }
 
-        if (TryValidate(typeof(double), format, out var last)) {
+        if (TryValidate(typeof(double), format, out _)) {
             return true;
         }
-        if (TryValidate(typeof(long), format, out last)) {
+        if (TryValidate(typeof(long), format, out _)) {
             return true;
         }
-        if (TryValidate(typeof(decimal), format, out last)) {
+        if (TryValidate(typeof(decimal), format, out _)) {
             return true;
         }
-        if (TryValidate(typeof(DateTime), format, out last)) {
+
+        if (TryValidate(typeof(DateTime), format, out Exception last)) {
             return true;
         }
 

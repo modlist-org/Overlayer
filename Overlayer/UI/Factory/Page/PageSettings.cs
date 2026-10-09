@@ -645,11 +645,10 @@ internal static class PageSettings {
 
     private static string[] FontOptions(bool includeBuiltin = false, string includeKey = null) {
         var folders = UserResourceManager.Config.Data.FontFolders;
-        var keys = UserResourceManager.Fnt.Keys
+        List<string> keys = [.. UserResourceManager.Fnt.Keys
             .Where(k => !O5cpFormat.IsPackageKey(k))
             .OrderBy(k => UserResourceSettings.FolderOf(folders, k), StringComparer.OrdinalIgnoreCase)
-            .ThenBy(k => k, StringComparer.OrdinalIgnoreCase)
-            .ToList();
+            .ThenBy(k => k, StringComparer.OrdinalIgnoreCase)];
         if (includeBuiltin) {
             keys.Insert(0, BuiltinFontOption);
         }

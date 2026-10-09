@@ -394,10 +394,9 @@ internal sealed class OvInspectorBuilder(
     private void MovingManTargets(Transform parent, MovingManSettings cfg) {
         FxBlock(parent, "Target", cfg.Target, group => {
             string label = InspectorLabel("Target");
-            var values = Enum.GetValues(typeof(MovingManTarget))
+            MovingManTarget[] values = [.. Enum.GetValues(typeof(MovingManTarget))
                 .Cast<MovingManTarget>()
-                .Where(value => value != MovingManTarget.None)
-                .ToArray();
+                .Where(value => value != MovingManTarget.None)];
             var row = O5Factory.Row(O5KitAdapters.Ctx, group, 50f);
             var dropdown = O5Factory.MultiDropDown(O5KitAdapters.Ctx,
                 row,
@@ -421,10 +420,9 @@ internal sealed class OvInspectorBuilder(
             return "None";
         }
 
-        var selected = values
+        string[] selected = [.. values
             .Where(option => value.HasFlag(option))
-            .Select(option => option.ToString())
-            .ToArray();
+            .Select(option => option.ToString())];
         return selected.Length <= 2
             ? string.Join(", ", selected)
             : $"{selected.Length} selected";
@@ -1012,14 +1010,13 @@ internal sealed class OvInspectorBuilder(
 
                 if (charIndex >= 0 && charIndex < text.textInfo.characterCount) {
                     int stringIndex = text.textInfo.characterInfo[charIndex].index;
-                    var covering = displayedDiagnostics
+                    CompileDiagnostic[] covering = [.. displayedDiagnostics
                         .Where(d => {
                             int start = Math.Clamp(d.Context.Index, 0, displayedText.Length);
                             int end = Math.Clamp(start + Math.Max(1, d.Context.Length), start, displayedText.Length);
                             return stringIndex >= start && stringIndex < end;
                         })
-                        .OrderByDescending(d => d.Severity)
-                        .ToArray();
+                        .OrderByDescending(d => d.Severity)];
 
                     if (covering.Length > 0) {
                         tip = string.Join("\n", covering.Select(d =>
@@ -1070,7 +1067,7 @@ internal sealed class OvInspectorBuilder(
             }
 
             string source = composing ? null : displayedText;
-            TagSyntaxSpan[] spans = composing ? Array.Empty<TagSyntaxSpan>() : syntaxSpans;
+            TagSyntaxSpan[] spans = composing ? [] : syntaxSpans;
             bool dirty = hoverRebuilt;
             if (highlightKinds == null || !ReferenceEquals(source, highlightSource) || !ReferenceEquals(spans, highlightSpans)) {
                 highlightSource = source;
@@ -1320,9 +1317,8 @@ internal sealed class OvInspectorBuilder(
         }
 
         sourceText.ForceMeshUpdate();
-        var groups = diagnostics
-            .GroupBy(d => (d.Context.Index, d.Context.Length))
-            .ToArray();
+        IGrouping<(int Index, int Length), CompileDiagnostic>[] groups = [.. diagnostics
+            .GroupBy(d => (d.Context.Index, d.Context.Length))];
 
         float rootWidth = root.rect.width;
         float rootHeight = root.rect.height;
@@ -1583,7 +1579,7 @@ internal sealed class OvInspectorBuilder(
 
     private RectTransform EnumDropDown<T>(Transform parent, string label, T defaultValue, T value, Action<T> changed, string id, Action completed = null) where T : struct, Enum {
         label = InspectorLabel(label);
-        var values = Enum.GetValues(typeof(T)).Cast<T>().ToArray();
+        T[] values = [.. Enum.GetValues(typeof(T)).Cast<T>()];
         var row = O5Factory.Row(O5KitAdapters.Ctx, parent, 50f);
         var dropdown = O5Factory.DropDown(O5KitAdapters.Ctx, row, defaultValue, value, values, option => $"{label}: {option}", newValue => {
             changed(newValue);
@@ -2308,8 +2304,8 @@ internal sealed class OvInspectorBuilder(
         var presetGraphics = new List<(RectTransform Parent, AnchorMode H, AnchorMode V, bool Header, GameObject Graphic)>();
         Transform table = popup.Find("Table");
         TextMeshProUGUI modifierHelp = popup.Find("ModifierHelp").GetComponent<TextMeshProUGUI>();
-        AnchorMode[] horizontalModes = { AnchorMode.Custom, AnchorMode.Min, AnchorMode.Middle, AnchorMode.Max, AnchorMode.Stretch };
-        AnchorMode[] verticalModes = { AnchorMode.Custom, AnchorMode.Max, AnchorMode.Middle, AnchorMode.Min, AnchorMode.Stretch };
+        AnchorMode[] horizontalModes = [AnchorMode.Custom, AnchorMode.Min, AnchorMode.Middle, AnchorMode.Max, AnchorMode.Stretch];
+        AnchorMode[] verticalModes = [AnchorMode.Custom, AnchorMode.Max, AnchorMode.Middle, AnchorMode.Min, AnchorMode.Stretch];
         bool lastShift = false;
         bool lastAlt = false;
 
@@ -2526,8 +2522,8 @@ internal sealed class OvInspectorBuilder(
         var presetGraphics = new List<(RectTransform Parent, AnchorMode H, AnchorMode V, bool Header, GameObject Graphic)>();
         Transform table = popup.Find("Table");
         TextMeshProUGUI modifierHelp = popup.Find("ModifierHelp").GetComponent<TextMeshProUGUI>();
-        AnchorMode[] horizontalModes = { AnchorMode.Custom, AnchorMode.Min, AnchorMode.Middle, AnchorMode.Max, AnchorMode.Stretch };
-        AnchorMode[] verticalModes = { AnchorMode.Custom, AnchorMode.Max, AnchorMode.Middle, AnchorMode.Min, AnchorMode.Stretch };
+        AnchorMode[] horizontalModes = [AnchorMode.Custom, AnchorMode.Min, AnchorMode.Middle, AnchorMode.Max, AnchorMode.Stretch];
+        AnchorMode[] verticalModes = [AnchorMode.Custom, AnchorMode.Max, AnchorMode.Middle, AnchorMode.Min, AnchorMode.Stretch];
         bool lastShift = false;
         bool lastAlt = false;
 
@@ -2873,10 +2869,10 @@ internal sealed class OvInspectorBuilder(
 
     private static IEnumerable<float> AnchorPositions(AnchorMode mode, float size) {
         if (mode == AnchorMode.Stretch) {
-            return new[] { size * -0.5f, size * 0.5f };
+            return [size * -0.5f, size * 0.5f];
         }
 
-        return new[] { ModePosition(mode, size, true) };
+        return [ModePosition(mode, size, true)];
     }
 
     private static float ModePosition(AnchorMode mode, float size, bool edge = false) {
@@ -3005,11 +3001,10 @@ internal sealed class OvInspectorBuilder(
     private void SpriteDropDown(Transform parent, FxValue<string> spriteKey, string id = "image_sprite") {
         const string none = "None";
         var folders = UserResourceManager.Config.Data.ImageFolders;
-        var options = UserResourceManager.Spr.Keys
+        List<string> options = [.. UserResourceManager.Spr.Keys
             .Where(key => !O5cpFormat.IsPackageKey(key))
             .OrderBy(key => UserResourceSettings.FolderOf(folders, key), StringComparer.OrdinalIgnoreCase)
-            .ThenBy(key => key, StringComparer.OrdinalIgnoreCase)
-            .ToList();
+            .ThenBy(key => key, StringComparer.OrdinalIgnoreCase)];
         if (!string.IsNullOrEmpty(spriteKey.Value) && !options.Contains(spriteKey.Value)) {
             options.Insert(0, spriteKey.Value);
         }
@@ -3029,11 +3024,10 @@ internal sealed class OvInspectorBuilder(
     private void FontDropDown(Transform parent, TextMeshProUGUISettings cfg) {
         const string none = "Default";
         var folders = UserResourceManager.Config.Data.FontFolders;
-        var options = UserResourceManager.Fnt.Keys
+        List<string> options = [.. UserResourceManager.Fnt.Keys
             .Where(key => !O5cpFormat.IsPackageKey(key))
             .OrderBy(key => UserResourceSettings.FolderOf(folders, key), StringComparer.OrdinalIgnoreCase)
-            .ThenBy(key => key, StringComparer.OrdinalIgnoreCase)
-            .ToList();
+            .ThenBy(key => key, StringComparer.OrdinalIgnoreCase)];
         if (!string.IsNullOrEmpty(cfg.FontKey.Value) && !options.Contains(cfg.FontKey.Value)) {
             options.Insert(0, cfg.FontKey.Value);
         }

@@ -11,8 +11,8 @@ public sealed class FpsTracker : IRuntimeTick {
     private const int MaxSamples = 4096;
 
     private readonly Queue<double> frameTimes = new();
-    private readonly Dictionary<int, (double value, double next)> fpsHeld = new();
-    private readonly Dictionary<int, (double value, double next)> msHeld = new();
+    private readonly Dictionary<int, (double value, double next)> fpsHeld = [];
+    private readonly Dictionary<int, (double value, double next)> msHeld = [];
 
     public FpsTracker() {
         Instance = this;

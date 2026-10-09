@@ -93,7 +93,7 @@ public static class TagSyntaxHighlighter {
             return;
         }
 
-        foreach (var span in JsSyntaxHighlighter.GetSpans(source.Substring(innerStart, innerEnd - innerStart))) {
+        foreach (var span in JsSyntaxHighlighter.GetSpans(source[innerStart..innerEnd])) {
             spans.Add(new(span.Index + innerStart, span.Length, span.Kind));
         }
     }

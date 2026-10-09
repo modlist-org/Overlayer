@@ -211,9 +211,7 @@ internal static class PageJS {
         string root = MainCore.V8.ScriptFolderPath;
         string[] files;
         try {
-            files = JSScriptLoader.FindScripts(root)
-                .Where(file => !O5cpFormat.IsPackageScript(file))
-                .ToArray();
+            files = [.. JSScriptLoader.FindScripts(root).Where(file => !O5cpFormat.IsPackageScript(file))];
         } catch {
             files = [];
         }
@@ -221,7 +219,7 @@ internal static class PageJS {
             .GroupBy(file => FolderOf(JSScriptLoader.RelativeName(root, file)), StringComparer.OrdinalIgnoreCase)
             .OrderBy(group => group.Key, StringComparer.OrdinalIgnoreCase);
         foreach (var folder in folders) {
-            string[] folderFiles = folder.OrderBy(Path.GetFileName, StringComparer.OrdinalIgnoreCase).ToArray();
+            string[] folderFiles = [.. folder.OrderBy(Path.GetFileName, StringComparer.OrdinalIgnoreCase)];
             bool inFolder = folder.Key.Length > 0;
             if (inFolder) {
                 BuildFolderRow(folder.Key, folderFiles);

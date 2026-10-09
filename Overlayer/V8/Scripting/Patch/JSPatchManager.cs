@@ -11,11 +11,11 @@ public static class JSPatchManager {
     private static readonly HarmonyLib.Harmony Harmony = new("Overlayer.JSPatch");
     private static readonly object Sync = new();
     private static int nextHandle = 1;
-    private static readonly Dictionary<int, Registration> ByHandle = new();
+    private static readonly Dictionary<int, Registration> ByHandle = [];
     private static readonly Dictionary<string, List<int>> ByFile = new(StringComparer.Ordinal);
-    private static readonly Dictionary<MethodBase, ForwardedPatch> Forwarded = new();
+    private static readonly Dictionary<MethodBase, ForwardedPatch> Forwarded = [];
     private static readonly ConcurrentDictionary<MethodBase, ParameterInfo[]> ParamCache = new();
-    private static readonly HashSet<string> WarnedOnce = new();
+    private static readonly HashSet<string> WarnedOnce = [];
 
     public sealed class Registration {
         public int Handle;

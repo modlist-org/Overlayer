@@ -340,7 +340,7 @@ public class V8Manager : IRuntimeService {
         sb.AppendLine("/* Tags */\n");
 
         foreach (var tag in tags.OrderBy(t => t.Name)) {
-            var paramNames = tag.Parameters.Select(p => p.Name).ToArray();
+            string[] paramNames = [.. tag.Parameters.Select(p => p.Name)];
             string paramList = string.Join(", ", paramNames);
             string returnType = MapToJsType(tag.ReturnType);
 
@@ -550,9 +550,9 @@ public class V8Manager : IRuntimeService {
         return "any";
     }
 
-    private readonly Dictionary<string, (V8ScriptEngine Engine, V8Script Script, string Error)> _fxScriptCache = new();
-    private readonly Dictionary<string, string> _fxRuntimeErrors = new();
-    private readonly Dictionary<string, long> _fxTimeoutBackoff = new();
+    private readonly Dictionary<string, (V8ScriptEngine Engine, V8Script Script, string Error)> _fxScriptCache = [];
+    private readonly Dictionary<string, string> _fxRuntimeErrors = [];
+    private readonly Dictionary<string, long> _fxTimeoutBackoff = [];
     private long _evalSeq;
     private long _evalActive = -1;
 

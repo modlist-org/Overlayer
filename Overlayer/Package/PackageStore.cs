@@ -165,7 +165,6 @@ public static class PackageStore {
     }
 
     public static PackageEntry Install(string o5cpPath, out List<string> warnings) {
-        warnings = [];
         using var staged = Stage(o5cpPath, out warnings);
         if (staged == null) {
             return null;
@@ -245,7 +244,7 @@ public static class PackageStore {
             SourcePath = o5cpPath,
             Manifest = manifest,
             FileHash = fileHash,
-            Hash = fileHash.Substring(0, 7),
+            Hash = fileHash[..7],
             FileName = O5cpPackage.SanitizeSegment(name, ".o5cp"),
         };
         staged.Warnings.AddRange(warnings);
@@ -785,7 +784,7 @@ public static class PackageStore {
     }
 
     private static void SweepOrphanScripts() {
-        string scriptDir = null;
+        string scriptDir;
         try {
             scriptDir = MainCore.V8?.ScriptFolderPath;
             if (string.IsNullOrEmpty(scriptDir) || !Directory.Exists(scriptDir)) {
@@ -888,7 +887,7 @@ public static class PackageStore {
         }
         string clean = builder.ToString().Trim('_', '-');
         if (clean.Length > 48) {
-            clean = clean.Substring(0, 48);
+            clean = clean[..48];
         }
         return string.IsNullOrEmpty(clean) ? "pkg" : clean;
     }

@@ -33,7 +33,7 @@ public static class SafeAccess {
                 try {
                     types = asm.GetTypes();
                 } catch (ReflectionTypeLoadException e) {
-                    types = e.Types.Where(t => t != null).ToArray()!;
+                    types = [.. e.Types.Where(t => t != null)]!;
                 } catch {
                     continue;
                 }

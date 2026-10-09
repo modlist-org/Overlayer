@@ -219,7 +219,7 @@ public sealed class UnityAccess {
     }
 
     private readonly object repeatGate = new();
-    private readonly Dictionary<int, RepeatEntry> repeats = new();
+    private readonly Dictionary<int, RepeatEntry> repeats = [];
     private int nextRepeatHandle = 1;
     private bool pumpQueued;
 
@@ -272,7 +272,7 @@ public sealed class UnityAccess {
             foreach (var entry in repeats.Values) {
                 if (now >= entry.Next) {
                     entry.Next = now + entry.Interval;
-                    (due ??= new List<ScriptObject>()).Add(entry.Fn);
+                    (due ??= []).Add(entry.Fn);
                 }
             }
             if (repeats.Count > 0) {

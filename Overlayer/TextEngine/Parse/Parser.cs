@@ -19,7 +19,7 @@ public static class Parser {
             .Where(m => !jsRanges.Any(r => m.Index >= r.Index && m.Index + m.Length <= r.Index + r.Length))
             .OrderBy(m => m.Index);
 
-        var tags = (from m in matches
+        List<ParsedTag> tags = [.. from m in matches
                     let name = m.Groups["name"].Value
                     let argsRaw = m.Groups["arg"].Success
                         ? m.Groups["arg"].Value
@@ -27,7 +27,7 @@ public static class Parser {
                     let args = (string[])(string.IsNullOrWhiteSpace(argsRaw)
                         ? []
                         : [.. argsRaw.Split(',').Select(s => s.Trim())])
-                    select new ParsedTag(m.Value, name, args, m.Index, m.Length)).ToList();
+                    select new ParsedTag(m.Value, name, args, m.Index, m.Length)];
 
         tags.AddRange(jsRanges.Select(r =>
             new ParsedTag(

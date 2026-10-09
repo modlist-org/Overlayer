@@ -4,7 +4,7 @@ namespace Overlayer.Tween;
 
 /// <summary>DOTween is bad!!!</summary>
 public sealed class O5Seq : ITweenHandle {
-    private readonly List<List<Action<Action>>> _groups = new();
+    private readonly List<List<Action<Action>>> _groups = [];
     private Action _onComplete;
     private bool _loop;
     private bool _killed;
@@ -13,13 +13,13 @@ public sealed class O5Seq : ITweenHandle {
     public static O5Seq New() => new();
 
     public O5Seq Append(Action<Action> step) {
-        _groups.Add(new List<Action<Action>> { step });
+        _groups.Add([step]);
         return this;
     }
 
     public O5Seq Join(Action<Action> step) {
         if (_groups.Count == 0) {
-            _groups.Add(new List<Action<Action>>());
+            _groups.Add([]);
         }
 
         _groups[_groups.Count - 1].Add(step);

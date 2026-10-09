@@ -236,7 +236,7 @@ public sealed class UICodeInputField
             return;
         }
 
-        var values = undoHistory.Take(MaxHistory).ToArray();
+        HistoryState[] values = [.. undoHistory.Take(MaxHistory)];
         undoHistory.Clear();
         for (int i = values.Length - 1; i >= 0; i--) {
             undoHistory.Push(values[i]);

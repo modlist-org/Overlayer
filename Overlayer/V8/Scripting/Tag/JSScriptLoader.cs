@@ -20,10 +20,9 @@ public class JSScriptLoader {
     private readonly HashSet<string> _disabledFileNames = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>All *.js files under <paramref name="root"/>, including subfolders. Skips dot-folders and node_modules.</summary>
-    public static string[] FindScripts(string root) => Directory
+    public static string[] FindScripts(string root) => [.. Directory
         .GetFiles(root, "*.js", SearchOption.AllDirectories)
-        .Where(file => !RelativeName(root, file).Split('/').Any(part => part.StartsWith(".") || part.Equals("node_modules", StringComparison.OrdinalIgnoreCase)))
-        .ToArray();
+        .Where(file => !RelativeName(root, file).Split('/').Any(part => part.StartsWith(".") || part.Equals("node_modules", StringComparison.OrdinalIgnoreCase)))];
 
     /// <summary>Path of <paramref name="file"/> relative to <paramref name="root"/>, with '/' separators.</summary>
     public static string RelativeName(string root, string file) => file.StartsWith(root, StringComparison.OrdinalIgnoreCase)
@@ -73,7 +72,7 @@ public class JSScriptLoader {
                     var files = FindScripts(folderPath);
                     var currentFiles = new HashSet<string>(files);
 
-                    var removedFiles = _fileHashes.Keys.Where(f => !currentFiles.Contains(f)).ToList();
+                    List<string> removedFiles = [.. _fileHashes.Keys.Where(f => !currentFiles.Contains(f))];
                     foreach (var file in removedFiles) {
                         UnloadScript(file);
                         hasChanges = true;
@@ -239,7 +238,7 @@ public class JSScriptLoader {
 
     public IReadOnlyList<string> GetScriptFiles() {
         lock (_syncLock) {
-            return _fileHashes.Keys.OrderBy(f => f).ToList();
+            return [.. _fileHashes.Keys.OrderBy(f => f)];
         }
     }
 

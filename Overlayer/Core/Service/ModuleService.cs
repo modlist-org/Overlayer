@@ -20,7 +20,7 @@ public sealed class ModuleService(OverlayerLogger logger) : IDisposable {
                 try {
                     types = assembly.GetTypes();
                 } catch (ReflectionTypeLoadException e) {
-                    types = e.Types.Where(t => t != null).ToArray();
+                    types = [.. e.Types.Where(t => t != null)];
                 }
 
                 foreach (var type in types) {

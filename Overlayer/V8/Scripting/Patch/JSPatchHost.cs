@@ -262,19 +262,17 @@ public class JSPatchHost(JSScriptLoader loader, string filePath) {
         int paren = rest.IndexOf('(');
         if (paren >= 0 && rest.EndsWith(")", StringComparison.Ordinal)) {
             methodName = rest[..paren].Trim();
-            explicitSig = SplitTopLevel(rest[(paren + 1)..^1])
+            explicitSig = [.. SplitTopLevel(rest[(paren + 1)..^1])
                 .Where(s => !string.IsNullOrWhiteSpace(s))
-                .Select(s => s.Trim())
-                .ToArray();
+                .Select(s => s.Trim())];
         }
         if (string.IsNullOrEmpty(methodName)) {
             throw new InvalidOperationException($"Bad target \"{target}\". Missing method name.");
         }
         Type type = FindType(typeName)
             ?? throw new InvalidOperationException($"Type not found: {typeName}");
-        var candidates = type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static)
-            .Where(m => m.Name == methodName && !m.IsGenericMethodDefinition)
-            .ToArray();
+        MethodInfo[] candidates = [.. type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static)
+            .Where(m => m.Name == methodName && !m.IsGenericMethodDefinition)];
         if (candidates.Length == 0) {
             throw new InvalidOperationException($"Method not found: {typeName}::{methodName}");
         }
@@ -297,7 +295,7 @@ public class JSPatchHost(JSScriptLoader loader, string filePath) {
             wanted = postfixArity - 1;
         }
         if (wanted != null) {
-            var hits = candidates.Where(m => m.GetParameters().Length == wanted.Value).ToArray();
+            MethodInfo[] hits = [.. candidates.Where(m => m.GetParameters().Length == wanted.Value)];
             if (hits.Length == 1) {
                 return hits[0];
             }

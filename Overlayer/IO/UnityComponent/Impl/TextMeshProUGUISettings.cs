@@ -205,10 +205,10 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
             };
         }
         // Row 0 is the bottom of the texture.
-        _outlineGradientTex.SetPixels(new[] {
+        _outlineGradientTex.SetPixels([
             _lastOutlineColor.BL, _lastOutlineColor.BR,
             _lastOutlineColor.TL, _lastOutlineColor.TR
-        });
+        ]);
         _outlineGradientTex.Apply();
         return _outlineGradientTex;
     }

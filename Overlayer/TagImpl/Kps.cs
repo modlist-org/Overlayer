@@ -12,7 +12,7 @@ public sealed class KpsTracker : IRuntimeTick {
 
     private static readonly KeyCode[] KeyboardKeys = BuildKeyboardKeys();
     private readonly Queue<double> keyTimes = new();
-    private readonly Dictionary<int, (double value, double next)> held = new();
+    private readonly Dictionary<int, (double value, double next)> held = [];
     private readonly object gate = new();
 
     public KpsTracker() {

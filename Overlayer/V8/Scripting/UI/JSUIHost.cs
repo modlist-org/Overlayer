@@ -151,7 +151,7 @@ public class JSUIHost(string filePath) {
     private static void RemoveWhere(Func<Tab, bool> match) {
         List<Tab> removed;
         lock (Sync) {
-            removed = Tabs.Values.Where(match).ToList();
+            removed = [.. Tabs.Values.Where(match)];
             foreach (var tab in removed) {
                 Tabs.Remove(tab.Id);
             }

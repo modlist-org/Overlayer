@@ -21,7 +21,7 @@ public sealed class OvGraphComponent : MaskableGraphic {
     public bool ShowFill;
     public Color FillColor = new(1f, 1f, 1f, 0.25f);
 
-    private readonly List<Vector2> history = new();
+    private readonly List<Vector2> history = [];
     private ScriptObject func;
     private string funcCode;
     private float lastPushTime = float.NegativeInfinity;

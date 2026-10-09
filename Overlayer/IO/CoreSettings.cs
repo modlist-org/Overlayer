@@ -21,8 +21,8 @@ public sealed class CoreSettings : ISettingsFile {
     public FxValue<bool> UpdateBeta = new(false);
     public FxValue<string> SystemFontKey = FxValue<string>.FromValue(null);
     public FxValue<string> CodeFontKey = FxValue<string>.FromValue(null);
-    public FxValue<List<string>> SystemFontFallbacks = new(new List<string>());
-    public FxValue<List<string>> CodeFontFallbacks = new(new List<string>());
+    public FxValue<List<string>> SystemFontFallbacks = new([]);
+    public FxValue<List<string>> CodeFontFallbacks = new([]);
 
     public JToken Serialize() {
         return new JObject {

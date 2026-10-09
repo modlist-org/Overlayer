@@ -153,9 +153,7 @@ public class JSTagRegistrationHost(JSScriptLoader loader, string filePath) {
             parameters = source[(open + 1)..close];
         }
 
-        return SplitParameters(parameters)
-            .Select(NormalizeParameter)
-            .ToArray();
+        return [.. SplitParameters(parameters).Select(NormalizeParameter)];
     }
 
     private static string[] SplitParameters(string source) {

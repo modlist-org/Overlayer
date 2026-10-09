@@ -4,7 +4,7 @@ public sealed class FxStore {
     private const int MaxEntries = 1024;
 
     private readonly object _lock = new();
-    private readonly Dictionary<string, object> _values = new();
+    private readonly Dictionary<string, object> _values = [];
 
     public object Get(string key, object fallback = null) {
         if (string.IsNullOrEmpty(key)) {
@@ -60,7 +60,7 @@ public sealed class FxStore {
     public string[] Keys() {
         lock (_lock) {
             var keys = new List<string>(_values.Keys);
-            return keys.ToArray();
+            return [.. keys];
         }
     }
 

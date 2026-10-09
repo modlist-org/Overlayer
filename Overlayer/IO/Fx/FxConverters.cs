@@ -230,7 +230,7 @@ public static class FxConverters {
         }
         parts.Add(text[start..]);
 
-        var result = parts.Select(p => p.Trim()).Where(p => p.Length > 0).ToArray();
+        string[] result = [.. parts.Select(p => p.Trim()).Where(p => p.Length > 0)];
         if (expected > 0 && result.Length < expected) {
             throw new FormatException($"Expected at least {expected} components.");
         }

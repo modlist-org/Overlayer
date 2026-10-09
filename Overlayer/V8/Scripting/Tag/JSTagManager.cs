@@ -31,14 +31,14 @@ public static class JSTagManager {
 
     public static IEnumerable<string> GetAllNames() {
         lock (_lock) {
-            return _jsTags.Keys.ToList();
+            return [.. _jsTags.Keys];
         }
     }
 
     /// <summary>Removes every entry, returning the removed tag names.</summary>
     public static List<string> Clear() {
         lock (_lock) {
-            var names = _jsTags.Keys.ToList();
+            List<string> names = [.. _jsTags.Keys];
             _jsTags.Clear();
             return names;
         }
