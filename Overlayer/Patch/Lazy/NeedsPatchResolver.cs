@@ -5,8 +5,7 @@ using System.Reflection;
 namespace Overlayer.Patch.Lazy;
 
 public static class NeedsPatchResolver {
-    // Attributes are static metadata; Touch() resolves on every JS tag access, so scan each member once.
-    private static readonly ConcurrentDictionary<MemberInfo, IReadOnlyList<Type>> cache = new();
+   private static readonly ConcurrentDictionary<MemberInfo, IReadOnlyList<Type>> cache = new();
 
     public static IReadOnlyList<Type> GetRequiredPatchTypes(TagCore tag) {
         var member = tag?.Member;
@@ -20,8 +19,6 @@ public static class NeedsPatchResolver {
         var types = new List<Type>();
         Collect(member, types);
 
-        // TagLoader stores the getter for properties, so look at the
-        // declaring property too when the member itself has nothing.
         if(types.Count == 0 && member is MethodInfo method && method.IsSpecialName) {
             var declaring = method.DeclaringType;
             if(declaring != null) {

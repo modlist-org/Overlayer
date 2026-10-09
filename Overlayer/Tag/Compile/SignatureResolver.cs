@@ -35,16 +35,10 @@ public static class SignatureResolver {
         int minRequired = tag.RequiredParameterCount;
 
         if(parameters.Length == 0) {
-            // C# tags keep the legacy rule (sole arg is always the format).
-            // JS tags must opt in explicitly via ProcessFormat.
             if(rawArgs.Length > 0 && (hasFormatFlag || !tag.IsJS)) {
                 format = rawArgs[0];
             }
         } else if(hasFormatFlag && rawArgs.Length > 0) {
-            // Trailing format steals the last arg only when the args cannot
-            // all bind as values. Otherwise value params past the first
-            // would be unreachable (e.g. EasedValue's digits/speed/ease).
-            // Lone-arg keeps the legacy rule so `{Fps:0}` still formats.
             if(!TryTakeAllAsValues(rawArgs, parameters, minRequired)) {
                 format = rawArgs[^1];
                 args = rawArgs[..^1];
@@ -80,9 +74,6 @@ public static class SignatureResolver {
             bool valid;
             Exception e;
             if(tag.IsJS) {
-                // JS return type is dynamic (object). Validate against
-                // any common formattable type instead of string
-                // (string would reject every numeric format).
                 valid = FormatValidator.TryValidateJs(format, out e);
             } else {
                 valid = FormatValidator.TryValidate(tag.ReturnType, format, out e);

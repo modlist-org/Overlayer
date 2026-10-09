@@ -10,8 +10,6 @@ public static class ExpressionBuilder {
     public static Expression Build(TagCore tag, ResolvedSignature sig, List<CompileDiagnostic> diag) {
         var parameters = tag.Parameters;
 
-        // Args are validated by SignatureResolver, so convert them once here
-        // instead of re-parsing strings and allocating an object[] every frame.
         var values = new Expression[parameters.Length];
 
         for(int i = 0; i < parameters.Length; i++) {
@@ -62,8 +60,6 @@ public static class ExpressionBuilder {
         Expression result;
 
         if(tag.IsJS) {
-            // JS values are dynamic: JsResultFormatter resolves formatting
-            // against the runtime value (null/undefined-safe).
             if(sig.HasFormat) {
                 result = Expression.Call(
                     typeof(JsResultFormatter),
@@ -83,10 +79,6 @@ public static class ExpressionBuilder {
         } else if(tag.ReturnType == typeof(string)) {
             result = Expression.Coalesce(call, Expression.Constant(""));
         } else if(MemoKeyType(tag.ReturnType) is Type keyType) {
-            // Numeric tags often hold their value across many frames; reuse
-            // the last string instead of re-formatting (and allocating) it.
-            // ponytail: memo ignores CurrentCulture changes while the value is
-            // unchanged; key the memo on culture too if that ever matters.
             var value = Expression.Variable(tag.ReturnType, "value");
             var key = Expression.Variable(keyType, "key");
             var memoType = typeof(StringMemo<>).MakeGenericType(keyType);
@@ -97,7 +89,6 @@ public static class ExpressionBuilder {
                 Expression.Assign(value, call),
                 Expression.Assign(key, keyType == tag.ReturnType
                     ? value
-                    // Bitwise key: 0.0 == -0.0 but they can format differently.
                     : Expression.Call(
                         typeof(BitConverter),
                         nameof(BitConverter.DoubleToInt64Bits),
@@ -120,8 +111,6 @@ public static class ExpressionBuilder {
 
     private static Expression FormatValue(Type type, Expression value, ResolvedSignature sig) {
         if(sig.HasFormat && typeof(IFormattable).IsAssignableFrom(type)) {
-            // Call the type's own ToString(string, IFormatProvider) when it has
-            // one, so value types are not boxed to IFormattable every frame.
             var direct = type.GetMethod(
                 nameof(IFormattable.ToString),
                 [typeof(string), typeof(IFormatProvider)]
@@ -149,8 +138,6 @@ public static class ExpressionBuilder {
         );
     }
 
-    // Primitive numerics only: their Equals matches their formatted output
-    // (decimal does not: 1.0m == 1.00m). Floating point keys on bits.
     private static Type MemoKeyType(Type type) {
         if(type == typeof(double) || type == typeof(float)) {
             return typeof(long);

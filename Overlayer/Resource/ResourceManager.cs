@@ -12,7 +12,6 @@ using TMPro;
 
 namespace Overlayer.Resource;
 
-/// <summary>Keys for assets bundled by Overlayer. O5Kit's shared UI assets are owned and loaded by O5Kit.</summary>
 public enum Asset {
     SUIT_Regular,
     SUIT_Medium,

@@ -4,7 +4,6 @@ using UnityEngine.Device;
 
 namespace Overlayer.TagImpl;
 
-// Frame rate tracker, sampled every frame on the mod tick (unscaled time).
 public sealed class FpsTracker : IRuntimeTick {
     public static FpsTracker Instance { get; private set; }
 

@@ -39,12 +39,7 @@ public static class FormatValidator {
             return true;
         }
 
-        // JS return type is dynamic (object). Accept the format if it is
-        // valid for any common formattable type so numeric/date formats
-        // like N0/F2/D5/yyyy-MM-dd all pass compile-time validation.
-        // Runtime formatting is null/non-formattable safe (see FormatObject).
-        Exception last = null;
-        if(TryValidate(typeof(double), format, out last)) {
+        if(TryValidate(typeof(double), format, out var last)) {
             return true;
         }
         if(TryValidate(typeof(long), format, out last)) {

@@ -40,9 +40,7 @@ public enum UISliceSprite {
 
 public sealed class SpriteManager(ResourceManager resource) : IDisposable {
     private readonly ResourceManager resource = resource;
-    // Shared controls and primitive icons belong to O5Kit; only Overlayer-specific artwork is read from ResourceManager.
     private readonly O5Resources o5 = O5Resources.Bundled();
-
     private readonly Dictionary<object, Sprite> cache = [];
 
     public static Sprite Create(Texture2D texture)
@@ -207,7 +205,6 @@ public sealed class SpriteManager(ResourceManager resource) : IDisposable {
         o5.Dispose();
     }
 
-    // Mod-specific artwork is deliberately kept separate from O5Kit's base asset map below.
     private readonly Dictionary<UISprite, Asset> spriteMap = new() {
         [UISprite.OV5LogoOutline256] = Asset.OV5LogoOutline256,
         [UISprite.Monitor128] = Asset.Monitor128,

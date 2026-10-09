@@ -124,9 +124,6 @@ public sealed class TextEngineCore {
             return text;
         }
 
-        // Tags return the same string instance while their value is unchanged,
-        // so skip rebuilding the output when every replacement is identical.
-        // ponytail: assumes Get() runs on one thread (main); memo state is unsynchronized.
         var reps = memoSegs == segs && memoReps != null ? scratchReps ??= new string[segs.Length] : new string[segs.Length];
         bool same = memoSegs == segs && ReferenceEquals(memoText, text) && memoReps != null;
         for(int i = 0; i < segs.Length; i++) {

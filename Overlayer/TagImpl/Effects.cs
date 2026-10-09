@@ -134,7 +134,7 @@ public static class Effects {
         O5Ease.InCirc => 1f - MathF.Sqrt(1f - progress * progress),
         O5Ease.InOutCirc => progress < 0.5f ? (1f - MathF.Sqrt(1f - 4f * progress * progress)) / 2f : (MathF.Sqrt(1f - MathF.Pow(-2f * progress + 2f, 2f)) + 1f) / 2f,
         O5Ease.InBack => 2.70158f * progress * progress * progress - 1.70158f * progress * progress,
-        O5Ease.InOutBack => progress < 0.5f ? (4f * progress * progress * ((3.59491f * 2f * progress) - 2.59491f)) / 2f : (MathF.Pow(2f * progress - 2f, 2f) * ((3.59491f * (2f * progress - 2f)) + 2.59491f) + 2f) / 2f,
+        O5Ease.InOutBack => progress < 0.5f ? 4f * progress * progress * ((3.59491f * 2f * progress) - 2.59491f) / 2f : (MathF.Pow(2f * progress - 2f, 2f) * ((3.59491f * (2f * progress - 2f)) + 2.59491f) + 2f) / 2f,
         O5Ease.InElastic => progress <= 0f ? 0f : progress >= 1f ? 1f : -MathF.Pow(2f, 10f * progress - 10f) * MathF.Sin((10f * progress - 10.75f) * 2.0944f),
         O5Ease.OutElastic => progress <= 0f ? 0f : progress >= 1f ? 1f : MathF.Pow(2f, -10f * progress) * MathF.Sin((10f * progress - 0.75f) * 2.0944f) + 1f,
         O5Ease.InOutElastic => progress <= 0f ? 0f : progress >= 1f ? 1f : progress < 0.5f ? -(MathF.Pow(2f, 20f * progress - 10f) * MathF.Sin((20f * progress - 11.125f) * 1.39626f)) / 2f : MathF.Pow(2f, -20f * progress + 10f) * MathF.Sin((20f * progress - 11.125f) * 1.39626f) / 2f,

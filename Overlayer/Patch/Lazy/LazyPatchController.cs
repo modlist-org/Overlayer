@@ -2,10 +2,6 @@ using Overlayer.Patch.Safe;
 
 namespace Overlayer.Patch.Lazy;
 
-// Applies patches required by tags currently used in overlay texts,
-// and releases ones the lazy system owns once nothing needs them.
-// Manually applied patches, and ones still wanted by their own gate,
-// are never touched.
 public static class LazyPatchController {
     private static readonly HashSet<Type> owned = [];
     private static readonly object syncLock = new();

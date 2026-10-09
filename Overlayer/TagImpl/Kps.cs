@@ -4,9 +4,6 @@ using UnityEngine;
 
 namespace Overlayer.TagImpl;
 
-// Keys-per-second tracker, sampled every frame on the mod tick.
-// Counts physical presses via UnityEngine.Input (independent of how the
-// game reads input, so no SkyHook/game-side hooking needed).
 public sealed class KpsTracker : IRuntimeTick {
     public static KpsTracker Instance { get; private set; }
 
@@ -22,14 +19,9 @@ public sealed class KpsTracker : IRuntimeTick {
         Instance = this;
     }
 
-    // External accurate feed (e.g. the ADOFAI module's SkyHook hook).
-    // Once the feed proves live it sets SuppressUnityKeys so the same
-    // press is never counted twice.
     public bool SuppressUnityKeys { get; set; }
 
     public void ReportKeyPress() {
-        // Must run on the Unity main thread (Time API). SkyHook feeds this
-        // via MainThread.Enqueue; the lock only guards the queue itself.
         lock(gate) {
             Enqueue(keyTimes, UnityEngine.Time.realtimeSinceStartup);
         }
@@ -58,10 +50,6 @@ public sealed class KpsTracker : IRuntimeTick {
         }
     }
 
-    // The displayed value refreshes every window, but the recording
-    // underneath stays exact: each press contributes e^-age (tau = 1s),
-    // so a steady r presses/sec reads r, and bursts sum honestly.
-    // windowMs <= 0 evaluates live every frame.
     public double Rate(int windowMs) {
         double now = UnityEngine.Time.realtimeSinceStartup;
         if(windowMs <= 0) {

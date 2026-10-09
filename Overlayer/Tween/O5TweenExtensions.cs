@@ -7,10 +7,9 @@ using UnityEngine.UI;
 
 namespace Overlayer.Tween;
 
-/// <summary>Tween sugar over the owned <see cref="O5Kit.Core.ITweenRunner"/>. Replaces the removed GTween extensions; every helper accepts an optional <c>done</c> callback for <see cref="O5Seq"/> chains.</summary>
 public static class O5TweenExtensions {
     private sealed class MultiHandle : ITweenHandle {
-        private readonly List<ITweenHandle> _handles = new();
+        private readonly List<ITweenHandle> _handles = [];
 
         public void Add(ITweenHandle handle) {
             if(handle != null) {
@@ -54,7 +53,6 @@ public static class O5TweenExtensions {
         }
     }
 
-    /// <summary>Tweens an <see cref="Image"/> color.</summary>
     public static ITweenHandle TColor(this Image img, Color to, float duration, O5Ease ease, Action done = null) {
         var runner = Runner;
         return runner.TweenColor(
@@ -67,7 +65,6 @@ public static class O5TweenExtensions {
             to, duration, done, ease);
     }
 
-    /// <summary>Tweens a <see cref="Graphic"/> alpha channel (Image, text, ...).</summary>
     public static ITweenHandle TAlpha(this Graphic g, float to, float duration, O5Ease ease, Action done = null) {
         var runner = Runner;
         return runner.TweenFloat(
@@ -82,7 +79,6 @@ public static class O5TweenExtensions {
             to, duration, done, ease);
     }
 
-    /// <summary>Tweens a <see cref="CanvasGroup"/> alpha.</summary>
     public static ITweenHandle TFade(this CanvasGroup g, float to, float duration, O5Ease ease, Action done = null) {
         var runner = Runner;
         return runner.TweenFloat(
@@ -95,7 +91,6 @@ public static class O5TweenExtensions {
             to, duration, done, ease);
     }
 
-    /// <summary>Tweens a <see cref="RectTransform"/> anchored position.</summary>
     public static ITweenHandle TAnchorPos(this RectTransform r, Vector2 to, float duration, O5Ease ease, Action done = null) {
         var runner = Runner;
         var multi = new MultiHandle();
@@ -123,7 +118,6 @@ public static class O5TweenExtensions {
         return multi;
     }
 
-    /// <summary>Tweens a <see cref="RectTransform"/> offsetMin.</summary>
     public static ITweenHandle TOffsetMin(this RectTransform r, Vector2 to, float duration, O5Ease ease, Action done = null) {
         var runner = Runner;
         var multi = new MultiHandle();
@@ -151,7 +145,6 @@ public static class O5TweenExtensions {
         return multi;
     }
 
-    /// <summary>Tweens a <see cref="RectTransform"/> sizeDelta.</summary>
     public static ITweenHandle TSizeDelta(this RectTransform r, Vector2 to, float duration, O5Ease ease, Action done = null) {
         var runner = Runner;
         var multi = new MultiHandle();
@@ -179,7 +172,6 @@ public static class O5TweenExtensions {
         return multi;
     }
 
-    /// <summary>Tweens local scale.</summary>
     public static ITweenHandle TScale(this Transform t, Vector3 to, float duration, O5Ease ease, Action done = null) {
         var runner = Runner;
         var multi = new MultiHandle();

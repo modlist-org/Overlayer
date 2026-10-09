@@ -59,7 +59,7 @@ public static class Parser {
             if (nameEnd == nameStart
                 || nameEnd >= input.Length
                 || (input[nameEnd] != ':' && input[nameEnd] != '(')
-                || !input.Substring(nameStart, nameEnd - nameStart).Equals("JSExpr", StringComparison.OrdinalIgnoreCase)) {
+                || !input[nameStart..nameEnd].Equals("JSExpr", StringComparison.OrdinalIgnoreCase)) {
                 i++;
                 continue;
             }
@@ -71,7 +71,7 @@ public static class Parser {
             }
 
             string argsRaw = input.Substring(nameEnd + 1, close - nameEnd - 1);
-            ranges.Add((i, close - i + 1, input.Substring(nameStart, nameEnd - nameStart), argsRaw));
+            ranges.Add((i, close - i + 1, input[nameStart..nameEnd], argsRaw));
             i = close + 1;
         }
 

@@ -15,11 +15,12 @@ public static class PresetStore {
 
     private static readonly Dictionary<string, PackagePreset> byId = [];
 
-    public static IReadOnlyList<PackagePreset> Presets => byId.Values
+    public static IReadOnlyList<PackagePreset> Presets => [
+        ..byId.Values
         .OrderBy(p => string.IsNullOrEmpty(p.Module) ? 1 : 0)
         .ThenBy(p => p.Module ?? string.Empty, StringComparer.OrdinalIgnoreCase)
         .ThenBy(p => p.Name ?? string.Empty, StringComparer.OrdinalIgnoreCase)
-        .ToList();
+    ];
 
     public static void Register(PackagePreset preset) {
         if(preset == null || string.IsNullOrWhiteSpace(preset.Id) || preset.ReadBytes == null) {
