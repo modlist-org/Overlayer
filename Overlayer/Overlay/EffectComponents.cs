@@ -55,7 +55,7 @@ public sealed class MovingManComponent
     }
 
     public void Update() {
-        if(Rect == null) {
+        if (Rect == null) {
             return;
         }
 
@@ -63,42 +63,42 @@ public sealed class MovingManComponent
         float floatValue = (float)value;
         // Bitwise checks: Enum.HasFlag boxes on Mono, 12x per frame per object.
         MovingManTarget target = Target;
-        if((target & MovingManTarget.TextSize) != 0) {
+        if ((target & MovingManTarget.TextSize) != 0) {
             Text?.fontSize = Mathf.Max(0f, floatValue);
         }
-        if((target & MovingManTarget.PositionX) != 0) {
+        if ((target & MovingManTarget.PositionX) != 0) {
             SetPosition(0, floatValue);
         }
-        if((target & MovingManTarget.PositionY) != 0) {
+        if ((target & MovingManTarget.PositionY) != 0) {
             SetPosition(1, floatValue);
         }
-        if((target & MovingManTarget.PositionZ) != 0) {
+        if ((target & MovingManTarget.PositionZ) != 0) {
             Vector3 position = Rect.anchoredPosition3D;
             position.z = floatValue;
             Rect.anchoredPosition3D = position;
         }
-        if((target & MovingManTarget.RotationX) != 0) {
+        if ((target & MovingManTarget.RotationX) != 0) {
             SetRotation(0, floatValue);
         }
-        if((target & MovingManTarget.RotationY) != 0) {
+        if ((target & MovingManTarget.RotationY) != 0) {
             SetRotation(1, floatValue);
         }
-        if((target & MovingManTarget.RotationZ) != 0) {
+        if ((target & MovingManTarget.RotationZ) != 0) {
             SetRotation(2, floatValue);
         }
-        if((target & MovingManTarget.ScaleX) != 0) {
+        if ((target & MovingManTarget.ScaleX) != 0) {
             SetScale(0, floatValue);
         }
-        if((target & MovingManTarget.ScaleY) != 0) {
+        if ((target & MovingManTarget.ScaleY) != 0) {
             SetScale(1, floatValue);
         }
-        if((target & MovingManTarget.ScaleZ) != 0) {
+        if ((target & MovingManTarget.ScaleZ) != 0) {
             SetScale(2, floatValue);
         }
-        if((target & MovingManTarget.SizeDeltaX) != 0) {
+        if ((target & MovingManTarget.SizeDeltaX) != 0) {
             SetSizeDelta(0, floatValue);
         }
-        if((target & MovingManTarget.SizeDeltaY) != 0) {
+        if ((target & MovingManTarget.SizeDeltaY) != 0) {
             SetSizeDelta(1, floatValue);
         }
     }
@@ -149,11 +149,11 @@ public sealed class ColorRangeComponent
     public void Init(TMP_Text text) => Text = text;
 
     public void Update() {
-        if(Text == null) {
+        if (Text == null) {
             return;
         }
 
-        if(!Effects.TryColorRangeProgress(TagName, Minimum, Maximum, Ease, out float progress)) {
+        if (!Effects.TryColorRangeProgress(TagName, Minimum, Maximum, Ease, out float progress)) {
             return;
         }
 
@@ -168,13 +168,13 @@ public sealed class ColorRangeComponent
         // mesh; skip them when nothing changed so a static progress doesn't
         // force a text rebuild every frame.
         var currentGradient = Text.colorGradient;
-        if(!currentGradient.topLeft.Equals(gradient.topLeft)
+        if (!currentGradient.topLeft.Equals(gradient.topLeft)
             || !currentGradient.topRight.Equals(gradient.topRight)
             || !currentGradient.bottomLeft.Equals(gradient.bottomLeft)
             || !currentGradient.bottomRight.Equals(gradient.bottomRight)) {
             Text.colorGradient = gradient;
         }
-        if(!Text.enableVertexGradient) {
+        if (!Text.enableVertexGradient) {
             Text.enableVertexGradient = true;
         }
     }

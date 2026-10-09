@@ -25,24 +25,18 @@ public static class PlaybackState {
     }
 
     public static IDisposable Register(Func<bool> isPlayingProvider) {
-        if(isPlayingProvider == null) {
-            throw new ArgumentNullException(nameof(isPlayingProvider));
-        }
-        playingProvider = isPlayingProvider;
+        playingProvider = isPlayingProvider ?? throw new ArgumentNullException(nameof(isPlayingProvider));
         return new Registration(isPlayingProvider);
     }
 
     public static IDisposable RegisterPaused(Func<bool> isPausedProvider) {
-        if(isPausedProvider == null) {
-            throw new ArgumentNullException(nameof(isPausedProvider));
-        }
-        pausedProvider = isPausedProvider;
+        pausedProvider = isPausedProvider ?? throw new ArgumentNullException(nameof(isPausedProvider));
         return new PausedRegistration(isPausedProvider);
     }
 
     private sealed class Registration(Func<bool> registeredProvider) : IDisposable {
         public void Dispose() {
-            if(ReferenceEquals(playingProvider, registeredProvider)) {
+            if (ReferenceEquals(playingProvider, registeredProvider)) {
                 playingProvider = static () => false;
             }
         }
@@ -50,7 +44,7 @@ public static class PlaybackState {
 
     private sealed class PausedRegistration(Func<bool> registeredProvider) : IDisposable {
         public void Dispose() {
-            if(ReferenceEquals(pausedProvider, registeredProvider)) {
+            if (ReferenceEquals(pausedProvider, registeredProvider)) {
                 pausedProvider = static () => false;
             }
         }

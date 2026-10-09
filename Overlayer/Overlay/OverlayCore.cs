@@ -26,7 +26,7 @@ public static class OverlayCore {
     private static void NotifyChanged() {
         try {
             OnCanvasesChanged?.Invoke();
-        } catch(Exception e) {
+        } catch (Exception e) {
             MainCore.Log.Err($"[{nameof(OverlayCore)}] Canvas change notification failed: {e.Message}");
         }
     }
@@ -35,7 +35,7 @@ public static class OverlayCore {
         => canvas == null ? -1 : Canvases.IndexOf(canvas);
 
     public static void Initialize(GameObject parent) {
-        if(parent == null || Core != null) {
+        if (parent == null || Core != null) {
             return;
         }
 
@@ -58,64 +58,64 @@ public static class OverlayCore {
     }
 
     public static string ExportCanvas(OvCanvas canvas, string filePath) {
-        if(canvas == null || string.IsNullOrWhiteSpace(filePath)) {
+        if (canvas == null || string.IsNullOrWhiteSpace(filePath)) {
             return null;
         }
-        if(filePath.EndsWith(".o5cp", StringComparison.OrdinalIgnoreCase)) {
+        if (filePath.EndsWith(".o5cp", StringComparison.OrdinalIgnoreCase)) {
             return ExportPackage(canvas, filePath, null);
         }
         try {
             string dir = Path.GetDirectoryName(filePath);
-            if(!string.IsNullOrEmpty(dir) && !Directory.Exists(dir)) {
+            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir)) {
                 Directory.CreateDirectory(dir);
             }
             File.WriteAllText(filePath, canvas.Serialize().ToString());
             MainCore.Log.Msg($"[{nameof(OverlayCore)}] Exported canvas '{canvas.Config.Name.Value}' to {filePath}");
             return filePath;
-        } catch(Exception e) {
+        } catch (Exception e) {
             MainCore.Log.Err($"[{nameof(OverlayCore)}] Failed to export canvas: {e.Message}");
             return null;
         }
     }
 
     public static string ExportPackage(OvCanvas canvas, string filePath, O5cpExportOptions options) {
-        if(canvas == null || string.IsNullOrWhiteSpace(filePath)) {
+        if (canvas == null || string.IsNullOrWhiteSpace(filePath)) {
             return null;
         }
         try {
             string dir = Path.GetDirectoryName(filePath);
-            if(!string.IsNullOrEmpty(dir) && !Directory.Exists(dir)) {
+            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir)) {
                 Directory.CreateDirectory(dir);
             }
             var result = O5cpExporter.Export(canvas, filePath, options);
-            if(result == null) {
+            if (result == null) {
                 return null;
             }
-            foreach(string warning in result.Warnings) {
+            foreach (string warning in result.Warnings) {
                 MainCore.Log.Wrn($"[{nameof(OverlayCore)}] Export warning: {warning}");
             }
             MainCore.Log.Msg($"[{nameof(OverlayCore)}] Exported package '{canvas.Config.Name.Value}' to {filePath}");
             return filePath;
-        } catch(Exception e) {
+        } catch (Exception e) {
             MainCore.Log.Err($"[{nameof(OverlayCore)}] Failed to export package: {e.Message}");
             return null;
         }
     }
 
     public static bool ImportCanvas(string filePath) {
-        if(string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath)) {
+        if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath)) {
             return false;
         }
-        if(filePath.EndsWith(".o5cp", StringComparison.OrdinalIgnoreCase)) {
+        if (filePath.EndsWith(".o5cp", StringComparison.OrdinalIgnoreCase)) {
             var entry = PackageStore.Install(filePath, out var warnings);
-            foreach(string warning in warnings) {
+            foreach (string warning in warnings) {
                 MainCore.Log.Wrn($"[{nameof(OverlayCore)}] Import warning: {warning}");
             }
             return entry != null;
         }
         try {
             var wrapper = new SettingsFile<OvCanvas>(filePath);
-            if(!wrapper.Load()) {
+            if (!wrapper.Load()) {
                 wrapper.Dispose();
                 MainCore.Log.Err($"[{nameof(OverlayCore)}] Failed to import canvas: bad file {filePath}");
                 return false;
@@ -129,7 +129,7 @@ public static class OverlayCore {
             MainCore.Log.Msg($"[{nameof(OverlayCore)}] Imported canvas '{canvas.Config.Name.Value}' from {filePath}");
             NotifyChanged();
             return true;
-        } catch(Exception e) {
+        } catch (Exception e) {
             MainCore.Log.Err($"[{nameof(OverlayCore)}] Failed to import canvas: {e.Message}");
             return false;
         }
@@ -137,11 +137,11 @@ public static class OverlayCore {
 
     public static OvCanvas PromotePackage(PackageEntry entry, O5cpPromotePlan plan, out List<string> warnings) {
         warnings = [];
-        if(entry == null || plan == null) {
+        if (entry == null || plan == null) {
             return null;
         }
         var canvas = O5cpPromote.Apply(entry, plan, out warnings);
-        if(canvas == null) {
+        if (canvas == null) {
             return null;
         }
         canvas.RectTransform.SetParent(Transform, false);
@@ -149,7 +149,7 @@ public static class OverlayCore {
         canvas.RefreshLayouts();
         Canvases.Add(canvas);
         SaveAllCanvases();
-        foreach(string warning in warnings) {
+        foreach (string warning in warnings) {
             MainCore.Log.Wrn($"[{nameof(OverlayCore)}] Promote warning: {warning}");
         }
         MainCore.Log.Msg($"[{nameof(OverlayCore)}] Promoted package '{entry.Manifest.Package.Name}' to editable canvas");
@@ -158,14 +158,14 @@ public static class OverlayCore {
     }
 
     public static OvCanvas CloneCanvas(OvCanvas source) {
-        if(source == null) {
+        if (source == null) {
             return null;
         }
         try {
             var token = Newtonsoft.Json.Linq.JToken.Parse(source.Serialize().ToString());
             var canvas = new OvCanvas();
             canvas.Deserialize(token);
-            if(!canvas.Config.Name.Value.EndsWith(" Copy")) {
+            if (!canvas.Config.Name.Value.EndsWith(" Copy")) {
                 canvas.Config.Name.Value = $"{canvas.Config.Name.Value} Copy";
             }
             canvas.RectTransform.SetParent(Transform, false);
@@ -176,14 +176,14 @@ public static class OverlayCore {
             MainCore.Log.Msg($"[{nameof(OverlayCore)}] Cloned canvas '{source.Config.Name.Value}'");
             NotifyChanged();
             return canvas;
-        } catch(Exception e) {
+        } catch (Exception e) {
             MainCore.Log.Err($"[{nameof(OverlayCore)}] Failed to clone canvas: {e.Message}");
             return null;
         }
     }
 
     public static bool DeleteOvCanvas(OvCanvas canvas) {
-        if(canvas == null || !Canvases.Remove(canvas)) {
+        if (canvas == null || !Canvases.Remove(canvas)) {
             return false;
         }
 
@@ -194,17 +194,17 @@ public static class OverlayCore {
     }
 
     private static void LoadAllCanvases() {
-        if(!Directory.Exists(SaveDir)) {
+        if (!Directory.Exists(SaveDir)) {
             return;
         }
 
         var files = Directory.GetFiles(SaveDir, "*.json").OrderBy(Path.GetFileName);
 
-        foreach(var file in files) {
+        foreach (var file in files) {
             knownFiles.Add(Path.GetFileName(file));
             var wrapper = new SettingsFile<OvCanvas>(file);
 
-            if(wrapper.Load()) {
+            if (wrapper.Load()) {
                 var canvas = wrapper.Data;
                 canvas.SourceFile = file;
                 canvas.RectTransform.SetParent(Transform, false);
@@ -220,44 +220,44 @@ public static class OverlayCore {
     public static void RequestLayoutRefresh() => pendingLayoutRefreshes = Math.Max(pendingLayoutRefreshes, 3);
 
     public static void Tick() {
-        foreach(var canvas in Canvases) {
+        foreach (var canvas in Canvases) {
             canvas?.RefreshFx();
         }
         PackageStore.Tick();
 
-        if(pendingLayoutRefreshes <= 0 || Core == null) {
+        if (pendingLayoutRefreshes <= 0 || Core == null) {
             return;
         }
 
         pendingLayoutRefreshes--;
-        foreach(var canvas in Canvases) {
+        foreach (var canvas in Canvases) {
             canvas.RefreshLayouts();
         }
     }
 
     public static void SaveAllCanvases() {
         try {
-            if(!Directory.Exists(SaveDir)) {
+            if (!Directory.Exists(SaveDir)) {
                 Directory.CreateDirectory(SaveDir);
             }
 
             var usedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             int autoIndex = 0;
-            foreach(var canvas in Canvases) {
-                if(canvas == null || canvas.IsPackage) {
+            foreach (var canvas in Canvases) {
+                if (canvas == null || canvas.IsPackage) {
                     continue;
                 }
                 string fileName = null;
-                if(!string.IsNullOrEmpty(canvas?.SourceFile)) {
+                if (!string.IsNullOrEmpty(canvas?.SourceFile)) {
                     string sourceName = Path.GetFileName(canvas.SourceFile);
-                    if(!string.IsNullOrEmpty(sourceName) && !usedNames.Contains(sourceName)) {
+                    if (!string.IsNullOrEmpty(sourceName) && !usedNames.Contains(sourceName)) {
                         fileName = sourceName;
                     }
                 }
-                while(fileName == null) {
+                while (fileName == null) {
                     string candidate = $"Canvas{autoIndex}.json";
                     autoIndex++;
-                    if(!usedNames.Contains(candidate)) {
+                    if (!usedNames.Contains(candidate)) {
                         fileName = candidate;
                     }
                 }
@@ -267,26 +267,26 @@ public static class OverlayCore {
                 canvas.SourceFile = filePath;
             }
 
-            foreach(string staleFile in Directory.GetFiles(SaveDir, "*.json")) {
+            foreach (string staleFile in Directory.GetFiles(SaveDir, "*.json")) {
                 string staleName = Path.GetFileName(staleFile);
-                if(!usedNames.Contains(staleName) && knownFiles.Contains(staleName)) {
+                if (!usedNames.Contains(staleName) && knownFiles.Contains(staleName)) {
                     File.Delete(staleFile);
                 }
             }
-        } catch(Exception e) {
+        } catch (Exception e) {
             MainCore.Log.Err($"[{nameof(OverlayCore)}] Failed to save all canvases: {e}");
         }
     }
 
     public static void Dispose() {
-        if(Core == null) {
+        if (Core == null) {
             return;
         }
 
         SaveAllCanvases();
         PackageStore.UnloadAll();
 
-        for(int i = Canvases.Count - 1; i >= 0; i--) {
+        for (int i = Canvases.Count - 1; i >= 0; i--) {
             Canvases[i].Dispose();
         }
 

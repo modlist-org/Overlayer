@@ -76,7 +76,7 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
 
         rows = new CompletionRow[MaxItems];
 
-        for(int i = 0; i < MaxItems; i++) {
+        for (int i = 0; i < MaxItems; i++) {
             rows[i] = CreateRow(popup.transform, i);
         }
 
@@ -84,24 +84,24 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
     }
 
     public bool HandleKey(KeyCode key) {
-        if(HasSnippet) {
-            if(key == KeyCode.Tab) {
+        if (HasSnippet) {
+            if (key == KeyCode.Tab) {
                 AdvanceSnippet(IsShiftHeld());
                 return true;
             }
 
-            if(key == KeyCode.Escape) {
+            if (key == KeyCode.Escape) {
                 ClearSnippet();
                 Hide();
                 return true;
             }
         }
 
-        if(!visible || matches.Count == 0) {
+        if (!visible || matches.Count == 0) {
             return false;
         }
 
-        switch(key) {
+        switch (key) {
             case KeyCode.Tab:
                 Accept(selectedIndex);
                 return true;
@@ -129,35 +129,35 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
     }
 
     public void Refresh(bool composing) {
-        if(canvasRect == null || popupRect == null || !canvasRect.gameObject) {
+        if (canvasRect == null || popupRect == null || !canvasRect.gameObject) {
             return;
         }
 
         bool focused = input.isFocused || EventSystem.current?.currentSelectedGameObject == input.gameObject;
-        if(!focused) {
+        if (!focused) {
             ClearSnippet();
             Hide();
             return;
         }
 
         UpdateSnippetAfterEdit();
-        if(composing || (input.selectionAnchorPosition != input.selectionFocusPosition && !HasSnippet)) {
+        if (composing || (input.selectionAnchorPosition != input.selectionFocusPosition && !HasSnippet)) {
             Hide();
             return;
         }
 
         string text = input.text ?? string.Empty;
         int caret = Math.Clamp(input.selectionFocusPosition, 0, text.Length);
-        if(suppressRefresh) {
+        if (suppressRefresh) {
             bool sameState = text == suppressedText && caret == suppressedCaret;
             suppressRefresh = false;
-            if(sameState) {
+            if (sameState) {
                 Hide();
                 return;
             }
         }
 
-        if(!TryGetContext(text, caret, out string query, out int start)) {
+        if (!TryGetContext(text, caret, out string query, out int start)) {
             Hide();
             return;
         }
@@ -166,7 +166,7 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
         replacementLength = caret - start;
         // Refresh runs every frame; only re-filter when the query changes.
         // ponytail: tags registered while the popup stays open show up on the next keystroke.
-        if(visible && query == matchedQuery) {
+        if (visible && query == matchedQuery) {
             popupRect.SetAsLastSibling();
             PositionPopup(caret);
             return;
@@ -174,7 +174,7 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
 
         matchedQuery = query;
         RebuildMatches(query);
-        if(matches.Count == 0) {
+        if (matches.Count == 0) {
             Hide();
             return;
         }
@@ -225,7 +225,7 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
 
         var rowOvent = row.AddComponent<OventHandler>();
         rowOvent.OnClick += button => {
-            if(button == InputButton.Left) {
+            if (button == InputButton.Left) {
                 Accept(windowStart + index);
             }
         };
@@ -248,13 +248,13 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
     }
 
     private void SetHoveredRow(int rowIndex) {
-        if(!visible) {
+        if (!visible) {
             return;
         }
 
         int matchIndex = windowStart + rowIndex;
 
-        if(rowIndex < 0 ||
+        if (rowIndex < 0 ||
            rowIndex >= visibleRowCount ||
            matchIndex < 0 ||
            matchIndex >= matches.Count) {
@@ -268,7 +268,7 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
     private void ClearHoveredRow(int rowIndex) {
         int matchIndex = windowStart + rowIndex;
 
-        if(hoveredIndex != matchIndex) {
+        if (hoveredIndex != matchIndex) {
             return;
         }
 
@@ -283,13 +283,13 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
 
         matches.Clear();
         scored.Clear();
-        foreach(TagCore tag in TagManager.GetAllTags()) {
-            if(tag.IsHidden) {
+        foreach (TagCore tag in TagManager.GetAllTags()) {
+            if (tag.IsHidden) {
                 continue;
             }
 
             int score = GetScore(query, tag.Name);
-            if(string.IsNullOrEmpty(query) || score >= 45) {
+            if (string.IsNullOrEmpty(query) || score >= 45) {
                 scored.Add((tag, score));
             }
         }
@@ -299,15 +299,15 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
             int score = right.Score.CompareTo(left.Score);
             return score != 0 ? score : StringComparer.OrdinalIgnoreCase.Compare(left.Tag.Name, right.Tag.Name);
         });
-        foreach(var entry in scored) {
+        foreach (var entry in scored) {
             matches.Add(entry.Tag);
         }
         scored.Clear();
 
         selectedIndex = 0;
-        if(previousSelection != null) {
+        if (previousSelection != null) {
             int previousIndex = matches.FindIndex(tag => tag.Name == previousSelection);
-            if(previousIndex >= 0) {
+            if (previousIndex >= 0) {
                 selectedIndex = previousIndex;
             }
         }
@@ -321,29 +321,29 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
                 : Fuzz.WeightedRatio(query, name);
 
     private void UpdateRows() {
-        if(matches.Count == 0) {
+        if (matches.Count == 0) {
             return;
         }
 
         int pageSize = Math.Max(1, visibleRowCount);
-        if(selectedIndex < windowStart) {
+        if (selectedIndex < windowStart) {
             windowStart = selectedIndex;
-        } else if(selectedIndex >= windowStart + pageSize) {
+        } else if (selectedIndex >= windowStart + pageSize) {
             windowStart = selectedIndex - pageSize + 1;
         }
 
-        for(int i = 0; i < rows.Length; i++) {
+        for (int i = 0; i < rows.Length; i++) {
             int matchIndex = windowStart + i;
             bool active = visible && i < visibleRowCount && matchIndex < matches.Count;
             rows[i].Rect.gameObject.SetActive(active);
-            if(!active) {
+            if (!active) {
                 continue;
             }
 
             TagCore tag = matches[matchIndex];
-            if(matchIndex == selectedIndex) {
+            if (matchIndex == selectedIndex) {
                 rows[i].Image.color = UIColors.MenuHover;
-            } else if(matchIndex == hoveredIndex) {
+            } else if (matchIndex == hoveredIndex) {
                 Color hoverColor = UIColors.MenuHover;
                 hoverColor.a *= 0.35f;
                 rows[i].Image.color = hoverColor;
@@ -356,7 +356,7 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
     }
 
     private void Accept(int index) {
-        if(index < 0 || index >= matches.Count) {
+        if (index < 0 || index >= matches.Count) {
             return;
         }
 
@@ -371,10 +371,10 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
         List<SnippetStop> stops = [];
         bool functionSyntax = tag.Parameters.Length >= 2;
 
-        if(HasUserParameters(tag)) {
+        if (HasUserParameters(tag)) {
             insertion += functionSyntax ? "(" : ":";
-            for(int i = 0; i < tag.Parameters.Length; i++) {
-                if(i > 0) {
+            for (int i = 0; i < tag.Parameters.Length; i++) {
+                if (i > 0) {
                     insertion += ",";
                 }
 
@@ -383,19 +383,19 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
                 stops.Add(new SnippetStop(parameterStart, start + insertion.Length));
             }
 
-            if(functionSyntax && !hasClosingFunction) {
+            if (functionSyntax && !hasClosingFunction) {
                 insertion += ")";
             }
         }
 
-        if(!hasClosingDelimiter && (!functionSyntax || !hasClosingFunction)) {
+        if (!hasClosingDelimiter && (!functionSyntax || !hasClosingFunction)) {
             insertion += "}";
         }
 
         input.text = text[..start] + insertion + text[end..];
         input.ActivateInputField();
 
-        if(stops.Count > 0) {
+        if (stops.Count > 0) {
             snippetStops.Clear();
             snippetStops.AddRange(stops);
             snippetIndex = 0;
@@ -414,22 +414,22 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
     }
 
     private void AdvanceSnippet(bool backwards) {
-        if(!HasSnippet) {
+        if (!HasSnippet) {
             return;
         }
 
         int next = snippetIndex + (backwards ? -1 : 1);
-        if(next < 0) {
+        if (next < 0) {
             SetCaret(snippetStops[0].Start);
             ClearSnippet();
             return;
         }
 
-        if(next >= snippetStops.Count) {
+        if (next >= snippetStops.Count) {
             SnippetStop last = snippetStops[^1];
             int caret = last.End;
             string text = input.text ?? string.Empty;
-            while(caret < text.Length && (text[caret] == ')' || text[caret] == '}')) {
+            while (caret < text.Length && (text[caret] == ')' || text[caret] == '}')) {
                 caret++;
             }
 
@@ -443,7 +443,7 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
     }
 
     private void SelectSnippet() {
-        if(!HasSnippet) {
+        if (!HasSnippet) {
             return;
         }
 
@@ -462,7 +462,7 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
     }
 
     private void MoveSelection(int delta) {
-        if(!visible || matches.Count == 0) {
+        if (!visible || matches.Count == 0) {
             return;
         }
 
@@ -471,7 +471,7 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
     }
 
     private void UpdateSnippetAfterEdit() {
-        if(!HasSnippet || input.text == snippetText) {
+        if (!HasSnippet || input.text == snippetText) {
             return;
         }
 
@@ -480,14 +480,14 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
         int caret = Math.Clamp(input.selectionFocusPosition, 0, currentText.Length);
         int delta = currentText.Length - snippetText.Length;
         int expectedEnd = active.End + delta;
-        if(caret < active.Start || caret > expectedEnd) {
+        if (caret < active.Start || caret > expectedEnd) {
             ClearSnippet();
             return;
         }
 
         active.End = caret;
         snippetStops[snippetIndex] = active;
-        for(int i = snippetIndex + 1; i < snippetStops.Count; i++) {
+        for (int i = snippetIndex + 1; i < snippetStops.Count; i++) {
             SnippetStop stop = snippetStops[i];
             stop.Start += delta;
             stop.End += delta;
@@ -523,7 +523,7 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
 
     private void Dispose() {
         Hide();
-        if(popupRect != null) {
+        if (popupRect != null) {
             UnityEngine.Object.Destroy(popupRect.gameObject);
         }
     }
@@ -536,10 +536,10 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
         TMP_TextInfo textInfo = sourceText.textInfo;
         Vector3 localPosition = Vector3.zero;
 
-        if(textInfo.characterCount > 0) {
+        if (textInfo.characterCount > 0) {
             int characterIndex = Math.Clamp(caret, 0, textInfo.characterCount - 1);
             TMP_CharacterInfo character = textInfo.characterInfo[characterIndex];
-            if(caret >= textInfo.characterCount) {
+            if (caret >= textInfo.characterCount) {
                 localPosition = new(character.xAdvance, character.bottomLeft.y - 4f, 0f);
             } else {
                 localPosition = new(character.origin, character.bottomLeft.y - 4f, 0f);
@@ -577,7 +577,7 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
         );
 
         popupRect.pivot = new(0f, 1f);
-        if(canvasPosition.y - height < canvasRect.rect.yMin + 4f &&
+        if (canvasPosition.y - height < canvasRect.rect.yMin + 4f &&
            topCanvasPosition.y + height <= canvasRect.rect.yMax - 4f) {
             popupRect.pivot = new(0f, 0f);
             canvasPosition.y = topCanvasPosition.y;
@@ -589,13 +589,13 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
     private static bool TryGetContext(string text, int caret, out string query, out int start) {
         query = null;
         start = 0;
-        if(caret <= 0) {
+        if (caret <= 0) {
             return false;
         }
 
         int opening = text.LastIndexOf('{', caret - 1);
         int closing = text.LastIndexOf('}', caret - 1);
-        if(opening < 0 || closing > opening) {
+        if (opening < 0 || closing > opening) {
             return false;
         }
 
@@ -659,19 +659,19 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
         public void Initialize(TagCompletionPopup popup) => this.popup = popup;
 
         private void Update() {
-            if(popup == null || !popup.visible || popup.matches.Count == 0) {
+            if (popup == null || !popup.visible || popup.matches.Count == 0) {
                 repeating = false;
                 return;
             }
 
             KeyCode key = GetHeldNavigationKey();
 
-            if(key == KeyCode.None) {
+            if (key == KeyCode.None) {
                 repeating = false;
                 return;
             }
 
-            if(!repeating || repeatKey != key) {
+            if (!repeating || repeatKey != key) {
                 repeatKey = key;
                 repeating = true;
                 nextRepeatTime = Time.unscaledTime + InitialDelay;
@@ -679,7 +679,7 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
             }
 
             float now = Time.unscaledTime;
-            if(now < nextRepeatTime) {
+            if (now < nextRepeatTime) {
                 return;
             }
 
@@ -691,11 +691,11 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
         }
 
         private static KeyCode GetHeldNavigationKey() {
-            if(O5Input.GetKey(KeyCode.DownArrow)) {
+            if (O5Input.GetKey(KeyCode.DownArrow)) {
                 return KeyCode.DownArrow;
             }
 
-            if(O5Input.GetKey(KeyCode.UpArrow)) {
+            if (O5Input.GetKey(KeyCode.UpArrow)) {
                 return KeyCode.UpArrow;
             }
 

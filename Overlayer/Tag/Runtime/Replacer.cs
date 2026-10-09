@@ -10,17 +10,17 @@ public sealed class Replacer : IDisposable {
     public ParsedTag Parsed {
         get;
         set {
-            if(field.Equals(value)) {
+            if (field.Equals(value)) {
                 return;
             }
 
             string newKey = TagCache.Instance.GetKey(value);
-            if(newKey != null && newKey == cachedKey) {
+            if (newKey != null && newKey == cachedKey) {
                 field = value;
                 return;
             }
 
-            if(cachedKey != null) {
+            if (cachedKey != null) {
                 TagCache.Instance.DecrementRef(cachedKey);
             }
 
@@ -28,14 +28,14 @@ public sealed class Replacer : IDisposable {
             Compiled = TagCache.Instance.GetOrCompile(field);
 
             cachedKey = TagCache.Instance.GetKey(field);
-            if(cachedKey != null) {
+            if (cachedKey != null) {
                 TagCache.Instance.IncrementRef(cachedKey);
             }
         }
     }
 
     public void Dispose() {
-        if(cachedKey != null) {
+        if (cachedKey != null) {
             TagCache.Instance.DecrementRef(cachedKey);
             cachedKey = null;
         }

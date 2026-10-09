@@ -6,20 +6,20 @@ namespace Overlayer.V8;
 
 public class TagAccessHelper {
     public object Get(string tagName, params object[] args) {
-        if(TagManager.TryGet(tagName, out var tag)) {
+        if (TagManager.TryGet(tagName, out var tag)) {
             Patch.Lazy.LazyPatchController.Touch(tagName);
             try {
                 var result = tag.Invoke(args);
                 return result;
-            } catch(ObjectDisposedException) {
+            } catch (ObjectDisposedException) {
                 // Engine was disposed by a concurrent script reload; quiet fallback.
                 return null;
-            } catch(TargetInvocationException tie) {
-                if(tie.InnerException is ObjectDisposedException) {
+            } catch (TargetInvocationException tie) {
+                if (tie.InnerException is ObjectDisposedException) {
                     return null;
                 }
                 MainCore.Log.Wrn($"[{nameof(TagAccessHelper)}] Target error in {tagName}: {tie.InnerException?.Message}");
-            } catch(Exception ex) {
+            } catch (Exception ex) {
                 MainCore.Log.Wrn($"[{nameof(TagAccessHelper)}] Error invoking {tagName}: {ex.GetType().Name} - {ex.Message}");
             }
         }

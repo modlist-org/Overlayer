@@ -33,7 +33,7 @@ public static class PackageStore {
     private static void NotifyChanged() {
         try {
             OnChanged?.Invoke();
-        } catch(Exception e) {
+        } catch (Exception e) {
             MainCore.Log.Err($"[{nameof(PackageStore)}] Change notification failed: {e.Message}");
         }
     }
@@ -41,18 +41,18 @@ public static class PackageStore {
     public static void Initialize() {
         Packages.Clear();
         string root = MainCore.Paths.PackagesPath;
-        if(!Directory.Exists(root)) {
+        if (!Directory.Exists(root)) {
             Directory.CreateDirectory(root);
             return;
         }
         SweepOrphanScripts();
-        foreach(string dir in Directory.GetDirectories(root).OrderBy(Path.GetFileName)) {
+        foreach (string dir in Directory.GetDirectories(root).OrderBy(Path.GetFileName)) {
             try {
                 RemoveLegacyDir(dir);
-                if(Directory.Exists(dir)) {
+                if (Directory.Exists(dir)) {
                     LoadInstalled(dir);
                 }
-            } catch(Exception e) {
+            } catch (Exception e) {
                 MainCore.Log.Err($"[{nameof(PackageStore)}] Failed to load package {dir}: {e.Message}");
             }
         }
@@ -60,7 +60,7 @@ public static class PackageStore {
     }
 
     public static void Tick() {
-        foreach(var entry in Packages) {
+        foreach (var entry in Packages) {
             try {
                 entry.Canvas?.RefreshFx();
             } catch {
@@ -69,15 +69,15 @@ public static class PackageStore {
     }
 
     public static void UnloadAll() {
-        foreach(var entry in Packages) {
+        foreach (var entry in Packages) {
             try {
                 UninstallScripts(entry);
                 UnloadEntryResources(entry);
-                if(entry.Canvas != null) {
+                if (entry.Canvas != null) {
                     entry.Canvas.Dispose();
                     entry.Canvas = null;
                 }
-                if(entry.ThumbnailTexture) {
+                if (entry.ThumbnailTexture) {
                     Object.Destroy(entry.ThumbnailTexture);
                     entry.ThumbnailTexture = null;
                     entry.ThumbnailSprite = null;
@@ -95,10 +95,10 @@ public static class PackageStore {
     public static string ReadZipText(string zipPath, string rel) {
         using var zip = ZipFile.OpenRead(zipPath);
         var zipEntry = zip.GetEntry((rel ?? string.Empty).Replace('\\', '/'));
-        if(zipEntry == null) {
+        if (zipEntry == null) {
             return null;
         }
-        if(zipEntry.Length > O5cpFormat.MaxExtractedBytes) {
+        if (zipEntry.Length > O5cpFormat.MaxExtractedBytes) {
             throw new InvalidDataException("package entry expands beyond the safety limit");
         }
         using var stream = zipEntry.Open();
@@ -107,19 +107,19 @@ public static class PackageStore {
     }
 
     public static byte[] GetPackageBytes(PackageEntry entry, string rel) {
-        if(entry == null) {
+        if (entry == null) {
             return null;
         }
         rel = (rel ?? string.Empty).Replace('\\', '/');
-        if(!O5cpPackage.IsAllowedPath(rel, out _)) {
+        if (!O5cpPackage.IsAllowedPath(rel, out _)) {
             return null;
         }
         using var zip = ZipFile.OpenRead(ZipPath(entry));
         var zipEntry = zip.GetEntry(rel);
-        if(zipEntry == null) {
+        if (zipEntry == null) {
             return null;
         }
-        if(zipEntry.Length > O5cpFormat.MaxExtractedBytes) {
+        if (zipEntry.Length > O5cpFormat.MaxExtractedBytes) {
             throw new InvalidDataException("package entry expands beyond the safety limit");
         }
         using var stream = zipEntry.Open();
@@ -133,17 +133,17 @@ public static class PackageStore {
             (rel ?? string.Empty).Replace('/', Path.DirectorySeparatorChar));
 
     public static string GetPackageFile(PackageEntry entry, string rel) {
-        if(entry == null) {
+        if (entry == null) {
             return null;
         }
         rel = (rel ?? string.Empty).Replace('\\', '/');
-        if(!O5cpPackage.IsAllowedPath(rel, out _)) {
+        if (!O5cpPackage.IsAllowedPath(rel, out _)) {
             return null;
         }
         string temp = TempCachePath(entry, rel);
-        if(!File.Exists(temp)) {
+        if (!File.Exists(temp)) {
             byte[] data = GetPackageBytes(entry, rel);
-            if(data == null) {
+            if (data == null) {
                 return null;
             }
             Directory.CreateDirectory(Path.GetDirectoryName(temp));
@@ -167,7 +167,7 @@ public static class PackageStore {
     public static PackageEntry Install(string o5cpPath, out List<string> warnings) {
         warnings = [];
         using var staged = Stage(o5cpPath, out warnings);
-        if(staged == null) {
+        if (staged == null) {
             return null;
         }
         var entry = CommitStaged(staged, out var commitWarnings);
@@ -177,7 +177,7 @@ public static class PackageStore {
 
     public static PackageEntry InstallBytes(byte[] data, out List<string> warnings) {
         warnings = [];
-        if(data == null || data.Length == 0) {
+        if (data == null || data.Length == 0) {
             return null;
         }
         string tmp = Path.Combine(MainCore.Paths.TempPath, $"preset_{Guid.NewGuid():N}.o5cp");
@@ -186,13 +186,13 @@ public static class PackageStore {
             File.WriteAllBytes(tmp, data);
             var entry = Install(tmp, out warnings);
             return entry;
-        } catch(Exception e) {
+        } catch (Exception e) {
             warnings.Add($"bad package: {e.Message}");
             MainCore.Log.Err($"[{nameof(PackageStore)}] InstallBytes failed: {e.Message}");
             return null;
         } finally {
             try {
-                if(File.Exists(tmp)) {
+                if (File.Exists(tmp)) {
                     File.Delete(tmp);
                 }
             } catch {
@@ -202,14 +202,14 @@ public static class PackageStore {
 
     public static StagedPackage Stage(string o5cpPath, out List<string> warnings) {
         warnings = [];
-        if(string.IsNullOrWhiteSpace(o5cpPath) || !File.Exists(o5cpPath)) {
+        if (string.IsNullOrWhiteSpace(o5cpPath) || !File.Exists(o5cpPath)) {
             return null;
         }
         string fileHash;
         try {
             using var stream = File.OpenRead(o5cpPath);
             fileHash = O5cpPackage.ComputeSha256(stream);
-        } catch(Exception e) {
+        } catch (Exception e) {
             warnings.Add($"bad package: {e.Message}");
             MainCore.Log.Err($"[{nameof(PackageStore)}] Hash failed: {e.Message}");
             return null;
@@ -217,28 +217,28 @@ public static class PackageStore {
         string text;
         try {
             text = ReadZipText(o5cpPath, O5cpFormat.ManifestFile);
-        } catch(Exception e) {
+        } catch (Exception e) {
             warnings.Add($"bad package: {e.Message}");
             MainCore.Log.Err($"[{nameof(PackageStore)}] Extract failed: {e.Message}");
             return null;
         }
-        if(text == null) {
+        if (text == null) {
             warnings.Add("package has no manifest.json");
             return null;
         }
         JToken token;
         try {
             token = JToken.Parse(text);
-        } catch(Exception e) {
+        } catch (Exception e) {
             warnings.Add($"bad manifest: {e.Message}");
             return null;
         }
-        if(!O5cpManifest.TryParse(token, out var manifest, out string manifestError)) {
+        if (!O5cpManifest.TryParse(token, out var manifest, out string manifestError)) {
             warnings.Add(manifestError);
             return null;
         }
         string name = manifest.Package.Name;
-        if(string.IsNullOrWhiteSpace(name)) {
+        if (string.IsNullOrWhiteSpace(name)) {
             name = "Package";
         }
         var staged = new StagedPackage {
@@ -249,7 +249,7 @@ public static class PackageStore {
             FileName = O5cpPackage.SanitizeSegment(name, ".o5cp"),
         };
         staged.Warnings.AddRange(warnings);
-        if((manifest.FormatVersion > O5cpFormat.FormatVersion)
+        if ((manifest.FormatVersion > O5cpFormat.FormatVersion)
             || IsNewerApp(manifest.Package.MinAppVersion)) {
             staged.Warnings.Add($"made for a newer Overlayer (pkg {manifest.Package.AppVersion}, min {manifest.Package.MinAppVersion}). Loading anyway.");
         }
@@ -261,12 +261,12 @@ public static class PackageStore {
 
     public static PackageEntry CommitStaged(StagedPackage staged, out List<string> warnings) {
         warnings = [];
-        if(staged?.Manifest == null || !File.Exists(staged.SourcePath)) {
+        if (staged?.Manifest == null || !File.Exists(staged.SourcePath)) {
             return null;
         }
         var live = FindByHash(staged.Hash);
-        if(live != null) {
-            if(!live.Enabled) {
+        if (live != null) {
+            if (!live.Enabled) {
                 warnings.AddRange(SetEnabled(live, true));
             }
             warnings.AddRange(staged.Warnings);
@@ -276,7 +276,7 @@ public static class PackageStore {
         try {
             Directory.CreateDirectory(dir);
             File.Copy(staged.SourcePath, Path.Combine(dir, staged.FileName), overwrite: true);
-        } catch(Exception e) {
+        } catch (Exception e) {
             warnings.Add($"install failed: {e.Message}");
             MainCore.Log.Err($"[{nameof(PackageStore)}] Copy failed: {e.Message}");
             return null;
@@ -288,7 +288,7 @@ public static class PackageStore {
         PackageEntry entry;
         try {
             entry = LoadInstalled(dir);
-        } catch(Exception e) {
+        } catch (Exception e) {
             MainCore.Log.Err($"[{nameof(PackageStore)}] Package load failed: {e.Message}");
             warnings.Add($"package failed to load: {e.Message}");
             try {
@@ -297,7 +297,7 @@ public static class PackageStore {
             }
             return null;
         }
-        if(entry == null) {
+        if (entry == null) {
             warnings.Add("package failed to load after install");
             try {
                 Directory.Delete(dir, true);
@@ -314,9 +314,9 @@ public static class PackageStore {
 
     public static bool Remove(string packageId) {
         var entry = Packages.FirstOrDefault(p => p.Id == packageId);
-        if(entry == null) {
+        if (entry == null) {
             string stale = Path.Combine(MainCore.Paths.PackagesPath, SanitizeId(packageId));
-            if(Directory.Exists(stale)) {
+            if (Directory.Exists(stale)) {
                 UninstallScriptsForDir(stale);
                 Directory.Delete(stale, true);
                 SweepTempDir(SanitizeId(packageId));
@@ -327,16 +327,16 @@ public static class PackageStore {
         Packages.Remove(entry);
         try {
             UninstallScripts(entry);
-        } catch(Exception e) {
+        } catch (Exception e) {
             MainCore.Log.Err($"[{nameof(PackageStore)}] Script uninstall failed: {e.Message}");
         }
         UnloadEntryResources(entry);
         try {
-            if(entry.Canvas != null) {
+            if (entry.Canvas != null) {
                 entry.Canvas.Dispose();
                 entry.Canvas = null;
             }
-            if(entry.ThumbnailTexture) {
+            if (entry.ThumbnailTexture) {
                 Object.Destroy(entry.ThumbnailTexture);
                 entry.ThumbnailTexture = null;
                 entry.ThumbnailSprite = null;
@@ -346,10 +346,10 @@ public static class PackageStore {
         entry.Loaded = false;
         SweepTempDir(entry.Id);
         try {
-            if(Directory.Exists(entry.Dir)) {
+            if (Directory.Exists(entry.Dir)) {
                 Directory.Delete(entry.Dir, true);
             }
-        } catch(Exception e) {
+        } catch (Exception e) {
             MainCore.Log.Err($"[{nameof(PackageStore)}] Failed to delete {entry.Dir}: {e.Message}");
         }
         UserResourceManager.Config.Save();
@@ -360,12 +360,12 @@ public static class PackageStore {
 
     public static List<string> SetEnabled(PackageEntry entry, bool enabled) {
         var warnings = new List<string>();
-        if(entry == null) {
+        if (entry == null) {
             return warnings;
         }
         entry.Enabled = enabled;
-        if(enabled) {
-            if(!EnsureLoaded(entry, out warnings)) {
+        if (enabled) {
+            if (!EnsureLoaded(entry, out warnings)) {
                 entry.Enabled = false;
                 warnings.Insert(0, "package failed to load");
             }
@@ -381,7 +381,7 @@ public static class PackageStore {
 
     private static PackageEntry LoadInstalled(string dir) {
         string zipPath = Directory.GetFiles(dir, "*.o5cp").OrderBy(Path.GetFileName).FirstOrDefault();
-        if(zipPath == null) {
+        if (zipPath == null) {
             return null;
         }
         string fullSha;
@@ -392,18 +392,18 @@ public static class PackageStore {
             return null;
         }
         string text = ReadZipText(zipPath, O5cpFormat.ManifestFile);
-        if(text == null) {
+        if (text == null) {
             return null;
         }
-        if(!O5cpManifest.TryParse(JToken.Parse(text), out var manifest, out string error)) {
+        if (!O5cpManifest.TryParse(JToken.Parse(text), out var manifest, out string error)) {
             MainCore.Log.Err($"[{nameof(PackageStore)}] {error}: {zipPath}");
             return null;
         }
         var state = ReadStateFile(dir);
-        if(string.IsNullOrEmpty(state.FullSha)) {
+        if (string.IsNullOrEmpty(state.FullSha)) {
             state.FullSha = fullSha;
             WriteStateFile(dir, state);
-        } else if(state.FullSha != fullSha) {
+        } else if (state.FullSha != fullSha) {
             MainCore.Log.Err($"[{nameof(PackageStore)}] Hash mismatch, refusing {dir}");
             return null;
         }
@@ -415,8 +415,8 @@ public static class PackageStore {
         };
         LoadThumbnail(entry);
         CheckModules(entry);
-        if(entry.Enabled) {
-            if(!EnsureLoaded(entry, out var loadWarnings)) {
+        if (entry.Enabled) {
+            if (!EnsureLoaded(entry, out var loadWarnings)) {
                 entry.Enabled = false;
                 entry.Warnings.AddRange(loadWarnings);
                 entry.Warnings.Insert(0, "package failed to load (disabled)");
@@ -426,7 +426,7 @@ public static class PackageStore {
                 entry.Warnings.AddRange(loadWarnings);
             }
         }
-        foreach(var warning in entry.Warnings) {
+        foreach (var warning in entry.Warnings) {
             MainCore.Log.Wrn($"[{nameof(PackageStore)}] [{entry.Id}] {warning}");
         }
         Packages.Add(entry);
@@ -435,10 +435,10 @@ public static class PackageStore {
 
     public static bool EnsureLoaded(PackageEntry entry, out List<string> warnings) {
         warnings = [];
-        if(entry == null) {
+        if (entry == null) {
             return false;
         }
-        if(entry.Loaded && entry.Canvas != null) {
+        if (entry.Loaded && entry.Canvas != null) {
             return true;
         }
         string prefix = KeyPrefix(entry.Id);
@@ -446,7 +446,7 @@ public static class PackageStore {
             LoadEntryResources(entry, prefix, warnings);
             InstallScripts(entry, warnings);
             byte[] canvasBytes = GetPackageBytes(entry, entry.Manifest.CanvasFile);
-            if(canvasBytes == null) {
+            if (canvasBytes == null) {
                 warnings.Add($"canvas file missing: {entry.Manifest.CanvasFile}");
                 UnloadHeavy(entry);
                 return false;
@@ -454,10 +454,10 @@ public static class PackageStore {
             JToken canvasJson = JToken.Parse(System.Text.Encoding.UTF8.GetString(canvasBytes));
             O5cpKeyMapper.RewriteStaticKeys(canvasJson, key => prefix + key);
             var packedKeys = new HashSet<string>(StringComparer.Ordinal);
-            foreach(var font in entry.Manifest.Fonts) {
+            foreach (var font in entry.Manifest.Fonts) {
                 packedKeys.Add(font.Key);
             }
-            foreach(var sprite in entry.Manifest.Sprites) {
+            foreach (var sprite in entry.Manifest.Sprites) {
                 packedKeys.Add(sprite.Key);
             }
             O5cpKeyMapper.RewriteKeyLiterals(canvasJson,
@@ -472,18 +472,18 @@ public static class PackageStore {
             entry.Canvas = canvas;
             ApplyEnabled(entry);
             var scan = O5cpKeyScanner.Scan(canvasJson);
-            foreach(string key in scan.FontKeys) {
+            foreach (string key in scan.FontKeys) {
                 string shortKey = key.StartsWith(prefix, StringComparison.Ordinal)
                     ? key[prefix.Length..]
                     : key;
-                if(!UserResourceManager.Fnt.TryGet(key, out _)) {
+                if (!UserResourceManager.Fnt.TryGet(key, out _)) {
                     warnings.Add(WasExcluded(entry.Manifest.ExcludedFonts, shortKey)
                         ? $"font '{shortKey}' was excluded at export (missing)"
                         : $"font '{shortKey}' is missing from the package");
                 }
             }
-            foreach(string key in scan.SpriteKeys) {
-                if(!UserResourceManager.Spr.TryGet(key, out _)) {
+            foreach (string key in scan.SpriteKeys) {
+                if (!UserResourceManager.Spr.TryGet(key, out _)) {
                     string shortKey = key.StartsWith(prefix, StringComparison.Ordinal)
                         ? key[prefix.Length..]
                         : key;
@@ -492,7 +492,7 @@ public static class PackageStore {
             }
             entry.Loaded = true;
             return true;
-        } catch(Exception e) {
+        } catch (Exception e) {
             MainCore.Log.Err($"[{nameof(PackageStore)}] [{entry.Id}] Load failed: {e.Message}");
             warnings.Add($"load failed: {e.Message}");
             try {
@@ -504,7 +504,7 @@ public static class PackageStore {
     }
 
     public static void UnloadHeavy(PackageEntry entry) {
-        if(entry == null) {
+        if (entry == null) {
             return;
         }
         try {
@@ -513,7 +513,7 @@ public static class PackageStore {
         }
         UnloadEntryResources(entry);
         try {
-            if(entry.Canvas != null) {
+            if (entry.Canvas != null) {
                 entry.Canvas.Dispose();
                 entry.Canvas = null;
             }
@@ -524,7 +524,7 @@ public static class PackageStore {
 
     private static void ApplyEnabled(PackageEntry entry) {
         try {
-            if(entry.Canvas != null) {
+            if (entry.Canvas != null) {
                 entry.Canvas.Config.Enabled.Value = entry.Enabled;
                 entry.Canvas.ApplyConfig();
             }
@@ -534,44 +534,44 @@ public static class PackageStore {
 
     private static void LoadEntryResources(PackageEntry entry, string prefix, List<string> warnings) {
         var manifest = entry.Manifest;
-        foreach(var font in manifest.Fonts) {
+        foreach (var font in manifest.Fonts) {
             string key = prefix + font.Key;
             string path = GetPackageFile(entry, font.File);
-            if(path == null || !File.Exists(path)) {
+            if (path == null || !File.Exists(path)) {
                 warnings.Add($"font file missing: {font.File}");
                 continue;
             }
             UserResourceManager.Fnt.Remove(key);
             var result = UserResourceManager.Fnt.Load(key, path);
-            if(result != UserFont.Result.Success) {
+            if (result != UserFont.Result.Success) {
                 warnings.Add($"font load failed ({result}): {font.Key}");
                 continue;
             }
             VerifyHash(path, font.Sha256, $"font {font.Key}", warnings);
         }
-        foreach(var texture in manifest.Textures) {
+        foreach (var texture in manifest.Textures) {
             string key = prefix + texture.Key;
             string path = GetPackageFile(entry, texture.File);
-            if(path == null || !File.Exists(path)) {
+            if (path == null || !File.Exists(path)) {
                 warnings.Add($"texture file missing: {texture.File}");
                 continue;
             }
             byte[] data = File.ReadAllBytes(path);
             UserResourceManager.T2D.Remove(key);
             var result = UserResourceManager.T2D.LoadData(key, path, data, texture.MipChain, texture.Linear);
-            if(result != UserTexture2D.Result.Success) {
+            if (result != UserTexture2D.Result.Success) {
                 warnings.Add($"texture load failed ({result}): {texture.Key}");
                 continue;
             }
             VerifyHash(path, texture.Sha256, $"texture {texture.Key}", warnings);
-            if(!string.IsNullOrEmpty(texture.Folder)) {
+            if (!string.IsNullOrEmpty(texture.Folder)) {
                 UserResourceManager.Config.Data.ImageFolders[key] = texture.Folder;
             }
         }
-        foreach(var sprite in manifest.Sprites) {
+        foreach (var sprite in manifest.Sprites) {
             string key = prefix + sprite.Key;
             string textureKey = prefix + sprite.TextureKey;
-            if(!UserResourceManager.T2D.TryGet(textureKey, out _)) {
+            if (!UserResourceManager.T2D.TryGet(textureKey, out _)) {
                 warnings.Add($"sprite skipped, texture missing: {sprite.Key}");
                 continue;
             }
@@ -584,11 +584,11 @@ public static class PackageStore {
                 sprite.PixelsPerUnit,
                 new Vector4(sprite.Border[0], sprite.Border[1], sprite.Border[2], sprite.Border[3]),
                 out _);
-            if(result != UserSprite.Result.Success) {
+            if (result != UserSprite.Result.Success) {
                 warnings.Add($"sprite load failed ({result}): {sprite.Key}");
                 continue;
             }
-            if(!string.IsNullOrEmpty(sprite.Folder)) {
+            if (!string.IsNullOrEmpty(sprite.Folder)) {
                 UserResourceManager.Config.Data.ImageFolders[key] = sprite.Folder;
             }
         }
@@ -596,38 +596,38 @@ public static class PackageStore {
 
     private static void UnloadEntryResources(PackageEntry entry) {
         string prefix = KeyPrefix(entry.Id);
-        foreach(string key in UserResourceManager.Fnt.Keys.Where(k => k.StartsWith(prefix, StringComparison.Ordinal)).ToArray()) {
+        foreach (string key in UserResourceManager.Fnt.Keys.Where(k => k.StartsWith(prefix, StringComparison.Ordinal)).ToArray()) {
             UserResourceManager.Fnt.Remove(key);
         }
-        foreach(string key in UserResourceManager.Spr.Keys.Where(k => k.StartsWith(prefix, StringComparison.Ordinal)).ToArray()) {
+        foreach (string key in UserResourceManager.Spr.Keys.Where(k => k.StartsWith(prefix, StringComparison.Ordinal)).ToArray()) {
             UserResourceManager.Spr.Remove(key);
         }
-        foreach(string key in UserResourceManager.T2D.Keys.Where(k => k.StartsWith(prefix, StringComparison.Ordinal)).ToArray()) {
+        foreach (string key in UserResourceManager.T2D.Keys.Where(k => k.StartsWith(prefix, StringComparison.Ordinal)).ToArray()) {
             UserResourceManager.T2D.Remove(key);
         }
-        foreach(string key in UserResourceManager.Config.Data.ImageFolders.Keys
+        foreach (string key in UserResourceManager.Config.Data.ImageFolders.Keys
             .Where(k => k.StartsWith(prefix, StringComparison.Ordinal)).ToArray()) {
             UserResourceManager.Config.Data.ImageFolders.Remove(key);
         }
-        foreach(string key in UserResourceManager.Config.Data.FontFolders.Keys
+        foreach (string key in UserResourceManager.Config.Data.FontFolders.Keys
             .Where(k => k.StartsWith(prefix, StringComparison.Ordinal)).ToArray()) {
             UserResourceManager.Config.Data.FontFolders.Remove(key);
         }
     }
 
     private static void InstallScripts(PackageEntry entry, List<string> warnings) {
-        if(entry.Manifest.Scripts.Count == 0 || MainCore.V8 == null) {
+        if (entry.Manifest.Scripts.Count == 0 || MainCore.V8 == null) {
             return;
         }
         string scriptDir = MainCore.V8.ScriptFolderPath;
-        if(string.IsNullOrEmpty(scriptDir)) {
+        if (string.IsNullOrEmpty(scriptDir)) {
             return;
         }
         Directory.CreateDirectory(scriptDir);
         var state = ReadStateFile(entry.Dir);
-        foreach(var script in entry.Manifest.Scripts) {
+        foreach (var script in entry.Manifest.Scripts) {
             byte[] data = GetPackageBytes(entry, script.File);
-            if(data == null) {
+            if (data == null) {
                 warnings.Add($"script file missing: {script.File}");
                 continue;
             }
@@ -636,7 +636,7 @@ public static class PackageStore {
             string dest = Path.Combine(scriptDir, destName);
             try {
                 File.WriteAllBytes(dest, data);
-            } catch(Exception e) {
+            } catch (Exception e) {
                 warnings.Add($"script install failed: {script.OriginalName} ({e.Message})");
                 continue;
             }
@@ -663,7 +663,7 @@ public static class PackageStore {
     }
 
     private static void UninstallScriptFiles(List<(string File, string Sha)> installed) {
-        if(installed.Count == 0) {
+        if (installed.Count == 0) {
             return;
         }
         string scriptDir = null;
@@ -671,13 +671,13 @@ public static class PackageStore {
             scriptDir = MainCore.V8?.ScriptFolderPath;
         } catch {
         }
-        if(string.IsNullOrEmpty(scriptDir) || !Directory.Exists(scriptDir)) {
+        if (string.IsNullOrEmpty(scriptDir) || !Directory.Exists(scriptDir)) {
             return;
         }
-        foreach(var (file, sha) in installed) {
+        foreach (var (file, sha) in installed) {
             string dest = Path.Combine(scriptDir, file);
             try {
-                if(File.Exists(dest)
+                if (File.Exists(dest)
                     && (string.IsNullOrEmpty(sha) || HashFile(dest) == sha)) {
                     File.Delete(dest);
                 }
@@ -685,23 +685,23 @@ public static class PackageStore {
                     MainCore.V8?.UnloadScriptFile(dest);
                 } catch {
                 }
-            } catch(Exception e) {
+            } catch (Exception e) {
                 MainCore.Log.Err($"[{nameof(PackageStore)}] Script uninstall failed for {file}: {e.Message}");
             }
         }
     }
 
     private static void LoadThumbnail(PackageEntry entry) {
-        if(string.IsNullOrEmpty(entry.Manifest.ThumbnailFile)) {
+        if (string.IsNullOrEmpty(entry.Manifest.ThumbnailFile)) {
             return;
         }
         byte[] bytes = GetPackageBytes(entry, entry.Manifest.ThumbnailFile);
-        if(bytes == null || bytes.Length == 0) {
+        if (bytes == null || bytes.Length == 0) {
             return;
         }
         try {
             var tex = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-            if(!tex.LoadImage(bytes)) {
+            if (!tex.LoadImage(bytes)) {
                 Object.Destroy(tex);
                 return;
             }
@@ -714,23 +714,23 @@ public static class PackageStore {
     }
 
     private static void CheckModules(PackageEntry entry) {
-        if(entry.Manifest.Modules.Count == 0) {
+        if (entry.Manifest.Modules.Count == 0) {
             return;
         }
         var loaded = MainCore.ModuleService?.LoadedModules;
-        foreach(var module in entry.Manifest.Modules) {
+        foreach (var module in entry.Manifest.Modules) {
             ModuleAPI.OverlayerModule match = null;
-            if(loaded != null) {
-                foreach(var local in loaded) {
-                    if(local != null && local.Name == module.Name) {
+            if (loaded != null) {
+                foreach (var local in loaded) {
+                    if (local != null && local.Name == module.Name) {
                         match = local;
                         break;
                     }
                 }
             }
-            if(match == null) {
+            if (match == null) {
                 entry.Warnings.Add($"needs module '{module.Name}' v{module.Version} (not installed)");
-            } else if(!string.IsNullOrEmpty(module.Version)
+            } else if (!string.IsNullOrEmpty(module.Version)
                 && !string.IsNullOrEmpty(match.Version)
                 && module.Version != match.Version) {
                 entry.Warnings.Add($"needs module '{module.Name}' v{module.Version} (have v{match.Version})");
@@ -739,16 +739,16 @@ public static class PackageStore {
     }
 
     private static void RemoveLegacyDir(string dir) {
-        if(Directory.GetFiles(dir, "*.o5cp").Length > 0) {
+        if (Directory.GetFiles(dir, "*.o5cp").Length > 0) {
             return;
         }
-        if(!File.Exists(Path.Combine(dir, O5cpFormat.ManifestFile))) {
+        if (!File.Exists(Path.Combine(dir, O5cpFormat.ManifestFile))) {
             return;
         }
         try {
             Directory.Delete(dir, true);
             MainCore.Log.Msg($"[{nameof(PackageStore)}] Removed legacy exploded package dir {dir}");
-        } catch(Exception e) {
+        } catch (Exception e) {
             MainCore.Log.Err($"[{nameof(PackageStore)}] Legacy cleanup failed for {dir}: {e.Message}");
         }
     }
@@ -756,7 +756,7 @@ public static class PackageStore {
     private static void SweepTempDir(string packageId) {
         try {
             string dir = Path.Combine(MainCore.Paths.TempPath, "o5cp", packageId);
-            if(Directory.Exists(dir)) {
+            if (Directory.Exists(dir)) {
                 Directory.Delete(dir, true);
             }
         } catch {
@@ -767,16 +767,16 @@ public static class PackageStore {
         string root;
         try {
             root = Path.Combine(MainCore.Paths.TempPath, "o5cp");
-            if(!Directory.Exists(root)) {
+            if (!Directory.Exists(root)) {
                 return;
             }
         } catch {
             return;
         }
         HashSet<string> live = new(Packages.Select(p => p.Id), StringComparer.Ordinal);
-        foreach(string dir in Directory.GetDirectories(root)) {
+        foreach (string dir in Directory.GetDirectories(root)) {
             try {
-                if(!live.Contains(Path.GetFileName(dir))) {
+                if (!live.Contains(Path.GetFileName(dir))) {
                     Directory.Delete(dir, true);
                 }
             } catch {
@@ -788,15 +788,15 @@ public static class PackageStore {
         string scriptDir = null;
         try {
             scriptDir = MainCore.V8?.ScriptFolderPath;
-            if(string.IsNullOrEmpty(scriptDir) || !Directory.Exists(scriptDir)) {
+            if (string.IsNullOrEmpty(scriptDir) || !Directory.Exists(scriptDir)) {
                 return;
             }
         } catch {
             return;
         }
-        foreach(string file in Directory.GetFiles(scriptDir, "pkg_*.js")) {
+        foreach (string file in Directory.GetFiles(scriptDir, "pkg_*.js")) {
             try {
-                if(!O5cpFormat.IsPackageScript(file)) {
+                if (!O5cpFormat.IsPackageScript(file)) {
                     continue;
                 }
                 File.Delete(file);
@@ -815,17 +815,17 @@ public static class PackageStore {
         var state = new PackageState();
         try {
             string path = Path.Combine(dir, StateFileName);
-            if(!File.Exists(path)) {
+            if (!File.Exists(path)) {
                 return state;
             }
-            if(JToken.Parse(File.ReadAllText(path)) is not JObject obj) {
+            if (JToken.Parse(File.ReadAllText(path)) is not JObject obj) {
                 return state;
             }
             state.Enabled = (bool?)obj["enabled"] ?? true;
             state.FullSha = (string)obj["sha256"] ?? string.Empty;
-            if(obj["scripts"] is JArray arr) {
-                foreach(var item in arr) {
-                    if(item is JObject so && (string)so["file"] is string file && !string.IsNullOrEmpty(file)) {
+            if (obj["scripts"] is JArray arr) {
+                foreach (var item in arr) {
+                    if (item is JObject so && (string)so["file"] is string file && !string.IsNullOrEmpty(file)) {
                         state.InstalledScripts.Add((file, (string)so["sha256"] ?? string.Empty));
                     }
                 }
@@ -854,11 +854,11 @@ public static class PackageStore {
         excluded.Any(e => e.Key == key);
 
     private static void VerifyHash(string path, string expected, string label, List<string> warnings) {
-        if(string.IsNullOrEmpty(expected)) {
+        if (string.IsNullOrEmpty(expected)) {
             return;
         }
         try {
-            if(HashFile(path) != expected.ToLowerInvariant()) {
+            if (HashFile(path) != expected.ToLowerInvariant()) {
                 warnings.Add($"{label} hash mismatch (file changed?)");
             }
         } catch {
@@ -872,7 +872,7 @@ public static class PackageStore {
 
     private static bool IsNewerApp(string minAppVersion) {
         try {
-            if(string.IsNullOrWhiteSpace(minAppVersion)) {
+            if (string.IsNullOrWhiteSpace(minAppVersion)) {
                 return false;
             }
             return new Version(minAppVersion) > new Version(Info.Version);
@@ -883,11 +883,11 @@ public static class PackageStore {
 
     public static string SanitizeId(string id) {
         var builder = new System.Text.StringBuilder();
-        foreach(char c in id ?? string.Empty) {
+        foreach (char c in id ?? string.Empty) {
             builder.Append(char.IsLetterOrDigit(c) || c is '_' or '-' ? c : '_');
         }
         string clean = builder.ToString().Trim('_', '-');
-        if(clean.Length > 48) {
+        if (clean.Length > 48) {
             clean = clean.Substring(0, 48);
         }
         return string.IsNullOrEmpty(clean) ? "pkg" : clean;
@@ -895,7 +895,7 @@ public static class PackageStore {
 
     private static string SafeFile(string value) {
         var builder = new System.Text.StringBuilder();
-        foreach(char c in value ?? string.Empty) {
+        foreach (char c in value ?? string.Empty) {
             builder.Append(char.IsLetterOrDigit(c) || c is '_' or '-' ? c : '_');
         }
         string clean = builder.ToString();

@@ -36,7 +36,7 @@ public static class MainCore {
     public static bool IsModEnabled => Runtime.State.IsEnabled;
 
     public static void Initialize(IOverlayerHost host) {
-        if(Runtime != null) {
+        if (Runtime != null) {
             return;
         }
 
@@ -52,7 +52,7 @@ public static class MainCore {
     }
 
     public static void Dispose() {
-        if(Runtime == null) {
+        if (Runtime == null) {
             return;
         }
 
@@ -61,7 +61,7 @@ public static class MainCore {
     }
 
     public static void SetModEnabled(bool enabled) {
-        if(enabled) {
+        if (enabled) {
             Runtime.SetModEnabled(enabled, false);
             Runtime.SetModEnabledLate(enabled, false);
         } else {

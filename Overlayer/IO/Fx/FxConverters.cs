@@ -12,7 +12,7 @@ public static class FxConverters {
 
     public static void RegisterDefaultConverters() {
         // Idempotent: Initialize can run again after Dispose.
-        if(_defaultsRegistered) {
+        if (_defaultsRegistered) {
             return;
         }
         _defaultsRegistered = true;

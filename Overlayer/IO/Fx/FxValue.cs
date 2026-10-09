@@ -89,7 +89,7 @@ public abstract class FxValue {
         }
     }
 
-        internal static bool TryConvertScalar(Type targetType, string rendered) {
+    internal static bool TryConvertScalar(Type targetType, string rendered) {
         try {
             var expression = new Expression(rendered, ExpressionOptions.IgnoreCaseAtBuiltInFunctions);
             expression.Parameters["PI"] = Math.PI;
@@ -162,19 +162,19 @@ public sealed class FxValue<T> : FxValue, IFxValue, ISettingsFile, ICopyable<FxV
         }
 
         Func<string, T> converter = Type.GetTypeCode(typeof(T)) switch {
-            TypeCode.Byte    => s => byte.TryParse(s, out var v) ? (T)(object)v : default!,
-            TypeCode.SByte   => s => sbyte.TryParse(s, out var v) ? (T)(object)v : default!,
-            TypeCode.Int16   => s => short.TryParse(s, out var v) ? (T)(object)v : default!,
-            TypeCode.UInt16  => s => ushort.TryParse(s, out var v) ? (T)(object)v : default!,
-            TypeCode.Int32   => s => int.TryParse(s, out var v) ? (T)(object)v : default!,
-            TypeCode.UInt32  => s => uint.TryParse(s, out var v) ? (T)(object)v : default!,
-            TypeCode.Int64   => s => long.TryParse(s, out var v) ? (T)(object)v : default!,
-            TypeCode.UInt64  => s => ulong.TryParse(s, out var v) ? (T)(object)v : default!,
-            TypeCode.Single  => s => float.TryParse(s, out var v) ? (T)(object)v : default!,
-            TypeCode.Double  => s => double.TryParse(s, out var v) ? (T)(object)v : default!,
+            TypeCode.Byte => s => byte.TryParse(s, out var v) ? (T)(object)v : default!,
+            TypeCode.SByte => s => sbyte.TryParse(s, out var v) ? (T)(object)v : default!,
+            TypeCode.Int16 => s => short.TryParse(s, out var v) ? (T)(object)v : default!,
+            TypeCode.UInt16 => s => ushort.TryParse(s, out var v) ? (T)(object)v : default!,
+            TypeCode.Int32 => s => int.TryParse(s, out var v) ? (T)(object)v : default!,
+            TypeCode.UInt32 => s => uint.TryParse(s, out var v) ? (T)(object)v : default!,
+            TypeCode.Int64 => s => long.TryParse(s, out var v) ? (T)(object)v : default!,
+            TypeCode.UInt64 => s => ulong.TryParse(s, out var v) ? (T)(object)v : default!,
+            TypeCode.Single => s => float.TryParse(s, out var v) ? (T)(object)v : default!,
+            TypeCode.Double => s => double.TryParse(s, out var v) ? (T)(object)v : default!,
             TypeCode.Decimal => s => decimal.TryParse(s, out var v) ? (T)(object)v : default!,
             TypeCode.Boolean => s => bool.TryParse(s, out var v) ? (T)(object)v : default!,
-            TypeCode.String  => s => (T)(object)s,
+            TypeCode.String => s => (T)(object)s,
             _ => null!
         };
 
@@ -309,11 +309,11 @@ public sealed class FxValue<T> : FxValue, IFxValue, ISettingsFile, ICopyable<FxV
 
         var targetType = typeof(T);
         var typeCode = Type.GetTypeCode(targetType);
-        if(targetType == typeof(string)) {
+        if (targetType == typeof(string)) {
             try {
                 if (TryEvaluateJs(GetWrappedJs(rendered), out var jsResult) && jsResult != null) {
                     var text = Convert.ToString(jsResult, CultureInfo.InvariantCulture);
-                    if (!string.IsNullOrEmpty(text)) {  
+                    if (!string.IsNullOrEmpty(text)) {
                         return (T)(object)text;
                     }
                 }
@@ -321,7 +321,7 @@ public sealed class FxValue<T> : FxValue, IFxValue, ISettingsFile, ICopyable<FxV
             }
             return (T)(object)(Engine.Get() ?? rendered);
         }
-        if(!targetType.IsEnum && (typeCode == TypeCode.Boolean || (typeCode >= TypeCode.SByte && typeCode <= TypeCode.Decimal))) {
+        if (!targetType.IsEnum && (typeCode == TypeCode.Boolean || (typeCode >= TypeCode.SByte && typeCode <= TypeCode.Decimal))) {
             if (TryEvaluateJs(GetWrappedJs(rendered), out var jsResult)) {
                 try {
                     return (T)Convert.ChangeType(jsResult, targetType, CultureInfo.InvariantCulture);
@@ -333,7 +333,7 @@ public sealed class FxValue<T> : FxValue, IFxValue, ISettingsFile, ICopyable<FxV
                 expression.Parameters["PI"] = Math.PI;
                 expression.Parameters["E"] = Math.E;
                 var value = expression.Evaluate();
-                if(value == null) return staticValue;
+                if (value == null) return staticValue;
                 return (T)Convert.ChangeType(value, targetType, CultureInfo.InvariantCulture);
             } catch {
                 return staticValue;
@@ -373,7 +373,7 @@ public sealed class FxValue<T> : FxValue, IFxValue, ISettingsFile, ICopyable<FxV
 
     public JToken Serialize() {
         if (!UseFx) {
-            if(typeof(T).IsEnum) return new JValue(staticValue.ToString());
+            if (typeof(T).IsEnum) return new JValue(staticValue.ToString());
             try {
                 if (RawWriters.TryGetValue(typeof(T), out var writer)) {
                     return writer(staticValue);
@@ -391,9 +391,9 @@ public sealed class FxValue<T> : FxValue, IFxValue, ISettingsFile, ICopyable<FxV
             [FxKey] = Engine?.Text ?? string.Empty
         };
         try {
-            if(RawWriters.TryGetValue(typeof(T), out var writer)) {
+            if (RawWriters.TryGetValue(typeof(T), out var writer)) {
                 obj["Value"] = writer(staticValue);
-            } else if(staticValue is ISettingsFile file) {
+            } else if (staticValue is ISettingsFile file) {
                 obj["Value"] = file.Serialize();
             } else {
                 obj["Value"] = SafeFromObject(staticValue);
@@ -412,7 +412,7 @@ public sealed class FxValue<T> : FxValue, IFxValue, ISettingsFile, ICopyable<FxV
 
         if (token is JObject obj && obj.ContainsKey(FxKey)) {
             UseFx = true;
-            
+
             var engineText = obj[FxKey]?.Value<string>() ?? string.Empty;
             Engine ??= new TextEngineCore();
             Engine.Text = engineText;
@@ -429,8 +429,7 @@ public sealed class FxValue<T> : FxValue, IFxValue, ISettingsFile, ICopyable<FxV
                 } catch {
                 }
             }
-        } 
-        else {
+        } else {
             UseFx = false;
             try {
                 if (RawReaders.TryGetValue(typeof(T), out var raw)) {

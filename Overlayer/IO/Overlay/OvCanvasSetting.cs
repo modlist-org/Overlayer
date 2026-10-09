@@ -44,14 +44,14 @@ public sealed class OvCanvasSettings : ISettingsFile, ICopyable<OvCanvasSettings
     }
 
     public void Deserialize(JToken token) {
-        if(token is not JObject obj) {
+        if (token is not JObject obj) {
             return;
         }
 
         Name = IOUtils.ReadFx(obj, nameof(Name), Name);
         Enabled = IOUtils.ReadFx(obj, nameof(Enabled), Enabled);
         RectTransformConfig.Deserialize(obj[nameof(RectTransformConfig)]);
-        if(obj[nameof(CanvasGroupConfig)] != null) {
+        if (obj[nameof(CanvasGroupConfig)] != null) {
             CanvasGroupConfig.Deserialize(obj[nameof(CanvasGroupConfig)]);
         }
         CanvasConfig.Deserialize(obj[nameof(CanvasConfig)]);

@@ -40,7 +40,7 @@ public class GridLayoutGroupSettings : UnityComponentSettingsBase, ICopyable<Gri
 
     public override bool ToUnity(GameObject target) {
         var component = target.GetComponent<GridLayoutGroup>();
-        if(component == null) {
+        if (component == null) {
             return false;
         }
 
@@ -75,7 +75,7 @@ public class GridLayoutGroupSettings : UnityComponentSettingsBase, ICopyable<Gri
 
     public override bool FromUnity(GameObject source) {
         var component = source.GetComponent<GridLayoutGroup>();
-        if(component == null) {
+        if (component == null) {
             return false;
         }
 
@@ -102,12 +102,12 @@ public class GridLayoutGroupSettings : UnityComponentSettingsBase, ICopyable<Gri
     }
 
     public override void RefreshFx(GameObject target) {
-        if(!HasAnyFx) {
+        if (!HasAnyFx) {
             return;
         }
 
         var component = target.GetComponent<GridLayoutGroup>();
-        if(component == null) {
+        if (component == null) {
             return;
         }
 
@@ -122,7 +122,7 @@ public class GridLayoutGroupSettings : UnityComponentSettingsBase, ICopyable<Gri
         changed |= FxUtil.ApplyIfChanged(ref _lastChildAlignment, ChildAlignment.Value, _ => { });
         changed |= FxUtil.ApplyIfChanged(ref _lastConstraint, Constraint.Value, _ => { });
         changed |= FxUtil.ApplyIfChanged(ref _lastConstraintCount, ConstraintCount.Value, _ => { });
-        if(changed) {
+        if (changed) {
             ApplyValues(component);
             LayoutRebuilder.MarkLayoutForRebuild(target.GetComponent<RectTransform>());
         }
@@ -143,7 +143,7 @@ public class GridLayoutGroupSettings : UnityComponentSettingsBase, ICopyable<Gri
     }
 
     public override void Deserialize(JToken token) {
-        if(token == null) {
+        if (token == null) {
             return;
         }
 

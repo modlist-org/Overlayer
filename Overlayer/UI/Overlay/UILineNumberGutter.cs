@@ -20,21 +20,21 @@ internal sealed class UILineNumberGutter
     public RectTransform LineNumbers;
 
     private void LateUpdate() {
-        if(Source == null || LineNumbers == null) {
+        if (Source == null || LineNumbers == null) {
             return;
         }
 
         // Only write on change so an idle editor doesn't dirty the canvas every frame.
         Vector2 position = LineNumbers.anchoredPosition;
         float y = Source.anchoredPosition.y;
-        if(position.y != y) {
+        if (position.y != y) {
             position.y = y;
             LineNumbers.anchoredPosition = position;
         }
 
         Vector2 size = LineNumbers.sizeDelta;
         float height = Source.sizeDelta.y;
-        if(size.y != height) {
+        if (size.y != height) {
             size.y = height;
             LineNumbers.sizeDelta = size;
         }

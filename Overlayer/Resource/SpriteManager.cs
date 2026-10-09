@@ -62,16 +62,16 @@ public sealed class SpriteManager(ResourceManager resource) : IDisposable {
         );
 
     public Sprite Get(string assetName) {
-        if(string.IsNullOrEmpty(assetName)) {
+        if (string.IsNullOrEmpty(assetName)) {
             return null;
         }
 
-        if(cache.TryGetValue(assetName, out Sprite sprite)) {
+        if (cache.TryGetValue(assetName, out Sprite sprite)) {
             return sprite;
         }
 
         Texture2D tex = o5.GetTexture(assetName) ?? resource.Get<Texture2D>(assetName);
-        if(tex == null) {
+        if (tex == null) {
             return null;
         }
 
@@ -82,18 +82,18 @@ public sealed class SpriteManager(ResourceManager resource) : IDisposable {
     }
 
     public Sprite GetSliced(string assetName, float ppui, Vector4 border) {
-        if(string.IsNullOrEmpty(assetName)) {
+        if (string.IsNullOrEmpty(assetName)) {
             return null;
         }
 
         object key = (assetName, ppui, border);
 
-        if(cache.TryGetValue(key, out Sprite sprite)) {
+        if (cache.TryGetValue(key, out Sprite sprite)) {
             return sprite;
         }
 
         Texture2D tex = o5.GetTexture(assetName) ?? resource.Get<Texture2D>(assetName);
-        if(tex == null) {
+        if (tex == null) {
             return null;
         }
 
@@ -104,12 +104,12 @@ public sealed class SpriteManager(ResourceManager resource) : IDisposable {
     }
 
     public Sprite Get(Asset asset) {
-        if(cache.TryGetValue(asset, out Sprite sprite)) {
+        if (cache.TryGetValue(asset, out Sprite sprite)) {
             return sprite;
         }
 
         Texture2D tex = resource.Get<Texture2D>(asset);
-        if(tex == null) {
+        if (tex == null) {
             return null;
         }
 
@@ -122,12 +122,12 @@ public sealed class SpriteManager(ResourceManager resource) : IDisposable {
     public Sprite GetSliced(Asset asset, float ppui, Vector4 border) {
         object key = (asset, ppui, border);
 
-        if(cache.TryGetValue(key, out Sprite sprite)) {
+        if (cache.TryGetValue(key, out Sprite sprite)) {
             return sprite;
         }
 
         Texture2D tex = resource.Get<Texture2D>(asset);
-        if(tex == null) {
+        if (tex == null) {
             return null;
         }
 
@@ -138,12 +138,12 @@ public sealed class SpriteManager(ResourceManager resource) : IDisposable {
     }
 
     private Sprite Get(O5Asset asset) {
-        if(cache.TryGetValue(asset, out Sprite sprite)) {
+        if (cache.TryGetValue(asset, out Sprite sprite)) {
             return sprite;
         }
 
         Texture2D tex = o5.GetTexture(asset);
-        if(tex == null) {
+        if (tex == null) {
             return null;
         }
 
@@ -154,12 +154,12 @@ public sealed class SpriteManager(ResourceManager resource) : IDisposable {
 
     private Sprite GetSliced(O5Asset asset, float ppui, Vector4 border) {
         object key = (asset, ppui, border);
-        if(cache.TryGetValue(key, out Sprite sprite)) {
+        if (cache.TryGetValue(key, out Sprite sprite)) {
             return sprite;
         }
 
         Texture2D tex = o5.GetTexture(asset);
-        if(tex == null) {
+        if (tex == null) {
             return null;
         }
 
@@ -169,7 +169,7 @@ public sealed class SpriteManager(ResourceManager resource) : IDisposable {
     }
 
     public Sprite Get(UISprite sprite) {
-        if(o5SpriteMap.TryGetValue(sprite, out O5Asset o5Asset)) {
+        if (o5SpriteMap.TryGetValue(sprite, out O5Asset o5Asset)) {
             return Get(o5Asset);
         }
 
@@ -177,7 +177,7 @@ public sealed class SpriteManager(ResourceManager resource) : IDisposable {
     }
 
     public Sprite Get(UISliceSprite sprite) {
-        if(o5SliceMap.TryGetValue(sprite, out (O5Asset asset, float ppui) o5Data)) {
+        if (o5SliceMap.TryGetValue(sprite, out (O5Asset asset, float ppui) o5Data)) {
             return GetSliced(
                 o5Data.asset,
                 o5Data.ppui,
@@ -185,7 +185,7 @@ public sealed class SpriteManager(ResourceManager resource) : IDisposable {
             );
         }
 
-        if(!sliceMap.TryGetValue(sprite, out (Asset asset, float ppui) data)) {
+        if (!sliceMap.TryGetValue(sprite, out (Asset asset, float ppui) data)) {
             return null;
         }
 
@@ -197,7 +197,7 @@ public sealed class SpriteManager(ResourceManager resource) : IDisposable {
     }
 
     public void Dispose() {
-        foreach(Sprite sprite in cache.Values) {
+        foreach (Sprite sprite in cache.Values) {
             Object.Destroy(sprite);
         }
 

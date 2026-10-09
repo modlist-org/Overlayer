@@ -172,7 +172,7 @@ public sealed class OvCanvasPropsPage : IDisposable {
     }
 
     public void Open(OvCanvas canvas) {
-        if(canvas == null) {
+        if (canvas == null) {
             return;
         }
         currentCanvas = canvas;
@@ -193,13 +193,13 @@ public sealed class OvCanvasPropsPage : IDisposable {
         ClearPreview();
         currentCanvas = null;
         GameObject.SetActive(false);
-        if(!silent) {
+        if (!silent) {
             onBackAction?.Invoke();
         }
     }
 
     private void Save() {
-        if(currentCanvas == null) {
+        if (currentCanvas == null) {
             Close();
             return;
         }
@@ -213,13 +213,13 @@ public sealed class OvCanvasPropsPage : IDisposable {
     }
 
     private void RefreshScripts() {
-        if(scriptList == null) {
+        if (scriptList == null) {
             return;
         }
-        foreach(Transform child in scriptList.transform) {
+        foreach (Transform child in scriptList.transform) {
             UnityEngine.Object.Destroy(child.gameObject);
         }
-        foreach(string tokenized in draft.ExtraScripts.ToArray()) {
+        foreach (string tokenized in draft.ExtraScripts.ToArray()) {
             string local = tokenized;
             var row = O5Factory.Row(O5KitAdapters.Ctx, scriptList.transform, 44f);
             var layout = row.gameObject.AddComponent<HorizontalLayoutGroup>();
@@ -247,11 +247,11 @@ public sealed class OvCanvasPropsPage : IDisposable {
     private void BrowseThumbnail() {
         _ = Utility.NativeImageFilePicker.PickAsync().ContinueWith(task => {
             MainThread.Enqueue(() => {
-                if(currentCanvas == null || !GameObject.activeSelf) {
+                if (currentCanvas == null || !GameObject.activeSelf) {
                     return;
                 }
                 string path = task.Status == TaskStatus.RanToCompletion ? task.Result : null;
-                if(string.IsNullOrWhiteSpace(path)) {
+                if (string.IsNullOrWhiteSpace(path)) {
                     return;
                 }
                 SetThumbnail(path);
@@ -261,11 +261,11 @@ public sealed class OvCanvasPropsPage : IDisposable {
 
     private void SetThumbnail(string diskPath) {
         ClearPreview();
-        if(!string.IsNullOrEmpty(diskPath) && File.Exists(diskPath)) {
+        if (!string.IsNullOrEmpty(diskPath) && File.Exists(diskPath)) {
             try {
                 byte[] bytes = File.ReadAllBytes(diskPath);
                 var tex = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-                if(tex.LoadImage(bytes)) {
+                if (tex.LoadImage(bytes)) {
                     tex.filterMode = FilterMode.Bilinear;
                     previewTexture = tex;
                     previewImage.sprite = Sprite.Create(
@@ -280,14 +280,14 @@ public sealed class OvCanvasPropsPage : IDisposable {
         }
         previewImage.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P1024);
         previewImage.color = new Color(1f, 1f, 1f, 0.35f);
-        if(diskPath == null) {
+        if (diskPath == null) {
             draft.ThumbnailPath = string.Empty;
         }
     }
 
     private void BrowseScript() {
         string dir = MainCore.V8?.ScriptFolderPath;
-        if(!string.IsNullOrEmpty(dir) && !Directory.Exists(dir)) {
+        if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir)) {
             Directory.CreateDirectory(dir);
         }
         _ = Utility.NativeDialogThread.Run(() => {
@@ -295,21 +295,21 @@ public sealed class OvCanvasPropsPage : IDisposable {
                 return NativeFileDialog.Extended.NFD.OpenDialog(
                     dir,
                     new Dictionary<string, string> { ["JavaScript"] = "js" });
-            } catch(Exception e) {
+            } catch (Exception e) {
                 MainCore.Log.Err($"[ScriptPicker] File dialog failed: {e.Message}");
                 return null;
             }
         }).ContinueWith(task => {
             MainThread.Enqueue(() => {
-                if(currentCanvas == null || !GameObject.activeSelf) {
+                if (currentCanvas == null || !GameObject.activeSelf) {
                     return;
                 }
                 string path = task.Status == TaskStatus.RanToCompletion ? task.Result : null;
-                if(string.IsNullOrWhiteSpace(path)) {
+                if (string.IsNullOrWhiteSpace(path)) {
                     return;
                 }
                 string tokenized = UserResourceManager.ToUser(path);
-                if(!draft.ExtraScripts.Contains(tokenized)) {
+                if (!draft.ExtraScripts.Contains(tokenized)) {
                     draft.ExtraScripts.Add(tokenized);
                     RefreshScripts();
                 }
@@ -318,7 +318,7 @@ public sealed class OvCanvasPropsPage : IDisposable {
     }
 
     private void ClearPreview() {
-        if(previewTexture) {
+        if (previewTexture) {
             previewImage.sprite = null;
             UnityEngine.Object.Destroy(previewTexture);
             previewTexture = null;
@@ -327,7 +327,7 @@ public sealed class OvCanvasPropsPage : IDisposable {
 
     public void Dispose() {
         ClearPreview();
-        if(GameObject) {
+        if (GameObject) {
             UnityEngine.Object.Destroy(GameObject);
         }
     }

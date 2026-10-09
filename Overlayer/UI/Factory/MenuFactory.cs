@@ -137,7 +137,7 @@ public static class MenuFactory {
         }
 
         Add(EventTriggerType.PointerEnter, () => {
-            if(UICore.CurrentMenuState == state) {
+            if (UICore.CurrentMenuState == state) {
                 return;
             }
 
@@ -146,7 +146,7 @@ public static class MenuFactory {
         });
 
         Add(EventTriggerType.PointerExit, () => {
-            if(UICore.CurrentMenuState == state) {
+            if (UICore.CurrentMenuState == state) {
                 return;
             }
 
@@ -162,7 +162,7 @@ public static class MenuFactory {
     /// <summary>Destroys the menu item for <paramref name="state"/>; falls back to the Overlayer page if it was selected.</summary>
     public static void RemoveItem(int state) {
         int index = items.FindIndex(it => it.state == state);
-        if(index < 0) {
+        if (index < 0) {
             return;
         }
 
@@ -170,11 +170,11 @@ public static class MenuFactory {
         item.hoverSeq?.Kill();
         items.RemoveAt(index);
 
-        if(UICore.CurrentMenuState == state) {
+        if (UICore.CurrentMenuState == state) {
             SetState((int)OriginalMenuState.Overlayer);
         }
 
-        if(item.obj) {
+        if (item.obj) {
             UnityEngine.Object.Destroy(item.obj);
         }
     }
@@ -182,7 +182,7 @@ public static class MenuFactory {
     private static void SetState(int to) {
         int from = UICore.CurrentMenuState;
 
-        if(from == to) {
+        if (from == to) {
             return;
         }
 
@@ -195,15 +195,15 @@ public static class MenuFactory {
     }
 
     private static void ApplyState(int id, bool noAnimate = false) {
-        for(int i = 0; i < items.Count; i++) {
+        for (int i = 0; i < items.Count; i++) {
             var it = items[i];
 
             it.hoverSeq?.Kill();
 
             bool selected = it.state == id;
 
-            if(selected) {
-                if(noAnimate) {
+            if (selected) {
+                if (noAnimate) {
                     it.bg.color = UIColors.MenuSelected;
                 } else {
                     it.bg.color = UIColors.MenuHighlight;

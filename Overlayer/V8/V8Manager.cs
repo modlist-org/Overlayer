@@ -46,7 +46,7 @@ public class V8Manager : IRuntimeService {
 
     public V8ScriptEngine Engine {
         get {
-            lock(_engineLock) {
+            lock (_engineLock) {
                 return _engine;
             }
         }
@@ -59,11 +59,11 @@ public class V8Manager : IRuntimeService {
         ImplDtsFilePath = Path.Combine(MainCore.Paths.JSPath, ImplDtsFileName);
         ScriptFolderPath = Path.Combine(MainCore.Paths.JSPath, ScriptFolderName);
 
-        if(!Directory.Exists(ScriptFolderPath)) {
+        if (!Directory.Exists(ScriptFolderPath)) {
             Directory.CreateDirectory(ScriptFolderPath);
             MainCore.Log.Msg($"[{nameof(V8Manager)}] Script folder created at: {ScriptFolderPath}");
         }
-        lock(_engineLock) {
+        lock (_engineLock) {
             _engine = new V8ScriptEngine();
             BindEngine(_engine);
         }
@@ -76,12 +76,12 @@ public class V8Manager : IRuntimeService {
         try {
             try {
                 await InitializationTask.ConfigureAwait(false);
-                if(await _scriptLoader.LoadAllScriptsAsync(ScriptFolderPath, _engine, syncChanges: false).ConfigureAwait(false)) {
-                    foreach(var diag in LoaderDiagnostics) {
+                if (await _scriptLoader.LoadAllScriptsAsync(ScriptFolderPath, _engine, syncChanges: false).ConfigureAwait(false)) {
+                    foreach (var diag in LoaderDiagnostics) {
                         MainCore.Log.Msg(diag.ToString());
                     }
                 }
-            } catch(Exception e) {
+            } catch (Exception e) {
                 MainCore.Log.Err($"[{nameof(V8Manager)}] Script load failed: {e.Message}");
             }
             await Task.Run(() => GenerateImplJs(force: true)).ConfigureAwait(false);
@@ -133,8 +133,8 @@ public class V8Manager : IRuntimeService {
     public FxStore Store { get; } = new();
 
     internal object InvokeCallback(Microsoft.ClearScript.ScriptObject fn, object[] callArgs) {
-        lock(_engineLock) {
-            if(_engine == null) {
+        lock (_engineLock) {
+            if (_engine == null) {
                 return null;
             }
             return fn.Invoke(false, callArgs);
@@ -142,7 +142,7 @@ public class V8Manager : IRuntimeService {
     }
 
     public void Reset() {
-        lock(_engineLock) {
+        lock (_engineLock) {
             ClearFxScriptCache();
             _engine?.Dispose();
             _engine = new V8ScriptEngine();
@@ -157,7 +157,7 @@ public class V8Manager : IRuntimeService {
         await _reloadGate.WaitAsync();
         try {
             var preview = await Task.Run(() => _scriptLoader.PreviewChanges(ScriptFolderPath));
-            if(preview.changed.Count == 0 && preview.removed.Count == 0) {
+            if (preview.changed.Count == 0 && preview.removed.Count == 0) {
                 return;
             }
             await RebuildScriptsUnderGateAsync();
@@ -175,7 +175,7 @@ public class V8Manager : IRuntimeService {
             TagCache.Instance.Clear();
 
             List<string> jsTags;
-            lock(_engineLock) {
+            lock (_engineLock) {
                 ClearFxScriptCache();
                 jsTags = JSTagManager.Clear();
                 _engine.Dispose();
@@ -183,14 +183,14 @@ public class V8Manager : IRuntimeService {
                 BindEngine(_engine);
             }
 
-            if(jsTags.Count > 0) {
+            if (jsTags.Count > 0) {
                 TagManager.Unregister([.. jsTags], recompile: false);
             }
             _scriptLoader.ResetTracking();
         }).ConfigureAwait(false);
 
-        if(await _scriptLoader.LoadAllScriptsAsync(ScriptFolderPath, _engine, syncChanges: false).ConfigureAwait(false)) {
-            foreach(var diag in LoaderDiagnostics) {
+        if (await _scriptLoader.LoadAllScriptsAsync(ScriptFolderPath, _engine, syncChanges: false).ConfigureAwait(false)) {
+            foreach (var diag in LoaderDiagnostics) {
                 MainCore.Log.Msg(diag.ToString());
             }
         }
@@ -213,11 +213,11 @@ public class V8Manager : IRuntimeService {
         var jsContent = BuildImplJsContent(tags);
         var dtsContent = BuildImplDtsContent(tags);
 
-        lock(_engineLock) {
+        lock (_engineLock) {
             try {
                 bool jsUpToDate = !force && File.Exists(ImplFilePath) &&
                     File.ReadAllText(ImplFilePath) == jsContent;
-                if(jsUpToDate) {
+                if (jsUpToDate) {
                     _engine.Execute(jsContent);
                 } else {
                     File.WriteAllText(ImplFilePath, jsContent);
@@ -225,15 +225,15 @@ public class V8Manager : IRuntimeService {
                     MainCore.Log.Msg($"[{nameof(V8Manager)}] {ImplFileName} changed, synced and loaded.");
                 }
 
-                if(!string.IsNullOrEmpty(ImplDtsFilePath)) {
+                if (!string.IsNullOrEmpty(ImplDtsFilePath)) {
                     bool dtsUpToDate = !force && File.Exists(ImplDtsFilePath) &&
                         File.ReadAllText(ImplDtsFilePath) == dtsContent;
-                    if(!dtsUpToDate) {
+                    if (!dtsUpToDate) {
                         File.WriteAllText(ImplDtsFilePath, dtsContent);
                         MainCore.Log.Msg($"[{nameof(V8Manager)}] {ImplDtsFileName} changed, synced.");
                     }
                 }
-            } catch(Exception ex) {
+            } catch (Exception ex) {
                 MainCore.Log.Err($"[{nameof(V8Manager)}] Failed to sync {ImplFileName}: {ex.Message}");
             }
         }
@@ -339,17 +339,17 @@ public class V8Manager : IRuntimeService {
 
         sb.AppendLine("/* Tags */\n");
 
-        foreach(var tag in tags.OrderBy(t => t.Name)) {
+        foreach (var tag in tags.OrderBy(t => t.Name)) {
             var paramNames = tag.Parameters.Select(p => p.Name).ToArray();
             string paramList = string.Join(", ", paramNames);
             string returnType = MapToJsType(tag.ReturnType);
 
             sb.AppendLine("/**");
-            if(!string.IsNullOrEmpty(tag.Description)) {
+            if (!string.IsNullOrEmpty(tag.Description)) {
                 sb.AppendLine($" * {tag.Description.Replace("\n", "\n * ")}");
             }
 
-            foreach(var p in tag.Parameters) {
+            foreach (var p in tag.Parameters) {
                 sb.AppendLine($" * @param {{ {p.Name}: {MapToJsType(p.ParameterType)} }}");
             }
 
@@ -487,18 +487,18 @@ public class V8Manager : IRuntimeService {
         sb.AppendLine("declare const Tag: TagNamespace;");
 
         var seen = new HashSet<string>(StringComparer.Ordinal);
-        foreach(var tag in tags.OrderBy(t => t.Name)) {
-            if(string.IsNullOrEmpty(tag.Name) || !seen.Add(tag.Name)) {
+        foreach (var tag in tags.OrderBy(t => t.Name)) {
+            if (string.IsNullOrEmpty(tag.Name) || !seen.Add(tag.Name)) {
                 continue;
             }
-            if(!IsValidIdentifier(tag.Name) || IsReservedGlobal(tag.Name)) {
+            if (!IsValidIdentifier(tag.Name) || IsReservedGlobal(tag.Name)) {
                 continue;
             }
             sb.AppendLine("/**");
-            if(!string.IsNullOrEmpty(tag.Description)) {
+            if (!string.IsNullOrEmpty(tag.Description)) {
                 sb.AppendLine($" * {EscapeDocComment(tag.Description).Replace("\n", "\n * ")}");
             }
-            foreach(var p in tag.Parameters) {
+            foreach (var p in tag.Parameters) {
                 sb.AppendLine($" * @param {SanitizeParamName(p.Name)}");
             }
             sb.AppendLine(" */");
@@ -510,10 +510,10 @@ public class V8Manager : IRuntimeService {
     }
 
     private static bool IsValidIdentifier(string name) {
-        if(string.IsNullOrEmpty(name)) {
+        if (string.IsNullOrEmpty(name)) {
             return false;
         }
-        if(!(char.IsLetter(name[0]) || name[0] == '_' || name[0] == '$')) {
+        if (!(char.IsLetter(name[0]) || name[0] == '_' || name[0] == '$')) {
             return false;
         }
         return name.Skip(1).All(c => char.IsLetterOrDigit(c) || c == '_' || c == '$');
@@ -523,7 +523,7 @@ public class V8Manager : IRuntimeService {
         => name is "Tag" or "Store" or "RegisterTag" or "TagType";
 
     private static string SanitizeParamName(string name, int index = -1) {
-        if(IsValidIdentifier(name)) {
+        if (IsValidIdentifier(name)) {
             return name;
         }
         return index >= 0 ? $"arg{index + 1}" : "arg";
@@ -533,17 +533,17 @@ public class V8Manager : IRuntimeService {
         => value.Replace("*/", "* /");
 
     private string MapToJsType(Type type) {
-        if(type == typeof(int) || type == typeof(float) || type == typeof(double) || type == typeof(long) ||
+        if (type == typeof(int) || type == typeof(float) || type == typeof(double) || type == typeof(long) ||
             type == typeof(byte) || type == typeof(short) || type == typeof(uint) || type == typeof(ulong) ||
             type == typeof(ushort) || type == typeof(decimal)) {
             return "number";
         }
 
-        if(type == typeof(string) || type.IsEnum) {
+        if (type == typeof(string) || type.IsEnum) {
             return "string";
         }
 
-        if(type == typeof(bool)) {
+        if (type == typeof(bool)) {
             return "boolean";
         }
 
@@ -582,7 +582,7 @@ public class V8Manager : IRuntimeService {
             return null;
         }
 
-        lock(_engineLock) {
+        lock (_engineLock) {
             if (_engine == null) {
                 return null;
             }
@@ -601,7 +601,7 @@ public class V8Manager : IRuntimeService {
             return false;
         }
 
-        lock(_engineLock) {
+        lock (_engineLock) {
             if (_engine == null) {
                 return false;
             }
@@ -647,7 +647,7 @@ public class V8Manager : IRuntimeService {
         bool timedOut = false;
         using var timeout = new CancellationTokenSource();
         Task.Delay(FxScriptTimeoutMilliseconds, timeout.Token).ContinueWith(task => {
-            if(!task.IsCanceled && Interlocked.CompareExchange(ref running, 0, 1) == 1
+            if (!task.IsCanceled && Interlocked.CompareExchange(ref running, 0, 1) == 1
                 && Volatile.Read(ref _evalActive) == seq) {
                 timedOut = true;
                 try {
@@ -659,9 +659,9 @@ public class V8Manager : IRuntimeService {
 
         try {
             result = run();
-        } catch(Exception ex) {
+        } catch (Exception ex) {
             result = null;
-            if(timedOut) {
+            if (timedOut) {
                 RecordTimeout(code);
             } else {
                 RecordRuntimeError(code, ex.Message);
@@ -671,7 +671,7 @@ public class V8Manager : IRuntimeService {
         } finally {
             timeout.Cancel();
             Interlocked.Exchange(ref running, 0);
-            if(Volatile.Read(ref _evalActive) == seq) {
+            if (Volatile.Read(ref _evalActive) == seq) {
                 Volatile.Write(ref _evalActive, -1);
             }
         }
@@ -732,7 +732,7 @@ public class V8Manager : IRuntimeService {
             return null;
         }
 
-        lock(_engineLock) {
+        lock (_engineLock) {
             try {
                 if (_fxRuntimeErrors.TryGetValue(code, out var message)) {
                     return message;
@@ -745,7 +745,7 @@ public class V8Manager : IRuntimeService {
     }
 
     private void ClearFxScriptCache() {
-        foreach(var entry in _fxScriptCache.Values) {
+        foreach (var entry in _fxScriptCache.Values) {
             try {
                 entry.Script?.Dispose();
             } catch {
@@ -757,11 +757,12 @@ public class V8Manager : IRuntimeService {
         _fxTimeoutBackoff.Clear();
     }
 
-    public void LoadImplJs() {        lock(_engineLock) {
-            if(File.Exists(ImplFilePath)) {
+    public void LoadImplJs() {
+        lock (_engineLock) {
+            if (File.Exists(ImplFilePath)) {
                 try {
                     _engine.Execute(File.ReadAllText(ImplFilePath));
-                } catch(Exception ex) {
+                } catch (Exception ex) {
                     MainCore.Log.Wrn($"[{nameof(V8Manager)}] Load failed: {ex.Message}");
                 }
             }
@@ -781,7 +782,7 @@ public class V8Manager : IRuntimeService {
         await _reloadGate.WaitAsync().ConfigureAwait(false);
         try {
             await Task.Run(() => _scriptLoader.UnloadScriptFile(filePath)).ConfigureAwait(false);
-        } catch(Exception e) {
+        } catch (Exception e) {
             MainCore.Log.Err($"[{nameof(V8Manager)}] Script unload failed: {e.Message}");
         } finally {
             _reloadGate.Release();
@@ -793,10 +794,10 @@ public class V8Manager : IRuntimeService {
         await _reloadGate.WaitAsync().ConfigureAwait(false);
         try {
             await Task.Run(() => _scriptLoader.ReloadFile(filePath, _engine)).ConfigureAwait(false);
-            foreach(var diag in LoaderDiagnostics) {
+            foreach (var diag in LoaderDiagnostics) {
                 MainCore.Log.Msg(diag.ToString());
             }
-        } catch(Exception e) {
+        } catch (Exception e) {
             MainCore.Log.Err($"[{nameof(V8Manager)}] Script reload failed: {e.Message}");
         } finally {
             _reloadGate.Release();
@@ -819,7 +820,7 @@ public class V8Manager : IRuntimeService {
         } catch {
             return;
         }
-        if(!_scriptLoader.SetFileDisabled(name, !enabled)) {
+        if (!_scriptLoader.SetFileDisabled(name, !enabled)) {
             return;
         }
         Task saveTask = SaveDisabledScriptsAsync();
@@ -831,19 +832,19 @@ public class V8Manager : IRuntimeService {
         _scriptLoader.SetDisabledFileNames([]);
         try {
             string path = Path.Combine(ScriptFolderPath, DisabledScriptsFileName);
-            if(!File.Exists(path)) {
+            if (!File.Exists(path)) {
                 return;
             }
             string json = await File.ReadAllTextAsync(path).ConfigureAwait(false);
             var names = Newtonsoft.Json.JsonConvert.DeserializeObject<HashSet<string>>(json);
-            if(names == null) {
+            if (names == null) {
                 return;
             }
             _scriptLoader.SetDisabledFileNames(names);
-            if(await Task.Run(PruneOrphanDisabledScripts).ConfigureAwait(false)) {
+            if (await Task.Run(PruneOrphanDisabledScripts).ConfigureAwait(false)) {
                 await SaveDisabledScriptsAsync().ConfigureAwait(false);
             }
-        } catch(Exception e) {
+        } catch (Exception e) {
             MainCore.Log.Wrn($"[{nameof(V8Manager)}] Failed to load disabled scripts: {e.Message}");
         }
     }
@@ -858,8 +859,8 @@ public class V8Manager : IRuntimeService {
             return false;
         }
         bool removed = false;
-        foreach(string name in _scriptLoader.GetDisabledFileNames()) {
-            if(!diskFiles.Contains(name)) {
+        foreach (string name in _scriptLoader.GetDisabledFileNames()) {
+            if (!diskFiles.Contains(name)) {
                 _scriptLoader.SetFileDisabled(name, false);
                 removed = true;
             }
@@ -872,7 +873,7 @@ public class V8Manager : IRuntimeService {
         try {
             string path = Path.Combine(ScriptFolderPath, DisabledScriptsFileName);
             await File.WriteAllTextAsync(path, SerializeDisabledScripts()).ConfigureAwait(false);
-        } catch(Exception e) {
+        } catch (Exception e) {
             MainCore.Log.Wrn($"[{nameof(V8Manager)}] Failed to save disabled scripts: {e.Message}");
         } finally {
             _disabledScriptsSaveGate.Release();
@@ -884,7 +885,7 @@ public class V8Manager : IRuntimeService {
         Newtonsoft.Json.Formatting.Indented);
 
     private Task RequestToggleRebuildAsync() {
-        lock(_toggleRebuildSync) {
+        lock (_toggleRebuildSync) {
             _toggleRevision++;
             return _toggleRebuildTask ??= RebuildToggledScriptsAsync();
         }
@@ -892,25 +893,25 @@ public class V8Manager : IRuntimeService {
 
     private async Task RebuildToggledScriptsAsync() {
         try {
-            while(true) {
+            while (true) {
                 // Coalesce rapid switches into one engine rebuild.
                 await Task.Delay(100).ConfigureAwait(false);
                 long revision;
-                lock(_toggleRebuildSync) {
+                lock (_toggleRebuildSync) {
                     revision = _toggleRevision;
                 }
 
                 await RebuildScriptsAsync().ConfigureAwait(false);
 
-                lock(_toggleRebuildSync) {
-                    if(revision == _toggleRevision) {
+                lock (_toggleRebuildSync) {
+                    if (revision == _toggleRevision) {
                         _toggleRebuildTask = null;
                         return;
                     }
                 }
             }
         } catch {
-            lock(_toggleRebuildSync) {
+            lock (_toggleRebuildSync) {
                 _toggleRebuildTask = null;
             }
             throw;
@@ -919,7 +920,7 @@ public class V8Manager : IRuntimeService {
 
     public void UpdateWatcher() {
         bool enabled = MainCore.Conf.EnableJSScriptWatcher;
-        if(enabled && _watcher == null) {
+        if (enabled && _watcher == null) {
             _watcher = new FileSystemWatcher(ScriptFolderPath, "*.js") {
                 NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite,
                 IncludeSubdirectories = true
@@ -929,7 +930,7 @@ public class V8Manager : IRuntimeService {
             _watcher.Deleted += OnScriptChanged;
             _watcher.Renamed += OnScriptChanged;
             _watcher.EnableRaisingEvents = true;
-        } else if(!enabled && _watcher != null) {
+        } else if (!enabled && _watcher != null) {
             _watcher.EnableRaisingEvents = false;
             _watcher.Dispose();
             _watcher = null;
@@ -948,14 +949,14 @@ public class V8Manager : IRuntimeService {
         try {
             await Task.Delay(300, cancellationToken).ConfigureAwait(false);
             await ReloadScriptsAsync().ConfigureAwait(false);
-        } catch(OperationCanceledException) {
-        } catch(Exception e) {
+        } catch (OperationCanceledException) {
+        } catch (Exception e) {
             MainCore.Log.Err($"[{nameof(V8Manager)}] Script reload failed: {e.Message}");
         }
     }
 
     public void Dispose() {
-        lock(_engineLock) {
+        lock (_engineLock) {
             ClearFxScriptCache();
             _watcher?.Dispose();
             _engine?.Dispose();

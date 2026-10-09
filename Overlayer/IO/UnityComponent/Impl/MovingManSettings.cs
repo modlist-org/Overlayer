@@ -38,7 +38,7 @@ public sealed class MovingManSettings : UnityComponentSettingsBase, ICopyable<Mo
 
     public override bool ToUnity(GameObject target) {
         var component = target.GetComponent<MovingManComponent>();
-        if(component == null) {
+        if (component == null) {
             return false;
         }
 
@@ -64,7 +64,7 @@ public sealed class MovingManSettings : UnityComponentSettingsBase, ICopyable<Mo
 
     public override bool FromUnity(GameObject source) {
         var component = source.GetComponent<MovingManComponent>();
-        if(component == null) {
+        if (component == null) {
             return false;
         }
 
@@ -89,24 +89,24 @@ public sealed class MovingManSettings : UnityComponentSettingsBase, ICopyable<Mo
     }
 
     public override void RefreshFx(GameObject target) {
-        if(!HasAnyFx) {
+        if (!HasAnyFx) {
             return;
         }
 
         var component = target.GetComponent<MovingManComponent>();
-        if(component == null) {
+        if (component == null) {
             return;
         }
 
         RefreshEnabled(component);
-        if(FxUtil.Changed(ref _lastTagName, TagName.Value)) component.TagName = _lastTagName;
-        if(FxUtil.Changed(ref _lastTarget, Target.Value)) component.Target = _lastTarget;
-        if(FxUtil.Changed(ref _lastStartSize, StartSize.Value)) component.StartSize = _lastStartSize;
-        if(FxUtil.Changed(ref _lastEndSize, EndSize.Value)) component.EndSize = _lastEndSize;
-        if(FxUtil.Changed(ref _lastDefaultSize, DefaultSize.Value)) component.DefaultSize = _lastDefaultSize;
-        if(FxUtil.Changed(ref _lastSpeed, Speed.Value)) component.Speed = _lastSpeed;
-        if(FxUtil.Changed(ref _lastInvert, Invert.Value)) component.Invert = _lastInvert;
-        if(FxUtil.Changed(ref _lastEase, Ease.Value)) component.Ease = _lastEase;
+        if (FxUtil.Changed(ref _lastTagName, TagName.Value)) component.TagName = _lastTagName;
+        if (FxUtil.Changed(ref _lastTarget, Target.Value)) component.Target = _lastTarget;
+        if (FxUtil.Changed(ref _lastStartSize, StartSize.Value)) component.StartSize = _lastStartSize;
+        if (FxUtil.Changed(ref _lastEndSize, EndSize.Value)) component.EndSize = _lastEndSize;
+        if (FxUtil.Changed(ref _lastDefaultSize, DefaultSize.Value)) component.DefaultSize = _lastDefaultSize;
+        if (FxUtil.Changed(ref _lastSpeed, Speed.Value)) component.Speed = _lastSpeed;
+        if (FxUtil.Changed(ref _lastInvert, Invert.Value)) component.Invert = _lastInvert;
+        if (FxUtil.Changed(ref _lastEase, Ease.Value)) component.Ease = _lastEase;
     }
 
     public override JToken Serialize() => SerializeComponent(new JObject {
@@ -124,7 +124,7 @@ public sealed class MovingManSettings : UnityComponentSettingsBase, ICopyable<Mo
         DeserializeComponent(token);
         TagName = IOUtils.ReadFx(token, nameof(TagName), TagName);
         Target = IOUtils.ReadFx(token, nameof(Target), Target);
-        if(!Target.UseFx) {
+        if (!Target.UseFx) {
             Target.Value = ReadTarget(token, Target.Value);
         }
         StartSize = IOUtils.ReadFx(token, nameof(StartSize), StartSize);
@@ -149,20 +149,20 @@ public sealed class MovingManSettings : UnityComponentSettingsBase, ICopyable<Mo
 
     private static MovingManTarget ReadTarget(JToken token, MovingManTarget fallback) {
         var value = token[nameof(Target)];
-        if(value?.Type == JTokenType.Integer) {
+        if (value?.Type == JTokenType.Integer) {
             int legacyValue = value.Value<int>();
-            if(token[nameof(Ease)]?.Type == JTokenType.Integer) {
+            if (token[nameof(Ease)]?.Type == JTokenType.Integer) {
                 return (MovingManTarget)legacyValue;
             }
-            if((legacyValue & (1 << 10)) != 0) {
+            if ((legacyValue & (1 << 10)) != 0) {
                 return (MovingManTarget)(legacyValue | (1 << 11));
             }
-            if(legacyValue is >= 0 and <= 9) {
+            if (legacyValue is >= 0 and <= 9) {
                 return (MovingManTarget)(1 << legacyValue);
             }
         }
 
-        if(value?.Type == JTokenType.String && string.Equals(
+        if (value?.Type == JTokenType.String && string.Equals(
             value.Value<string>(),
             "SizeDelta",
             StringComparison.OrdinalIgnoreCase

@@ -11,14 +11,14 @@ public static class AdvancedCompiler {
         var diagnostics = new List<CompileDiagnostic>();
         var context = new DiagnosticContext(parsed.Name, parsed.Index, parsed.Length);
 
-        if(tag.Member is not MethodInfo mi) {
+        if (tag.Member is not MethodInfo mi) {
             throw new NotSupportedException("Advanced tag must be a Static Method.");
         }
 
         Func<string> runtimeDelegate;
         try {
             runtimeDelegate = (Func<string>)mi.Invoke(null, [parsed, context, diagnostics]);
-        } catch(Exception ex) {
+        } catch (Exception ex) {
             diagnostics.Add(new CompileDiagnostic(
                 DiagnosticId.AdvancedTagException,
                 CompileSeverity.Error,

@@ -19,7 +19,7 @@ public sealed class TagCache {
     private readonly object lockObject = new();
 
     public CompiledPlaceholder GetOrCompile(ParsedTag parsed) {
-        if(!TagManager.TryGet(parsed.Name, out var tag)) {
+        if (!TagManager.TryGet(parsed.Name, out var tag)) {
             string suggestion = FindSuggestion(parsed.Name);
             return new CompiledPlaceholder(() => parsed.Raw, [
                 new CompileDiagnostic(
@@ -32,8 +32,8 @@ public sealed class TagCache {
         }
 
         string key = MakeKey(parsed);
-        lock(lockObject) {
-            if(cache.TryGetValue(key, out var entry)) {
+        lock (lockObject) {
+            if (cache.TryGetValue(key, out var entry)) {
                 return WithContext(entry.Compiled, parsed);
             }
         }
@@ -42,9 +42,9 @@ public sealed class TagCache {
             ? AdvancedCompiler.Compile(tag, parsed)
             : Compiler.Compile(tag, parsed);
 
-        if(compiled.IsValid) {
-            lock(lockObject) {
-                if(!cache.TryGetValue(key, out var entry)) {
+        if (compiled.IsValid) {
+            lock (lockObject) {
+                if (!cache.TryGetValue(key, out var entry)) {
                     cache[key] = new CacheEntry(compiled);
                 }
                 return cache[key].Compiled;
@@ -55,10 +55,10 @@ public sealed class TagCache {
 
     public void IncrementRef(string key) {
         string[] changed = null;
-        lock(lockObject) {
-            if(cache.TryGetValue(key, out var entry)) {
+        lock (lockObject) {
+            if (cache.TryGetValue(key, out var entry)) {
                 entry.RefCount++;
-                if(entry.RefCount == 1) {
+                if (entry.RefCount == 1) {
                     changed = TrackActive(KeyToTagName(key), 1);
                 }
             }
@@ -68,10 +68,10 @@ public sealed class TagCache {
 
     public void DecrementRef(string key) {
         string[] changed = null;
-        lock(lockObject) {
-            if(cache.TryGetValue(key, out var entry)) {
+        lock (lockObject) {
+            if (cache.TryGetValue(key, out var entry)) {
                 entry.RefCount--;
-                if(entry.RefCount <= 0) {
+                if (entry.RefCount <= 0) {
                     cache.Remove(key);
                     changed = TrackActive(KeyToTagName(key), -1);
                 }
@@ -82,9 +82,9 @@ public sealed class TagCache {
 
     public void Clear() {
         string[] changed = null;
-        lock(lockObject) {
+        lock (lockObject) {
             cache.Clear();
-            if(activeTagCounts.Count > 0) {
+            if (activeTagCounts.Count > 0) {
                 activeTagCounts.Clear();
                 changed = [];
             }
@@ -93,18 +93,18 @@ public sealed class TagCache {
     }
 
     public IReadOnlyCollection<string> GetActiveTagNames() {
-        lock(lockObject) {
+        lock (lockObject) {
             return [.. activeTagCounts.Keys];
         }
     }
 
     private string[] TrackActive(string tagName, int delta) {
-        if(string.IsNullOrEmpty(tagName)) {
+        if (string.IsNullOrEmpty(tagName)) {
             return null;
         }
         activeTagCounts.TryGetValue(tagName, out int count);
         count += delta;
-        if(count <= 0) {
+        if (count <= 0) {
             activeTagCounts.Remove(tagName);
         } else {
             activeTagCounts[tagName] = count;
@@ -113,7 +113,7 @@ public sealed class TagCache {
     }
 
     private static void NotifyLazy(string[] activeTags) {
-        if(activeTags == null) {
+        if (activeTags == null) {
             return;
         }
         try {
@@ -123,7 +123,7 @@ public sealed class TagCache {
     }
 
     private static string KeyToTagName(string key) {
-        if(string.IsNullOrEmpty(key)) {
+        if (string.IsNullOrEmpty(key)) {
             return null;
         }
         int sep = key.IndexOf(':');
@@ -138,7 +138,7 @@ public sealed class TagCache {
         : string.Concat(p.Name, ":", string.Join(",", p.Args));
 
     private static string FindSuggestion(string name) {
-        if(string.IsNullOrWhiteSpace(name)) {
+        if (string.IsNullOrWhiteSpace(name)) {
             return null;
         }
 
@@ -151,7 +151,7 @@ public sealed class TagCache {
     }
 
     private static CompiledPlaceholder WithContext(CompiledPlaceholder compiled, ParsedTag parsed) {
-        if(compiled.Diagnostics.Length == 0) {
+        if (compiled.Diagnostics.Length == 0) {
             return compiled;
         }
 

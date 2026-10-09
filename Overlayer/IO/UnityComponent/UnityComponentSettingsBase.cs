@@ -23,7 +23,7 @@ public abstract class UnityComponentSettingsBase : ISettingsFile {
     }
 
     protected bool RefreshEnabled(Behaviour component) {
-        if(!FxUtil.Changed(ref _lastEnabled, ComponentEnabled.Value)) {
+        if (!FxUtil.Changed(ref _lastEnabled, ComponentEnabled.Value)) {
             return false;
         }
         component.enabled = _lastEnabled;
@@ -31,7 +31,7 @@ public abstract class UnityComponentSettingsBase : ISettingsFile {
     }
 
     protected JObject SerializeComponent(JObject properties) {
-        if(ComponentEnabled.UseFx || !ComponentEnabled.Value) {
+        if (ComponentEnabled.UseFx || !ComponentEnabled.Value) {
             properties[nameof(ComponentEnabled)] = IOUtils.WriteFx(ComponentEnabled);
         }
         return properties;

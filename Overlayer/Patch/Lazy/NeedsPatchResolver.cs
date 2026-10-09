@@ -5,11 +5,11 @@ using System.Reflection;
 namespace Overlayer.Patch.Lazy;
 
 public static class NeedsPatchResolver {
-   private static readonly ConcurrentDictionary<MemberInfo, IReadOnlyList<Type>> cache = new();
+    private static readonly ConcurrentDictionary<MemberInfo, IReadOnlyList<Type>> cache = new();
 
     public static IReadOnlyList<Type> GetRequiredPatchTypes(TagCore tag) {
         var member = tag?.Member;
-        if(member == null) {
+        if (member == null) {
             return [];
         }
         return cache.GetOrAdd(member, Scan);
@@ -19,11 +19,11 @@ public static class NeedsPatchResolver {
         var types = new List<Type>();
         Collect(member, types);
 
-        if(types.Count == 0 && member is MethodInfo method && method.IsSpecialName) {
+        if (types.Count == 0 && member is MethodInfo method && method.IsSpecialName) {
             var declaring = method.DeclaringType;
-            if(declaring != null) {
-                foreach(var property in declaring.GetProperties(BindingFlags.Public | BindingFlags.Static | BindingFlags.Instance)) {
-                    if(property.GetGetMethod(true) == method || property.GetSetMethod(true) == method) {
+            if (declaring != null) {
+                foreach (var property in declaring.GetProperties(BindingFlags.Public | BindingFlags.Static | BindingFlags.Instance)) {
+                    if (property.GetGetMethod(true) == method || property.GetSetMethod(true) == method) {
                         Collect(property, types);
                     }
                 }
@@ -34,12 +34,12 @@ public static class NeedsPatchResolver {
     }
 
     private static void Collect(MemberInfo member, List<Type> types) {
-        foreach(var attr in member.GetCustomAttributes<NeedsPatchAttribute>()) {
-            if(attr?.PatchTypes == null) {
+        foreach (var attr in member.GetCustomAttributes<NeedsPatchAttribute>()) {
+            if (attr?.PatchTypes == null) {
                 continue;
             }
-            foreach(var type in attr.PatchTypes) {
-                if(type != null && !types.Contains(type)) {
+            foreach (var type in attr.PatchTypes) {
+                if (type != null && !types.Contains(type)) {
                     types.Add(type);
                 }
             }

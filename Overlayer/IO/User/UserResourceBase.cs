@@ -5,12 +5,12 @@ public abstract class UserResourceBase<T> {
     public ICollection<string> Keys => Cache.Keys;
 
     public bool TryGet(string key, out T value) {
-        if(key == null) {
+        if (key == null) {
             value = default;
             return false;
         }
 
-        if(Cache.TryGetValue(key, out var entry)) {
+        if (Cache.TryGetValue(key, out var entry)) {
             value = entry.value;
             return true;
         }
@@ -20,7 +20,7 @@ public abstract class UserResourceBase<T> {
     }
 
     public bool TryGetPath(string key, out string path) {
-        if(key != null && Cache.TryGetValue(key, out var entry)) {
+        if (key != null && Cache.TryGetValue(key, out var entry)) {
             path = entry.path;
             return true;
         }
@@ -29,7 +29,7 @@ public abstract class UserResourceBase<T> {
     }
 
     public bool TryRenameKey(string oldKey, string newKey) {
-        if(
+        if (
             string.IsNullOrWhiteSpace(oldKey) ||
             string.IsNullOrWhiteSpace(newKey) ||
             string.Equals(oldKey, newKey, StringComparison.Ordinal) ||
@@ -48,8 +48,8 @@ public abstract class UserResourceBase<T> {
         Predicate<T> predicate,
         out string key
     ) {
-        foreach(var (cacheKey, (_, value)) in Cache) {
-            if(predicate(value)) {
+        foreach (var (cacheKey, (_, value)) in Cache) {
+            if (predicate(value)) {
                 key = cacheKey;
                 return true;
             }

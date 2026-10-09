@@ -138,7 +138,7 @@ public partial class OvCanvasSettingPage : IDisposable {
 
         var backBtnGoOvent = backBtnGo.AddComponent<OventHandler>();
         backBtnGoOvent.OnClick += btn => {
-            if(btn == InputButton.Left) {
+            if (btn == InputButton.Left) {
                 onBackAction?.Invoke();
             }
         };
@@ -267,7 +267,7 @@ public partial class OvCanvasSettingPage : IDisposable {
         RectTransform emptyRow = CreateHierarchyControlRow(hierCreateToolbar.transform);
 
         var btnEmpty = O5Factory.Button(O5KitAdapters.Ctx, emptyRow, () => {
-            if(currentCanvas == null) {
+            if (currentCanvas == null) {
                 return;
             }
 
@@ -291,7 +291,7 @@ public partial class OvCanvasSettingPage : IDisposable {
         RectTransform createRow = CreateHierarchyControlRow(hierCreateToolbar.transform);
 
         var btnText = O5Factory.Button(O5KitAdapters.Ctx, createRow, () => {
-            if(currentCanvas == null) {
+            if (currentCanvas == null) {
                 return;
             }
 
@@ -315,7 +315,7 @@ public partial class OvCanvasSettingPage : IDisposable {
         permanentUiObjects.Add(btnText);
 
         var btnImage = O5Factory.Button(O5KitAdapters.Ctx, createRow, () => {
-            if(currentCanvas == null) {
+            if (currentCanvas == null) {
                 return;
             }
 
@@ -355,7 +355,7 @@ public partial class OvCanvasSettingPage : IDisposable {
 
         // Clone
         var btnClone = O5Factory.Button(O5KitAdapters.Ctx, hierCtrlToolbar.transform, () => {
-            if(selectedObject == null || currentCanvas == null) {
+            if (selectedObject == null || currentCanvas == null) {
                 return;
             }
 
@@ -377,27 +377,27 @@ public partial class OvCanvasSettingPage : IDisposable {
 
         // Delete
         var btnDel = O5Factory.Button(O5KitAdapters.Ctx, hierCtrlToolbar.transform, () => {
-            if(selectedObject == null) {
-                if(currentCanvas == null) {
+            if (selectedObject == null) {
+                if (currentCanvas == null) {
                     return;
                 }
 
-                if(Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)) {
+                if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)) {
                     DisarmDeleteButton();
                     var skippedDelete = currentCanvas;
 
-                    if(OverlayCore.DeleteOvCanvas(skippedDelete)) {
+                    if (OverlayCore.DeleteOvCanvas(skippedDelete)) {
                         CloseCanvasTab(activeTab);
                     }
 
                     return;
                 }
 
-                if(armedDeleteCanvas != currentCanvas ||
+                if (armedDeleteCanvas != currentCanvas ||
                     (DateTime.Now - armedDeleteTime).TotalSeconds > 5) {
                     armedDeleteCanvas = currentCanvas;
                     armedDeleteTime = DateTime.Now;
-                    if(deleteButton != null && deleteButton.Icon != null) {
+                    if (deleteButton != null && deleteButton.Icon != null) {
                         deleteButton.Icon.color = UIColors.SoftRed;
                     }
                     return;
@@ -406,7 +406,7 @@ public partial class OvCanvasSettingPage : IDisposable {
                 DisarmDeleteButton();
                 var canvasToDelete = currentCanvas;
 
-                if(OverlayCore.DeleteOvCanvas(canvasToDelete)) {
+                if (OverlayCore.DeleteOvCanvas(canvasToDelete)) {
                     CloseCanvasTab(activeTab);
                 }
 
@@ -440,7 +440,7 @@ public partial class OvCanvasSettingPage : IDisposable {
             }
             // ------------------------------------------
 
-            if(toDelete.Parent == null) {
+            if (toDelete.Parent == null) {
                 currentCanvas?.Detach(toDelete);
             }
 
@@ -491,21 +491,21 @@ public partial class OvCanvasSettingPage : IDisposable {
 
     private void MoveSelectedOrder(int direction) {
         var obj = selectedObject;
-        if(obj == null) {
+        if (obj == null) {
             return;
         }
 
-        if(obj.Parent == null) {
+        if (obj.Parent == null) {
             int index = currentCanvas.OvObjects.IndexOf(obj);
-            if(index < 0) {
+            if (index < 0) {
                 return;
             }
 
             int targetIndex = index + direction;
-            if(targetIndex >= 0 && targetIndex < currentCanvas.OvObjects.Count) {
+            if (targetIndex >= 0 && targetIndex < currentCanvas.OvObjects.Count) {
                 currentCanvas.OvObjects.RemoveAt(index);
                 currentCanvas.OvObjects.Insert(targetIndex, obj);
-                for(int i = 0; i < currentCanvas.OvObjects.Count; i++) {
+                for (int i = 0; i < currentCanvas.OvObjects.Count; i++) {
                     currentCanvas.OvObjects[i].GameObject.transform.SetSiblingIndex(i);
                 }
                 RebuildHierarchy();
@@ -514,12 +514,12 @@ public partial class OvCanvasSettingPage : IDisposable {
         } else {
             var parent = obj.Parent;
             int index = parent.Children.IndexOf(obj);
-            if(index < 0) {
+            if (index < 0) {
                 return;
             }
 
             int targetIndex = index + direction;
-            if(targetIndex >= 0 && targetIndex < parent.Children.Count) {
+            if (targetIndex >= 0 && targetIndex < parent.Children.Count) {
                 parent.SetChildIndex(obj, targetIndex);
                 RebuildHierarchy();
                 SaveConfig();
@@ -529,21 +529,21 @@ public partial class OvCanvasSettingPage : IDisposable {
 
     private void DisarmDeleteButton() {
         armedDeleteCanvas = null;
-        if(deleteButton != null && deleteButton.Icon != null) {
+        if (deleteButton != null && deleteButton.Icon != null) {
             deleteButton.Icon.color = Color.white;
         }
     }
 
     public void Open(OvCanvas canvas, bool noAnimate = false) {
         CanvasTabState tab = null;
-        foreach(var openTab in canvasTabs) {
-            if(openTab.Canvas == canvas) {
+        foreach (var openTab in canvasTabs) {
+            if (openTab.Canvas == canvas) {
                 tab = openTab;
                 break;
             }
         }
 
-        if(tab == null) {
+        if (tab == null) {
             tab = new CanvasTabState(canvas);
             canvasTabs.Add(tab);
         }
@@ -552,7 +552,7 @@ public partial class OvCanvasSettingPage : IDisposable {
     }
 
     private void SaveActiveTabState() {
-        if(activeTab == null) {
+        if (activeTab == null) {
             return;
         }
 
@@ -562,7 +562,7 @@ public partial class OvCanvasSettingPage : IDisposable {
     }
 
     private void ActivateCanvasTab(CanvasTabState tab, bool noAnimate = false) {
-        if(activeTab == tab && GameObject.activeSelf) {
+        if (activeTab == tab && GameObject.activeSelf) {
             return;
         }
 
@@ -582,10 +582,10 @@ public partial class OvCanvasSettingPage : IDisposable {
 
         bool wasActive = GameObject.activeSelf;
         GameObject.SetActive(true);
-        if(noAnimate) {
+        if (noAnimate) {
             CanvasGroup.alpha = 1f;
             CanvasGroup.blocksRaycasts = true;
-        } else if(!wasActive) {
+        } else if (!wasActive) {
             canvasFadeTween?.Kill();
             canvasFadeTween = CanvasGroup.TFade(1f, 0.25f, O5Ease.OutCubic, () => CanvasGroup.blocksRaycasts = true);
         }
@@ -593,17 +593,17 @@ public partial class OvCanvasSettingPage : IDisposable {
 
     private void CloseCanvasTab(CanvasTabState tab) {
         int index = canvasTabs.IndexOf(tab);
-        if(index < 0) {
+        if (index < 0) {
             return;
         }
 
         bool wasActive = activeTab == tab;
-        if(wasActive) {
+        if (wasActive) {
             SaveActiveTabState();
         }
         canvasTabs.RemoveAt(index);
 
-        if(canvasTabs.Count == 0) {
+        if (canvasTabs.Count == 0) {
             activeTab = null;
             currentCanvas = null;
             selectedObject = null;
@@ -613,7 +613,7 @@ public partial class OvCanvasSettingPage : IDisposable {
             return;
         }
 
-        if(wasActive) {
+        if (wasActive) {
             ActivateCanvasTab(canvasTabs[Math.Min(index, canvasTabs.Count - 1)], true);
         } else {
             RebuildCanvasTabs();
@@ -621,21 +621,21 @@ public partial class OvCanvasSettingPage : IDisposable {
     }
 
     private void RebuildCanvasTabs() {
-        if(tabsContent == null) {
+        if (tabsContent == null) {
             return;
         }
 
-        for(int i = tabsContent.childCount - 1; i >= 0; i--) {
+        for (int i = tabsContent.childCount - 1; i >= 0; i--) {
             GameObject child = tabsContent.GetChild(i).gameObject;
             child.SetActive(false);
             UnityEngine.Object.Destroy(child);
         }
 
-        foreach(var tab in canvasTabs) {
+        foreach (var tab in canvasTabs) {
             tab.TabRect = null;
         }
 
-        foreach(var tab in canvasTabs) {
+        foreach (var tab in canvasTabs) {
             GameObject tabObject = new("CanvasTab");
             tabObject.transform.SetParent(tabsContent, false);
             var tabRect = tabObject.AddComponent<RectTransform>();
@@ -669,14 +669,15 @@ public partial class OvCanvasSettingPage : IDisposable {
 #else
                         e as PointerEventData;
 #endif
-                    if(suppressCanvasTabClick) {
+                    if (suppressCanvasTabClick) {
                         suppressCanvasTabClick = false;
                         return;
                     }
-                    if(pointer != null && pointer.button == InputButton.Left) {
+                    if (pointer != null && pointer.button == InputButton.Left) {
                         ActivateCanvasTab(tab);
                     }
-                }),
+                }
+            ),
                 (EventTriggerType.BeginDrag, e => {
                     PointerEventData pointer =
 #if ML && IL2CPP
@@ -684,14 +685,15 @@ public partial class OvCanvasSettingPage : IDisposable {
 #else
                         e as PointerEventData;
 #endif
-                    if(pointer == null || pointer.button != InputButton.Left) {
+                    if (pointer == null || pointer.button != InputButton.Left) {
                         return;
                     }
 
                     BeginCanvasTabDrag(tab, pointer);
-                }),
+                }
+            ),
                 (EventTriggerType.Drag, e => {
-                    if(draggedCanvasTab != tab) {
+                    if (draggedCanvasTab != tab) {
                         return;
                     }
 
@@ -701,17 +703,19 @@ public partial class OvCanvasSettingPage : IDisposable {
 #else
                         e as PointerEventData;
 #endif
-                    if(pointer != null && MoveCanvasTab(tab, pointer)) {
+                    if (pointer != null && MoveCanvasTab(tab, pointer)) {
                         canvasTabDragReordered = true;
                     }
-                }),
+                }
+            ),
                 (EventTriggerType.EndDrag, _ => {
-                    if(draggedCanvasTab != tab) {
+                    if (draggedCanvasTab != tab) {
                         return;
                     }
 
                     EndCanvasTabDrag(tab);
-                })
+                }
+            )
             );
 
             GameObject labelObject = new("CanvasTabLabel");
@@ -754,32 +758,33 @@ public partial class OvCanvasSettingPage : IDisposable {
 #else
                         e as PointerEventData;
 #endif
-                    if(pointer != null && pointer.button == InputButton.Left) {
+                    if (pointer != null && pointer.button == InputButton.Left) {
                         CloseCanvasTab(tab);
                     }
-                })
+                }
+            )
             );
         }
 
         Canvas.ForceUpdateCanvases();
         LayoutRebuilder.ForceRebuildLayoutImmediate(tabsContent);
-        if(activeTab != null) {
-            for(int i = 0; i < canvasTabs.Count; i++) {
-                if(canvasTabs[i] == activeTab) {
+        if (activeTab != null) {
+            for (int i = 0; i < canvasTabs.Count; i++) {
+                if (canvasTabs[i] == activeTab) {
                     var scroll = tabsContent.GetComponentInParent<ScrollRect>();
-                    if(scroll != null) {
+                    if (scroll != null) {
                         var activeRect = tabsContent.GetChild(i) as RectTransform;
                         float viewportWidth = scroll.viewport.rect.width;
                         float contentWidth = tabsContent.rect.width;
                         float maxOffset = Mathf.Max(0f, contentWidth - viewportWidth);
                         float currentOffset = -tabsContent.anchoredPosition.x;
                         float targetOffset = currentOffset;
-                        if(activeRect != null) {
+                        if (activeRect != null) {
                             float tabLeft = activeRect.anchoredPosition.x;
                             float tabRight = tabLeft + activeRect.rect.width;
-                            if(tabLeft < currentOffset) {
+                            if (tabLeft < currentOffset) {
                                 targetOffset = tabLeft;
-                            } else if(tabRight > currentOffset + viewportWidth) {
+                            } else if (tabRight > currentOffset + viewportWidth) {
                                 targetOffset = tabRight - viewportWidth;
                             }
                         }
@@ -794,7 +799,7 @@ public partial class OvCanvasSettingPage : IDisposable {
     }
 
     private void BeginCanvasTabDrag(CanvasTabState tab, PointerEventData pointer) {
-        if(canvasTabs.Count < 2 || tab.TabRect == null || !RectTransformUtility.ScreenPointToLocalPointInRectangle(
+        if (canvasTabs.Count < 2 || tab.TabRect == null || !RectTransformUtility.ScreenPointToLocalPointInRectangle(
             tabsContent,
             pointer.position,
             pointer.pressEventCamera,
@@ -844,7 +849,7 @@ public partial class OvCanvasSettingPage : IDisposable {
     }
 
     private bool MoveCanvasTab(CanvasTabState tab, PointerEventData pointer) {
-        if(draggedCanvasTab != tab || canvasTabDragPlaceholder == null || !RectTransformUtility.ScreenPointToLocalPointInRectangle(
+        if (draggedCanvasTab != tab || canvasTabDragPlaceholder == null || !RectTransformUtility.ScreenPointToLocalPointInRectangle(
             tabsContent,
             pointer.position,
             pointer.pressEventCamera,
@@ -863,33 +868,33 @@ public partial class OvCanvasSettingPage : IDisposable {
         int currentIndex = canvasTabs.IndexOf(tab);
         float deltaX = centerX - canvasTabDragPreviousCenterX;
         canvasTabDragPreviousCenterX = centerX;
-        if(Mathf.Abs(deltaX) < 0.01f) {
+        if (Mathf.Abs(deltaX) < 0.01f) {
             canvasTabDragReordered = true;
             return true;
         }
 
         float crossingEdge = centerX + Mathf.Sign(deltaX) * canvasTabDragWidth * 0.5f;
         int insertIndex = 0;
-        foreach(var otherTab in canvasTabs) {
-            if(otherTab == tab) {
+        foreach (var otherTab in canvasTabs) {
+            if (otherTab == tab) {
                 continue;
             }
 
             RectTransform otherSlot = GetCanvasTabSlotRect(otherTab);
             float otherCenter = GetCanvasTabLocalX(otherSlot, otherSlot.rect.center.x);
-            if(otherCenter < crossingEdge) {
+            if (otherCenter < crossingEdge) {
                 insertIndex++;
             }
         }
 
-        if(insertIndex == currentIndex) {
+        if (insertIndex == currentIndex) {
             canvasTabDragReordered = true;
             return true;
         }
 
         canvasTabs.RemoveAt(currentIndex);
         canvasTabs.Insert(Math.Clamp(insertIndex, 0, canvasTabs.Count), tab);
-        for(int i = 0; i < canvasTabs.Count; i++) {
+        for (int i = 0; i < canvasTabs.Count; i++) {
             GetCanvasTabSlotRect(canvasTabs[i]).SetSiblingIndex(i);
         }
         tab.TabRect.SetAsLastSibling();
@@ -900,28 +905,28 @@ public partial class OvCanvasSettingPage : IDisposable {
     }
 
     private void EndCanvasTabDrag(CanvasTabState tab) {
-        if(draggedCanvasTab != tab) {
+        if (draggedCanvasTab != tab) {
             return;
         }
 
         suppressCanvasTabClick = canvasTabDragReordered;
-        if(canvasTabDragPlaceholder != null) {
+        if (canvasTabDragPlaceholder != null) {
             canvasTabDragPlaceholder.SetParent(null, false);
             UnityEngine.Object.Destroy(canvasTabDragPlaceholder.gameObject);
             canvasTabDragPlaceholder = null;
         }
 
-        if(tab.TabRect != null) {
+        if (tab.TabRect != null) {
             tab.TabRect.anchorMin = canvasTabDragOriginalAnchorMin;
             tab.TabRect.anchorMax = canvasTabDragOriginalAnchorMax;
             tab.TabRect.pivot = canvasTabDragOriginalPivot;
             tab.TabRect.sizeDelta = canvasTabDragOriginalSizeDelta;
         }
-        if(draggedCanvasTabLayout != null) {
+        if (draggedCanvasTabLayout != null) {
             draggedCanvasTabLayout.ignoreLayout = false;
         }
 
-        for(int i = 0; i < canvasTabs.Count; i++) {
+        for (int i = 0; i < canvasTabs.Count; i++) {
             canvasTabs[i].TabRect?.SetSiblingIndex(i);
         }
         LayoutRebuilder.ForceRebuildLayoutImmediate(tabsContent);
@@ -965,9 +970,9 @@ public partial class OvCanvasSettingPage : IDisposable {
     private void SelectObject(OvObject obj) {
         selectedObject = obj;
         multiSelected.Clear();
-        if(obj != null) {
+        if (obj != null) {
             DisarmDeleteButton();
-            for(OvObject parent = obj.Parent; parent != null; parent = parent.Parent) {
+            for (OvObject parent = obj.Parent; parent != null; parent = parent.Parent) {
                 collapsedObjects.Remove(parent);
             }
         }
@@ -999,23 +1004,23 @@ public partial class OvCanvasSettingPage : IDisposable {
         draggedObject = null;
         ClearHierarchyDropState();
 
-        foreach(var obj in hierarchyUiObjects) {
+        foreach (var obj in hierarchyUiObjects) {
             obj.Dispose();
         }
         hierarchyUiObjects.Clear();
 
-        for(int i = hierarchyContent.childCount - 1; i >= 0; i--) {
+        for (int i = hierarchyContent.childCount - 1; i >= 0; i--) {
             UnityEngine.Object.Destroy(hierarchyContent.GetChild(i).gameObject);
         }
 
-        if(currentCanvas == null) {
+        if (currentCanvas == null) {
             return;
         }
 
         // Render Canvas root first
         RenderCanvasRootItem();
 
-        for(int i = 0; i < currentCanvas.OvObjects.Count; i++) {
+        for (int i = 0; i < currentCanvas.OvObjects.Count; i++) {
             RenderHierarchyItem(currentCanvas.OvObjects[i], 0);
         }
 
@@ -1069,11 +1074,11 @@ public partial class OvCanvasSettingPage : IDisposable {
 #else
                     eventData as PointerEventData;
 #endif
-                if(pointer == null || pointer.button != InputButton.Left) {
+                if (pointer == null || pointer.button != InputButton.Left) {
                     return;
                 }
 
-                if(draggedObject == null) {
+                if (draggedObject == null) {
                     SelectObject(null);
                 }
             }
@@ -1123,7 +1128,7 @@ public partial class OvCanvasSettingPage : IDisposable {
             : UIColors.ObjectBG;
 
         RectTransform foldoutRect = null;
-        if(hasChildren) {
+        if (hasChildren) {
             GameObject foldout = new("Foldout");
             foldout.transform.SetParent(itemBtn.transform, false);
             foldoutRect = foldout.AddComponent<RectTransform>();
@@ -1139,14 +1144,14 @@ public partial class OvCanvasSettingPage : IDisposable {
             foldoutImg.preserveAspect = true;
             float targetRot = collapsed ? 0f : 180f;
             foldout.transform.localRotation = Quaternion.Euler(0f, 0f, targetRot);
-            if(obj == foldoutAnimTarget) {
+            if (obj == foldoutAnimTarget) {
                 foldoutAnimTarget = null;
                 float fromRot = foldoutAnimFrom;
                 var foldoutT = foldout.transform;
                 O5KitAdapters.Ctx.Tween.TweenFloat(
                     () => 0f,
                     t => {
-                        if(foldoutT) {
+                        if (foldoutT) {
                             foldoutT.localRotation = Quaternion.Euler(0f, 0f, Mathf.LerpUnclamped(fromRot, targetRot, t));
                         }
                     },
@@ -1177,15 +1182,15 @@ public partial class OvCanvasSettingPage : IDisposable {
 #else
                     e as PointerEventData;
 #endif
-                if(ped == null || ped.button != InputButton.Left) {
+                if (ped == null || ped.button != InputButton.Left) {
                     return;
                 }
 
-                if(hasChildren && foldoutRect != null && RectTransformUtility.RectangleContainsScreenPoint(
+                if (hasChildren && foldoutRect != null && RectTransformUtility.RectangleContainsScreenPoint(
                     foldoutRect, ped.position, ped.pressEventCamera
                 )) {
                     foldoutAnimFrom = collapsedObjects.Contains(obj) ? 0f : 180f;
-                    if(!collapsedObjects.Add(obj)) {
+                    if (!collapsedObjects.Add(obj)) {
                         collapsedObjects.Remove(obj);
                     }
                     foldoutAnimTarget = obj;
@@ -1194,10 +1199,10 @@ public partial class OvCanvasSettingPage : IDisposable {
                     return;
                 }
 
-                if(draggedObject != null) {
+                if (draggedObject != null) {
                     return;
                 }
-                if(ShiftHeld() && selectedObject != null) {
+                if (ShiftHeld() && selectedObject != null) {
                     ToggleMultiSelect(obj);
                 } else {
                     SelectObject(obj);
@@ -1214,7 +1219,7 @@ public partial class OvCanvasSettingPage : IDisposable {
                     e as PointerEventData;
 #endif
 
-                if(ped == null || ped.button != InputButton.Left) {
+                if (ped == null || ped.button != InputButton.Left) {
                     return;
                 }
 
@@ -1245,17 +1250,17 @@ public partial class OvCanvasSettingPage : IDisposable {
         );
         itemBtnRect.offsetMax = Vector2.zero;
 
-        if(collapsed) {
+        if (collapsed) {
             return;
         }
 
-        for(int i = 0; i < obj.Children.Count; i++) {
+        for (int i = 0; i < obj.Children.Count; i++) {
             RenderHierarchyItem(obj.Children[i], depth + 1);
         }
     }
 
     private void SetHierarchyDropTarget(OvObject target, RectTransform rect, Image image, bool canvas) {
-        if(draggedObject == null || target == draggedObject || IsDescendantOf(target, draggedObject)) {
+        if (draggedObject == null || target == draggedObject || IsDescendantOf(target, draggedObject)) {
             return;
         }
 
@@ -1269,7 +1274,7 @@ public partial class OvCanvasSettingPage : IDisposable {
     }
 
     private void ClearHierarchyDropTarget(RectTransform rect) {
-        if(hierarchyDropRect != rect) {
+        if (hierarchyDropRect != rect) {
             return;
         }
 
@@ -1281,13 +1286,13 @@ public partial class OvCanvasSettingPage : IDisposable {
     }
 
     private void UpdateHierarchyDropPreview(BaseEventData _) {
-        if(draggedObject == null || hierarchyDropRect == null || hierarchyDropImage == null) {
+        if (draggedObject == null || hierarchyDropRect == null || hierarchyDropImage == null) {
             return;
         }
 
         HierarchyDropZone zone = HierarchyDropZone.Inside;
-        if(!hierarchyDropOnCanvas) {
-            if(!RectTransformUtility.ScreenPointToLocalPointInRectangle(
+        if (!hierarchyDropOnCanvas) {
+            if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(
                 hierarchyDropRect,
                 O5Kit.Input.O5Input.MousePosition,
                 null,
@@ -1297,21 +1302,21 @@ public partial class OvCanvasSettingPage : IDisposable {
             }
 
             float edge = hierarchyDropRect.rect.height * 0.27f;
-            if(point.y > hierarchyDropRect.rect.yMax - edge) {
+            if (point.y > hierarchyDropRect.rect.yMax - edge) {
                 zone = HierarchyDropZone.Before;
-            } else if(point.y < hierarchyDropRect.rect.yMin + edge) {
+            } else if (point.y < hierarchyDropRect.rect.yMin + edge) {
                 zone = HierarchyDropZone.After;
             }
         }
 
-        if(hierarchyDropVisualActive && zone == hierarchyDropZone) {
+        if (hierarchyDropVisualActive && zone == hierarchyDropZone) {
             return;
         }
 
         ResetHierarchyDropVisual();
         hierarchyDropZone = zone;
         hierarchyDropVisualActive = true;
-        if(zone == HierarchyDropZone.Inside) {
+        if (zone == HierarchyDropZone.Inside) {
             hierarchyDropImage.color = UIColors.ObjectButton;
             return;
         }
@@ -1331,7 +1336,7 @@ public partial class OvCanvasSettingPage : IDisposable {
 
     private void ResetHierarchyDropVisual() {
         hierarchyDropImage?.color = hierarchyDropBaseColor;
-        if(hierarchyDropLine != null) {
+        if (hierarchyDropLine != null) {
             UnityEngine.Object.Destroy(hierarchyDropLine);
         }
 
@@ -1342,7 +1347,7 @@ public partial class OvCanvasSettingPage : IDisposable {
     private void CompleteHierarchyDrag() {
         OvObject moving = draggedObject;
         draggedObject = null;
-        if(moving == null || hierarchyDropRect == null) {
+        if (moving == null || hierarchyDropRect == null) {
             ClearHierarchyDropState();
             return;
         }
@@ -1352,21 +1357,21 @@ public partial class OvCanvasSettingPage : IDisposable {
         bool canvas = hierarchyDropOnCanvas;
         ClearHierarchyDropState();
 
-        if(!canvas && (target == null || target == moving || IsDescendantOf(target, moving))) {
+        if (!canvas && (target == null || target == moving || IsDescendantOf(target, moving))) {
             return;
         }
 
-        if(moving.Parent != null) {
+        if (moving.Parent != null) {
             moving.Detach();
         } else {
             currentCanvas.Detach(moving);
         }
 
-        if(canvas) {
+        if (canvas) {
             currentCanvas.Attach(moving);
-        } else if(zone == HierarchyDropZone.Inside) {
+        } else if (zone == HierarchyDropZone.Inside) {
             target.Attach(moving);
-        } else if(target.Parent != null) {
+        } else if (target.Parent != null) {
             OvObject parent = target.Parent;
             parent.Attach(moving);
             int index = parent.Children.IndexOf(target) + (zone == HierarchyDropZone.After ? 1 : 0);
@@ -1393,8 +1398,8 @@ public partial class OvCanvasSettingPage : IDisposable {
     }
 
     private static bool IsDescendantOf(OvObject candidate, OvObject ancestor) {
-        for(OvObject current = candidate; current != null; current = current.Parent) {
-            if(current == ancestor) {
+        for (OvObject current = candidate; current != null; current = current.Parent) {
+            if (current == ancestor) {
                 return true;
             }
         }
@@ -1403,7 +1408,7 @@ public partial class OvCanvasSettingPage : IDisposable {
 
     // Places obj right after anchor (same parent), or at the end of the canvas root when anchor is null.
     private void InsertAfter(OvObject anchor, OvObject obj) {
-        if(anchor?.Parent != null) {
+        if (anchor?.Parent != null) {
             OvObject parent = anchor.Parent;
             int index = parent.Children.IndexOf(anchor);
 
@@ -1414,7 +1419,7 @@ public partial class OvCanvasSettingPage : IDisposable {
 
         int rootIndex = anchor != null ? currentCanvas.OvObjects.IndexOf(anchor) : -1;
         currentCanvas.Attach(obj);
-        if(rootIndex >= 0) {
+        if (rootIndex >= 0) {
             currentCanvas.OvObjects.Remove(obj);
             currentCanvas.OvObjects.Insert(rootIndex + 1, obj);
         }
@@ -1422,25 +1427,25 @@ public partial class OvCanvasSettingPage : IDisposable {
     }
 
     private void SyncRootSiblingOrder() {
-        for(int i = 0; i < currentCanvas.OvObjects.Count; i++) {
+        for (int i = 0; i < currentCanvas.OvObjects.Count; i++) {
             currentCanvas.OvObjects[i].GameObject.transform.SetSiblingIndex(i);
         }
     }
 
     private void RebuildInspector() {
-        foreach(var uiObj in inspectorUiObjects) {
+        foreach (var uiObj in inspectorUiObjects) {
             uiObj.Dispose();
         }
         inspectorUiObjects.Clear();
 
-        for(int i = inspectorContent.childCount - 1; i >= 0; i--) {
+        for (int i = inspectorContent.childCount - 1; i >= 0; i--) {
             var child = inspectorContent.GetChild(i);
-            if(child != null) {
+            if (child != null) {
                 UnityEngine.Object.Destroy(child.gameObject);
             }
         }
 
-        if(currentCanvas == null) {
+        if (currentCanvas == null) {
             return;
         }
 
@@ -1449,7 +1454,7 @@ public partial class OvCanvasSettingPage : IDisposable {
                 selectedObject.ApplyConfig();
                 PropagateMultiSelect();
             }
-            : currentCanvas.ApplyConfig;
+        : currentCanvas.ApplyConfig;
         SnapshotMultiSelect();
 
         var builder = new OvInspectorBuilder(
@@ -1466,7 +1471,7 @@ public partial class OvCanvasSettingPage : IDisposable {
         );
         componentCards.Clear();
 
-        if(selectedObject == null) {
+        if (selectedObject == null) {
             builder.BuildCanvas(currentCanvas, _ => RebuildCanvasTabs());
         } else {
             builder.BuildObject(selectedObject);
@@ -1479,7 +1484,7 @@ public partial class OvCanvasSettingPage : IDisposable {
         CanvasGroup.blocksRaycasts = false;
         canvasFadeTween?.Kill();
 
-        if(noAnimate) {
+        if (noAnimate) {
             CanvasGroup.alpha = 0f;
             GameObject.SetActive(false);
         } else {
@@ -1490,22 +1495,22 @@ public partial class OvCanvasSettingPage : IDisposable {
     public void Dispose() {
         canvasFadeTween?.Kill();
 
-        foreach(var obj in hierarchyUiObjects) {
+        foreach (var obj in hierarchyUiObjects) {
             obj.Dispose();
         }
         hierarchyUiObjects.Clear();
 
-        foreach(var obj in inspectorUiObjects) {
+        foreach (var obj in inspectorUiObjects) {
             obj.Dispose();
         }
         inspectorUiObjects.Clear();
 
-        foreach(var obj in permanentUiObjects) {
+        foreach (var obj in permanentUiObjects) {
             obj.Dispose();
         }
         permanentUiObjects.Clear();
 
-        if(GameObject != null) {
+        if (GameObject != null) {
             UnityEngine.Object.Destroy(GameObject);
         }
     }

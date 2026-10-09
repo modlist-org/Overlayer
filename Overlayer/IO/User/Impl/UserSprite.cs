@@ -27,12 +27,12 @@ public class UserSprite : UserResourceBase<(Sprite sprite, string textureKey, Sp
         sprite = null;
 
         try {
-            if(Cache.ContainsKey(key)) {
+            if (Cache.ContainsKey(key)) {
                 sprite = Cache[key].value.sprite;
                 return Result.KeyAlreadyExists;
             }
 
-            if(!UserResourceManager.T2D.TryGet(textureKey, out var value)) {
+            if (!UserResourceManager.T2D.TryGet(textureKey, out var value)) {
                 return Result.NotFound;
             }
 
@@ -52,7 +52,7 @@ public class UserSprite : UserResourceBase<(Sprite sprite, string textureKey, Sp
 
             sprite = spr;
             return Result.Success;
-        } catch(Exception e) {
+        } catch (Exception e) {
             MainCore.Log.Err($"[{nameof(UserSprite)}] Sprite load failed: {e}");
             return Result.Failed;
         }
@@ -61,8 +61,8 @@ public class UserSprite : UserResourceBase<(Sprite sprite, string textureKey, Sp
     public JToken Serialize() {
         var obj = new JObject();
 
-        foreach(var (key, (_, value)) in Cache) {
-            if(O5cpFormat.IsPackageKey(key)) {
+        foreach (var (key, (_, value)) in Cache) {
+            if (O5cpFormat.IsPackageKey(key)) {
                 continue;
             }
             obj[key] = new JObject {
@@ -75,11 +75,11 @@ public class UserSprite : UserResourceBase<(Sprite sprite, string textureKey, Sp
     }
 
     public bool Remove(string key) {
-        if(!Cache.Remove(key, out var entry)) {
+        if (!Cache.Remove(key, out var entry)) {
             return false;
         }
 
-        if(entry.value.sprite) {
+        if (entry.value.sprite) {
             UnityEngine.Object.Destroy(entry.value.sprite);
         }
 
@@ -89,8 +89,8 @@ public class UserSprite : UserResourceBase<(Sprite sprite, string textureKey, Sp
     public bool RenameTextureKey(string oldKey, string newKey) {
         bool changed = false;
 
-        foreach(var (key, entry) in Cache.ToArray()) {
-            if(!string.Equals(entry.value.textureKey, oldKey, StringComparison.Ordinal)) {
+        foreach (var (key, entry) in Cache.ToArray()) {
+            if (!string.Equals(entry.value.textureKey, oldKey, StringComparison.Ordinal)) {
                 continue;
             }
 
@@ -105,14 +105,14 @@ public class UserSprite : UserResourceBase<(Sprite sprite, string textureKey, Sp
     }
 
     public bool RebuildTexture(string textureKey, Texture2D texture) {
-        if(string.IsNullOrWhiteSpace(textureKey) || !texture) {
+        if (string.IsNullOrWhiteSpace(textureKey) || !texture) {
             return false;
         }
 
         var replacements = new List<(string key, Sprite oldSprite, Sprite newSprite)>();
         try {
-            foreach(var (key, entry) in Cache) {
-                if(!string.Equals(entry.value.textureKey, textureKey, StringComparison.Ordinal)) {
+            foreach (var (key, entry) in Cache) {
+                if (!string.Equals(entry.value.textureKey, textureKey, StringComparison.Ordinal)) {
                     continue;
                 }
 
@@ -123,21 +123,21 @@ public class UserSprite : UserResourceBase<(Sprite sprite, string textureKey, Sp
                 ));
             }
 
-            foreach(var (key, oldSprite, newSprite) in replacements) {
+            foreach (var (key, oldSprite, newSprite) in replacements) {
                 var (path, value) = Cache[key];
                 Cache[key] = (
                     path,
                     (newSprite, value.textureKey, value.settings)
                 );
-                if(oldSprite) {
+                if (oldSprite) {
                     UnityEngine.Object.Destroy(oldSprite);
                 }
             }
 
             return replacements.Count > 0;
-        } catch(Exception e) {
-            foreach(var (key, oldSprite, newSprite) in replacements) {
-                if(newSprite) {
+        } catch (Exception e) {
+            foreach (var (key, oldSprite, newSprite) in replacements) {
+                if (newSprite) {
                     UnityEngine.Object.Destroy(newSprite);
                 }
             }
@@ -147,7 +147,7 @@ public class UserSprite : UserResourceBase<(Sprite sprite, string textureKey, Sp
     }
 
     public bool UpdateBorder(string key, Vector4 border) {
-        if(!Cache.TryGetValue(key, out var entry) ||
+        if (!Cache.TryGetValue(key, out var entry) ||
             !UserResourceManager.T2D.TryGet(entry.value.textureKey, out var textureValue)) {
             return false;
         }
@@ -155,7 +155,7 @@ public class UserSprite : UserResourceBase<(Sprite sprite, string textureKey, Sp
         SpriteSettings settings = entry.value.settings.Copy();
         settings.Border = border;
         Sprite sprite = settings.ToUnity(textureValue.texture);
-        if(!sprite) {
+        if (!sprite) {
             return false;
         }
 
@@ -163,7 +163,7 @@ public class UserSprite : UserResourceBase<(Sprite sprite, string textureKey, Sp
             entry.path,
             (sprite, entry.value.textureKey, settings)
         );
-        if(entry.value.sprite) {
+        if (entry.value.sprite) {
             UnityEngine.Object.Destroy(entry.value.sprite);
         }
 
@@ -171,18 +171,18 @@ public class UserSprite : UserResourceBase<(Sprite sprite, string textureKey, Sp
     }
 
     public void Deserialize(JToken token) {
-        if(token is not JObject obj) {
+        if (token is not JObject obj) {
             MainCore.Log.Wrn(
                 $"[{nameof(UserSprite)}] Deserialize failed: token is not JObject"
             );
             return;
         }
 
-        foreach(var property in obj.Properties()) {
-            if(O5cpFormat.IsPackageKey(property.Name)) {
+        foreach (var property in obj.Properties()) {
+            if (O5cpFormat.IsPackageKey(property.Name)) {
                 continue;
             }
-            if(property.Value is not JObject entry) {
+            if (property.Value is not JObject entry) {
                 continue;
             }
 
@@ -194,7 +194,7 @@ public class UserSprite : UserResourceBase<(Sprite sprite, string textureKey, Sp
 
             var settings = new SpriteSettings();
 
-            if(entry[nameof(SpriteSettings)] is JToken settingsToken) {
+            if (entry[nameof(SpriteSettings)] is JToken settingsToken) {
                 settings.Deserialize(settingsToken);
             }
 
@@ -208,7 +208,7 @@ public class UserSprite : UserResourceBase<(Sprite sprite, string textureKey, Sp
                 out _
             );
 
-            if(result != Result.Success) {
+            if (result != Result.Success) {
                 MainCore.Log.Wrn(
                     $"[{nameof(UserSprite)}] {result} {{ \"{property.Name}\": \"{textureKey}\" }}"
                 );
@@ -217,7 +217,7 @@ public class UserSprite : UserResourceBase<(Sprite sprite, string textureKey, Sp
     }
 
     public override void Dispose() {
-        foreach(var (_, value) in Cache.Values) {
+        foreach (var (_, value) in Cache.Values) {
             UnityEngine.Object.Destroy(value.sprite);
         }
 

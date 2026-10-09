@@ -9,11 +9,11 @@ public static class SafePatch {
             .FirstOrDefault(t => t.Name == typeName) ?? throw new Exception($"[{nameof(SafePatch)}] Type not found: {typeName}");
 
         BindingFlags bf = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
-        if(allowStatic) {
+        if (allowStatic) {
             bf |= BindingFlags.Static;
         }
 
-        if(methodName == ".ctor") {
+        if (methodName == ".ctor") {
             return args != null
                 ? type.GetConstructor(bf, null, args, null)
                     ?? throw new Exception($"[{nameof(SafePatch)}] Constructor with specified args not found in {typeName}")
@@ -21,12 +21,12 @@ public static class SafePatch {
                 ?? throw new Exception($"[{nameof(SafePatch)}] No constructors found in {typeName}");
         }
 
-        if(methodName == ".cctor") {
+        if (methodName == ".cctor") {
             return type.TypeInitializer
                 ?? throw new Exception($"[{nameof(SafePatch)}] Static constructor not found in {typeName}");
         }
 
-        if(args != null) {
+        if (args != null) {
             return type.GetMethod(methodName, bf, null, args, null)
                 ?? throw new Exception($"[{nameof(SafePatch)}] Method {methodName} with specified args not found in {typeName}");
         }

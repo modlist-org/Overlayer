@@ -28,17 +28,17 @@ public class UserFont : UserResourceBase<TMP_FontAsset>, ISettingsFile {
         string path
     ) {
         try {
-            if(Cache.ContainsKey(key)) {
+            if (Cache.ContainsKey(key)) {
                 return Result.KeyAlreadyExists;
             }
 
-            if(!File.Exists(path)) {
+            if (!File.Exists(path)) {
                 return Result.NotFound;
             }
 
             var ext = Path.GetExtension(path).ToLowerInvariant();
 
-            if(!Ext.Contains(ext)) {
+            if (!Ext.Contains(ext)) {
                 return Result.InvalidArgument;
             }
 
@@ -47,18 +47,18 @@ public class UserFont : UserResourceBase<TMP_FontAsset>, ISettingsFile {
             Cache[key] = (path, font);
 
             return Result.Success;
-        } catch(Exception e) {
+        } catch (Exception e) {
             MainCore.Log.Err($"{nameof(UserResourceManager)} Font load failed: {e}");
             return Result.Failed;
         }
     }
 
     public bool Remove(string key) {
-        if(!Cache.Remove(key, out var entry)) {
+        if (!Cache.Remove(key, out var entry)) {
             return false;
         }
 
-        if(entry.value) {
+        if (entry.value) {
             UnityEngine.Object.Destroy(entry.value);
         }
 
@@ -68,8 +68,8 @@ public class UserFont : UserResourceBase<TMP_FontAsset>, ISettingsFile {
     public JToken Serialize() {
         var obj = new JObject();
 
-        foreach(var (key, (path, _)) in Cache) {
-            if(O5cpFormat.IsPackageKey(key)) {
+        foreach (var (key, (path, _)) in Cache) {
+            if (O5cpFormat.IsPackageKey(key)) {
                 continue;
             }
             obj[key] = UserResourceManager.ToUser(path);
@@ -79,21 +79,21 @@ public class UserFont : UserResourceBase<TMP_FontAsset>, ISettingsFile {
     }
 
     public void Deserialize(JToken token) {
-        if(token is not JObject obj) {
+        if (token is not JObject obj) {
             MainCore.Log.Wrn($"[{nameof(UserFont)}] Deserialize failed: token is not JObject");
             return;
         }
 
-        foreach(var property in obj.Properties()) {
+        foreach (var property in obj.Properties()) {
             var key = property.Name;
-            if(O5cpFormat.IsPackageKey(key)) {
+            if (O5cpFormat.IsPackageKey(key)) {
                 continue;
             }
             var path = UserResourceManager.FromUser(property.Value.ToString());
 
             var result = Load(key, path);
 
-            if(result != Result.Success) {
+            if (result != Result.Success) {
                 MainCore.Log.Wrn(
                     $"[{nameof(UserFont)}] {result} {{ \"{property.Name}\": \"{path}\" }}"
                 );
@@ -102,7 +102,7 @@ public class UserFont : UserResourceBase<TMP_FontAsset>, ISettingsFile {
     }
 
     public override void Dispose() {
-        foreach(var (_, value) in Cache.Values) {
+        foreach (var (_, value) in Cache.Values) {
             UnityEngine.Object.Destroy(value);
         }
 

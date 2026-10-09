@@ -37,7 +37,7 @@ public sealed class UserResourceSettings : ISettingsFile, IDisposable {
     }
 
     public void Deserialize(JToken token) {
-        if(token is not JObject obj) {
+        if (token is not JObject obj) {
             MainCore.Log.Wrn($"[{nameof(UserResourceSettings)}] Deserialize failed: token is not JObject");
             return;
         }
@@ -51,11 +51,11 @@ public sealed class UserResourceSettings : ISettingsFile, IDisposable {
 
     private static JObject SerializeFolders(Dictionary<string, string> folders, ICollection<string> keys) {
         var result = new JObject();
-        foreach(var (key, folder) in folders) {
-            if(O5cpFormat.IsPackageKey(key)) {
+        foreach (var (key, folder) in folders) {
+            if (O5cpFormat.IsPackageKey(key)) {
                 continue;
             }
-            if(keys.Contains(key) && !string.IsNullOrEmpty(folder)) {
+            if (keys.Contains(key) && !string.IsNullOrEmpty(folder)) {
                 result[key] = folder;
             }
         }
@@ -64,11 +64,11 @@ public sealed class UserResourceSettings : ISettingsFile, IDisposable {
 
     private static void DeserializeFolders(Dictionary<string, string> folders, JToken token) {
         folders.Clear();
-        if(token is not JObject obj) {
+        if (token is not JObject obj) {
             return;
         }
-        foreach(var property in obj.Properties()) {
-            if(O5cpFormat.IsPackageKey(property.Name)) {
+        foreach (var property in obj.Properties()) {
+            if (O5cpFormat.IsPackageKey(property.Name)) {
                 continue;
             }
             folders[property.Name] = property.Value.ToString();

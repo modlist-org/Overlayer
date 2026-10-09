@@ -22,42 +22,42 @@ public sealed class KpsTracker : IRuntimeTick {
     public bool SuppressUnityKeys { get; set; }
 
     public void ReportKeyPress() {
-        lock(gate) {
+        lock (gate) {
             Enqueue(keyTimes, UnityEngine.Time.realtimeSinceStartup);
         }
     }
 
     public void Tick() {
-        if(!SuppressUnityKeys && UnityEngine.Input.anyKeyDown) {
+        if (!SuppressUnityKeys && UnityEngine.Input.anyKeyDown) {
             double now = UnityEngine.Time.realtimeSinceStartup;
             int keys = 0;
-            for(int i = 0; i < KeyboardKeys.Length; i++) {
-                if(UnityEngine.Input.GetKeyDown(KeyboardKeys[i])) {
+            for (int i = 0; i < KeyboardKeys.Length; i++) {
+                if (UnityEngine.Input.GetKeyDown(KeyboardKeys[i])) {
                     keys++;
                 }
             }
-            if(keys > 0) {
-                lock(gate) {
-                    for(int i = 0; i < keys; i++) {
+            if (keys > 0) {
+                lock (gate) {
+                    for (int i = 0; i < keys; i++) {
                         Enqueue(keyTimes, now);
                     }
                 }
             }
         }
 
-        lock(gate) {
+        lock (gate) {
             Prune(keyTimes, MaxWindowMs);
         }
     }
 
     public double Rate(int windowMs) {
         double now = UnityEngine.Time.realtimeSinceStartup;
-        if(windowMs <= 0) {
+        if (windowMs <= 0) {
             return DecaySum(now);
         }
         int w = Math.Min(Math.Max(windowMs, 1), MaxWindowMs);
-        if(!held.TryGetValue(w, out var e) || now >= e.next) {
-            if(held.Count > 32) {
+        if (!held.TryGetValue(w, out var e) || now >= e.next) {
+            if (held.Count > 32) {
                 held.Clear();
             }
             double value = DecaySum(now);
@@ -68,12 +68,12 @@ public sealed class KpsTracker : IRuntimeTick {
     }
 
     private double DecaySum(double now) {
-        lock(gate) {
+        lock (gate) {
             Prune(keyTimes, MaxWindowMs);
             double value = 0d;
-            foreach(double pressed in keyTimes) {
+            foreach (double pressed in keyTimes) {
                 double age = now - pressed;
-                if(age < 0d) {
+                if (age < 0d) {
                     continue;
                 }
                 value += Math.Exp(-age);
@@ -83,7 +83,7 @@ public sealed class KpsTracker : IRuntimeTick {
     }
 
     private static void Enqueue(Queue<double> queue, double time) {
-        if(queue.Count >= MaxSamples) {
+        if (queue.Count >= MaxSamples) {
             queue.Dequeue();
         }
         queue.Enqueue(time);
@@ -92,21 +92,21 @@ public sealed class KpsTracker : IRuntimeTick {
     private static void Prune(Queue<double> queue, double windowMs) {
         double now = UnityEngine.Time.realtimeSinceStartup;
         double window = windowMs / 1000d;
-        while(queue.Count > 0 && now - queue.Peek() > window) {
+        while (queue.Count > 0 && now - queue.Peek() > window) {
             queue.Dequeue();
         }
     }
 
     private static KeyCode[] BuildKeyboardKeys() {
         var keys = new List<KeyCode>();
-        foreach(KeyCode key in Enum.GetValues(typeof(KeyCode))) {
-            if(key == KeyCode.None) {
+        foreach (KeyCode key in Enum.GetValues(typeof(KeyCode))) {
+            if (key == KeyCode.None) {
                 continue;
             }
-            if(key is >= KeyCode.Mouse0 and <= KeyCode.Mouse6) {
+            if (key is >= KeyCode.Mouse0 and <= KeyCode.Mouse6) {
                 continue;
             }
-            if(key is >= KeyCode.JoystickButton0 and <= KeyCode.Joystick8Button19) {
+            if (key is >= KeyCode.JoystickButton0 and <= KeyCode.Joystick8Button19) {
                 continue;
             }
             keys.Add(key);

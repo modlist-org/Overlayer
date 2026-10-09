@@ -25,7 +25,7 @@ public static class Compiler {
         var sig = SignatureResolver.Resolve(tag, placeholder, diagnostics, context);
         Func<string> compiledFunc;
 
-        if(sig == null || !sig.IsExecutable) {
+        if (sig == null || !sig.IsExecutable) {
             compiledFunc = () => parsed.Raw;
         } else {
             Func<string> inner;
@@ -33,7 +33,7 @@ public static class Compiler {
                 var expr = ExpressionBuilder.Build(tag, sig, diagnostics);
                 var lambda = Expression.Lambda<Func<string>>(expr);
                 inner = lambda.Compile();
-            } catch(Exception e) {
+            } catch (Exception e) {
                 diagnostics.Add(new CompileDiagnostic(
                     DiagnosticId.InternalError,
                     CompileSeverity.Error,
@@ -49,12 +49,12 @@ public static class Compiler {
             // when play/pause state flips. While blocked (e.g. the frames of
             // a scene transition), keep the last good value instead of
             // flashing raw text; raw is only the never-evaluated fallback.
-            if(!HasBlockFlag(tag)) {
+            if (!HasBlockFlag(tag)) {
                 compiledFunc = inner;
             } else {
                 string last = null;
                 compiledFunc = () => {
-                    if(IsBlocked(tag)) {
+                    if (IsBlocked(tag)) {
                         return last ?? parsed.Raw;
                     }
                     return last = inner();

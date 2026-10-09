@@ -49,7 +49,7 @@ public sealed class GraphSettings : UnityComponentSettingsBase, ICopyable<GraphS
 
     public override bool ToUnity(GameObject target) {
         var component = target.GetComponent<OvGraphComponent>();
-        if(component == null) {
+        if (component == null) {
             return false;
         }
 
@@ -88,7 +88,7 @@ public sealed class GraphSettings : UnityComponentSettingsBase, ICopyable<GraphS
 
     public override bool FromUnity(GameObject source) {
         var component = source.GetComponent<OvGraphComponent>();
-        if(component == null) {
+        if (component == null) {
             return false;
         }
 
@@ -121,28 +121,28 @@ public sealed class GraphSettings : UnityComponentSettingsBase, ICopyable<GraphS
     }
 
     public override void RefreshFx(GameObject target) {
-        if(!HasAnyFx) {
+        if (!HasAnyFx) {
             return;
         }
 
         var component = target.GetComponent<OvGraphComponent>();
-        if(component == null) {
+        if (component == null) {
             return;
         }
 
         RefreshEnabled(component);
-        if(FxUtil.Changed(ref _lastJsCode, JsCode.Value)) { component.JsCode = _lastJsCode; component.SetVerticesDirty(); }
-        if(FxUtil.Changed(ref _lastWindow, Window.Value)) { component.Window = _lastWindow; component.SetVerticesDirty(); }
-        if(FxUtil.Changed(ref _lastSamples, Samples.Value)) { component.Samples = _lastSamples; component.SetVerticesDirty(); }
-        if(FxUtil.Changed(ref _lastMin, Min.Value)) { component.Min = _lastMin; component.SetVerticesDirty(); }
-        if(FxUtil.Changed(ref _lastMax, Max.Value)) { component.Max = _lastMax; component.SetVerticesDirty(); }
-        if(FxUtil.Changed(ref _lastAutoScale, AutoScale.Value)) { component.AutoScale = _lastAutoScale; component.SetVerticesDirty(); }
-        if(FxUtil.Changed(ref _lastLineColor, LineColor.Value)) { component.LineColor = _lastLineColor; component.SetVerticesDirty(); }
-        if(FxUtil.Changed(ref _lastThickness, Thickness.Value)) { component.Thickness = _lastThickness; component.SetVerticesDirty(); }
-        if(FxUtil.Changed(ref _lastShowAxes, ShowAxes.Value)) { component.ShowAxes = _lastShowAxes; component.SetVerticesDirty(); }
-        if(FxUtil.Changed(ref _lastShowGrid, ShowGrid.Value)) { component.ShowGrid = _lastShowGrid; component.SetVerticesDirty(); }
-        if(FxUtil.Changed(ref _lastShowFill, ShowFill.Value)) { component.ShowFill = _lastShowFill; component.SetVerticesDirty(); }
-        if(FxUtil.Changed(ref _lastFillColor, FillColor.Value)) { component.FillColor = _lastFillColor; component.SetVerticesDirty(); }
+        if (FxUtil.Changed(ref _lastJsCode, JsCode.Value)) { component.JsCode = _lastJsCode; component.SetVerticesDirty(); }
+        if (FxUtil.Changed(ref _lastWindow, Window.Value)) { component.Window = _lastWindow; component.SetVerticesDirty(); }
+        if (FxUtil.Changed(ref _lastSamples, Samples.Value)) { component.Samples = _lastSamples; component.SetVerticesDirty(); }
+        if (FxUtil.Changed(ref _lastMin, Min.Value)) { component.Min = _lastMin; component.SetVerticesDirty(); }
+        if (FxUtil.Changed(ref _lastMax, Max.Value)) { component.Max = _lastMax; component.SetVerticesDirty(); }
+        if (FxUtil.Changed(ref _lastAutoScale, AutoScale.Value)) { component.AutoScale = _lastAutoScale; component.SetVerticesDirty(); }
+        if (FxUtil.Changed(ref _lastLineColor, LineColor.Value)) { component.LineColor = _lastLineColor; component.SetVerticesDirty(); }
+        if (FxUtil.Changed(ref _lastThickness, Thickness.Value)) { component.Thickness = _lastThickness; component.SetVerticesDirty(); }
+        if (FxUtil.Changed(ref _lastShowAxes, ShowAxes.Value)) { component.ShowAxes = _lastShowAxes; component.SetVerticesDirty(); }
+        if (FxUtil.Changed(ref _lastShowGrid, ShowGrid.Value)) { component.ShowGrid = _lastShowGrid; component.SetVerticesDirty(); }
+        if (FxUtil.Changed(ref _lastShowFill, ShowFill.Value)) { component.ShowFill = _lastShowFill; component.SetVerticesDirty(); }
+        if (FxUtil.Changed(ref _lastFillColor, FillColor.Value)) { component.FillColor = _lastFillColor; component.SetVerticesDirty(); }
     }
 
     public override JToken Serialize() => SerializeComponent(new JObject {

@@ -24,19 +24,19 @@ public sealed class OverlayerSpriteProvider : ISpriteProvider {
     public Sprite Circle => MainCore.Spr.Get(UISprite.Circle256);
 
     public Sprite Icon(string name) {
-        if(name == "toggle-on") {
+        if (name == "toggle-on") {
             return MainCore.Spr.Get(UISprite.Circle256);
         }
 
-        if(name == "toggle-off") {
+        if (name == "toggle-off") {
             return MainCore.Spr.Get(UISprite.ToggleCircle128);
         }
 
-        if(name == "x") {
+        if (name == "x") {
             return MainCore.Spr.Get(UISprite.X128);
         }
 
-        if(name == "triangle") {
+        if (name == "triangle") {
             return MainCore.Spr.Get(UISprite.Triangle128);
         }
 
@@ -60,42 +60,42 @@ public sealed class OverlayerFontProvider : IFontProvider {
         "monospace", Asset.JetBrainsMonoNL_Medium, MainCore.Conf.CodeFontKey.Value, MainCore.Conf.CodeFontFallbacks.Value);
 
     public void SetUseUserResources(bool enabled) {
-        if(_useUserResources == enabled) {
+        if (_useUserResources == enabled) {
             return;
         }
         var oldFonts = new[] { _regular, _medium, _monospace };
         _useUserResources = enabled;
         var newFonts = new[] { Regular, Medium, Monospace };
-        if(Overlayer.UI.UICore.CanvasObj != null) {
+        if (Overlayer.UI.UICore.CanvasObj != null) {
             var directUserFonts = new HashSet<TMP_FontAsset>();
-            if(!enabled) {
-                foreach(string key in UserResourceManager.Fnt.Keys) {
-                    if(O5cpFormat.IsPackageKey(key)) {
+            if (!enabled) {
+                foreach (string key in UserResourceManager.Fnt.Keys) {
+                    if (O5cpFormat.IsPackageKey(key)) {
                         continue;
                     }
-                    if(UserResourceManager.Fnt.TryGet(key, out var userFont) && userFont != null) {
+                    if (UserResourceManager.Fnt.TryGet(key, out var userFont) && userFont != null) {
                         directUserFonts.Add(userFont);
                     }
                 }
             }
-            foreach(var text in Overlayer.UI.UICore.CanvasObj.GetComponentsInChildren<TMP_Text>(true)) {
-                if(text == null || text.font == null) {
+            foreach (var text in Overlayer.UI.UICore.CanvasObj.GetComponentsInChildren<TMP_Text>(true)) {
+                if (text == null || text.font == null) {
                     continue;
                 }
-                for(int i = 0; i < oldFonts.Length; i++) {
-                    if(oldFonts[i] != null && text.font == oldFonts[i]) {
+                for (int i = 0; i < oldFonts.Length; i++) {
+                    if (oldFonts[i] != null && text.font == oldFonts[i]) {
                         text.font = newFonts[i];
                         break;
                     }
                 }
-                if(!enabled && directUserFonts.Contains(text.font)) {
+                if (!enabled && directUserFonts.Contains(text.font)) {
                     text.font = newFonts[0];
                 }
             }
         }
-        if(!enabled) {
-            foreach(var font in compositeCache.Values) {
-                if(font != null) {
+        if (!enabled) {
+            foreach (var font in compositeCache.Values) {
+                if (font != null) {
                     try { UnityEngine.Object.Destroy(font); } catch { }
                 }
             }
@@ -110,16 +110,16 @@ public sealed class OverlayerFontProvider : IFontProvider {
         TMP_FontAsset newRegular = Regular;
         TMP_FontAsset newMedium = Medium;
         TMP_FontAsset newMonospace = Monospace;
-        if(Overlayer.UI.UICore.CanvasObj != null) {
-            foreach(var text in Overlayer.UI.UICore.CanvasObj.GetComponentsInChildren<TMP_Text>(true)) {
-                if(text == null || text.font == null) {
+        if (Overlayer.UI.UICore.CanvasObj != null) {
+            foreach (var text in Overlayer.UI.UICore.CanvasObj.GetComponentsInChildren<TMP_Text>(true)) {
+                if (text == null || text.font == null) {
                     continue;
                 }
-                if(oldMonospace != null && text.font == oldMonospace) {
+                if (oldMonospace != null && text.font == oldMonospace) {
                     text.font = newMonospace;
-                } else if(oldMedium != null && text.font == oldMedium) {
+                } else if (oldMedium != null && text.font == oldMedium) {
                     text.font = newMedium;
-                } else if(oldRegular != null && text.font == oldRegular) {
+                } else if (oldRegular != null && text.font == oldRegular) {
                     text.font = newRegular;
                 }
             }
@@ -138,28 +138,28 @@ public sealed class OverlayerFontProvider : IFontProvider {
         var chain = new List<TMP_FontAsset>();
         TMP_FontAsset primary = Resolve(primaryKey);
         chain.Add(primary ?? fallback);
-        if(fallbackKeys != null) {
-            foreach(string key in fallbackKeys) {
-                if(string.IsNullOrEmpty(key) || key == primaryKey || chain.Count >= 9) {
+        if (fallbackKeys != null) {
+            foreach (string key in fallbackKeys) {
+                if (string.IsNullOrEmpty(key) || key == primaryKey || chain.Count >= 9) {
                     continue;
                 }
                 TMP_FontAsset asset = key == BuiltinFallback ? fallback : Resolve(key);
-                if(asset != null && !chain.Contains(asset)) {
+                if (asset != null && !chain.Contains(asset)) {
                     chain.Add(asset);
                 }
             }
         }
-        if(chain.Count == 0) {
+        if (chain.Count == 0) {
             return fallback;
         }
-        if(!chain.Contains(fallback) && fallback != null) {
+        if (!chain.Contains(fallback) && fallback != null) {
             chain.Add(fallback);
         }
-        if(chain.Count == 1) {
+        if (chain.Count == 1) {
             return chain[0];
         }
         string sig = slot + ":" + string.Join(",", chain.Select(a => a.GetInstanceID()));
-        if(compositeCache.TryGetValue(sig, out var composite) && composite != null) {
+        if (compositeCache.TryGetValue(sig, out var composite) && composite != null) {
             return composite;
         }
         composite = UnityEngine.Object.Instantiate(chain[0]);
@@ -170,7 +170,7 @@ public sealed class OverlayerFontProvider : IFontProvider {
     }
 
     private static TMP_FontAsset Resolve(string key) {
-        if(string.IsNullOrEmpty(key)) {
+        if (string.IsNullOrEmpty(key)) {
             return null;
         }
         try {
@@ -202,7 +202,7 @@ public static class O5KitAdapters {
 
         O5ShortcutManager.IsSuspended = () => O5Kit.Control.O5InputBlocker.IsEditing;
         O5Kit.Behaviour.UIScrollController.ShouldConsumeParentScroll = () => UICodeInputField.ShouldConsumeParentScroll;
-        if(!_wired) {
+        if (!_wired) {
             _wired = true;
             _enabledHandler = (enabled, _) => Ctx.NotifyEnabledChanged(enabled);
             MainCore.OnModEnabledChanged += _enabledHandler;
@@ -225,7 +225,7 @@ public static class O5KitAdapters {
     }
 
     public static void Teardown() {
-        if(_enabledHandler != null) {
+        if (_enabledHandler != null) {
             try {
                 MainCore.OnModEnabledChanged -= _enabledHandler;
             } catch {

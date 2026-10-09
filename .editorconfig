@@ -30,3 +30,7 @@ csharp_new_line_before_members_in_anonymous_types = false
 
 # Don't force LINQ query clauses onto separate lines
 csharp_new_line_between_query_expression_clauses = false
+
+# IDE0330 (use System.Threading.Lock) is off: Lock only exists on .NET 9+,
+# this repo still targets netstandard2.1 / old Unity Mono
+dotnet_diagnostic.IDE0330.severity = none

@@ -14,8 +14,8 @@ public static class TagManager {
     public static int Count => _tags.Count;
 
     public static async Task RegisterAsync(Assembly asm) {
-        lock(_lock) {
-            if(_registeredAssemblies.Contains(asm)) {
+        lock (_lock) {
+            if (_registeredAssemblies.Contains(asm)) {
                 MainCore.Log.Msg($"[{nameof(TagManager)}] Assembly '{asm.GetName().Name}' is already registered.");
                 return;
             }
@@ -28,13 +28,13 @@ public static class TagManager {
             await MainCore.V8.InitializationTask.ConfigureAwait(false);
             MainCore.Log.Msg($"[{nameof(TagManager)}] Found tags in '{asm.GetName().Name}': {list.Count}");
 
-            if(list.Count == 0) {
+            if (list.Count == 0) {
                 return;
             }
 
-            lock(_lock) {
+            lock (_lock) {
                 var newDict = new Dictionary<string, TagCore>(_tags);
-                foreach(var tag in list) {
+                foreach (var tag in list) {
                     newDict[tag.Name] = tag;
                 }
                 _tags = newDict;
@@ -44,31 +44,31 @@ public static class TagManager {
             MainCore.V8.GenerateImplJs();
             MainCore.V8.LoadImplJs();
             MainThread.Enqueue(TextEngineUpdater.RecompileAll);
-        } catch(Exception e) {
+        } catch (Exception e) {
             MainCore.Log.Msg($"[{nameof(TagManager)}] Registration failed for '{asm.GetName().Name}': {e}");
 
-            lock(_lock) {
+            lock (_lock) {
                 _registeredAssemblies.Remove(asm);
             }
         }
     }
 
     public static bool Register(TagCore[] tags) {
-        if(tags == null || tags.Length == 0) {
+        if (tags == null || tags.Length == 0) {
             return false;
         }
 
         int registeredCount = 0;
-        lock(_lock) {
+        lock (_lock) {
             var newDict = new Dictionary<string, TagCore>(_tags);
-            foreach(var tag in tags) {
-                if(tag != null && !newDict.ContainsKey(tag.Name)) {
+            foreach (var tag in tags) {
+                if (tag != null && !newDict.ContainsKey(tag.Name)) {
                     newDict[tag.Name] = tag;
                     registeredCount++;
                 }
             }
 
-            if(registeredCount == 0) {
+            if (registeredCount == 0) {
                 return false;
             }
 
@@ -85,20 +85,20 @@ public static class TagManager {
     }
 
     public static bool Unregister(string[] tagNames, bool recompile = true) {
-        if(tagNames == null || tagNames.Length == 0) {
+        if (tagNames == null || tagNames.Length == 0) {
             return false;
         }
 
         int removedCount = 0;
-        lock(_lock) {
+        lock (_lock) {
             var newDict = new Dictionary<string, TagCore>(_tags);
-            foreach(var name in tagNames) {
-                if(newDict.Remove(name)) {
+            foreach (var name in tagNames) {
+                if (newDict.Remove(name)) {
                     removedCount++;
                 }
             }
 
-            if(removedCount == 0) {
+            if (removedCount == 0) {
                 return false;
             }
 
@@ -106,7 +106,7 @@ public static class TagManager {
             MainCore.Log.Msg($"[{nameof(TagManager)}] {removedCount} tags unregistered. Total tags: {_tags.Count}");
         }
 
-        if(recompile) {
+        if (recompile) {
             MainThread.Enqueue(TextEngineUpdater.RecompileAll);
         }
 
@@ -117,13 +117,13 @@ public static class TagManager {
         => _tags.TryGetValue(name, out tag);
 
     public static List<TagCore> GetAllTags() {
-        lock(_lock) {
+        lock (_lock) {
             return [.. _tags.Values];
         }
     }
 
     public static void Set(TagCore tag) {
-        lock(_lock) {
+        lock (_lock) {
             Dictionary<string, TagCore> newMap = new(_tags) {
                 [tag.Name] = tag
             };
@@ -133,7 +133,7 @@ public static class TagManager {
     }
 
     public static void Dispose() {
-        lock(_lock) {
+        lock (_lock) {
             _tags.Clear();
             _registeredAssemblies.Clear();
         }

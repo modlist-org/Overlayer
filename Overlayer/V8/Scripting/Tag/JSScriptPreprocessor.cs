@@ -9,7 +9,7 @@ internal static class JSScriptPreprocessor {
     );
 
     public static string RemoveImplImports(string source) {
-        if(string.IsNullOrEmpty(source)) {
+        if (string.IsNullOrEmpty(source)) {
             return source;
         }
 

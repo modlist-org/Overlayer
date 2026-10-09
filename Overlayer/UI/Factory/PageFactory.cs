@@ -18,7 +18,7 @@ public static class PageFactory {
         PagesContaner.offsetMin = Vector2.zero;
         PagesContaner.offsetMax = new Vector2(0, -60);
 
-        for(int i = 0; i < Enum.GetValues(typeof(OriginalMenuState)).Length; i++) {
+        for (int i = 0; i < Enum.GetValues(typeof(OriginalMenuState)).Length; i++) {
             CreatePageBase(i);
         }
 

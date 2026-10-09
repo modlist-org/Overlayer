@@ -32,7 +32,7 @@ public sealed class ColorRangeSettings : UnityComponentSettingsBase, ICopyable<C
 
     public override bool ToUnity(GameObject target) {
         var component = target.GetComponent<ColorRangeComponent>();
-        if(component == null) {
+        if (component == null) {
             return false;
         }
 
@@ -54,7 +54,7 @@ public sealed class ColorRangeSettings : UnityComponentSettingsBase, ICopyable<C
 
     public override bool FromUnity(GameObject source) {
         var component = source.GetComponent<ColorRangeComponent>();
-        if(component == null) {
+        if (component == null) {
             return false;
         }
 
@@ -75,22 +75,22 @@ public sealed class ColorRangeSettings : UnityComponentSettingsBase, ICopyable<C
     }
 
     public override void RefreshFx(GameObject target) {
-        if(!HasAnyFx) {
+        if (!HasAnyFx) {
             return;
         }
 
         var component = target.GetComponent<ColorRangeComponent>();
-        if(component == null) {
+        if (component == null) {
             return;
         }
 
         RefreshEnabled(component);
-        if(FxUtil.Changed(ref _lastTagName, TagName.Value)) component.TagName = _lastTagName;
-        if(FxUtil.Changed(ref _lastMinimum, Minimum.Value)) component.Minimum = _lastMinimum;
-        if(FxUtil.Changed(ref _lastMaximum, Maximum.Value)) component.Maximum = _lastMaximum;
-        if(FxUtil.Changed(ref _lastMinimumColor, MinimumColor.Value)) component.MinimumColor = _lastMinimumColor;
-        if(FxUtil.Changed(ref _lastMaximumColor, MaximumColor.Value)) component.MaximumColor = _lastMaximumColor;
-        if(FxUtil.Changed(ref _lastEase, Ease.Value)) component.Ease = _lastEase;
+        if (FxUtil.Changed(ref _lastTagName, TagName.Value)) component.TagName = _lastTagName;
+        if (FxUtil.Changed(ref _lastMinimum, Minimum.Value)) component.Minimum = _lastMinimum;
+        if (FxUtil.Changed(ref _lastMaximum, Maximum.Value)) component.Maximum = _lastMaximum;
+        if (FxUtil.Changed(ref _lastMinimumColor, MinimumColor.Value)) component.MinimumColor = _lastMinimumColor;
+        if (FxUtil.Changed(ref _lastMaximumColor, MaximumColor.Value)) component.MaximumColor = _lastMaximumColor;
+        if (FxUtil.Changed(ref _lastEase, Ease.Value)) component.Ease = _lastEase;
     }
 
     public override JToken Serialize() => SerializeComponent(new JObject {

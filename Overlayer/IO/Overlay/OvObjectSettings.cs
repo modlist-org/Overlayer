@@ -67,63 +67,63 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
             [nameof(RectTransformConfig)] = RectTransformConfig?.Serialize(),
             [nameof(CanvasGroupConfig)] = CanvasGroupConfig?.Serialize(),
         };
-        if(Enabled.UseFx || !Enabled.Value) {
+        if (Enabled.UseFx || !Enabled.Value) {
             obj[nameof(Enabled)] = IOUtils.WriteFx(Enabled);
         }
-        if(TextConfig != null) {
+        if (TextConfig != null) {
             obj[nameof(TextConfig)] = TextConfig.Serialize();
             obj[nameof(TextEngineConfig)] = (TextEngineConfig ?? OvTextSettings.FromLegacy(TextConfig.Text.Value)).Serialize();
         }
-        if(CanvasConfig != null) {
+        if (CanvasConfig != null) {
             obj[nameof(CanvasConfig)] = CanvasConfig.Serialize();
         }
-        if(HorizontalLayoutGroupConfig != null) {
+        if (HorizontalLayoutGroupConfig != null) {
             obj[nameof(HorizontalLayoutGroupConfig)] = HorizontalLayoutGroupConfig.Serialize();
         }
-        if(VerticalLayoutGroupConfig != null) {
+        if (VerticalLayoutGroupConfig != null) {
             obj[nameof(VerticalLayoutGroupConfig)] = VerticalLayoutGroupConfig.Serialize();
         }
-        if(GridLayoutGroupConfig != null) {
+        if (GridLayoutGroupConfig != null) {
             obj[nameof(GridLayoutGroupConfig)] = GridLayoutGroupConfig.Serialize();
         }
-        if(MovingManConfig != null) {
+        if (MovingManConfig != null) {
             obj[nameof(MovingManConfig)] = MovingManConfig.Serialize();
         }
-        if(ColorRangeConfig != null) {
+        if (ColorRangeConfig != null) {
             obj[nameof(ColorRangeConfig)] = ColorRangeConfig.Serialize();
         }
-        if(GraphConfig != null) {
+        if (GraphConfig != null) {
             obj[nameof(GraphConfig)] = GraphConfig.Serialize();
         }
-        if(RainConfig != null) {
+        if (RainConfig != null) {
             obj[nameof(RainConfig)] = RainConfig.Serialize();
         }
-        if(ImageConfig != null) {
+        if (ImageConfig != null) {
             obj[nameof(ImageConfig)] = ImageConfig.Serialize();
         }
 #if !IL2CPP
-        if(BoxCollider2DConfig != null) {
+        if (BoxCollider2DConfig != null) {
             obj[nameof(BoxCollider2DConfig)] = BoxCollider2DConfig.Serialize();
         }
-        if(Rigidbody2DConfig != null) {
+        if (Rigidbody2DConfig != null) {
             obj[nameof(Rigidbody2DConfig)] = Rigidbody2DConfig.Serialize();
         }
 #endif
-        if(ContentSizeFitterConfig != null) {
+        if (ContentSizeFitterConfig != null) {
             obj[nameof(ContentSizeFitterConfig)] = ContentSizeFitterConfig.Serialize();
         }
-        if(MaskConfig != null) {
+        if (MaskConfig != null) {
             obj[nameof(MaskConfig)] = MaskConfig.Serialize();
         }
-        if(ShadowConfig != null) {
+        if (ShadowConfig != null) {
             obj[nameof(ShadowConfig)] = ShadowConfig.Serialize();
         }
-        if(OutlineConfig != null) {
+        if (OutlineConfig != null) {
             obj[nameof(OutlineConfig)] = OutlineConfig.Serialize();
         }
-        if(HasRectMask2D.UseFx || HasRectMask2D.Value) {
+        if (HasRectMask2D.UseFx || HasRectMask2D.Value) {
             obj[nameof(HasRectMask2D)] = IOUtils.WriteFx(HasRectMask2D);
-            if(RectMask2DEnabled.UseFx || !RectMask2DEnabled.Value) {
+            if (RectMask2DEnabled.UseFx || !RectMask2DEnabled.Value) {
                 obj[nameof(RectMask2DEnabled)] = IOUtils.WriteFx(RectMask2DEnabled);
             }
         }
@@ -131,25 +131,25 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
     }
 
     public void Deserialize(JToken token) {
-        if(token is not JObject obj) {
+        if (token is not JObject obj) {
             return;
         }
 
         Name = IOUtils.ReadFx(obj, nameof(Name), Name);
         Enabled = IOUtils.ReadFx(obj, nameof(Enabled), Enabled);
         var rect = obj[nameof(RectTransformConfig)];
-        if(rect != null) {
+        if (rect != null) {
             RectTransformConfig ??= new RectTransformSettings();
             RectTransformConfig.Deserialize(rect);
         }
         var canvasGroup = obj[nameof(CanvasGroupConfig)];
-        if(canvasGroup != null) {
+        if (canvasGroup != null) {
             CanvasGroupConfig ??= new CanvasGroupSettings();
             CanvasGroupConfig.Deserialize(canvasGroup);
         }
         var contentSizeFitterProperty = obj.Property(nameof(ContentSizeFitterConfig));
         var contentSizeFitter = contentSizeFitterProperty?.Value;
-        if(contentSizeFitterProperty == null || contentSizeFitter?.Type == JTokenType.Null) {
+        if (contentSizeFitterProperty == null || contentSizeFitter?.Type == JTokenType.Null) {
             ContentSizeFitterConfig = null;
         } else {
             ContentSizeFitterConfig ??= new ContentSizeFitterSettings();
@@ -161,7 +161,7 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
         HorizontalLayoutGroupConfig = ReadConfig<HorizontalLayoutGroupSettings>(obj, nameof(HorizontalLayoutGroupConfig));
         VerticalLayoutGroupConfig = ReadConfig<VerticalLayoutGroupSettings>(obj, nameof(VerticalLayoutGroupConfig));
         GridLayoutGroupConfig = ReadConfig<GridLayoutGroupSettings>(obj, nameof(GridLayoutGroupConfig));
-        if(TextConfig != null) {
+        if (TextConfig != null) {
             TextEngineConfig ??= OvTextSettings.FromLegacy(TextConfig.Text.Value);
         } else {
             TextEngineConfig = null;
@@ -216,7 +216,7 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
         where T : class, ISettingsFile, new() {
         var token = obj[key];
 
-        if(token == null) {
+        if (token == null) {
             return null;
         }
 

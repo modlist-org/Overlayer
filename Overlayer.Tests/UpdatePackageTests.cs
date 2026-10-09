@@ -45,7 +45,7 @@ public sealed class UpdatePackageTests : IDisposable {
     private string Zip(params (string Name, string Body)[] entries) {
         string path = Path.Combine(dir, Guid.NewGuid().ToString("N") + ".zip");
         using ZipArchive zip = ZipFile.Open(path, ZipArchiveMode.Create);
-        foreach((string name, string body) in entries) {
+        foreach ((string name, string body) in entries) {
             using StreamWriter w = new(zip.CreateEntry(name).Open());
             w.Write(body);
         }

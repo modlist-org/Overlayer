@@ -31,29 +31,29 @@ public class JSScriptLoader {
         : Path.GetFileName(file);
 
     public bool IsFileDisabled(string fileName) {
-        lock(_syncLock) {
+        lock (_syncLock) {
             return _disabledFileNames.Contains(fileName);
         }
     }
 
     /// <summary>Returns true when the set changed.</summary>
     public bool SetFileDisabled(string fileName, bool disabled) {
-        lock(_syncLock) {
+        lock (_syncLock) {
             return disabled ? _disabledFileNames.Add(fileName) : _disabledFileNames.Remove(fileName);
         }
     }
 
     public List<string> GetDisabledFileNames() {
-        lock(_syncLock) {
+        lock (_syncLock) {
             return [.. _disabledFileNames];
         }
     }
 
     public void SetDisabledFileNames(IEnumerable<string> names) {
-        lock(_syncLock) {
+        lock (_syncLock) {
             _disabledFileNames.Clear();
-            foreach(string name in names) {
-                if(!string.IsNullOrWhiteSpace(name)) {
+            foreach (string name in names) {
+                if (!string.IsNullOrWhiteSpace(name)) {
                     _disabledFileNames.Add(name.Trim());
                 }
             }
@@ -61,37 +61,37 @@ public class JSScriptLoader {
     }
 
     public async Task<bool> LoadAllScriptsAsync(string folderPath, V8ScriptEngine engine, bool syncChanges = true) {
-        if(!await _debounceLock.WaitAsync(0)) {
+        if (!await _debounceLock.WaitAsync(0)) {
             return false;
         }
 
         try {
             bool hasChanges = false;
             await Task.Run(() => {
-                lock(_syncLock) {
+                lock (_syncLock) {
                     Diagnostics.Clear();
                     var files = FindScripts(folderPath);
                     var currentFiles = new HashSet<string>(files);
 
                     var removedFiles = _fileHashes.Keys.Where(f => !currentFiles.Contains(f)).ToList();
-                    foreach(var file in removedFiles) {
+                    foreach (var file in removedFiles) {
                         UnloadScript(file);
                         hasChanges = true;
                     }
 
-                    foreach(var file in files) {
-                        if(IsDisabled(file)) {
-                            if(_fileHashes.ContainsKey(file)) {
+                    foreach (var file in files) {
+                        if (IsDisabled(file)) {
+                            if (_fileHashes.ContainsKey(file)) {
                                 UnloadScript(file);
                                 hasChanges = true;
                             }
                             continue;
                         }
                         string currentHash = TryGetFileHash(file);
-                        if(currentHash == null) {
+                        if (currentHash == null) {
                             continue;
                         }
-                        if(_fileHashes.TryGetValue(file, out var existingHash) && existingHash == currentHash) {
+                        if (_fileHashes.TryGetValue(file, out var existingHash) && existingHash == currentHash) {
                             continue;
                         }
 
@@ -100,7 +100,7 @@ public class JSScriptLoader {
                         hasChanges = true;
                     }
 
-                    if(hasChanges && syncChanges) {
+                    if (hasChanges && syncChanges) {
                         SyncV8AndRecompile();
                     }
                 }
@@ -113,10 +113,10 @@ public class JSScriptLoader {
     }
 
     public void LoadScript(string filePath, string hash, V8ScriptEngine engine) {
-        lock(_syncLock) {
+        lock (_syncLock) {
             UnloadScript(filePath);
             LoadScriptInternal(filePath, hash, engine);
-            
+
             SyncV8AndRecompile();
         }
     }
@@ -146,7 +146,7 @@ public class JSScriptLoader {
             engine.AddHostObject("__OverlayerRemoveTab", (Func<object, bool>)uiHost.RemoveTab);
             engine.Execute(Scripting.UI.JSUIHost.BindingScript);
             string source = ReadScriptSource(filePath);
-            if(source == null) {
+            if (source == null) {
                 Diagnostics.Add(new JSDiagnostic(JSTagDiagnosticId.ScriptError, JSSeverity.Error, filePath,
                     new IOException($"Could not read '{Path.GetFileName(filePath)}' (locked by editor?)")));
                 return;
@@ -154,16 +154,16 @@ public class JSScriptLoader {
             string processed = JSScriptPreprocessor.RemoveImplImports(source);
             engine.Execute(processed);
             _fileHashes[filePath] = hash;
-        } catch(Exception e) {
+        } catch (Exception e) {
             Diagnostics.Add(new JSDiagnostic(JSTagDiagnosticId.ScriptError, JSSeverity.Error, filePath, e));
         }
     }
 
     private static string ReadScriptSource(string filePath) {
-        for(int i = 0; i < 10; i++) {
+        for (int i = 0; i < 10; i++) {
             try {
                 return File.ReadAllText(filePath);
-            } catch(IOException) {
+            } catch (IOException) {
                 Thread.Sleep(50);
             }
         }
@@ -179,9 +179,9 @@ public class JSScriptLoader {
     private void UnloadScript(string filePath) {
         Scripting.Patch.JSPatchManager.RemoveFile(filePath);
         Scripting.UI.JSUIHost.RemoveFile(filePath);
-        if(_fileToTags.TryGetValue(filePath, out var tags)) {
-            if(tags != null && tags.Count > 0) {
-                foreach(var tag in tags) {
+        if (_fileToTags.TryGetValue(filePath, out var tags)) {
+            if (tags != null && tags.Count > 0) {
+                foreach (var tag in tags) {
                     JSTagManager.Remove(tag);
                 }
                 TagManager.Unregister([.. tags]);
@@ -192,17 +192,17 @@ public class JSScriptLoader {
     }
 
     public void RegisterFileTag(string filePath, string tagName) {
-        if(string.IsNullOrWhiteSpace(filePath) || string.IsNullOrWhiteSpace(tagName)) {
+        if (string.IsNullOrWhiteSpace(filePath) || string.IsNullOrWhiteSpace(tagName)) {
             return;
         }
 
-        lock(_syncLock) {
-            if(!_fileToTags.TryGetValue(filePath, out var tags)) {
+        lock (_syncLock) {
+            if (!_fileToTags.TryGetValue(filePath, out var tags)) {
                 tags = [];
                 _fileToTags[filePath] = tags;
             }
 
-            if(!tags.Contains(tagName)) {
+            if (!tags.Contains(tagName)) {
                 tags.Add(tagName);
             }
         }
@@ -211,7 +211,7 @@ public class JSScriptLoader {
     public (List<string> changed, List<string> removed) PreviewChanges(string folderPath) {
         var changed = new List<string>();
         var removed = new List<string>();
-        lock(_syncLock) {
+        lock (_syncLock) {
             string[] files;
             try {
                 files = FindScripts(folderPath);
@@ -219,17 +219,17 @@ public class JSScriptLoader {
                 return (changed, removed);
             }
             var current = new HashSet<string>(files);
-            foreach(var tracked in _fileHashes.Keys) {
-                if(!current.Contains(tracked)) {
+            foreach (var tracked in _fileHashes.Keys) {
+                if (!current.Contains(tracked)) {
                     removed.Add(tracked);
                 }
             }
-            foreach(var file in files) {
-                if(IsDisabled(file)) {
+            foreach (var file in files) {
+                if (IsDisabled(file)) {
                     continue;
                 }
                 string hash = TryGetFileHash(file);
-                if(hash == null || !_fileHashes.TryGetValue(file, out var existing) || existing != hash) {
+                if (hash == null || !_fileHashes.TryGetValue(file, out var existing) || existing != hash) {
                     changed.Add(file);
                 }
             }
@@ -238,36 +238,36 @@ public class JSScriptLoader {
     }
 
     public IReadOnlyList<string> GetScriptFiles() {
-        lock(_syncLock) {
+        lock (_syncLock) {
             return _fileHashes.Keys.OrderBy(f => f).ToList();
         }
     }
 
     public IReadOnlyList<string> GetFileTags(string filePath) {
-        lock(_syncLock) {
+        lock (_syncLock) {
             return _fileToTags.TryGetValue(filePath, out var tags) ? [.. tags] : [];
         }
     }
 
     /// <summary>Clears all load tracking. The next load re-executes every file (used after an engine rebuild).</summary>
     public void ResetTracking() {
-        lock(_syncLock) {
+        lock (_syncLock) {
             _fileHashes.Clear();
             _fileToTags.Clear();
         }
     }
 
     public void ReloadFile(string filePath, V8ScriptEngine engine) {
-        lock(_syncLock) {
-            if(IsDisabled(filePath)) {
-                if(_fileHashes.ContainsKey(filePath)) {
+        lock (_syncLock) {
+            if (IsDisabled(filePath)) {
+                if (_fileHashes.ContainsKey(filePath)) {
                     UnloadScript(filePath);
                     SyncV8AndRecompile();
                 }
                 return;
             }
             string hash = TryGetFileHash(filePath);
-            if(hash == null) {
+            if (hash == null) {
                 return;
             }
             UnloadScript(filePath);
@@ -277,8 +277,8 @@ public class JSScriptLoader {
     }
 
     public void UnloadScriptFile(string filePath) {
-        lock(_syncLock) {
-            if(!_fileHashes.ContainsKey(filePath)) {
+        lock (_syncLock) {
+            if (!_fileHashes.ContainsKey(filePath)) {
                 return;
             }
             UnloadScript(filePath);

@@ -134,7 +134,7 @@ public sealed class OverlayerRuntime {
         Sprite.Dispose();
         Resource.Dispose();
 
-        if(RootObject != null) {
+        if (RootObject != null) {
             Object.Destroy(RootObject);
 
             RootObject = null;
@@ -144,18 +144,18 @@ public sealed class OverlayerRuntime {
     }
 
     public void SetModEnabled(bool enabled, bool isDispose) {
-        if(State.IsEnabled == enabled) {
+        if (State.IsEnabled == enabled) {
             return;
         }
 
         State.IsEnabled = enabled;
 
-        if(!isDispose) {
+        if (!isDispose) {
             Config.Data.Active = enabled;
             Config.RequestSave();
         }
 
-        if(enabled) {
+        if (enabled) {
             UserResourceManager.Initialize();
             Compat.O5KitAdapters.SetUserFontsEnabled(true);
 
@@ -184,18 +184,18 @@ public sealed class OverlayerRuntime {
 
     private bool isLateEnabled;
     public void SetModEnabledLate(bool enabled, bool isDispose) {
-        if(isLateEnabled == enabled) {
+        if (isLateEnabled == enabled) {
             return;
         }
 
         isLateEnabled = enabled;
 
-        if(enabled) {
+        if (enabled) {
             _ = TagManager.RegisterAsync(Assembly);
 
-            if(ModuleService != null) {
-                foreach(var module in ModuleService.LoadedModules) {
-                    if(module != null) {
+            if (ModuleService != null) {
+                foreach (var module in ModuleService.LoadedModules) {
+                    if (module != null) {
                         var moduleAsm = module.GetType().Assembly;
                         _ = TagManager.RegisterAsync(moduleAsm);
                     }

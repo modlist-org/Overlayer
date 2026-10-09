@@ -25,38 +25,38 @@ public class UserTexture2D : UserResourceBase<(Texture2D texture, Texture2DSetti
         bool linear
     ) {
         try {
-            if(Cache.ContainsKey(key)) {
+            if (Cache.ContainsKey(key)) {
                 return Result.KeyAlreadyExists;
             }
 
-            if(!File.Exists(path)) {
+            if (!File.Exists(path)) {
                 return Result.NotFound;
             }
 
             var ext = Path.GetExtension(path).ToLowerInvariant();
-            if(!Ext.Contains(ext)) {
+            if (!Ext.Contains(ext)) {
                 return Result.InvalidArgument;
             }
 
             return LoadData(key, path, File.ReadAllBytes(path), mipChain, linear);
-        } catch(Exception e) {
+        } catch (Exception e) {
             MainCore.Log.Err($"[{nameof(UserTexture2D)}] Texture load failed: {e}");
             return Result.Failed;
         }
     }
 
     public Result LoadData(string key, string path, byte[] data, bool mipChain, bool linear) {
-        if(string.IsNullOrWhiteSpace(key) || data == null || data.Length == 0) {
+        if (string.IsNullOrWhiteSpace(key) || data == null || data.Length == 0) {
             return Result.InvalidArgument;
         }
-        if(Cache.ContainsKey(key)) {
+        if (Cache.ContainsKey(key)) {
             return Result.KeyAlreadyExists;
         }
 
         Texture2D texture = null;
         try {
             texture = new Texture2D(2, 2, TextureFormat.RGBA32, mipChain, linear);
-            if(!O5Texture.LoadImage(texture, data)) {
+            if (!O5Texture.LoadImage(texture, data)) {
                 UnityEngine.Object.Destroy(texture);
                 return Result.Failed;
             }
@@ -65,8 +65,8 @@ public class UserTexture2D : UserResourceBase<(Texture2D texture, Texture2DSetti
                 Linear = linear
             }));
             return Result.Success;
-        } catch(Exception e) {
-            if(texture) {
+        } catch (Exception e) {
+            if (texture) {
                 UnityEngine.Object.Destroy(texture);
             }
 
@@ -76,17 +76,17 @@ public class UserTexture2D : UserResourceBase<(Texture2D texture, Texture2DSetti
     }
 
     public Result ReplaceData(string key, byte[] data, bool mipChain, bool linear) {
-        if(!Cache.TryGetValue(key, out var current)) {
+        if (!Cache.TryGetValue(key, out var current)) {
             return Result.NotFound;
         }
-        if(data == null || data.Length == 0) {
+        if (data == null || data.Length == 0) {
             return Result.InvalidArgument;
         }
 
         Texture2D replacement = null;
         try {
             replacement = new Texture2D(2, 2, TextureFormat.RGBA32, mipChain, linear);
-            if(!O5Texture.LoadImage(replacement, data)) {
+            if (!O5Texture.LoadImage(replacement, data)) {
                 UnityEngine.Object.Destroy(replacement);
                 return Result.Failed;
             }
@@ -95,13 +95,13 @@ public class UserTexture2D : UserResourceBase<(Texture2D texture, Texture2DSetti
                 MipChain = mipChain,
                 Linear = linear
             }));
-            if(current.value.texture) {
+            if (current.value.texture) {
                 UnityEngine.Object.Destroy(current.value.texture);
             }
 
             return Result.Success;
-        } catch(Exception e) {
-            if(replacement) {
+        } catch (Exception e) {
+            if (replacement) {
                 UnityEngine.Object.Destroy(replacement);
             }
 
@@ -111,11 +111,11 @@ public class UserTexture2D : UserResourceBase<(Texture2D texture, Texture2DSetti
     }
 
     public bool Remove(string key) {
-        if(!Cache.Remove(key, out var entry)) {
+        if (!Cache.Remove(key, out var entry)) {
             return false;
         }
 
-        if(entry.value.texture) {
+        if (entry.value.texture) {
             UnityEngine.Object.Destroy(entry.value.texture);
         }
 
@@ -125,8 +125,8 @@ public class UserTexture2D : UserResourceBase<(Texture2D texture, Texture2DSetti
     public JToken Serialize() {
         var obj = new JObject();
 
-        foreach(var (key, (path, value)) in Cache) {
-            if(O5cpFormat.IsPackageKey(key)) {
+        foreach (var (key, (path, value)) in Cache) {
+            if (O5cpFormat.IsPackageKey(key)) {
                 continue;
             }
             obj[key] = new JObject {
@@ -139,18 +139,18 @@ public class UserTexture2D : UserResourceBase<(Texture2D texture, Texture2DSetti
     }
 
     public void Deserialize(JToken token) {
-        if(token is not JObject obj) {
+        if (token is not JObject obj) {
             MainCore.Log.Wrn(
                 $"[{nameof(UserTexture2D)}] Deserialize failed: token is not JObject"
             );
             return;
         }
 
-        foreach(var property in obj.Properties()) {
-            if(O5cpFormat.IsPackageKey(property.Name)) {
+        foreach (var property in obj.Properties()) {
+            if (O5cpFormat.IsPackageKey(property.Name)) {
                 continue;
             }
-            if(property.Value is not JObject entry) {
+            if (property.Value is not JObject entry) {
                 MainCore.Log.Wrn(
                     $"[{nameof(UserTexture2D)}] Invalid entry {{ \"{property.Name}\": null }}"
                 );
@@ -163,7 +163,7 @@ public class UserTexture2D : UserResourceBase<(Texture2D texture, Texture2DSetti
 
             var settings = new Texture2DSettings();
 
-            if(entry[nameof(Texture2DSettings)] is JToken settingsToken) {
+            if (entry[nameof(Texture2DSettings)] is JToken settingsToken) {
                 settings.Deserialize(settingsToken);
             }
 
@@ -174,7 +174,7 @@ public class UserTexture2D : UserResourceBase<(Texture2D texture, Texture2DSetti
                 settings.Linear
             );
 
-            if(result != Result.Success) {
+            if (result != Result.Success) {
                 MainCore.Log.Wrn(
                     $"[{nameof(UserTexture2D)}] {result} {{ \"{property.Name}\": \"{path}\" }}"
                 );
@@ -183,7 +183,7 @@ public class UserTexture2D : UserResourceBase<(Texture2D texture, Texture2DSetti
     }
 
     public override void Dispose() {
-        foreach(var (_, value) in Cache.Values) {
+        foreach (var (_, value) in Cache.Values) {
             UnityEngine.Object.Destroy(value.texture);
         }
 

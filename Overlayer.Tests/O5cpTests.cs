@@ -162,7 +162,7 @@ public sealed class O5cpTests {
             Assert.Equal(3, written.Count);
             Assert.True(File.Exists(Path.Combine(dir, "stage", "resources", "fonts", "A.ttf")));
         } finally {
-            if(Directory.Exists(dir)) Directory.Delete(dir, true);
+            if (Directory.Exists(dir)) Directory.Delete(dir, true);
         }
     }
 

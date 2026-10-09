@@ -6,7 +6,7 @@ namespace Overlayer.Core;
 
 public class CameraManager {
     private Camera cachedCamera;
-    
+
     public Func<Camera> CustomCameraProvider { get; set; }
 
     public event Action<Camera> OnCameraChanged;

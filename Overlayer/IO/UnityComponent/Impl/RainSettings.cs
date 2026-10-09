@@ -32,7 +32,7 @@ public sealed class RainSettings : UnityComponentSettingsBase, ICopyable<RainSet
 
     public override bool ToUnity(GameObject target) {
         var component = target.GetComponent<OvRainComponent>();
-        if(component == null) {
+        if (component == null) {
             return false;
         }
         Push(component);
@@ -56,7 +56,7 @@ public sealed class RainSettings : UnityComponentSettingsBase, ICopyable<RainSet
 
     public override bool FromUnity(GameObject source) {
         var component = source.GetComponent<OvRainComponent>();
-        if(component == null) {
+        if (component == null) {
             return false;
         }
         Active.Value = component.Active;
@@ -74,11 +74,11 @@ public sealed class RainSettings : UnityComponentSettingsBase, ICopyable<RainSet
     }
 
     public override void RefreshFx(GameObject target) {
-        if(!HasAnyFx) {
+        if (!HasAnyFx) {
             return;
         }
         var component = target.GetComponent<OvRainComponent>();
-        if(component == null) {
+        if (component == null) {
             return;
         }
         RefreshEnabled(component);

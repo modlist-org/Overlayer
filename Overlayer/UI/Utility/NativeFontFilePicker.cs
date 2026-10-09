@@ -12,7 +12,7 @@ internal static class NativeFontFilePicker {
                     ["Fonts"] = "ttf,otf"
                 }
             );
-        } catch(Exception e) {
+        } catch (Exception e) {
             MainCore.Log.Err($"[{nameof(NativeFontFilePicker)}] File dialog failed: {e}");
             return null;
         }

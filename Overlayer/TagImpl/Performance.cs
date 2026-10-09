@@ -20,7 +20,7 @@ public sealed class FpsTracker : IRuntimeTick {
 
     public void Tick() {
         double now = UnityEngine.Time.realtimeSinceStartup;
-        if(frameTimes.Count >= MaxSamples) {
+        if (frameTimes.Count >= MaxSamples) {
             frameTimes.Dequeue();
         }
         frameTimes.Enqueue(now);
@@ -28,14 +28,14 @@ public sealed class FpsTracker : IRuntimeTick {
     }
 
     public double Fps(int windowMs) {
-        if(windowMs <= 0) {
+        if (windowMs <= 0) {
             float dt = UnityEngine.Time.unscaledDeltaTime;
             return dt > 0f ? 1d / dt : 0d;
         }
         double now = UnityEngine.Time.realtimeSinceStartup;
         int w = Math.Min(Math.Max(windowMs, 1), MaxWindowMs);
-        if(!fpsHeld.TryGetValue(w, out var e) || now >= e.next) {
-            if(fpsHeld.Count > 32) {
+        if (!fpsHeld.TryGetValue(w, out var e) || now >= e.next) {
+            if (fpsHeld.Count > 32) {
                 fpsHeld.Clear();
             }
             double value = WindowedFps(w);
@@ -46,13 +46,13 @@ public sealed class FpsTracker : IRuntimeTick {
     }
 
     public double FrameTime(int windowMs) {
-        if(windowMs <= 0) {
+        if (windowMs <= 0) {
             return UnityEngine.Time.unscaledDeltaTime * 1000d;
         }
         double now = UnityEngine.Time.realtimeSinceStartup;
         int w = Math.Min(Math.Max(windowMs, 1), MaxWindowMs);
-        if(!msHeld.TryGetValue(w, out var e) || now >= e.next) {
-            if(msHeld.Count > 32) {
+        if (!msHeld.TryGetValue(w, out var e) || now >= e.next) {
+            if (msHeld.Count > 32) {
                 msHeld.Clear();
             }
             double value = WindowedMs(w);
@@ -65,11 +65,11 @@ public sealed class FpsTracker : IRuntimeTick {
     private double WindowedFps(int windowMs) {
         Prune(windowMs);
         int n = frameTimes.Count;
-        if(n < 2) {
+        if (n < 2) {
             return 0d;
         }
         double span = frameTimes.Last() - frameTimes.Peek();
-        if(span < 0.000001) {
+        if (span < 0.000001) {
             return 0d;
         }
         return (n - 1) / span;
@@ -78,11 +78,11 @@ public sealed class FpsTracker : IRuntimeTick {
     private double WindowedMs(int windowMs) {
         Prune(windowMs);
         int n = frameTimes.Count;
-        if(n < 2) {
+        if (n < 2) {
             return 0d;
         }
         double span = frameTimes.Last() - frameTimes.Peek();
-        if(span < 0.000001) {
+        if (span < 0.000001) {
             return 0d;
         }
         return span / (n - 1) * 1000d;
@@ -91,7 +91,7 @@ public sealed class FpsTracker : IRuntimeTick {
     private void Prune(int windowMs) {
         double now = UnityEngine.Time.realtimeSinceStartup;
         double window = windowMs / 1000d;
-        while(frameTimes.Count > 0 && now - frameTimes.Peek() > window) {
+        while (frameTimes.Count > 0 && now - frameTimes.Peek() > window) {
             frameTimes.Dequeue();
         }
     }

@@ -8,15 +8,15 @@ public readonly struct Placeholder(
     public readonly string[] Args = args ?? [];
 
     public bool Equals(Placeholder other) {
-        if(Name != other.Name) {
+        if (Name != other.Name) {
             return false;
         }
 
-        if(Args == null || other.Args == null) {
+        if (Args == null || other.Args == null) {
             return false;
         }
 
-        if(Args.Length != other.Args.Length) {
+        if (Args.Length != other.Args.Length) {
             return false;
         }
 
@@ -33,11 +33,11 @@ public readonly struct Placeholder(
 
         hash.Add(Name);
 
-        if(Args == null) {
+        if (Args == null) {
             return hash.ToHashCode();
         }
 
-        foreach(var t in Args) {
+        foreach (var t in Args) {
             hash.Add(t);
         }
 

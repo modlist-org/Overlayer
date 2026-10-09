@@ -13,36 +13,36 @@ public static class SafeAccess {
     public static SafeResolveMode? ModeOverride { get; set; }
 
     public static void Register(SafeMemberBase member) {
-        if(member == null) {
+        if (member == null) {
             return;
         }
-        lock(syncLock) {
+        lock (syncLock) {
             SweepLocked();
             members.Add(new WeakReference<SafeMemberBase>(member));
         }
     }
 
     public static void Init(params Assembly[] assemblies) {
-        lock(syncLock) {
+        lock (syncLock) {
             typeCache.Clear();
-            foreach(var asm in assemblies) {
-                if(asm == null) {
+            foreach (var asm in assemblies) {
+                if (asm == null) {
                     continue;
                 }
                 Type[] types;
                 try {
                     types = asm.GetTypes();
-                } catch(ReflectionTypeLoadException e) {
+                } catch (ReflectionTypeLoadException e) {
                     types = e.Types.Where(t => t != null).ToArray()!;
                 } catch {
                     continue;
                 }
-                foreach(var type in types) {
-                    if(type?.FullName == null) {
+                foreach (var type in types) {
+                    if (type?.FullName == null) {
                         continue;
                     }
                     typeCache.TryAdd(type.FullName, type);
-                    if(type.Name != type.FullName) {
+                    if (type.Name != type.FullName) {
                         typeCache.TryAdd(type.Name, type);
                     }
                 }
@@ -50,29 +50,29 @@ public static class SafeAccess {
             SweepLocked();
             int total = 0;
             int resolved = 0;
-            foreach(var weak in members) {
-                if(weak.TryGetTarget(out var member) && member != null) {
+            foreach (var weak in members) {
+                if (weak.TryGetTarget(out var member) && member != null) {
                     total++;
                     try {
-                        if(member.Resolve()) {
+                        if (member.Resolve()) {
                             resolved++;
                         }
                     } catch {
                     }
                 }
             }
-            if(total > 0) {
+            if (total > 0) {
                 Logger?.Invoke($"[SafeAccess] Resolved {resolved}/{total} members.");
             }
         }
     }
 
     public static Type FindType(string typeName) {
-        if(string.IsNullOrEmpty(typeName)) {
+        if (string.IsNullOrEmpty(typeName)) {
             return null;
         }
-        lock(syncLock) {
-            if(typeCache.TryGetValue(typeName, out var cached)) {
+        lock (syncLock) {
+            if (typeCache.TryGetValue(typeName, out var cached)) {
                 return cached;
             }
             foreach (var asm in AppDomain.CurrentDomain.GetAssemblies()) {
@@ -88,31 +88,31 @@ public static class SafeAccess {
                 }
             }
 
-            if(!typeName.Contains('.')) {
+            if (!typeName.Contains('.')) {
                 Type unique = null;
                 bool ambiguous = false;
-                foreach(var asm in AppDomain.CurrentDomain.GetAssemblies()) {
+                foreach (var asm in AppDomain.CurrentDomain.GetAssemblies()) {
                     Type[] types;
                     try {
                         types = asm.GetTypes();
                     } catch {
                         continue;
                     }
-                    foreach(var t in types) {
-                        if(t.Name != typeName) {
+                    foreach (var t in types) {
+                        if (t.Name != typeName) {
                             continue;
                         }
-                        if(unique != null && unique != t) {
+                        if (unique != null && unique != t) {
                             ambiguous = true;
                             break;
                         }
                         unique ??= t;
                     }
-                    if(ambiguous) {
+                    if (ambiguous) {
                         break;
                     }
                 }
-                if(!ambiguous && unique != null) {
+                if (!ambiguous && unique != null) {
                     typeCache[typeName] = unique;
                     return unique;
                 }
@@ -121,9 +121,10 @@ public static class SafeAccess {
         }
     }
 
-    internal static void WarnOnce(string message) {        try {
-            lock(warned) {
-                if(!warned.Add(message)) {
+    internal static void WarnOnce(string message) {
+        try {
+            lock (warned) {
+                if (!warned.Add(message)) {
                     return;
                 }
             }
@@ -141,15 +142,15 @@ public static class SafeAccess {
 
     public static bool TryRead(object target, string member, out object value) {
         value = null;
-        if(target == null || string.IsNullOrEmpty(member)) {
+        if (target == null || string.IsNullOrEmpty(member)) {
             return false;
         }
         Func<object, object> reader;
         try {
             var key = (target.GetType(), member);
-            if(!readers.TryGetValue(key, out reader)) {
-                lock(syncLock) {
-                    if(!readers.TryGetValue(key, out reader)) {
+            if (!readers.TryGetValue(key, out reader)) {
+                lock (syncLock) {
+                    if (!readers.TryGetValue(key, out reader)) {
                         reader = BuildReader(key.Item1, member);
                         readers[key] = reader;
                     }
@@ -158,7 +159,7 @@ public static class SafeAccess {
         } catch {
             return false;
         }
-        if(reader == null) {
+        if (reader == null) {
             return false;
         }
         try {
@@ -171,16 +172,16 @@ public static class SafeAccess {
 
     public static bool TryCall(object target, string method, out object result, params object[] args) {
         result = null;
-        if(target == null || string.IsNullOrEmpty(method)) {
+        if (target == null || string.IsNullOrEmpty(method)) {
             return false;
         }
         args ??= [];
         Func<object, object[], object> caller;
         try {
             var key = (target.GetType(), method, args.Length);
-            if(!callers.TryGetValue(key, out caller)) {
-                lock(syncLock) {
-                    if(!callers.TryGetValue(key, out caller)) {
+            if (!callers.TryGetValue(key, out caller)) {
+                lock (syncLock) {
+                    if (!callers.TryGetValue(key, out caller)) {
                         caller = BuildCaller(key.Item1, method, args.Length);
                         callers[key] = caller;
                     }
@@ -189,7 +190,7 @@ public static class SafeAccess {
         } catch {
             return false;
         }
-        if(caller == null) {
+        if (caller == null) {
             return false;
         }
         try {
@@ -201,15 +202,15 @@ public static class SafeAccess {
     }
 
     public static bool TryWrite(object target, string member, object value) {
-        if(target == null || string.IsNullOrEmpty(member)) {
+        if (target == null || string.IsNullOrEmpty(member)) {
             return false;
         }
         Action<object, object> writer;
         try {
             var key = (target.GetType(), member);
-            if(!writers.TryGetValue(key, out writer)) {
-                lock(syncLock) {
-                    if(!writers.TryGetValue(key, out writer)) {
+            if (!writers.TryGetValue(key, out writer)) {
+                lock (syncLock) {
+                    if (!writers.TryGetValue(key, out writer)) {
                         writer = BuildWriter(key.Item1, member);
                         writers[key] = writer;
                     }
@@ -218,7 +219,7 @@ public static class SafeAccess {
         } catch {
             return false;
         }
-        if(writer == null) {
+        if (writer == null) {
             return false;
         }
         try {
@@ -234,13 +235,13 @@ public static class SafeAccess {
         var inst = Expression.Parameter(typeof(object), "instance");
         var val = Expression.Parameter(typeof(object), "value");
         var field = type.GetField(member, flags);
-        if(field != null && !field.IsInitOnly) {
+        if (field != null && !field.IsInitOnly) {
             Expression target = field.IsStatic ? null : Expression.Convert(inst, type);
             var body = Expression.Assign(Expression.Field(target, field), Expression.Convert(val, field.FieldType));
             return Expression.Lambda<Action<object, object>>(body, inst, val).Compile();
         }
         var set = type.GetProperty(member, flags)?.GetSetMethod(true);
-        if(set != null) {
+        if (set != null) {
             Expression target = set.IsStatic ? null : Expression.Convert(inst, type);
             var body = Expression.Call(target, set, Expression.Convert(val, set.GetParameters()[0].ParameterType));
             return Expression.Lambda<Action<object, object>>(body, inst, val).Compile();
@@ -252,14 +253,14 @@ public static class SafeAccess {
         const BindingFlags flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance;
         var inst = Expression.Parameter(typeof(object), "instance");
         var field = type.GetField(member, flags);
-        if(field != null) {
+        if (field != null) {
             Expression target = field.IsStatic ? null : Expression.Convert(inst, type);
             var body = Expression.Convert(Expression.Field(target, field), typeof(object));
             return Expression.Lambda<Func<object, object>>(body, inst).Compile();
         }
         var property = type.GetProperty(member, flags);
         var get = property?.GetGetMethod(true);
-        if(get != null) {
+        if (get != null) {
             Expression target = get.IsStatic ? null : Expression.Convert(inst, type);
             var body = Expression.Convert(Expression.Call(target, get), typeof(object));
             return Expression.Lambda<Func<object, object>>(body, inst).Compile();
@@ -270,14 +271,14 @@ public static class SafeAccess {
     private static Func<object, object[], object> BuildCaller(Type type, string method, int arity) {
         const BindingFlags flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance;
         var match = type.GetMethods(flags).FirstOrDefault(m => m.Name == method && m.GetParameters().Length == arity);
-        if(match == null) {
+        if (match == null) {
             return null;
         }
         var inst = Expression.Parameter(typeof(object), "instance");
         var args = Expression.Parameter(typeof(object[]), "args");
         var ps = match.GetParameters();
         var callArgs = new Expression[ps.Length];
-        for(int i = 0; i < ps.Length; i++) {
+        for (int i = 0; i < ps.Length; i++) {
             callArgs[i] = Expression.Convert(Expression.ArrayIndex(args, Expression.Constant(i)), ps[i].ParameterType);
         }
         Expression target = match.IsStatic ? null : Expression.Convert(inst, type);
@@ -289,8 +290,8 @@ public static class SafeAccess {
     }
 
     private static void SweepLocked() {
-        for(int i = members.Count - 1; i >= 0; i--) {
-            if(!members[i].TryGetTarget(out _)) {
+        for (int i = members.Count - 1; i >= 0; i--) {
+            if (!members[i].TryGetTarget(out _)) {
                 members.RemoveAt(i);
             }
         }

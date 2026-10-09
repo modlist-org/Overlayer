@@ -12,16 +12,16 @@ public static class O5TweenExtensions {
         private readonly List<ITweenHandle> _handles = [];
 
         public void Add(ITweenHandle handle) {
-            if(handle != null) {
+            if (handle != null) {
                 _handles.Add(handle);
             }
         }
 
         public bool IsAlive {
             get {
-                foreach(var h in _handles) {
+                foreach (var h in _handles) {
                     try {
-                        if(h != null && h.IsAlive) {
+                        if (h != null && h.IsAlive) {
                             return true;
                         }
                     } catch {
@@ -33,7 +33,7 @@ public static class O5TweenExtensions {
         }
 
         public void Kill(bool complete = false) {
-            foreach(var h in _handles) {
+            foreach (var h in _handles) {
                 try {
                     h?.Kill(complete);
                 } catch {
@@ -45,7 +45,7 @@ public static class O5TweenExtensions {
     private static ITweenRunner Runner => O5KitAdapters.Ctx.Tween;
 
     private static void WhenDone(ref int pending, Action done) {
-        if(--pending == 0) {
+        if (--pending == 0) {
             try {
                 done?.Invoke();
             } catch {
@@ -58,7 +58,7 @@ public static class O5TweenExtensions {
         return runner.TweenColor(
             () => img ? img.color : to,
             v => {
-                if(img) {
+                if (img) {
                     img.color = v;
                 }
             },
@@ -70,7 +70,7 @@ public static class O5TweenExtensions {
         return runner.TweenFloat(
             () => g ? g.color.a : to,
             v => {
-                if(g) {
+                if (g) {
                     var c = g.color;
                     c.a = v;
                     g.color = c;
@@ -84,7 +84,7 @@ public static class O5TweenExtensions {
         return runner.TweenFloat(
             () => g ? g.alpha : to,
             v => {
-                if(g) {
+                if (g) {
                     g.alpha = v;
                 }
             },
@@ -98,7 +98,7 @@ public static class O5TweenExtensions {
         multi.Add(runner.TweenFloat(
             () => r ? r.anchoredPosition.x : to.x,
             v => {
-                if(r) {
+                if (r) {
                     var p = r.anchoredPosition;
                     p.x = v;
                     r.anchoredPosition = p;
@@ -108,7 +108,7 @@ public static class O5TweenExtensions {
         multi.Add(runner.TweenFloat(
             () => r ? r.anchoredPosition.y : to.y,
             v => {
-                if(r) {
+                if (r) {
                     var p = r.anchoredPosition;
                     p.y = v;
                     r.anchoredPosition = p;
@@ -125,7 +125,7 @@ public static class O5TweenExtensions {
         multi.Add(runner.TweenFloat(
             () => r ? r.offsetMin.x : to.x,
             v => {
-                if(r) {
+                if (r) {
                     var p = r.offsetMin;
                     p.x = v;
                     r.offsetMin = p;
@@ -135,7 +135,7 @@ public static class O5TweenExtensions {
         multi.Add(runner.TweenFloat(
             () => r ? r.offsetMin.y : to.y,
             v => {
-                if(r) {
+                if (r) {
                     var p = r.offsetMin;
                     p.y = v;
                     r.offsetMin = p;
@@ -152,7 +152,7 @@ public static class O5TweenExtensions {
         multi.Add(runner.TweenFloat(
             () => r ? r.sizeDelta.x : to.x,
             v => {
-                if(r) {
+                if (r) {
                     var p = r.sizeDelta;
                     p.x = v;
                     r.sizeDelta = p;
@@ -162,7 +162,7 @@ public static class O5TweenExtensions {
         multi.Add(runner.TweenFloat(
             () => r ? r.sizeDelta.y : to.y,
             v => {
-                if(r) {
+                if (r) {
                     var p = r.sizeDelta;
                     p.y = v;
                     r.sizeDelta = p;
@@ -179,7 +179,7 @@ public static class O5TweenExtensions {
         multi.Add(runner.TweenFloat(
             () => t ? t.localScale.x : to.x,
             v => {
-                if(t) {
+                if (t) {
                     var p = t.localScale;
                     p.x = v;
                     t.localScale = p;
@@ -189,7 +189,7 @@ public static class O5TweenExtensions {
         multi.Add(runner.TweenFloat(
             () => t ? t.localScale.y : to.y,
             v => {
-                if(t) {
+                if (t) {
                     var p = t.localScale;
                     p.y = v;
                     t.localScale = p;
@@ -199,7 +199,7 @@ public static class O5TweenExtensions {
         multi.Add(runner.TweenFloat(
             () => t ? t.localScale.z : to.z,
             v => {
-                if(t) {
+                if (t) {
                     var p = t.localScale;
                     p.z = v;
                     t.localScale = p;

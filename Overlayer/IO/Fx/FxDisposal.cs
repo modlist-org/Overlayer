@@ -15,18 +15,18 @@ internal static class FxDisposal {
     }
 
     public static void DisposeDeep(object root) {
-        if(root == null) {
+        if (root == null) {
             return;
         }
         var seen = new HashSet<object>(RefComparer.Instance);
         var stack = new Stack<object>();
         stack.Push(root);
-        while(stack.Count > 0) {
+        while (stack.Count > 0) {
             object current = stack.Pop();
-            if(current == null || !seen.Add(current)) {
+            if (current == null || !seen.Add(current)) {
                 continue;
             }
-            if(current is IDisposable disposable) {
+            if (current is IDisposable disposable) {
                 try {
                     disposable.Dispose();
                 } catch {
@@ -34,10 +34,10 @@ internal static class FxDisposal {
                 continue;
             }
             Type type = current.GetType();
-            if(type.IsPrimitive || type.IsEnum || current is string) {
+            if (type.IsPrimitive || type.IsEnum || current is string) {
                 continue;
             }
-            if(type.Namespace == null || !type.Namespace.StartsWith("Overlayer.", StringComparison.Ordinal)) {
+            if (type.Namespace == null || !type.Namespace.StartsWith("Overlayer.", StringComparison.Ordinal)) {
                 continue;
             }
             FieldInfo[] fields;
@@ -46,14 +46,14 @@ internal static class FxDisposal {
             } catch {
                 continue;
             }
-            foreach(var field in fields) {
+            foreach (var field in fields) {
                 object value;
                 try {
                     value = field.GetValue(current);
                 } catch {
                     continue;
                 }
-                if(value == null || value.GetType().IsPrimitive || value is string) {
+                if (value == null || value.GetType().IsPrimitive || value is string) {
                     continue;
                 }
                 stack.Push(value);

@@ -71,7 +71,7 @@ internal static class PageOverlayer {
         keeper.Setup(contentRectRef);
         gridRef = grid.transform;
 
-        if(!subscribedToCanvases) {
+        if (!subscribedToCanvases) {
             subscribedToCanvases = true;
             OverlayCore.OnCanvasesChanged += RefreshTilesExternal;
         }
@@ -97,17 +97,17 @@ internal static class PageOverlayer {
             BuildAllTiles(grid.transform);
         });
 
-        if(!subscribedToPackages) {
+        if (!subscribedToPackages) {
             subscribedToPackages = true;
             PackageStore.OnChanged += RefreshTilesExternal;
         }
 
         MainCore.OnModEnabledChanged += (isEnabled, isDispose) => {
-            if(!isDispose) {
+            if (!isDispose) {
                 ToggleUIStateByMod(grid.transform, isEnabled);
-                if(isEnabled) {
+                if (isEnabled) {
                     MainThread.Enqueue(() => {
-                        if(MainCore.IsModEnabled) {
+                        if (MainCore.IsModEnabled) {
                             BuildAllTiles(grid.transform);
                         }
                     });
@@ -115,7 +115,7 @@ internal static class PageOverlayer {
             }
         };
 
-        if(!MainCore.IsModEnabled) {
+        if (!MainCore.IsModEnabled) {
             ToggleUIStateByMod(grid.transform, false);
         } else {
             // The grid starts empty: build it now instead of waiting for the
@@ -129,7 +129,7 @@ internal static class PageOverlayer {
         // running file dialogs); tile construction must run on the main
         // thread, deferred by one frame at most.
         MainThread.Enqueue(() => {
-            if(gridRef == null || !MainCore.IsModEnabled) {
+            if (gridRef == null || !MainCore.IsModEnabled) {
                 return;
             }
             BuildAllTiles(gridRef);
@@ -137,11 +137,11 @@ internal static class PageOverlayer {
     }
 
     private static void ToggleUIStateByMod(Transform transform, bool isEnabled) {
-        if(!isEnabled) {
+        if (!isEnabled) {
             settingPage?.Close(true);
             propsPage?.Close(true);
             FadeCanvasGroup(viewportCanvasGroup, 1f, true, true);
-            if(disabledPanel != null) {
+            if (disabledPanel != null) {
                 disabledPanel.SetActive(true);
                 disabledPanel.transform.SetAsLastSibling();
             }
@@ -154,21 +154,21 @@ internal static class PageOverlayer {
     }
 
     private static void BuildAllTiles(Transform transform) {
-        if(transform == null) {
+        if (transform == null) {
             return;
         }
 
         ClearAllTiles(transform);
 
-        for(int i = 0; i < OverlayCore.Canvases.Count; i++) {
+        for (int i = 0; i < OverlayCore.Canvases.Count; i++) {
             var c = OverlayCore.Canvases[i];
-            if(!tileMap.TryGetValue(c, out var tile)) {
+            if (!tileMap.TryGetValue(c, out var tile)) {
                 tile = CreateCanvasTile(transform, c, () => BuildAllTiles(transform));
                 tileMap[c] = tile;
             }
         }
 
-        foreach(var pkg in PackageStore.Packages) {
+        foreach (var pkg in PackageStore.Packages) {
             CreatePackageTile(transform, pkg, () => BuildAllTiles(transform));
         }
 
@@ -177,14 +177,14 @@ internal static class PageOverlayer {
             BuildAllTiles(transform);
         }, () => BeginImportCanvas(transform), () => BeginImportPreset(transform));
 
-        if(contentRectRef != null) {
+        if (contentRectRef != null) {
             LayoutRebuilder.ForceRebuildLayoutImmediate(contentRectRef);
         }
         transform.GetComponent<GridRatioKeeper>()?.RefreshNow();
     }
 
     private static void ClearAllTiles(Transform transform) {
-        if(transform == null) {
+        if (transform == null) {
             return;
         }
 
@@ -193,14 +193,14 @@ internal static class PageOverlayer {
         } catch {
         }
 
-        foreach(var key in thumbCache.Keys.ToArray()) {
-            if(!OverlayCore.Canvases.Contains(key)) {
+        foreach (var key in thumbCache.Keys.ToArray()) {
+            if (!OverlayCore.Canvases.Contains(key)) {
                 DropTileThumb(key);
             }
         }
 
-        foreach(Transform child in transform) {
-            if(child.name == "DisabledOverlayPanel") {
+        foreach (Transform child in transform) {
+            if (child.name == "DisabledOverlayPanel") {
                 continue;
             }
 
@@ -284,12 +284,12 @@ internal static class PageOverlayer {
 
         var bgOvent = bg.AddComponent<OventHandler>();
         bgOvent.OnClick += btn => {
-            switch(btn) {
+            switch (btn) {
                 case InputButton.Left:
-                    if(!canvas.Config.Enabled.Value) {
+                    if (!canvas.Config.Enabled.Value) {
                         break;
                     }
-                    if(PointerOnTileControl(bg, tileControls)) {
+                    if (PointerOnTileControl(bg, tileControls)) {
                         break;
                     }
                     FadeCanvasGroup(viewportCanvasGroup, 0f, false);
@@ -312,7 +312,7 @@ internal static class PageOverlayer {
 
         var cloneRect = TileButton(bg.transform, BuiltinIcon(UISprite.Clone128), "Clone",
             $"tile_clone_{canvas.GetHashCode()}", () => {
-                if(OverlayCore.CloneCanvas(canvas) != null) {
+                if (OverlayCore.CloneCanvas(canvas) != null) {
                     onChanged?.Invoke();
                 }
             }).Rect;
@@ -342,11 +342,11 @@ internal static class PageOverlayer {
             string.Empty,
             $"tile_enabled_{canvas.GetHashCode()}");
         var hoverOutline = enabledToggle.Rect.transform.Find("Hover");
-        if(hoverOutline != null) {
+        if (hoverOutline != null) {
             UnityEngine.Object.Destroy(hoverOutline.gameObject);
         }
         var toggleBg = enabledToggle.Rect.GetComponent<Image>();
-        if(toggleBg != null) {
+        if (toggleBg != null) {
             toggleBg.color = Color.clear;
         }
         tileControls.Add(exportRect.gameObject);
@@ -358,20 +358,20 @@ internal static class PageOverlayer {
         var delBtn = TileButton(bg.transform, BuiltinIcon(UISprite.X128), "X",
             $"tile_del_{canvas.GetHashCode()}", () => { });
         delBtn.OnClick = () => {
-            if(ShiftSkipConfirm()) {
+            if (ShiftSkipConfirm()) {
                 OverlayCore.DeleteOvCanvas(canvas);
                 onChanged?.Invoke();
                 return;
             }
-            if(!ReferenceEquals(armedDeleteFor, canvas)
+            if (!ReferenceEquals(armedDeleteFor, canvas)
                 || (DateTime.Now - armedDeleteAt).TotalSeconds > 5) {
                 armedDeleteFor = canvas;
                 armedDeleteAt = DateTime.Now;
                 delBtn.NormalColor = UIColors.SoftRed;
-                if(delBtn.Icon != null) {
+                if (delBtn.Icon != null) {
                     delBtn.Icon.color = UIColors.SoftRed;
                 }
-                if(delBtn.Label != null) {
+                if (delBtn.Label != null) {
                     delBtn.Label.text = "!";
                 }
                 delBtn.UpdateVisual();
@@ -406,7 +406,7 @@ internal static class PageOverlayer {
     }
 
     private static Sprite GetTileThumb(OvCanvas canvas) {
-        if(canvas?.Props == null || string.IsNullOrWhiteSpace(canvas.Props.ThumbnailPath)) {
+        if (canvas?.Props == null || string.IsNullOrWhiteSpace(canvas.Props.ThumbnailPath)) {
             return null;
         }
         string disk;
@@ -415,11 +415,11 @@ internal static class PageOverlayer {
         } catch {
             return null;
         }
-        if(string.IsNullOrEmpty(disk) || !File.Exists(disk)) {
+        if (string.IsNullOrEmpty(disk) || !File.Exists(disk)) {
             return null;
         }
         DateTime mtime = File.GetLastWriteTimeUtc(disk);
-        if(thumbCache.TryGetValue(canvas, out var cached)
+        if (thumbCache.TryGetValue(canvas, out var cached)
             && cached.sprite
             && cached.path == disk
             && cached.mtime == mtime) {
@@ -428,7 +428,7 @@ internal static class PageOverlayer {
         DropTileThumb(canvas);
         try {
             var tex = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-            if(!tex.LoadImage(File.ReadAllBytes(disk))) {
+            if (!tex.LoadImage(File.ReadAllBytes(disk))) {
                 UnityEngine.Object.Destroy(tex);
                 return null;
             }
@@ -442,13 +442,13 @@ internal static class PageOverlayer {
     }
 
     private static void DropTileThumb(OvCanvas canvas) {
-        if(canvas != null && thumbCache.Remove(canvas, out var dropped) && dropped.tex) {
+        if (canvas != null && thumbCache.Remove(canvas, out var dropped) && dropped.tex) {
             UnityEngine.Object.Destroy(dropped.tex);
         }
     }
 
     private static void ApplyThumbBg(GameObject tile, Image bgImg, Sprite thumb) {
-        if(thumb == null) {
+        if (thumb == null) {
             return;
         }
         var maskGo = new GameObject("ThumbMask");
@@ -475,7 +475,7 @@ internal static class PageOverlayer {
         fitter.aspectMode = AspectRatioFitter.AspectMode.EnvelopeParent;
         float aspect = 1f;
         try {
-            if(thumb.rect.height > 0f) {
+            if (thumb.rect.height > 0f) {
                 aspect = thumb.rect.width / thumb.rect.height;
             }
         } catch {
@@ -518,7 +518,7 @@ internal static class PageOverlayer {
 
         var txt = textGo.AddComponent<TextMeshProUGUI>();
         string pkgName = entry.Manifest?.Package?.Name;
-        if(string.IsNullOrEmpty(pkgName)) {
+        if (string.IsNullOrEmpty(pkgName)) {
             pkgName = "(Empty)";
         }
         txt.text = pkgName;
@@ -545,7 +545,7 @@ internal static class PageOverlayer {
         badge.raycastTarget = false;
 
         string pkgTip = BuildPackageTooltip(entry);
-        if(!string.IsNullOrEmpty(pkgTip)) {
+        if (!string.IsNullOrEmpty(pkgTip)) {
             bg.transform.AddToolTip(O5KitAdapters.Ctx, pkgTip);
         }
 
@@ -564,17 +564,17 @@ internal static class PageOverlayer {
         var deleteBtn = TileButton(bg.transform, BuiltinIcon(UISprite.X128), "X",
             $"tile_pkgdel_{entry.Id}", () => { });
         deleteBtn.OnClick = () => {
-            if(ShiftSkipConfirm()) {
+            if (ShiftSkipConfirm()) {
                 PackageStore.Remove(entry.Id);
                 return;
             }
-            if(!confirmDelete || (DateTime.Now - pkgArmedAt).TotalSeconds > 5) {
+            if (!confirmDelete || (DateTime.Now - pkgArmedAt).TotalSeconds > 5) {
                 confirmDelete = true;
                 pkgArmedAt = DateTime.Now;
-                if(deleteBtn.Label != null) {
+                if (deleteBtn.Label != null) {
                     deleteBtn.Label.text = "!";
                 }
-                if(deleteBtn.Icon != null) {
+                if (deleteBtn.Icon != null) {
                     deleteBtn.Icon.color = UIColors.SoftRed;
                 }
                 deleteBtn.NormalColor = UIColors.SoftRed;
@@ -605,18 +605,18 @@ internal static class PageOverlayer {
             toggle => {
                 var toggleWarnings = PackageStore.SetEnabled(entry, toggle);
                 ApplyTileEnabledVisual(bgImg, txt, entry.Enabled);
-                if(toggleWarnings.Count > 0) {
+                if (toggleWarnings.Count > 0) {
                     O5cpDialogs.ShowWarnings("Package warnings", toggleWarnings);
                 }
             },
             string.Empty,
             $"tile_pkgenabled_{entry.Id}");
         var hoverOutline = enabledToggle.Rect.transform.Find("Hover");
-        if(hoverOutline != null) {
+        if (hoverOutline != null) {
             UnityEngine.Object.Destroy(hoverOutline.gameObject);
         }
         var toggleBg = enabledToggle.Rect.GetComponent<Image>();
-        if(toggleBg != null) {
+        if (toggleBg != null) {
             toggleBg.color = Color.clear;
         }
         tileControls.Add(copyRect.gameObject);
@@ -629,21 +629,21 @@ internal static class PageOverlayer {
 
     private static string BuildPackageTooltip(PackageEntry entry) {
         var pkg = entry?.Manifest?.Package;
-        if(pkg == null) {
+        if (pkg == null) {
             return string.Empty;
         }
         var lines = new List<string>();
-        if(!string.IsNullOrWhiteSpace(pkg.Author)) {
+        if (!string.IsNullOrWhiteSpace(pkg.Author)) {
             lines.Add($"by {pkg.Author.Trim()}");
         }
-        if(!string.IsNullOrWhiteSpace(pkg.Version)) {
+        if (!string.IsNullOrWhiteSpace(pkg.Version)) {
             lines.Add(pkg.Version.Trim());
         }
-        if(!string.IsNullOrWhiteSpace(pkg.License)) {
+        if (!string.IsNullOrWhiteSpace(pkg.License)) {
             lines.Add(pkg.License.Trim());
         }
-        if(!string.IsNullOrWhiteSpace(pkg.Description)) {
-            if(lines.Count > 0) {
+        if (!string.IsNullOrWhiteSpace(pkg.Description)) {
+            if (lines.Count > 0) {
                 lines.Add("--");
             }
             lines.Add(pkg.Description.Trim());
@@ -655,21 +655,21 @@ internal static class PageOverlayer {
         => Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
 
     private static void BeginPromote(PackageEntry entry) {
-        if(entry == null) {
+        if (entry == null) {
             return;
         }
         var plan = O5cpPromote.BuildPlan(entry);
-        if(plan.Items.Any(i => i.IsConflict)) {
+        if (plan.Items.Any(i => i.IsConflict)) {
             O5cpDialogs.ShowPromoteConflicts(entry, plan, () => {
                 var canvas = OverlayCore.PromotePackage(entry, plan, out var warnings);
-                if(canvas != null && warnings.Count > 0) {
+                if (canvas != null && warnings.Count > 0) {
                     O5cpDialogs.ShowWarnings("Copy warnings", warnings);
                 }
             });
             return;
         }
         var promoted = OverlayCore.PromotePackage(entry, plan, out var promoteWarnings);
-        if(promoted != null && promoteWarnings.Count > 0) {
+        if (promoted != null && promoteWarnings.Count > 0) {
             O5cpDialogs.ShowWarnings("Copy warnings", promoteWarnings);
         }
     }
@@ -680,9 +680,9 @@ internal static class PageOverlayer {
         bgImg.color = bg;
         nameText.color = enabled ? Color.white : UIColors.ObjectInactive;
         var dim = bgImg.transform.Find("ThumbMask/Dim");
-        if(dim != null) {
+        if (dim != null) {
             var dimImg = dim.GetComponent<Image>();
-            if(dimImg != null) {
+            if (dimImg != null) {
                 dimImg.color = new Color(0f, 0f, 0f, enabled ? 0.45f : 0.75f);
             }
         }
@@ -691,15 +691,15 @@ internal static class PageOverlayer {
     private static readonly Dictionary<string, Sprite> tileIconCache = [];
 
     private static Sprite TileIcon(string fileName, UISprite fallback) {
-        if(tileIconCache.TryGetValue(fileName, out var cached)) {
+        if (tileIconCache.TryGetValue(fileName, out var cached)) {
             return cached;
         }
         Sprite sprite = null;
         try {
             string path = Path.Combine(MainCore.Paths.RootPath, "Icons", fileName);
-            if(File.Exists(path)) {
+            if (File.Exists(path)) {
                 var tex = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-                if(tex.LoadImage(File.ReadAllBytes(path))) {
+                if (tex.LoadImage(File.ReadAllBytes(path))) {
                     tex.filterMode = FilterMode.Bilinear;
                     sprite = Sprite.Create(tex, new Rect(0f, 0f, tex.width, tex.height), new Vector2(0.5f, 0.5f));
                 } else {
@@ -723,7 +723,7 @@ internal static class PageOverlayer {
     }
 
     private static O5Button TileButton(Transform parent, Sprite icon, string fallbackText, string id, Action onClick) {
-        if(icon != null) {
+        if (icon != null) {
             return O5Factory.Button(O5KitAdapters.Ctx, parent, onClick, icon, id, 5f, 34f);
         }
         return O5Factory.Button(O5KitAdapters.Ctx, parent, onClick, fallbackText, id, 34f);
@@ -731,23 +731,23 @@ internal static class PageOverlayer {
 
     private static bool PointerOnTileControl(GameObject tile, List<GameObject> controls) {
         var es = EventSystem.current;
-        if(es == null || tile == null) {
+        if (es == null || tile == null) {
             return false;
         }
         var ped = new PointerEventData(es) { position = UnityEngine.Input.mousePosition };
         var hits = new List<RaycastResult>();
         es.RaycastAll(ped, hits);
-        foreach(var h in hits) {
+        foreach (var h in hits) {
             var go = h.gameObject;
-            if(go == null || go == tile) {
+            if (go == null || go == tile) {
                 return false;
             }
-            foreach(var control in controls) {
-                if(go == control || go.transform.IsChildOf(control.transform)) {
+            foreach (var control in controls) {
+                if (go == control || go.transform.IsChildOf(control.transform)) {
                     return true;
                 }
             }
-            if(go.transform.IsChildOf(tile.transform)) {
+            if (go.transform.IsChildOf(tile.transform)) {
                 continue;
             }
             return false;
@@ -778,10 +778,10 @@ internal static class PageOverlayer {
         AddActionHalfHoverScale(handler, root, left, presetZone, importZone,
             createIcon, presetIcon, importIcon);
         handler.OnClick += button => {
-            if(button != InputButton.Left) {
+            if (button != InputButton.Left) {
                 return;
             }
-            if(!RectTransformUtility.ScreenPointToLocalPointInRectangle(
+            if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(
                 root, UnityEngine.Input.mousePosition, null, out var local)) {
                 return;
             }
@@ -790,11 +790,11 @@ internal static class PageOverlayer {
             float splitX = Mathf.Lerp(0.28f, 0.72f, y);
             float split = rect.xMin + rect.width * splitX;
             float halfGap = DiagonalTileGraphic.Gap * 0.5f;
-            if(local.x < split) {
+            if (local.x < split) {
                 create?.Invoke();
-            } else if(local.y > (rect.yMin + rect.yMax) * 0.5f + halfGap) {
+            } else if (local.y > (rect.yMin + rect.yMax) * 0.5f + halfGap) {
                 preset?.Invoke();
-            } else if(local.y < (rect.yMin + rect.yMax) * 0.5f - halfGap) {
+            } else if (local.y < (rect.yMin + rect.yMax) * 0.5f - halfGap) {
                 import?.Invoke();
             }
         };
@@ -804,11 +804,13 @@ internal static class PageOverlayer {
             (EventTriggerType.PointerEnter, () => {
                 hover?.Kill();
                 hover = background.TColor(UIColors.PanelBG, 0.12f, O5Ease.OutSine);
-            }),
+            }
+        ),
             (EventTriggerType.PointerExit, () => {
                 hover?.Kill();
                 hover = background.TColor(UIColors.PanelBG, 0.12f, O5Ease.OutSine);
-            })
+            }
+        )
         );
         return go;
     }
@@ -821,7 +823,7 @@ internal static class PageOverlayer {
             tween = O5KitAdapters.Ctx.Tween.TweenFloat(
                 () => target ? target.localScale.x : value,
                 v => {
-                    if(target) {
+                    if (target) {
                         target.localScale = Vector3.one * v;
                     }
                 },
@@ -855,7 +857,7 @@ internal static class PageOverlayer {
             return O5KitAdapters.Ctx.Tween.TweenFloat(
                 () => target ? target.localScale.x : value,
                 v => {
-                    if(target) {
+                    if (target) {
                         target.localScale = Vector3.one * v;
                     }
                 },
@@ -868,24 +870,24 @@ internal static class PageOverlayer {
         int ZoneIndex(Vector2 local, Rect rect) {
             float y = Mathf.InverseLerp(rect.yMin, rect.yMax, local.y);
             float splitX = Mathf.Lerp(0.28f, 0.72f, y);
-            if(local.x < rect.xMin + rect.width * splitX) {
+            if (local.x < rect.xMin + rect.width * splitX) {
                 return 0;
             }
             float midY = (rect.yMin + rect.yMax) * 0.5f;
             float halfGap = DiagonalTileGraphic.Gap * 0.5f;
-            if(local.y > midY + halfGap) return 1;
-            if(local.y < midY - halfGap) return 2;
+            if (local.y > midY + halfGap) return 1;
+            if (local.y < midY - halfGap) return 2;
             return -1;
         }
 
         handler.OnHoverUpdate = () => {
-            if(!RectTransformUtility.ScreenPointToLocalPointInRectangle(
+            if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(
                 root, UnityEngine.Input.mousePosition, null, out var local)) {
                 return;
             }
             Rect rect = root.rect;
             int next = ZoneIndex(local, rect);
-            if(next == active) {
+            if (next == active) {
                 return;
             }
             active = next;
@@ -918,7 +920,7 @@ internal static class PageOverlayer {
         }
         handler.OnDisabled += ResetHover;
         var trigger = root.GetComponent<EventTrigger>();
-        if(trigger != null) {
+        if (trigger != null) {
             UnityUtils.AddEvents(trigger, (EventTriggerType.PointerExit, ResetHover));
         }
     }
@@ -944,7 +946,7 @@ internal static class PageOverlayer {
     private static GameObject CreateTileActionIcon(Transform parent, Sprite sprite, float anchorX, float anchorY = 0.5f) {
         var go = new GameObject("ActionIcon");
         go.transform.SetParent(parent, false);
-        if(sprite == null) {
+        if (sprite == null) {
             return go;
         }
         var rect = go.AddComponent<RectTransform>();
@@ -960,15 +962,15 @@ internal static class PageOverlayer {
     }
 
     private static void BeginExportCanvas(OvCanvas canvas) {
-        if(canvas == null) {
+        if (canvas == null) {
             return;
         }
         O5cpDialogs.ShowExportOptions(options => {
-            if(canvas.GameObject == null) {
+            if (canvas.GameObject == null) {
                 return;
             }
             string baseName = string.Join("_", (canvas.Config.Name.Value ?? "Canvas").Split(Path.GetInvalidFileNameChars()));
-            if(string.IsNullOrWhiteSpace(baseName)) {
+            if (string.IsNullOrWhiteSpace(baseName)) {
                 baseName = "Canvas";
             }
             _ = Overlayer.UI.Utility.NativeDialogThread.Run(() => {
@@ -978,36 +980,36 @@ internal static class PageOverlayer {
                         $"{baseName}.o5cp",
                         new Dictionary<string, string> { ["Overlayer Package"] = "o5cp" }
                     );
-                } catch(Exception e) {
+                } catch (Exception e) {
                     MainCore.Log.Err($"[CanvasExport] File dialog failed: {e.Message}");
                     return null;
                 }
             }).ContinueWith(task => {
                 MainThread.Enqueue(() => {
-                    if(!MainCore.IsModEnabled) {
+                    if (!MainCore.IsModEnabled) {
                         return;
                     }
-                    if(canvas.GameObject == null) {
+                    if (canvas.GameObject == null) {
                         return;
                     }
                     string path = task.Status == TaskStatus.RanToCompletion ? task.Result : null;
-                    if(string.IsNullOrWhiteSpace(path)) {
+                    if (string.IsNullOrWhiteSpace(path)) {
                         return;
                     }
                     try {
                         var result = O5cpExporter.Export(canvas, path, options);
-                        if(result == null) {
+                        if (result == null) {
                             MainCore.Log.Err("[CanvasExport] Package export failed.");
                             return;
                         }
-                        foreach(string warning in result.Warnings) {
+                        foreach (string warning in result.Warnings) {
                             MainCore.Log.Wrn($"[CanvasExport] {warning}");
                         }
                         MainCore.Log.Msg($"[CanvasExport] Exported package to {path}");
-                        if(result.Warnings.Count > 0) {
+                        if (result.Warnings.Count > 0) {
                             O5cpDialogs.ShowWarnings("Export warnings", result.Warnings);
                         }
-                    } catch(Exception e) {
+                    } catch (Exception e) {
                         MainCore.Log.Err($"[CanvasExport] Package export failed: {e.Message}");
                     }
                 });
@@ -1025,18 +1027,18 @@ internal static class PageOverlayer {
                         ["JSON"] = "json",
                     }
                 );
-            } catch(Exception e) {
+            } catch (Exception e) {
                 MainCore.Log.Err($"[CanvasImport] File dialog failed: {e.Message}");
                 return null;
             }
         }).ContinueWith(task => {
             MainThread.Enqueue(() => {
-                if(!MainCore.IsModEnabled) {
+                if (!MainCore.IsModEnabled) {
                     return;
                 }
                 string path = task.Status == TaskStatus.RanToCompletion ? task.Result : null;
-                if(!string.IsNullOrWhiteSpace(path)) {
-                    if(path.EndsWith(".o5cp", StringComparison.OrdinalIgnoreCase)) {
+                if (!string.IsNullOrWhiteSpace(path)) {
+                    if (path.EndsWith(".o5cp", StringComparison.OrdinalIgnoreCase)) {
                         BeginInstallPackage(path, grid);
                     } else {
                         OverlayCore.ImportCanvas(path);
@@ -1048,17 +1050,17 @@ internal static class PageOverlayer {
     }
 
     private static void BeginImportPreset(Transform grid) {
-        if(!MainCore.IsModEnabled) {
+        if (!MainCore.IsModEnabled) {
             return;
         }
         O5cpDialogs.ShowPresets(preset => {
-            if(!MainCore.IsModEnabled) {
+            if (!MainCore.IsModEnabled) {
                 return;
             }
             byte[] data;
             try {
                 data = preset.ReadBytes?.Invoke();
-            } catch(Exception e) {
+            } catch (Exception e) {
                 MainCore.Log.Err($"[CanvasImport] Preset read failed: {e.Message}");
                 O5cpDialogs.ShowWarnings("Import warnings", [$"preset read failed: {e.Message}"]);
                 return;
@@ -1066,13 +1068,13 @@ internal static class PageOverlayer {
             PackageEntry entry;
             try {
                 entry = PackageStore.InstallBytes(data, out var warnings);
-                foreach(string warning in warnings) {
+                foreach (string warning in warnings) {
                     MainCore.Log.Wrn($"[CanvasImport] {warning}");
                 }
-                if(entry != null && warnings.Count > 0) {
+                if (entry != null && warnings.Count > 0) {
                     O5cpDialogs.ShowWarnings("Import warnings", warnings);
                 }
-            } catch(Exception e) {
+            } catch (Exception e) {
                 MainCore.Log.Err($"[CanvasImport] Preset install failed: {e.Message}");
             }
             BuildAllTiles(grid);
@@ -1082,7 +1084,7 @@ internal static class PageOverlayer {
     private static string ExportDialogDir() {
         try {
             string root = MainCore.Paths.RootPath;
-            if(Directory.Exists(root)) {
+            if (Directory.Exists(root)) {
                 return root;
             }
         } catch {
@@ -1094,29 +1096,29 @@ internal static class PageOverlayer {
         PackageStore.StagedPackage staged;
         try {
             staged = PackageStore.Stage(path, out var stageWarnings);
-            foreach(string warning in stageWarnings) {
+            foreach (string warning in stageWarnings) {
                 MainCore.Log.Wrn($"[CanvasImport] {warning}");
             }
-            if(staged == null) {
-                if(stageWarnings.Count > 0) {
+            if (staged == null) {
+                if (stageWarnings.Count > 0) {
                     O5cpDialogs.ShowWarnings("Import warnings", stageWarnings);
                 }
                 return;
             }
-        } catch(Exception e) {
+        } catch (Exception e) {
             MainCore.Log.Err($"[CanvasImport] Stage failed: {e.Message}");
             return;
         }
         PackageEntry entry;
         try {
             entry = PackageStore.CommitStaged(staged, out var warnings);
-            foreach(string warning in warnings) {
+            foreach (string warning in warnings) {
                 MainCore.Log.Wrn($"[CanvasImport] {warning}");
             }
-            if(entry != null && warnings.Count > 0) {
+            if (entry != null && warnings.Count > 0) {
                 O5cpDialogs.ShowWarnings("Import warnings", warnings);
             }
-        } catch(Exception e) {
+        } catch (Exception e) {
             MainCore.Log.Err($"[CanvasImport] Install failed: {e.Message}");
             staged.Dispose();
         }
@@ -1125,28 +1127,28 @@ internal static class PageOverlayer {
 
     private static ITweenHandle fadeTween;
     private static void FadeCanvasGroup(CanvasGroup cg, float targetAlpha, bool setActive, bool noAnimate = false) {
-        if(cg == null) {
+        if (cg == null) {
             return;
         }
 
         fadeTween?.Kill();
 
-        if(setActive) {
+        if (setActive) {
             cg.gameObject.SetActive(true);
             LayoutRebuilder.ForceRebuildLayoutImmediate(cg.GetComponent<RectTransform>());
         }
 
-        if(noAnimate) {
+        if (noAnimate) {
             cg.alpha = targetAlpha;
             cg.blocksRaycasts = setActive;
-            if(!setActive) {
+            if (!setActive) {
                 cg.gameObject.SetActive(false);
             }
         } else {
             cg.blocksRaycasts = targetAlpha > 0;
 
             fadeTween = cg.TFade(targetAlpha, 0.25f, O5Ease.OutCubic, () => {
-                if(!setActive) {
+                if (!setActive) {
                     cg.gameObject.SetActive(false);
                 }
             });
@@ -1177,11 +1179,11 @@ internal static class PageOverlayer {
         }
 
         private void Update() {
-            if(gridLayout == null || rectTransform == null) {
+            if (gridLayout == null || rectTransform == null) {
                 return;
             }
 
-            if(Screen.width != lastScreenWidth || Screen.height != lastScreenHeight) {
+            if (Screen.width != lastScreenWidth || Screen.height != lastScreenHeight) {
                 lastScreenWidth = Screen.width;
                 lastScreenHeight = Screen.height;
                 UpdateGridCellSize(false);
@@ -1189,7 +1191,7 @@ internal static class PageOverlayer {
         }
 
         private void LateUpdate() {
-            if(Screen.width != lastScreenWidth || Screen.height != lastScreenHeight) {
+            if (Screen.width != lastScreenWidth || Screen.height != lastScreenHeight) {
                 return;
             }
 
@@ -1199,12 +1201,12 @@ internal static class PageOverlayer {
         public void RefreshNow() => UpdateGridCellSize(true);
 
         private void UpdateGridCellSize(bool force) {
-            if(contentRect == null || gridLayout == null) {
+            if (contentRect == null || gridLayout == null) {
                 return;
             }
 
             float targetWidth = contentRect.rect.width;
-            if(targetWidth <= 0) {
+            if (targetWidth <= 0) {
                 return;
             }
 
@@ -1213,14 +1215,14 @@ internal static class PageOverlayer {
             float totalSpacing = gridLayout.spacing.x * (columns - 1);
             float cellWidth = (targetWidth - padding.left - padding.right - totalSpacing) / columns;
 
-            if(cellWidth <= 0) {
+            if (cellWidth <= 0) {
                 return;
             }
 
             // Skip work when the grid already matches: this is what heals
             // tiles that were built while the panel was hidden (zero-width)
             // without needing another rebuild trigger.
-            if(!force
+            if (!force
                 && Mathf.Abs(rectTransform.sizeDelta.x - targetWidth) <= 0.5f
                 && Mathf.Abs(gridLayout.cellSize.x - cellWidth) <= 0.5f) {
                 return;
@@ -1230,7 +1232,7 @@ internal static class PageOverlayer {
 
             float cellHeight = cellWidth / (16f / 9f);
 
-            if(cellWidth > 0 && cellHeight > 0) {
+            if (cellWidth > 0 && cellHeight > 0) {
                 gridLayout.cellSize = new Vector2(cellWidth, cellHeight);
                 LayoutRebuilder.ForceRebuildLayoutImmediate(rectTransform);
                 LayoutRebuilder.ForceRebuildLayoutImmediate(contentRect);

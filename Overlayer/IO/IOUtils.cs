@@ -9,7 +9,7 @@ public static class IOUtils {
     public static T Read<T>(JToken token, string key, T fallback) {
         var value = token[key];
 
-        if(value == null) {
+        if (value == null) {
             return fallback;
         }
 
@@ -41,19 +41,19 @@ public static class IOUtils {
         where TEnum : struct, Enum {
         var value = token[key];
 
-        if(value == null) {
+        if (value == null) {
             return fallback;
         }
 
         try {
-            if(value.Type == JTokenType.Integer) {
+            if (value.Type == JTokenType.Integer) {
                 return (TEnum)Enum.ToObject(typeof(TEnum), value.Value<int>());
             }
 
-            if(value.Type == JTokenType.String) {
+            if (value.Type == JTokenType.String) {
                 var str = value.Value<string>();
 
-                if(Enum.TryParse<TEnum>(str, true, out var result)) {
+                if (Enum.TryParse<TEnum>(str, true, out var result)) {
                     return result;
                 }
             }
@@ -71,7 +71,7 @@ public static class IOUtils {
     public static Vector2 Read(JToken token, string key, Vector2 fallback) {
         var value = token[key];
 
-        if(value == null || value is not JArray arr || arr.Count < 2) {
+        if (value == null || value is not JArray arr || arr.Count < 2) {
             return fallback;
         }
 
@@ -92,7 +92,7 @@ public static class IOUtils {
     public static Vector3 Read(JToken token, string key, Vector3 fallback) {
         var value = token[key];
 
-        if(value == null || value is not JArray arr || arr.Count < 3) {
+        if (value == null || value is not JArray arr || arr.Count < 3) {
             return fallback;
         }
 
@@ -114,7 +114,7 @@ public static class IOUtils {
     public static Vector4 Read(JToken token, string key, Vector4 fallback) {
         var value = token[key];
 
-        if(value == null || value is not JArray arr || arr.Count < 4) {
+        if (value == null || value is not JArray arr || arr.Count < 4) {
             return fallback;
         }
 
@@ -136,7 +136,7 @@ public static class IOUtils {
     public static Rect Read(JToken token, string key, Rect fallback) {
         var value = token[key];
 
-        if(value == null || value is not JArray arr || arr.Count < 4) {
+        if (value == null || value is not JArray arr || arr.Count < 4) {
             return fallback;
         }
 
@@ -159,7 +159,7 @@ public static class IOUtils {
     public static Quaternion Read(JToken token, string key, Quaternion fallback) {
         var value = token[key];
 
-        if(value == null || value is not JArray arr || arr.Count < 4) {
+        if (value == null || value is not JArray arr || arr.Count < 4) {
             return fallback;
         }
 
@@ -181,7 +181,7 @@ public static class IOUtils {
     public static Color Read(JToken token, string key, Color fallback) {
         var value = token[key];
 
-        if(value == null || value is not JArray arr || arr.Count < 3) {
+        if (value == null || value is not JArray arr || arr.Count < 3) {
             return fallback;
         }
 
@@ -204,7 +204,7 @@ public static class IOUtils {
     public static GradientColor Read(JToken token, string key, GradientColor fallback) {
         var value = token[key];
 
-        if(value == null) {
+        if (value == null) {
             return fallback;
         }
 

@@ -25,7 +25,7 @@ class MainThread
     private const int MaxActionsPerFrame = 64;
 
     public static void Enqueue(Action action) {
-        if(action == null) {
+        if (action == null) {
             return;
         }
 
@@ -38,11 +38,11 @@ class MainThread
         // otherwise self-enqueuing work runs up to the entire frame cap here.
         int frameBatch = Math.Min(queue.Count, MaxActionsPerFrame);
         int processed = 0;
-        while(processed < frameBatch && queue.TryDequeue(out Action action)) {
+        while (processed < frameBatch && queue.TryDequeue(out Action action)) {
             processed++;
             try {
                 action();
-            } catch(Exception e) {
+            } catch (Exception e) {
                 MainCore.Log.Err(e.ToString());
             }
         }

@@ -24,7 +24,7 @@ public static class O5cpExporter {
     ) {
         var result = new O5cpExportResult { ZipPath = zipPath };
         options ??= new O5cpExportOptions();
-        if(canvas == null || string.IsNullOrWhiteSpace(zipPath)) {
+        if (canvas == null || string.IsNullOrWhiteSpace(zipPath)) {
             return null;
         }
 
@@ -52,20 +52,20 @@ public static class O5cpExporter {
         var files = new List<(string path, byte[] data)>();
         var packedTextures = new HashSet<string>(StringComparer.Ordinal);
 
-        foreach(string key in scan.FontKeys.Concat(scan.GuessedFontKeys).Distinct()) {
-            if(manifest.Fonts.Any(f => f.Key == key)) {
+        foreach (string key in scan.FontKeys.Concat(scan.GuessedFontKeys).Distinct()) {
+            if (manifest.Fonts.Any(f => f.Key == key)) {
                 continue;
             }
-            if(!UserResourceManager.Fnt.TryGetPath(key, out string path)
+            if (!UserResourceManager.Fnt.TryGetPath(key, out string path)
                 || string.IsNullOrEmpty(path)
                 || !File.Exists(UserResourceManager.FromUser(path))) {
-                if(scan.FontKeys.Contains(key)) {
+                if (scan.FontKeys.Contains(key)) {
                     result.Warnings.Add($"missing font: {key}");
                 }
                 continue;
             }
             string diskPath = UserResourceManager.FromUser(path);
-            if(!options.IncludeFonts) {
+            if (!options.IncludeFonts) {
                 manifest.ExcludedFonts.Add(new O5cpExcludedEntry {
                     Key = key,
                     Sha256 = HashFileQuiet(diskPath),
@@ -82,18 +82,18 @@ public static class O5cpExporter {
             files.Add((manifest.Fonts[^1].File, data));
         }
 
-        foreach(string key in scan.SpriteKeys.Concat(scan.GuessedSpriteKeys).Distinct()) {
-            if(manifest.Sprites.Any(s => s.Key == key)) {
+        foreach (string key in scan.SpriteKeys.Concat(scan.GuessedSpriteKeys).Distinct()) {
+            if (manifest.Sprites.Any(s => s.Key == key)) {
                 continue;
             }
-            if(!UserResourceManager.Spr.TryGet(key, out var sprite)) {
-                if(scan.SpriteKeys.Contains(key)) {
+            if (!UserResourceManager.Spr.TryGet(key, out var sprite)) {
+                if (scan.SpriteKeys.Contains(key)) {
                     result.Warnings.Add($"missing sprite: {key}");
                 }
                 continue;
             }
             string textureKey = sprite.textureKey;
-            if(!UserResourceManager.T2D.TryGet(textureKey, out var texture)
+            if (!UserResourceManager.T2D.TryGet(textureKey, out var texture)
                 || !UserResourceManager.T2D.TryGetPath(textureKey, out string texPath)
                 || string.IsNullOrEmpty(texPath)
                 || !File.Exists(UserResourceManager.FromUser(texPath))) {
@@ -110,12 +110,12 @@ public static class O5cpExporter {
                 Border = [settings.Border.Value.x, settings.Border.Value.y, settings.Border.Value.z, settings.Border.Value.w],
                 Folder = UserResourceSettings.FolderOf(UserResourceManager.Config.Data.ImageFolders, key),
             });
-            if(packedTextures.Contains(textureKey)) {
+            if (packedTextures.Contains(textureKey)) {
                 continue;
             }
             packedTextures.Add(textureKey);
             string diskPath = UserResourceManager.FromUser(texPath);
-            if(!options.IncludeImages) {
+            if (!options.IncludeImages) {
                 manifest.ExcludedTextures.Add(new O5cpExcludedEntry {
                     Key = textureKey,
                     Sha256 = HashFileQuiet(diskPath),
@@ -135,18 +135,18 @@ public static class O5cpExporter {
             files.Add((manifest.Textures[^1].File, data));
         }
 
-        foreach(string tokenized in canvas.Props?.ExtraScripts ?? []) {
+        foreach (string tokenized in canvas.Props?.ExtraScripts ?? []) {
             string diskPath = UserResourceManager.FromUser(tokenized);
-            if(string.IsNullOrEmpty(diskPath) || !File.Exists(diskPath)) {
+            if (string.IsNullOrEmpty(diskPath) || !File.Exists(diskPath)) {
                 result.Warnings.Add($"missing script: {tokenized}");
                 continue;
             }
-            if(!O5cpFormat.ScriptExt.Contains(Path.GetExtension(diskPath))) {
+            if (!O5cpFormat.ScriptExt.Contains(Path.GetExtension(diskPath))) {
                 result.Warnings.Add($"skipped non-js script: {tokenized}");
                 continue;
             }
             byte[] data = File.ReadAllBytes(diskPath);
-            if(!options.IncludeScripts) {
+            if (!options.IncludeScripts) {
                 manifest.ExcludedScripts.Add(new O5cpExcludedEntry {
                     Key = Path.GetFileName(diskPath),
                     Sha256 = O5cpPackage.ComputeSha256(data),
@@ -166,11 +166,11 @@ public static class O5cpExporter {
         }
 
         string thumbTokenized = canvas.Props?.ThumbnailPath;
-        if(!string.IsNullOrWhiteSpace(thumbTokenized)) {
+        if (!string.IsNullOrWhiteSpace(thumbTokenized)) {
             string diskPath = UserResourceManager.FromUser(thumbTokenized);
-            if(!File.Exists(diskPath)) {
+            if (!File.Exists(diskPath)) {
                 result.Warnings.Add($"missing thumbnail: {thumbTokenized}");
-            } else if(!O5cpFormat.ThumbnailExt.Contains(Path.GetExtension(diskPath))) {
+            } else if (!O5cpFormat.ThumbnailExt.Contains(Path.GetExtension(diskPath))) {
                 result.Warnings.Add($"skipped thumbnail with bad extension: {thumbTokenized}");
             } else {
                 byte[] data = File.ReadAllBytes(diskPath);
@@ -193,7 +193,7 @@ public static class O5cpExporter {
         } catch {
             return;
         }
-        if(tagNames.Count == 0) {
+        if (tagNames.Count == 0) {
             return;
         }
         System.Reflection.Assembly coreAsm;
@@ -203,13 +203,13 @@ public static class O5cpExporter {
             return;
         }
         var modules = MainCore.ModuleService?.LoadedModules;
-        if(modules == null) {
+        if (modules == null) {
             return;
         }
-        foreach(string name in tagNames) {
+        foreach (string name in tagNames) {
             TagCore tag;
             try {
-                if(!TagManager.TryGet(name, out tag) || tag?.Member == null) {
+                if (!TagManager.TryGet(name, out tag) || tag?.Member == null) {
                     continue;
                 }
             } catch {
@@ -221,17 +221,17 @@ public static class O5cpExporter {
             } catch {
                 continue;
             }
-            if(tagAsm == null || tagAsm == coreAsm) {
+            if (tagAsm == null || tagAsm == coreAsm) {
                 continue;
             }
-            foreach(var module in modules) {
+            foreach (var module in modules) {
                 System.Reflection.Assembly moduleAsm;
                 try {
                     moduleAsm = module?.GetType().Assembly;
                 } catch {
                     continue;
                 }
-                if(moduleAsm == tagAsm && manifest.Modules.All(m => m.Name != module.Name)) {
+                if (moduleAsm == tagAsm && manifest.Modules.All(m => m.Name != module.Name)) {
                     manifest.Modules.Add(new O5cpModuleEntry {
                         Name = module.Name ?? string.Empty,
                         Version = module.Version ?? string.Empty,

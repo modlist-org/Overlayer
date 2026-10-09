@@ -56,13 +56,13 @@ public static class UpdateService {
     }
 
     public static void Initialize() {
-        if(!Supported) return;
+        if (!Supported) return;
         UpdatePackage.SweepOld(MelonEnvironment.GameRootDirectory);
-        if(MainCore.Conf.AutoUpdate) Check(install: true);
+        if (MainCore.Conf.AutoUpdate) Check(install: true);
     }
 
     public static async void Check(bool install = false) {
-        if(!Supported || Status is UpdateStatus.Checking or UpdateStatus.Installing or UpdateStatus.Installed) return;
+        if (!Supported || Status is UpdateStatus.Checking or UpdateStatus.Installing or UpdateStatus.Installed) return;
         bool beta = MainCore.Conf.UpdateBeta;
         Version current = MainCore.Version;
         Set(UpdateStatus.Checking);
@@ -70,17 +70,17 @@ public static class UpdateService {
             string url = $"https://api.github.com/repos/{RepoOwner}/{RepoName}/releases?per_page=30";
             string json = await Task.Run(() => Http.GetStringAsync(url));
             Available = UpdatePackage.PickRelease(json, current, AssetName, beta);
-        } catch(Exception e) {
+        } catch (Exception e) {
             Fail("check", e);
             return;
         }
         Set(Available == null ? UpdateStatus.UpToDate : UpdateStatus.Available);
-        if(install && Available != null) Install();
+        if (install && Available != null) Install();
     }
 
     public static async void Install() {
         ReleaseInfo info = Available;
-        if(!Supported || info == null || Status == UpdateStatus.Installing) return;
+        if (!Supported || info == null || Status == UpdateStatus.Installing) return;
         string zip = Path.Combine(MainCore.Paths.TempPath, "Update.zip");
         string stage = Path.Combine(MainCore.Paths.TempPath, "Update");
         string root = MelonEnvironment.GameRootDirectory;
@@ -91,10 +91,10 @@ public static class UpdateService {
                 UpdatePackage.VerifySha256(zip, info.Sha256);
                 return UpdatePackage.Install(zip, stage, root);
             });
-            if(info.Sha256 == null) MainCore.Log.Wrn($"[Update] {info.Tag} had no checksum — integrity not verified");
+            if (info.Sha256 == null) MainCore.Log.Wrn($"[Update] {info.Tag} had no checksum — integrity not verified");
             MainCore.Log.Msg($"[Update] installed {info.Tag} ({count} files) — restart the game to run it");
             Set(UpdateStatus.Installed);
-        } catch(Exception e) {
+        } catch (Exception e) {
             Fail("install", e);
         } finally {
             try {
@@ -113,9 +113,9 @@ public static class UpdateService {
         byte[] buffer = new byte[81920];
         long total = 0;
         int read;
-        while((read = await src.ReadAsync(buffer, 0, buffer.Length)) > 0) {
+        while ((read = await src.ReadAsync(buffer, 0, buffer.Length)) > 0) {
             total += read;
-            if(total > UpdatePackage.MaxDownloadBytes) throw new InvalidDataException("the update download is too large");
+            if (total > UpdatePackage.MaxDownloadBytes) throw new InvalidDataException("the update download is too large");
             await dst.WriteAsync(buffer, 0, read);
         }
     }

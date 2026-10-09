@@ -11,19 +11,19 @@ public sealed class PrefsStore(string path) {
     private JObject _values;
 
     public object Get(string key, object fallback = null) {
-        if(string.IsNullOrEmpty(key)) {
+        if (string.IsNullOrEmpty(key)) {
             return fallback;
         }
-        lock(_lock) {
+        lock (_lock) {
             return Values().TryGetValue(key, out var token) && token is JValue v ? v.Value : fallback;
         }
     }
 
     public object Set(string key, object value) {
-        if(string.IsNullOrEmpty(key)) {
+        if (string.IsNullOrEmpty(key)) {
             return value;
         }
-        lock(_lock) {
+        lock (_lock) {
             Values()[key] = value == null ? JValue.CreateNull() : JToken.FromObject(value);
             Save();
         }
@@ -31,8 +31,8 @@ public sealed class PrefsStore(string path) {
     }
 
     public bool Remove(string key) {
-        lock(_lock) {
-            if(!Values().Remove(key)) {
+        lock (_lock) {
+            if (!Values().Remove(key)) {
                 return false;
             }
             Save();
@@ -41,12 +41,12 @@ public sealed class PrefsStore(string path) {
     }
 
     private JObject Values() {
-        if(_values != null) {
+        if (_values != null) {
             return _values;
         }
         try {
             _values = File.Exists(path) ? JObject.Parse(File.ReadAllText(path)) : new JObject();
-        } catch(Exception e) {
+        } catch (Exception e) {
             MainCore.Log.Wrn($"[{nameof(PrefsStore)}] Failed to read {path}: {e.Message}");
             _values = new JObject();
         }
@@ -56,7 +56,7 @@ public sealed class PrefsStore(string path) {
     private void Save() {
         try {
             File.WriteAllText(path, _values.ToString());
-        } catch(Exception e) {
+        } catch (Exception e) {
             MainCore.Log.Wrn($"[{nameof(PrefsStore)}] Failed to save {path}: {e.Message}");
         }
     }

@@ -46,7 +46,7 @@ public class HorizontalLayoutGroupSettings : UnityComponentSettingsBase, ICopyab
 
     public override bool ToUnity(GameObject target) {
         var component = target.GetComponent<HorizontalLayoutGroup>();
-        if(component == null) {
+        if (component == null) {
             return false;
         }
 
@@ -85,7 +85,7 @@ public class HorizontalLayoutGroupSettings : UnityComponentSettingsBase, ICopyab
 
     public override bool FromUnity(GameObject source) {
         var component = source.GetComponent<HorizontalLayoutGroup>();
-        if(component == null) {
+        if (component == null) {
             return false;
         }
 
@@ -116,12 +116,12 @@ public class HorizontalLayoutGroupSettings : UnityComponentSettingsBase, ICopyab
     }
 
     public override void RefreshFx(GameObject target) {
-        if(!HasAnyFx) {
+        if (!HasAnyFx) {
             return;
         }
 
         var component = target.GetComponent<HorizontalLayoutGroup>();
-        if(component == null) {
+        if (component == null) {
             return;
         }
 
@@ -138,7 +138,7 @@ public class HorizontalLayoutGroupSettings : UnityComponentSettingsBase, ICopyab
         changed |= FxUtil.ApplyIfChanged(ref _lastChildScaleWidth, ChildScaleWidth.Value, _ => { });
         changed |= FxUtil.ApplyIfChanged(ref _lastChildScaleHeight, ChildScaleHeight.Value, _ => { });
         changed |= FxUtil.ApplyIfChanged(ref _lastReverseArrangement, ReverseArrangement.Value, _ => { });
-        if(changed) {
+        if (changed) {
             ApplyValues(component);
             LayoutRebuilder.MarkLayoutForRebuild(target.GetComponent<RectTransform>());
         }
@@ -161,7 +161,7 @@ public class HorizontalLayoutGroupSettings : UnityComponentSettingsBase, ICopyab
     }
 
     public override void Deserialize(JToken token) {
-        if(token == null) {
+        if (token == null) {
             return;
         }
 

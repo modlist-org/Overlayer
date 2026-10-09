@@ -8,25 +8,20 @@ public enum SafeResolveMode {
     Lazy,
 }
 
-public sealed class SafeMemberConfig {
-    public string TypeName;
-    public string MemberName;
+public sealed class SafeMemberConfig(string typeName, string memberName) {
+    public string TypeName = typeName;
+    public string MemberName = memberName;
     public SafeResolveMode Mode = SafeResolveMode.Eager;
     public Type[] MethodArgs;
-
-    public SafeMemberConfig(string typeName, string memberName) {
-        TypeName = typeName;
-        MemberName = memberName;
-    }
 }
 
-public abstract class SafeMemberBase {
+public abstract class SafeMemberBase(SafeMemberConfig config) {
     private readonly object _gate = new();
     private bool _attempted;
     // Set after resolution finishes so hot Get/TrySet/TryInvoke skip the lock.
     private volatile bool _done;
 
-    protected SafeMemberConfig Config { get; }
+    protected SafeMemberConfig Config { get; } = config;
     protected bool Resolved { get; set; }
     public string DisplayName => $"{Config.TypeName}.{Config.MemberName}";
 
@@ -37,16 +32,12 @@ public abstract class SafeMemberBase {
         }
     }
 
-    protected SafeMemberBase(SafeMemberConfig config) {
-        Config = config;
-    }
-
     public bool Resolve() {
-        if(_done) {
+        if (_done) {
             return Resolved;
         }
-        lock(_gate) {
-            if(_attempted) {
+        lock (_gate) {
+            if (_attempted) {
                 return Resolved;
             }
             _attempted = true;
@@ -55,7 +46,7 @@ public abstract class SafeMemberBase {
             } catch {
                 Resolved = false;
             }
-            if(!Resolved) {
+            if (!Resolved) {
                 SafeAccess.WarnOnce($"[SafeMember] Not found: {DisplayName}");
             }
             _done = true;
@@ -67,10 +58,10 @@ public abstract class SafeMemberBase {
 
     protected bool EnsureResolved() {
         var mode = SafeAccess.ModeOverride ?? Config.Mode;
-        if(mode == SafeResolveMode.Eager) {
+        if (mode == SafeResolveMode.Eager) {
             return Resolve();
         }
-        if(Resolved) {
+        if (Resolved) {
             return true;
         }
         return Resolve();
@@ -93,7 +84,7 @@ public sealed class SafeMember<T> : SafeMemberBase {
 
     public bool TryGet(object instance, out T value) {
         value = default;
-        if(!EnsureResolved() || _getter == null) {
+        if (!EnsureResolved() || _getter == null) {
             return false;
         }
         try {
@@ -106,7 +97,7 @@ public sealed class SafeMember<T> : SafeMemberBase {
     }
 
     public bool TrySet(object instance, T value) {
-        if(!EnsureResolved() || _setter == null) {
+        if (!EnsureResolved() || _setter == null) {
             return false;
         }
         try {
@@ -119,7 +110,7 @@ public sealed class SafeMember<T> : SafeMemberBase {
 
     public bool TryInvoke(object instance, out T result, params object[] args) {
         result = default;
-        if(!EnsureResolved() || _invoker == null) {
+        if (!EnsureResolved() || _invoker == null) {
             return false;
         }
         try {
@@ -133,16 +124,16 @@ public sealed class SafeMember<T> : SafeMemberBase {
 
     private object[] PadArgs(object[] args) {
         var ps = _invokeParams;
-        if(ps == null || args.Length == ps.Length) {
+        if (ps == null || args.Length == ps.Length) {
             return args;
         }
-        if(args.Length > ps.Length) {
+        if (args.Length > ps.Length) {
             return null;
         }
         var padded = new object[ps.Length];
         Array.Copy(args, padded, args.Length);
-        for(int i = args.Length; i < ps.Length; i++) {
-            if(!ps[i].HasDefaultValue) {
+        for (int i = args.Length; i < ps.Length; i++) {
+            if (!ps[i].HasDefaultValue) {
                 return null;
             }
             padded[i] = ps[i].DefaultValue;
@@ -152,15 +143,15 @@ public sealed class SafeMember<T> : SafeMemberBase {
 
     protected override void ResolveCore() {
         Type type = SafeAccess.FindType(Config.TypeName);
-        if(type == null) {
+        if (type == null) {
             return;
         }
         const BindingFlags flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance;
 
         var field = type.GetField(Config.MemberName, flags);
-        if(field != null) {
+        if (field != null) {
             _getter = BuildFieldGetter(field);
-            if(!field.IsInitOnly) {
+            if (!field.IsInitOnly) {
                 _setter = BuildFieldSetter(field);
             }
             Resolved = true;
@@ -168,11 +159,11 @@ public sealed class SafeMember<T> : SafeMemberBase {
         }
 
         var property = type.GetProperty(Config.MemberName, flags);
-        if(property != null) {
-            if(property.CanRead) {
+        if (property != null) {
+            if (property.CanRead) {
                 _getter = BuildPropertyGetter(property);
             }
-            if(property.CanWrite) {
+            if (property.CanWrite) {
                 _setter = BuildPropertySetter(property);
             }
             Resolved = _getter != null || _setter != null;
@@ -180,7 +171,7 @@ public sealed class SafeMember<T> : SafeMemberBase {
         }
 
         var method = FindMethod(type, flags);
-        if(method != null) {
+        if (method != null) {
             _invoker = BuildInvoker(method);
             _invokeParams = method.GetParameters();
             Resolved = true;
@@ -189,10 +180,10 @@ public sealed class SafeMember<T> : SafeMemberBase {
 
     private MethodInfo FindMethod(Type type, BindingFlags flags) {
         var candidates = type.GetMethods(flags).Where(m => m.Name == Config.MemberName);
-        if(Config.MethodArgs != null) {
-            foreach(var m in candidates) {
+        if (Config.MethodArgs != null) {
+            foreach (var m in candidates) {
                 var ps = m.GetParameters();
-                if(ps.Length == Config.MethodArgs.Length &&
+                if (ps.Length == Config.MethodArgs.Length &&
                     ps.Select((p, i) => p.ParameterType == Config.MethodArgs[i]).All(b => b)) {
                     return m;
                 }
@@ -220,7 +211,7 @@ public sealed class SafeMember<T> : SafeMemberBase {
 
     private static Func<object, T> BuildPropertyGetter(PropertyInfo property) {
         var get = property.GetGetMethod(true);
-        if(get == null) {
+        if (get == null) {
             return null;
         }
         var inst = Expression.Parameter(typeof(object), "instance");
@@ -231,7 +222,7 @@ public sealed class SafeMember<T> : SafeMemberBase {
 
     private static Action<object, T> BuildPropertySetter(PropertyInfo property) {
         var set = property.GetSetMethod(true);
-        if(set == null) {
+        if (set == null) {
             return null;
         }
         var inst = Expression.Parameter(typeof(object), "instance");
@@ -246,7 +237,7 @@ public sealed class SafeMember<T> : SafeMemberBase {
         var args = Expression.Parameter(typeof(object[]), "args");
         var ps = method.GetParameters();
         var callArgs = new Expression[ps.Length];
-        for(int i = 0; i < ps.Length; i++) {
+        for (int i = 0; i < ps.Length; i++) {
             var idx = Expression.Constant(i);
             var access = Expression.ArrayIndex(args, idx);
             callArgs[i] = Expression.Convert(access, ps[i].ParameterType);

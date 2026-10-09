@@ -9,7 +9,7 @@ public abstract class SafeConditionalPatch(string id) {
     public bool IsApplied { get; private set; }
 
     public void Apply() {
-        if(IsApplied || !ShouldApply()) {
+        if (IsApplied || !ShouldApply()) {
             return;
         }
 
@@ -18,13 +18,13 @@ public abstract class SafeConditionalPatch(string id) {
             SafePatchManager.Harmony.Patch(method, Prefix(), Postfix(), Transpiler());
             IsApplied = true;
             MainCore.Log.Msg($"[{nameof(SafePatch)}] {Id} Applied");
-        } catch(Exception e) {
+        } catch (Exception e) {
             MainCore.Log.Err($"[{nameof(SafePatch)}] {Id} Apply Failed: {e.Message}");
         }
     }
 
     public void Remove() {
-        if(!IsApplied) {
+        if (!IsApplied) {
             return;
         }
 
@@ -33,7 +33,7 @@ public abstract class SafeConditionalPatch(string id) {
             SafePatchManager.Harmony.Unpatch(method, HarmonyPatchType.All, SafePatchManager.Harmony.Id);
             IsApplied = false;
             MainCore.Log.Msg($"[{nameof(SafePatch)}] {Id} Removed");
-        } catch(Exception e) {
+        } catch (Exception e) {
             MainCore.Log.Err($"[{nameof(SafePatch)}] {Id} Remove Failed: {e.Message}");
         }
     }

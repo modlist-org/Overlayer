@@ -65,23 +65,23 @@ public class JSUIHost(string filePath) {
     public string FilePath { get; } = filePath;
 
     public int AddTab(object name, object build, object options) {
-        if(name is not string text || string.IsNullOrWhiteSpace(text)) {
+        if (name is not string text || string.IsNullOrWhiteSpace(text)) {
             MainCore.Log.Wrn($"[{nameof(JSUIHost)}] AddTab: name must be a non-empty string ({Path.GetFileName(FilePath)}).");
             return -1;
         }
-        if(build is not ScriptObject fn) {
+        if (build is not ScriptObject fn) {
             MainCore.Log.Wrn($"[{nameof(JSUIHost)}] AddTab: build must be a function ({Path.GetFileName(FilePath)}).");
             return -1;
         }
 
         UISprite icon = UISprite.CodeBlock128;
-        if(options is ScriptObject opts && opts.GetProperty("icon") is string iconName
+        if (options is ScriptObject opts && opts.GetProperty("icon") is string iconName
             && Enum.TryParse(iconName, true, out UISprite parsed)) {
             icon = parsed;
         }
 
         Tab tab;
-        lock(Sync) {
+        lock (Sync) {
             tab = new Tab { Id = nextId++, File = FilePath, Name = text, Build = fn, Icon = icon };
             Tabs[tab.Id] = tab;
         }
@@ -92,19 +92,19 @@ public class JSUIHost(string filePath) {
     /// <summary>Clears the tab and runs its build again next frame. A new build function replaces the old one.</summary>
     public bool RebuildTab(object handle, object build) {
         Tab tab = Find(handle);
-        if(tab == null) {
+        if (tab == null) {
             return false;
         }
-        if(build is ScriptObject fn) {
+        if (build is ScriptObject fn) {
             tab.Build = fn;
         }
         MainThread.Enqueue(() => {
-            lock(Sync) {
-                if(!Tabs.ContainsKey(tab.Id)) {
+            lock (Sync) {
+                if (!Tabs.ContainsKey(tab.Id)) {
                     return;
                 }
             }
-            if(tab.Content == null) {
+            if (tab.Content == null) {
                 return; // not built yet; Create runs the (possibly replaced) build
             }
             new JSUIBuilder(tab.Id, tab.Content, tab.Controls).Clear();
@@ -120,7 +120,7 @@ public class JSUIHost(string filePath) {
         } catch {
             return null;
         }
-        lock(Sync) {
+        lock (Sync) {
             return Tabs.TryGetValue(id, out var tab) && tab.File == FilePath ? tab : null;
         }
     }
@@ -133,8 +133,8 @@ public class JSUIHost(string filePath) {
             return false;
         }
         Tab tab;
-        lock(Sync) {
-            if(!Tabs.TryGetValue(id, out tab) || tab.File != FilePath) {
+        lock (Sync) {
+            if (!Tabs.TryGetValue(id, out tab) || tab.File != FilePath) {
                 return false;
             }
             Tabs.Remove(id);
@@ -150,24 +150,24 @@ public class JSUIHost(string filePath) {
     // Snapshot under the lock so tabs re-added by a reload after this call survive.
     private static void RemoveWhere(Func<Tab, bool> match) {
         List<Tab> removed;
-        lock(Sync) {
+        lock (Sync) {
             removed = Tabs.Values.Where(match).ToList();
-            foreach(var tab in removed) {
+            foreach (var tab in removed) {
                 Tabs.Remove(tab.Id);
             }
         }
-        if(removed.Count > 0) {
+        if (removed.Count > 0) {
             MainThread.Enqueue(() => removed.ForEach(Destroy));
         }
     }
 
     private static void Create(Tab tab) {
-        lock(Sync) {
-            if(!Tabs.ContainsKey(tab.Id)) {
+        lock (Sync) {
+            if (!Tabs.ContainsKey(tab.Id)) {
                 return; // removed before it was built
             }
         }
-        if(UICore.MenuContent == null) {
+        if (UICore.MenuContent == null) {
             return;
         }
 
@@ -180,22 +180,22 @@ public class JSUIHost(string filePath) {
     private static void RunBuild(Tab tab) {
         try {
             MainCore.V8.InvokeCallback(tab.Build, [new JSUIBuilder(tab.Id, tab.Content, tab.Controls)]);
-        } catch(Exception e) {
+        } catch (Exception e) {
             MainCore.Log.Wrn($"[{nameof(JSUIHost)}] Tab '{tab.Name}' build failed ({Path.GetFileName(tab.File)}): {e.Message}");
         }
     }
 
     private static void Destroy(Tab tab) {
-        if(tab.Page == null) {
+        if (tab.Page == null) {
             return; // never built
         }
-        foreach(var control in tab.Controls) {
+        foreach (var control in tab.Controls) {
             try { control.Dispose(); } catch { }
         }
         tab.Controls.Clear();
         MenuFactory.RemoveItem(tab.Id);
         UICore.Pages.Remove(tab.Id);
-        if(tab.Page) {
+        if (tab.Page) {
             UnityEngine.Object.Destroy(tab.Page.gameObject);
         }
         tab.Page = null;
@@ -226,7 +226,7 @@ public sealed class JSUIBuilder {
 
     // Vertical: a full-width row per control. Horizontal: an equal-width cell in the row.
     private RectTransform Slot() {
-        if(!_horizontal) {
+        if (!_horizontal) {
             return O5Factory.Row(Ctx, Root);
         }
         GameObject cell = new("Cell");
@@ -244,13 +244,13 @@ public sealed class JSUIBuilder {
     }
 
     private static Action<T> Callback<T>(object fn) {
-        if(fn is not ScriptObject so) {
+        if (fn is not ScriptObject so) {
             return null;
         }
         return value => {
             try {
                 MainCore.V8.InvokeCallback(so, [value]);
-            } catch(Exception e) {
+            } catch (Exception e) {
                 MainCore.Log.Wrn($"[{nameof(JSUIBuilder)}] Callback error: {e.Message}");
             }
         };
@@ -286,9 +286,9 @@ public sealed class JSUIBuilder {
 
     public O5Dropdown<string> Dropdown(object values, string value, object onChanged) {
         List<string> list = [];
-        if(values is ScriptObject array) {
+        if (values is ScriptObject array) {
             int length = Convert.ToInt32(array.GetProperty("length"));
-            for(int i = 0; i < length; i++) {
+            for (int i = 0; i < length; i++) {
                 list.Add(array.GetProperty(i)?.ToString() ?? string.Empty);
             }
         }
@@ -301,15 +301,15 @@ public sealed class JSUIBuilder {
 
     /// <summary>Removes everything this builder (tab, card or row) contains, so it can be filled again.</summary>
     public void Clear() {
-        for(int i = _controls.Count - 1; i >= 0; i--) {
+        for (int i = _controls.Count - 1; i >= 0; i--) {
             var control = _controls[i];
-            if(control.Rect == null || control.Rect.IsChildOf(Root)) {
+            if (control.Rect == null || control.Rect.IsChildOf(Root)) {
                 try { control.Dispose(); } catch { }
                 _controls.RemoveAt(i);
             }
         }
         // Deactivate first: Destroy is deferred and layout groups skip inactive children.
-        for(int i = Root.childCount - 1; i >= 0; i--) {
+        for (int i = Root.childCount - 1; i >= 0; i--) {
             var child = Root.GetChild(i).gameObject;
             child.SetActive(false);
             UnityEngine.Object.Destroy(child);

@@ -18,7 +18,7 @@ public sealed class O5Seq : ITweenHandle {
     }
 
     public O5Seq Join(Action<Action> step) {
-        if(_groups.Count == 0) {
+        if (_groups.Count == 0) {
             _groups.Add(new List<Action<Action>>());
         }
 
@@ -63,14 +63,14 @@ public sealed class O5Seq : ITweenHandle {
     public bool IsAlive => _playing && !_killed;
 
     public void Kill(bool complete = false) {
-        if(!_playing) {
+        if (!_playing) {
             return;
         }
 
         _killed = true;
         _playing = false;
 
-        if(complete && _onComplete != null) {
+        if (complete && _onComplete != null) {
             try {
                 _onComplete();
             } catch {
@@ -79,19 +79,19 @@ public sealed class O5Seq : ITweenHandle {
     }
 
     private void RunGroup(int index) {
-        if(_killed) {
+        if (_killed) {
             return;
         }
 
-        if(index >= _groups.Count) {
-            if(_loop) {
+        if (index >= _groups.Count) {
+            if (_loop) {
                 RunGroup(0);
                 return;
             }
 
             _playing = false;
 
-            if(_onComplete != null) {
+            if (_onComplete != null) {
                 try {
                     _onComplete();
                 } catch {
@@ -102,19 +102,19 @@ public sealed class O5Seq : ITweenHandle {
         }
 
         var group = _groups[index];
-        if(group.Count == 0) {
+        if (group.Count == 0) {
             RunGroup(index + 1);
             return;
         }
 
         int pending = group.Count;
-        foreach(var step in group) {
+        foreach (var step in group) {
             Action done = () => {
-                if(_killed) {
+                if (_killed) {
                     return;
                 }
 
-                if(--pending == 0) {
+                if (--pending == 0) {
                     RunGroup(index + 1);
                 }
             };

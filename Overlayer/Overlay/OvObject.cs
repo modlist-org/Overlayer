@@ -59,7 +59,7 @@ public sealed class OvObject : ISettingsFile {
         clone.ApplyComponent();
         clone.ApplyConfig();
 
-        foreach(var child in Children) {
+        foreach (var child in Children) {
             clone.Attach(child.Clone());
         }
 
@@ -73,11 +73,11 @@ public sealed class OvObject : ISettingsFile {
         GameObject.SetActive(_lastEnabled);
         Config.RectTransformConfig.ToUnity(GameObject);
         Config.CanvasGroupConfig.ToUnity(GameObject);
-        if(Config.TextConfig != null) {
+        if (Config.TextConfig != null) {
             var tmp = GameObject.GetComponent<TextMeshProUGUI>();
-            if(tmp != null) {
+            if (tmp != null) {
                 TMP_FontAsset font = TextFontProvider.Current;
-                if(font != null) {
+                if (font != null) {
                     tmp.font = font;
                 }
             }
@@ -111,19 +111,19 @@ public sealed class OvObject : ISettingsFile {
     }
 
     public void RefreshFx() {
-        if(GameObject == null) {
+        if (GameObject == null) {
             return;
         }
 
-        if(HasAnyFx) {
-            if(FxUtil.Changed(ref _lastName, Config.Name.Value)) GameObject.name = _lastName;
-            if(FxUtil.Changed(ref _lastEnabled, Config.Enabled.Value)) GameObject.SetActive(_lastEnabled);
+        if (HasAnyFx) {
+            if (FxUtil.Changed(ref _lastName, Config.Name.Value)) GameObject.name = _lastName;
+            if (FxUtil.Changed(ref _lastEnabled, Config.Enabled.Value)) GameObject.SetActive(_lastEnabled);
             Config.RectTransformConfig?.RefreshFx(GameObject);
             Config.CanvasGroupConfig?.RefreshFx(GameObject);
             Config.TextConfig?.RefreshFx(GameObject);
-            if(Config.TextEngineConfig != null && TextUpdater != null) {
-                if(FxUtil.Changed(ref _lastPlayingText, Config.TextEngineConfig.PlayingText.Value)) TextUpdater.PlayingEngine.Text = _lastPlayingText;
-                if(FxUtil.Changed(ref _lastNotPlayingText, Config.TextEngineConfig.NotPlayingText.Value)) TextUpdater.NotPlayingEngine.Text = _lastNotPlayingText;
+            if (Config.TextEngineConfig != null && TextUpdater != null) {
+                if (FxUtil.Changed(ref _lastPlayingText, Config.TextEngineConfig.PlayingText.Value)) TextUpdater.PlayingEngine.Text = _lastPlayingText;
+                if (FxUtil.Changed(ref _lastNotPlayingText, Config.TextEngineConfig.NotPlayingText.Value)) TextUpdater.NotPlayingEngine.Text = _lastNotPlayingText;
             }
             Config.MovingManConfig?.RefreshFx(GameObject);
             Config.ColorRangeConfig?.RefreshFx(GameObject);
@@ -143,36 +143,36 @@ public sealed class OvObject : ISettingsFile {
             Config.Rigidbody2DConfig?.RefreshFx(GameObject);
 #endif
             bool rectMaskChanged = FxUtil.ApplyIfChanged(ref _lastHasRectMask2D, Config.HasRectMask2D.Value, _ => { });
-            if(rectMaskChanged) {
+            if (rectMaskChanged) {
                 ApplyComponent();
                 ApplyConfig();
-            } else if(Config.HasRectMask2D.Value) {
+            } else if (Config.HasRectMask2D.Value) {
                 var rectMask = GameObject.GetComponent<RectMask2D>();
-                if(rectMask != null) {
-                    if(FxUtil.Changed(ref _lastRectMask2DEnabled, Config.RectMask2DEnabled.Value)) rectMask.enabled = _lastRectMask2DEnabled;
+                if (rectMask != null) {
+                    if (FxUtil.Changed(ref _lastRectMask2DEnabled, Config.RectMask2DEnabled.Value)) rectMask.enabled = _lastRectMask2DEnabled;
                 }
             }
         }
 
         // Child Fx values must continue ticking even when this object's own
         // settings have no Fx. Otherwise Fx-enabled descendants never update.
-        foreach(var child in Children) {
+        foreach (var child in Children) {
             child?.RefreshFx();
         }
     }
 
     public void ApplyComponent() {
-        if(GameObject == null) {
+        if (GameObject == null) {
             return;
         }
 
-        if(Config.TextConfig != null && Config.ImageConfig != null) {
+        if (Config.TextConfig != null && Config.ImageConfig != null) {
             Config.ImageConfig = null;
         }
 
         bool tc = Config.TextConfig != null;
 
-        if(tc) {
+        if (tc) {
             Config.TextEngineConfig ??= OvTextSettings.FromLegacy(
                 Config.TextConfig.Text
             );
@@ -182,8 +182,8 @@ public sealed class OvObject : ISettingsFile {
         var tmp = EnsureComponent<TextMeshProUGUI>(tc);
         var updater = EnsureComponent<TextEngineUpdater>(tc);
 
-        if(tc) {
-            if(updater != null && tmp != null) {
+        if (tc) {
+            if (updater != null && tmp != null) {
                 updater.Init(tmp);
                 TextUpdater = updater;
             }
@@ -191,7 +191,7 @@ public sealed class OvObject : ISettingsFile {
             TextUpdater = null;
         }
 
-        if(!tc) {
+        if (!tc) {
             Config.ColorRangeConfig = null;
         }
         var movingMan = EnsureComponent<MovingManComponent>(Config.MovingManConfig != null);
@@ -222,21 +222,21 @@ public sealed class OvObject : ISettingsFile {
     }
 
     private T EnsureComponent<T>(bool enabled) where T : Component {
-        if(GameObject == null) {
+        if (GameObject == null) {
             return null;
         }
 
         T comp = GameObject.GetComponent<T>();
 
-        if(!enabled) {
-            if(comp != null) {
+        if (!enabled) {
+            if (comp != null) {
                 Object.Destroy(comp);
             }
 
             return null;
         }
 
-        if(comp == null) {
+        if (comp == null) {
             comp = GameObject.AddComponent<T>();
         }
 
@@ -244,22 +244,22 @@ public sealed class OvObject : ISettingsFile {
     }
 
     public void Attach(OvObject child) {
-        if(child == null || child.GameObject == null) {
+        if (child == null || child.GameObject == null) {
             return;
         }
 
-        if(child == this) {
+        if (child == this) {
             return;
         }
 
-        if(child.Parent == this) {
+        if (child.Parent == this) {
             return;
         }
 
         child.Parent?.Children.Remove(child);
         child.Parent = this;
 
-        if(!Children.Contains(child)) {
+        if (!Children.Contains(child)) {
             Children.Add(child);
         }
 
@@ -268,7 +268,7 @@ public sealed class OvObject : ISettingsFile {
     }
 
     public void Detach() {
-        if(Parent == null) {
+        if (Parent == null) {
             return;
         }
 
@@ -276,18 +276,18 @@ public sealed class OvObject : ISettingsFile {
         Parent = null;
         oldParent.Children.Remove(this);
 
-        if(GameObject != null && OverlayCore.Transform != null) {
+        if (GameObject != null && OverlayCore.Transform != null) {
             GameObject.transform.SetParent(OverlayCore.Transform, false);
         }
     }
 
     public void SetChildIndex(OvObject child, int index) {
-        if(child == null || child.Parent != this) {
+        if (child == null || child.Parent != this) {
             return;
         }
 
         int currentIndex = Children.IndexOf(child);
-        if(currentIndex < 0) {
+        if (currentIndex < 0) {
             return;
         }
 
@@ -296,7 +296,7 @@ public sealed class OvObject : ISettingsFile {
         index = Math.Clamp(index, 0, Children.Count);
         Children.Insert(index, child);
 
-        for(int i = 0; i < Children.Count; i++) {
+        for (int i = 0; i < Children.Count; i++) {
             Children[i].GameObject.transform.SetSiblingIndex(i);
         }
     }
@@ -310,7 +310,7 @@ public sealed class OvObject : ISettingsFile {
             [nameof(Config)] = Config.Serialize()
         };
 
-        if(Children != null && Children.Count > 0) {
+        if (Children != null && Children.Count > 0) {
             json[nameof(Children)] = new JArray(Children.Select(x => x.Serialize()));
         }
 
@@ -318,21 +318,21 @@ public sealed class OvObject : ISettingsFile {
     }
 
     public void Deserialize(JToken token) {
-        if(token == null) {
+        if (token == null) {
             return;
         }
 
-        if(token[nameof(Config)] != null) {
+        if (token[nameof(Config)] != null) {
             Config.Deserialize(token[nameof(Config)]);
         }
 
-        if(token[nameof(Children)] is JArray array) {
-            for(int i = Children.Count - 1; i >= 0; i--) {
+        if (token[nameof(Children)] is JArray array) {
+            for (int i = Children.Count - 1; i >= 0; i--) {
                 Children[i].Dispose();
             }
             Children.Clear();
 
-            foreach(var item in array) {
+            foreach (var item in array) {
                 var obj = new OvObject();
                 obj.Deserialize(item);
 
@@ -349,13 +349,13 @@ public sealed class OvObject : ISettingsFile {
         ApplyComponent();
         ApplyConfig();
 
-        foreach(var child in Children) {
+        foreach (var child in Children) {
             child.RefreshLayout();
         }
     }
 
     internal void RebuildLayout() {
-        foreach(var child in Children) {
+        foreach (var child in Children) {
             child.RebuildLayout();
         }
 
@@ -363,7 +363,7 @@ public sealed class OvObject : ISettingsFile {
     }
 
     public void Dispose() {
-        for(int i = Children.Count - 1; i >= 0; i--) {
+        for (int i = Children.Count - 1; i >= 0; i--) {
             Children[i].Dispose();
         }
 
@@ -377,7 +377,7 @@ public sealed class OvObject : ISettingsFile {
         } catch {
         }
 
-        if(GameObject != null) {
+        if (GameObject != null) {
             GameObject.transform.SetParent(null);
             Object.Destroy(GameObject);
         }
@@ -413,13 +413,13 @@ public sealed class OvObject : ISettingsFile {
         }
 
         public void Update() {
-            if(Tmp == null) {
+            if (Tmp == null) {
                 return;
             }
 
             TextEngineCore engine = PlaybackState.IsPlaying ? PlayingEngine : NotPlayingEngine;
 
-            if(engine == null) {
+            if (engine == null) {
                 return;
             }
 
@@ -433,8 +433,8 @@ public sealed class OvObject : ISettingsFile {
         }
 
         public static void RecompileAll() {
-            foreach(var wr in AllUpdaters) {
-                if(wr.TryGetTarget(out var updater)) {
+            foreach (var wr in AllUpdaters) {
+                if (wr.TryGetTarget(out var updater)) {
                     updater.PlayingEngine?.ForceRecompile();
                     updater.NotPlayingEngine?.ForceRecompile();
                 }

@@ -53,7 +53,7 @@ public class Translator {
     public string Language {
         get;
         set {
-            if(field == value) {
+            if (field == value) {
                 return;
             }
 
@@ -72,7 +72,7 @@ public class Translator {
     public void SetLog(Action<string> action) => logAction = action;
 
     private void Log(string message) {
-        if(logAction == null) {
+        if (logAction == null) {
             return;
         }
         logAction(message);
@@ -146,7 +146,7 @@ public class Translator {
     /// <param name="baseLangFolderPath">The path to the folder containing the language JSON files.</param>
     /// <returns>A Task representing the asynchronous operation.</returns>
     public async Task Load(string baseLangFolderPath) {
-        if(IsLoading) {
+        if (IsLoading) {
             return;
         }
 
@@ -162,7 +162,7 @@ public class Translator {
 
         try {
             files = Directory.GetFiles(baseLangFolderPath, "*.json");
-        } catch(Exception e) {
+        } catch (Exception e) {
             FailState = TranslationFailState.ErrorReadingDirectory;
             Log($"{LOG_PREFIX_ERROR}Error reading directory: {baseLangFolderPath}");
             Log($"[Translator Exception] {e.GetType().Name}: {e.Message}");
@@ -172,30 +172,30 @@ public class Translator {
 
         Log($"{LOG_PREFIX}Found {files.Length} translation files.");
 
-        if(files.Length == 0) {
+        if (files.Length == 0) {
             FailState = TranslationFailState.FileDoesNotExist;
             Log($"{LOG_PREFIX_WARNING}No translation files found");
             Finish();
             return;
         }
 
-        foreach(var file in files) {
+        foreach (var file in files) {
             try {
                 using StreamReader reader = new(file);
                 string jsonString = await reader.ReadToEndAsync();
 
                 JObject jsonObject = JObject.Parse(jsonString);
 
-                foreach(var property in jsonObject.Properties()) {
+                foreach (var property in jsonObject.Properties()) {
                     // Ensure the property value is a JObject.
-                    if(property.Value is not JObject block) {
+                    if (property.Value is not JObject block) {
                         FailState = TranslationFailState.SomeFailure;
                         Log($"{LOG_PREFIX_ERROR}Block is not an object in file: {file}, block: {property.Name}");
                         continue;
                     }
 
                     // Validate the presence and correctness of the KTL key.
-                    if(!block.TryGetValue(KTLKey, out var ktToken) || ktToken.ToString() != ExpectedKTLValue) {
+                    if (!block.TryGetValue(KTLKey, out var ktToken) || ktToken.ToString() != ExpectedKTLValue) {
                         Log($"{LOG_PREFIX}Invalid or missing {KTLKey} in file: {file}, block: {property.Name}, passing");
                         continue;
                     }
@@ -206,23 +206,23 @@ public class Translator {
                     var arrayDict = new Dictionary<string, string[]>();
 
                     // Process each key-value pair in the block.
-                    foreach(var kv in block) {
-                        if(kv.Value is JArray arr) {
+                    foreach (var kv in block) {
+                        if (kv.Value is JArray arr) {
                             arrayDict[kv.Key] = arr.Select(v => v.ToString()).ToArray();
                         } else {
                             stringDict[kv.Key] = kv.Value?.ToString() ?? "";
                         }
                     }
 
-                    if(stringDict.Count > 0) {
+                    if (stringDict.Count > 0) {
                         translations[property.Name] = stringDict;
                     }
 
-                    if(arrayDict.Count > 0) {
+                    if (arrayDict.Count > 0) {
                         translationsArr[property.Name] = arrayDict;
                     }
                 }
-            } catch(Exception e) {
+            } catch (Exception e) {
                 FailState = TranslationFailState.SomeFailure;
                 Log($"{LOG_PREFIX_ERROR}Error processing file: {file}");
                 Log($"{LOG_PREFIX_EXCEPTION}{e.GetType().Name}: {e.Message}");
@@ -230,10 +230,10 @@ public class Translator {
         }
 
         // Determine overall state after processing.
-        if(translations.Count == 0 && translationsArr.Count == 0) {
+        if (translations.Count == 0 && translationsArr.Count == 0) {
             FailState = TranslationFailState.NoValidTranslationFound;
             Log($"{LOG_PREFIX_WARNING}No valid translations were found in any files.");
-        } else if(FailState != TranslationFailState.SomeFailure) {
+        } else if (FailState != TranslationFailState.SomeFailure) {
             FailState = TranslationFailState.Success;
         }
 
@@ -255,7 +255,7 @@ public class Translator {
 
         try {
             OnLoadEnd.Invoke(FailState);
-        } catch(Exception e) {
+        } catch (Exception e) {
             Log($"{LOG_PREFIX_EXCEPTION}Exception during OnLoadEnd event: {e.GetType().Name}: {e.Message}");
         }
     }
@@ -268,19 +268,19 @@ public class Translator {
     /// <param name="key">Translation key to check.</param>
     /// <returns>True if the key exists for the current language; otherwise false.</returns>
     public bool HasKey(string key) {
-        if(IsDefault) {
+        if (IsDefault) {
             return false;
         }
 
-        if(string.IsNullOrEmpty(key)) {
+        if (string.IsNullOrEmpty(key)) {
             return false;
         }
 
-        if(translations.TryGetValue(Language, out var langDict) && langDict.ContainsKey(key)) {
+        if (translations.TryGetValue(Language, out var langDict) && langDict.ContainsKey(key)) {
             return true;
         }
 
-        if(translationsArr.TryGetValue(Language, out var langArr) && langArr.ContainsKey(key)) {
+        if (translationsArr.TryGetValue(Language, out var langArr) && langArr.ContainsKey(key)) {
             return true;
         }
 
@@ -295,19 +295,19 @@ public class Translator {
     /// <param name="language">Language code to check.</param>
     /// <returns>True if the key exists for the specified language; otherwise false.</returns>
     public bool HasKeyForLanguage(string key, string language) {
-        if(string.IsNullOrEmpty(language) || language == FALLBACK_LANGUAGE) {
+        if (string.IsNullOrEmpty(language) || language == FALLBACK_LANGUAGE) {
             return false;
         }
 
-        if(string.IsNullOrEmpty(key)) {
+        if (string.IsNullOrEmpty(key)) {
             return false;
         }
 
-        if(translations.TryGetValue(language, out var langDict) && langDict.ContainsKey(key)) {
+        if (translations.TryGetValue(language, out var langDict) && langDict.ContainsKey(key)) {
             return true;
         }
 
-        if(translationsArr.TryGetValue(language, out var langArr) && langArr.ContainsKey(key)) {
+        if (translationsArr.TryGetValue(language, out var langArr) && langArr.ContainsKey(key)) {
             return true;
         }
 
@@ -321,12 +321,12 @@ public class Translator {
     /// <param name="defaultValue">The default value to return if translation is not found.</param>
     /// <returns>The translated value or the default value if not found.</returns>
     public string Get(string key, string defaultValue) {
-        if(IsDefault) {
+        if (IsDefault) {
             return defaultValue;
         }
 
-        if(translations.TryGetValue(Language, out var langDict)) {
-            if(langDict.TryGetValue(key, out var val)) {
+        if (translations.TryGetValue(Language, out var langDict)) {
+            if (langDict.TryGetValue(key, out var val)) {
                 return val;
             }
         }
@@ -342,12 +342,12 @@ public class Translator {
     /// <param name="defaultValue">The default value to return if translation is not found.</param>
     /// <returns>The translated value or the default value if not found.</returns>
     public string GetForLanguage(string key, string language, string defaultValue) {
-        if(string.IsNullOrEmpty(language) || language == FALLBACK_LANGUAGE) {
+        if (string.IsNullOrEmpty(language) || language == FALLBACK_LANGUAGE) {
             return defaultValue;
         }
 
-        if(translations.TryGetValue(language, out var langDict)) {
-            if(langDict.TryGetValue(key, out var val)) {
+        if (translations.TryGetValue(language, out var langDict)) {
+            if (langDict.TryGetValue(key, out var val)) {
                 return val;
             }
         }
@@ -362,7 +362,7 @@ public class Translator {
     public string[] GetLanguages() {
         List<string> languages = [];
 
-        if(IsFail) {
+        if (IsFail) {
             languages.Add(FALLBACK_LANGUAGE);
         }
 
@@ -378,7 +378,7 @@ public class Translator {
     public string[] GetLanguageNativeNames() {
         List<string> names = [];
 
-        if(IsFail) {
+        if (IsFail) {
             names.Add(FALLBACK_LANGUAGE);
         }
 
@@ -399,13 +399,13 @@ public class Translator {
     /// <param name="defaultValue">The default value to return if translation is not found.</param>
     /// <returns>The translated value or the default value if not found.</returns>
     public string GetArr(string key, int index, string defaultValue) {
-        if(IsDefault) {
+        if (IsDefault) {
             return defaultValue;
         }
 
-        if(translationsArr.TryGetValue(Language, out var lang)) {
-            if(lang.TryGetValue(key, out var values)) {
-                if(index >= 0 && index < values.Length) {
+        if (translationsArr.TryGetValue(Language, out var lang)) {
+            if (lang.TryGetValue(key, out var values)) {
+                if (index >= 0 && index < values.Length) {
                     return values[index];
                 }
             }
@@ -419,12 +419,12 @@ public class Translator {
     /// <param name="key">The key for the translation.</param>
     /// <returns>The count of elements for the key, or 0 if not found or translations are not ready.</returns>
     public int GetArrCount(string key) {
-        if(IsDefault) {
+        if (IsDefault) {
             return 0;
         }
 
-        if(translationsArr.TryGetValue(Language, out var lang)) {
-            if(lang.TryGetValue(key, out var values)) {
+        if (translationsArr.TryGetValue(Language, out var lang)) {
+            if (lang.TryGetValue(key, out var values)) {
                 return values.Length;
             }
         }

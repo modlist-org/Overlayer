@@ -19,10 +19,10 @@ public partial class OvCanvasSettingPage {
         => O5Input.GetKey(KeyCode.LeftShift) || O5Input.GetKey(KeyCode.RightShift);
 
     private void ToggleMultiSelect(OvObject obj) {
-        if(obj == selectedObject) {
+        if (obj == selectedObject) {
             return;
         }
-        if(!multiSelected.Remove(obj)) {
+        if (!multiSelected.Remove(obj)) {
             multiSelected.Add(obj);
         }
         // Inspector isn't rebuilt on shift+click, so take the diff baseline here.
@@ -37,7 +37,7 @@ public partial class OvCanvasSettingPage {
     }
 
     private void PropagateMultiSelect() {
-        if(selectedObject == null || multiSnapshot == null) {
+        if (selectedObject == null || multiSnapshot == null) {
             return;
         }
 
@@ -45,17 +45,17 @@ public partial class OvCanvasSettingPage {
         var changes = new System.Collections.Generic.List<(string[] Path, JToken Value)>();
         Diff(multiSnapshot, now, [], changes);
         multiSnapshot = now;
-        if(changes.Count == 0) {
+        if (changes.Count == 0) {
             return;
         }
 
-        foreach(var obj in multiSelected) {
-            if(obj == selectedObject || !IsInCurrentCanvas(obj)) {
+        foreach (var obj in multiSelected) {
+            if (obj == selectedObject || !IsInCurrentCanvas(obj)) {
                 continue;
             }
 
             var json = (JObject)obj.Config.Serialize();
-            foreach(var (path, value) in changes) {
+            foreach (var (path, value) in changes) {
                 SetPath(json, path, value);
             }
 
@@ -72,20 +72,20 @@ public partial class OvCanvasSettingPage {
 
     // Collects changed leaves; a null value means the key was removed.
     private static void Diff(JObject before, JObject after, string[] path, System.Collections.Generic.List<(string[], JToken)> changes) {
-        foreach(var prop in after.Properties()) {
-            if(path.Length == 0 && prop.Name == nameof(OvObjectSettings.Name)) {
+        foreach (var prop in after.Properties()) {
+            if (path.Length == 0 && prop.Name == nameof(OvObjectSettings.Name)) {
                 continue;
             }
             string[] childPath = [.. path, prop.Name];
             var old = before[prop.Name];
-            if(old is JObject oldObj && prop.Value is JObject newObj) {
+            if (old is JObject oldObj && prop.Value is JObject newObj) {
                 Diff(oldObj, newObj, childPath, changes);
-            } else if(!JToken.DeepEquals(old, prop.Value)) {
+            } else if (!JToken.DeepEquals(old, prop.Value)) {
                 changes.Add((childPath, prop.Value));
             }
         }
-        foreach(var prop in before.Properties()) {
-            if(after[prop.Name] == null) {
+        foreach (var prop in before.Properties()) {
+            if (after[prop.Name] == null) {
                 changes.Add(([.. path, prop.Name], null));
             }
         }
@@ -95,25 +95,25 @@ public partial class OvCanvasSettingPage {
     // doesn't add a half-empty text component to an image object. Whole components (top level) are added/removed.
     private static void SetPath(JObject root, string[] path, JToken value) {
         JObject parent = root;
-        for(int i = 0; i < path.Length - 1; i++) {
-            if(parent[path[i]] is not JObject next) {
+        for (int i = 0; i < path.Length - 1; i++) {
+            if (parent[path[i]] is not JObject next) {
                 return;
             }
             parent = next;
         }
 
         string key = path[^1];
-        if(value == null) {
+        if (value == null) {
             parent.Remove(key);
-        } else if(path.Length == 1 || parent[key] != null) {
+        } else if (path.Length == 1 || parent[key] != null) {
             parent[key] = value.DeepClone();
         }
     }
 
     private bool IsInCurrentCanvas(OvObject obj) {
         OvObject current = obj;
-        for(; current.Parent != null; current = current.Parent) {
-            if(!current.Parent.Children.Contains(current)) {
+        for (; current.Parent != null; current = current.Parent) {
+            if (!current.Parent.Children.Contains(current)) {
                 return false;
             }
         }

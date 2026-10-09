@@ -15,7 +15,7 @@ public static class UserResourceManager {
             FxConverters.RegisterDefaultConverters();
             Config.Load();
             MainCore.Log.Msg($"[{nameof(UserResourceManager)}] Initialized");
-        } catch(Exception e) {
+        } catch (Exception e) {
             MainCore.Log.Err($"[{nameof(UserResourceManager)}] Initialize failed: {e}");
         }
     }
@@ -23,7 +23,7 @@ public static class UserResourceManager {
     private const string ModPathToken = "{ModPath}";
 
     public static string ToUser(string path) {
-        if(string.IsNullOrEmpty(path)) {
+        if (string.IsNullOrEmpty(path)) {
             return path;
         }
 
@@ -31,11 +31,11 @@ public static class UserResourceManager {
     }
 
     public static string FromUser(string path) {
-        if(string.IsNullOrEmpty(path)) {
+        if (string.IsNullOrEmpty(path)) {
             return path;
         }
 
-        if(path.StartsWith(ModPathToken, StringComparison.OrdinalIgnoreCase)) {
+        if (path.StartsWith(ModPathToken, StringComparison.OrdinalIgnoreCase)) {
             var relative = path[ModPathToken.Length..].TrimStart('/', '\\');
 
             return Path.Combine(MainCore.Paths.RootPath, relative);
@@ -49,7 +49,7 @@ public static class UserResourceManager {
             Config.Save();
             Config.Dispose();
             MainCore.Log.Msg($"[{nameof(UserResourceManager)}] Disposed");
-        } catch(Exception e) {
+        } catch (Exception e) {
             MainCore.Log.Err($"[{nameof(UserResourceManager)}] Dispose failed: {e}");
         }
     }

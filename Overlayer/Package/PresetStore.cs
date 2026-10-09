@@ -23,7 +23,7 @@ public static class PresetStore {
     ];
 
     public static void Register(PackagePreset preset) {
-        if(preset == null || string.IsNullOrWhiteSpace(preset.Id) || preset.ReadBytes == null) {
+        if (preset == null || string.IsNullOrWhiteSpace(preset.Id) || preset.ReadBytes == null) {
             return;
         }
         byId[preset.Id] = preset;
@@ -31,21 +31,21 @@ public static class PresetStore {
     }
 
     public static void Unregister(string id) {
-        if(byId.Remove(id)) {
+        if (byId.Remove(id)) {
             NotifyChanged();
         }
     }
 
     public static void UnregisterByModule(string module) {
         bool removed = false;
-        foreach(string id in byId.Keys.ToArray()) {
-            if(byId.TryGetValue(id, out var preset)
+        foreach (string id in byId.Keys.ToArray()) {
+            if (byId.TryGetValue(id, out var preset)
                 && string.Equals(preset.Module, module, StringComparison.Ordinal)) {
                 byId.Remove(id);
                 removed = true;
             }
         }
-        if(removed) {
+        if (removed) {
             NotifyChanged();
         }
     }
@@ -59,31 +59,31 @@ public static class PresetStore {
     }
 
     public static void RefreshFilePresets() {
-        foreach(string id in byId.Keys.ToArray()) {
-            if(byId.TryGetValue(id, out var preset) && string.IsNullOrEmpty(preset.Module)) {
+        foreach (string id in byId.Keys.ToArray()) {
+            if (byId.TryGetValue(id, out var preset) && string.IsNullOrEmpty(preset.Module)) {
                 byId.Remove(id);
             }
         }
         string dir;
         try {
             dir = MainCore.Paths.PresetsPath;
-            if(!Directory.Exists(dir)) {
+            if (!Directory.Exists(dir)) {
                 return;
             }
         } catch {
             return;
         }
-        foreach(string file in Directory.GetFiles(dir, "*.o5cp").OrderBy(Path.GetFileName)) {
+        foreach (string file in Directory.GetFiles(dir, "*.o5cp").OrderBy(Path.GetFileName)) {
             try {
                 string name = null;
                 try {
                     string text = PackageStore.ReadZipText(file, O5cpFormat.ManifestFile);
-                    if(text != null && O5cpManifest.TryParse(JToken.Parse(text), out var manifest, out _)) {
+                    if (text != null && O5cpManifest.TryParse(JToken.Parse(text), out var manifest, out _)) {
                         name = manifest.Package.Name;
                     }
                 } catch {
                 }
-                if(string.IsNullOrWhiteSpace(name)) {
+                if (string.IsNullOrWhiteSpace(name)) {
                     name = Path.GetFileNameWithoutExtension(file);
                 }
                 string captured = file;
@@ -102,7 +102,7 @@ public static class PresetStore {
     private static void NotifyChanged() {
         try {
             OnChanged?.Invoke();
-        } catch(Exception e) {
+        } catch (Exception e) {
             MainCore.Log.Err($"[{nameof(PresetStore)}] Change notification failed: {e.Message}");
         }
     }

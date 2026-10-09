@@ -15,7 +15,7 @@ public class GraphicRaycasterSettings : UnityComponentSettingsBase, ICopyable<Gr
 
     public override bool ToUnity(GameObject target) {
         var com = target.GetComponent<GraphicRaycaster>();
-        if(com == null) {
+        if (com == null) {
             return false;
         }
 
@@ -27,7 +27,7 @@ public class GraphicRaycasterSettings : UnityComponentSettingsBase, ICopyable<Gr
 
     public override bool FromUnity(GameObject source) {
         var com = source.GetComponent<GraphicRaycaster>();
-        if(com == null) {
+        if (com == null) {
             return false;
         }
 
@@ -38,16 +38,16 @@ public class GraphicRaycasterSettings : UnityComponentSettingsBase, ICopyable<Gr
     }
 
     public override void RefreshFx(GameObject target) {
-        if(!HasAnyFx) {
+        if (!HasAnyFx) {
             return;
         }
 
         var com = target.GetComponent<GraphicRaycaster>();
-        if(com == null) {
+        if (com == null) {
             return;
         }
 
-        if(FxUtil.Changed(ref _lastEnabled, Enabled.Value)) com.enabled = _lastEnabled;
+        if (FxUtil.Changed(ref _lastEnabled, Enabled.Value)) com.enabled = _lastEnabled;
     }
 
     public override JToken Serialize() {

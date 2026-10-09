@@ -17,14 +17,14 @@ public static class Effects {
     [Tag(TagType = TagType.ProcessFormat, Desc = "Smoothly follows a tag value with easing\nEx) {EasedValue:Combo} / {EasedValue:Combo,0,500,OutExpo}\nargs are comma-separated: tag, digits, milliseconds, ease")]
     public static double EasedValue(string tagName, int digits = -1, double speed = 500,
         O5Ease ease = O5Ease.Linear) {
-        if(!TryReadNumber(tagName, out double value)) {
+        if (!TryReadNumber(tagName, out double value)) {
             return 0;
         }
 
         AnimationState state = GetState(easedValues, tagName, value);
         double now = UnityEngine.Time.realtimeSinceStartup * 1000d;
         double current = Interpolate(state, now, speed, ease);
-        if(value != state.Target) {
+        if (value != state.Target) {
             state.Previous = current;
             state.Target = value;
             state.StartedAt = now;
@@ -37,7 +37,7 @@ public static class Effects {
     [Tag]
     public static string ColorRange(string tagName, double minimum, double maximum, string minimumHex,
         string maximumHex, O5Ease ease = O5Ease.Linear, int maxLength = -1) {
-        if(!TryColorRangeProgress(tagName, minimum, maximum, ease, out float progress)
+        if (!TryColorRangeProgress(tagName, minimum, maximum, ease, out float progress)
             || !TryColor(minimumHex, out Color from, out bool fromAlpha)
             || !TryColor(maximumHex, out Color to, out bool toAlpha)) {
             return string.Empty;
@@ -52,11 +52,11 @@ public static class Effects {
 
     internal static bool TryColorRangeProgress(string tagName, double minimum, double maximum, O5Ease ease, out float progress) {
         progress = 0f;
-        if(!TryReadNumber(tagName, out double value)) {
+        if (!TryReadNumber(tagName, out double value)) {
             return false;
         }
 
-        if(maximum <= minimum) {
+        if (maximum <= minimum) {
             return true;
         }
 
@@ -67,18 +67,18 @@ public static class Effects {
     [Tag]
     public static double MovingMan(string tagName, double startSize, double endSize, double defaultSize,
         double speed, bool invert = false, O5Ease ease = O5Ease.OutExpo) {
-        if(!TryReadNumber(tagName, out double value)) {
+        if (!TryReadNumber(tagName, out double value)) {
             return defaultSize;
         }
 
         AnimationState state = GetState(movingValues, tagName, value);
         double now = UnityEngine.Time.realtimeSinceStartup * 1000d;
-        if(value != state.Target) {
+        if (value != state.Target) {
             state.Target = value;
             state.StartedAt = now;
         }
 
-        if(speed <= 0 || now - state.StartedAt >= speed) {
+        if (speed <= 0 || now - state.StartedAt >= speed) {
             return defaultSize;
         }
 
@@ -88,7 +88,7 @@ public static class Effects {
     }
 
     private static AnimationState GetState(Dictionary<string, AnimationState> states, string key, double value) {
-        if(!states.TryGetValue(key, out AnimationState state)) {
+        if (!states.TryGetValue(key, out AnimationState state)) {
             state = new AnimationState {
                 Previous = value,
                 Target = value,
@@ -101,7 +101,7 @@ public static class Effects {
     }
 
     private static double Interpolate(AnimationState state, double now, double speed, O5Ease ease) {
-        if(speed <= 0) {
+        if (speed <= 0) {
             return state.Target;
         }
 
@@ -147,16 +147,16 @@ public static class Effects {
     private static float BounceOut(float t) {
         const float n1 = 7.5625f;
         const float d1 = 2.75f;
-        if(t < 1f / d1) {
+        if (t < 1f / d1) {
             return n1 * t * t;
         }
 
-        if(t < 2f / d1) {
+        if (t < 2f / d1) {
             t -= 1.5f / d1;
             return n1 * t * t + 0.75f;
         }
 
-        if(t < 2.5f / d1) {
+        if (t < 2.5f / d1) {
             t -= 2.25f / d1;
             return n1 * t * t + 0.9375f;
         }
@@ -167,13 +167,13 @@ public static class Effects {
 
     private static bool TryReadNumber(string tagName, out double value) {
         value = 0;
-        if(!TagManager.TryGet(tagName, out TagCore tag) || tag.RequiredParameterCount != 0) {
+        if (!TagManager.TryGet(tagName, out TagCore tag) || tag.RequiredParameterCount != 0) {
             return false;
         }
 
         try {
             object[] args = new object[tag.Parameters.Length];
-            for(int i = 0; i < args.Length; i++) {
+            for (int i = 0; i < args.Length; i++) {
                 args[i] = tag.Parameters[i].DefaultValue;
             }
 

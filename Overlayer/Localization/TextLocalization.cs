@@ -49,15 +49,15 @@ public class TextLocalization
     void OnDisable() => instances.Remove(this);
 
     public void UpdateText() {
-        if(tmp == null || tmp.Equals(null)) {
+        if (tmp == null || tmp.Equals(null)) {
             return;
         }
 
-        if(tr == null) {
+        if (tr == null) {
             return;
         }
 
-        if(string.IsNullOrEmpty(Key)) {
+        if (string.IsNullOrEmpty(Key)) {
             return;
         }
 
@@ -66,8 +66,8 @@ public class TextLocalization
 
     public static void RefreshAll() {
         var list = instances.ToList();
-        foreach(var t in list) {
-            if(t != null && !t.Equals(null)) {
+        foreach (var t in list) {
+            if (t != null && !t.Equals(null)) {
                 t.UpdateText();
             } else {
                 instances.Remove(t);

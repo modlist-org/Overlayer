@@ -22,7 +22,7 @@ public class ShadowSettings : UnityComponentSettingsBase, ICopyable<ShadowSettin
 
     public override bool ToUnity(GameObject target) {
         var com = target.GetComponent<Shadow>();
-        if(com == null) {
+        if (com == null) {
             return false;
         }
 
@@ -39,7 +39,7 @@ public class ShadowSettings : UnityComponentSettingsBase, ICopyable<ShadowSettin
 
     public override bool FromUnity(GameObject source) {
         var com = source.GetComponent<Shadow>();
-        if(com == null) {
+        if (com == null) {
             return false;
         }
 
@@ -55,19 +55,19 @@ public class ShadowSettings : UnityComponentSettingsBase, ICopyable<ShadowSettin
     }
 
     public override void RefreshFx(GameObject target) {
-        if(!HasAnyFx) {
+        if (!HasAnyFx) {
             return;
         }
 
         var com = target.GetComponent<Shadow>();
-        if(com == null) {
+        if (com == null) {
             return;
         }
 
         RefreshEnabled(com);
-        if(FxUtil.Changed(ref _lastEffectDistance, EffectDistance.Value)) com.effectDistance = _lastEffectDistance;
-        if(FxUtil.Changed(ref _lastEffectColor, EffectColor.Value)) com.effectColor = _lastEffectColor;
-        if(FxUtil.Changed(ref _lastUseGraphicAlpha, UseGraphicAlpha.Value)) com.useGraphicAlpha = _lastUseGraphicAlpha;
+        if (FxUtil.Changed(ref _lastEffectDistance, EffectDistance.Value)) com.effectDistance = _lastEffectDistance;
+        if (FxUtil.Changed(ref _lastEffectColor, EffectColor.Value)) com.effectColor = _lastEffectColor;
+        if (FxUtil.Changed(ref _lastUseGraphicAlpha, UseGraphicAlpha.Value)) com.useGraphicAlpha = _lastUseGraphicAlpha;
     }
 
     public override JToken Serialize() {

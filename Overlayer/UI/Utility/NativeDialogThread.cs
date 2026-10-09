@@ -24,12 +24,12 @@ internal static class NativeDialogThread {
     /// </summary>
     public static void Install(HarmonyLib.Harmony harmony) {
         mainThreadId = Thread.CurrentThread.ManagedThreadId;
-        if(!IsMac) {
+        if (!IsMac) {
             return;
         }
         var prefix = typeof(NativeDialogThread).GetMethod(nameof(Prefix), BindingFlags.NonPublic | BindingFlags.Static);
-        foreach(var method in typeof(NFD).GetMethods(BindingFlags.Public | BindingFlags.Static)) {
-            if(method.ReturnType != typeof(void)) {
+        foreach (var method in typeof(NFD).GetMethods(BindingFlags.Public | BindingFlags.Static)) {
+            if (method.ReturnType != typeof(void)) {
                 // Typed per return type so __result needs no boxing support from Harmony.
                 harmony.Patch(method, prefix: new HarmonyMethod(prefix.MakeGenericMethod(method.ReturnType)));
             }
@@ -37,7 +37,7 @@ internal static class NativeDialogThread {
     }
 
     private static bool Prefix<T>(MethodBase __originalMethod, object[] __args, ref T __result) {
-        if(Thread.CurrentThread.ManagedThreadId == mainThreadId) {
+        if (Thread.CurrentThread.ManagedThreadId == mainThreadId) {
             return true;
         }
         object result = null;
@@ -47,16 +47,16 @@ internal static class NativeDialogThread {
             try {
                 // Re-enters this prefix on the main thread, which lets the original run.
                 result = __originalMethod.Invoke(null, __args);
-            } catch(TargetInvocationException e) {
+            } catch (TargetInvocationException e) {
                 error = e.InnerException ?? e;
-            } catch(Exception e) {
+            } catch (Exception e) {
                 error = e;
             } finally {
                 done.Set();
             }
         });
         done.Wait();
-        if(error != null) {
+        if (error != null) {
             throw error;
         }
         __result = (T)result;

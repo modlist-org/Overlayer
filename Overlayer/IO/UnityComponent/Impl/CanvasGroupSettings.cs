@@ -23,7 +23,7 @@ public class CanvasGroupSettings : UnityComponentSettingsBase, ICopyable<CanvasG
 
     public override bool ToUnity(GameObject target) {
         var com = target.GetComponent<CanvasGroup>();
-        if(com == null) {
+        if (com == null) {
             return false;
         }
 
@@ -41,7 +41,7 @@ public class CanvasGroupSettings : UnityComponentSettingsBase, ICopyable<CanvasG
 
     public override bool FromUnity(GameObject source) {
         var com = source.GetComponent<CanvasGroup>();
-        if(com == null) {
+        if (com == null) {
             return false;
         }
 
@@ -58,20 +58,20 @@ public class CanvasGroupSettings : UnityComponentSettingsBase, ICopyable<CanvasG
     }
 
     public override void RefreshFx(GameObject target) {
-        if(!HasAnyFx) {
+        if (!HasAnyFx) {
             return;
         }
 
         var com = target.GetComponent<CanvasGroup>();
-        if(com == null) {
+        if (com == null) {
             return;
         }
 
         RefreshEnabled(com);
-        if(FxUtil.Changed(ref _lastAlpha, Alpha.Value)) com.alpha = _lastAlpha;
-        if(FxUtil.Changed(ref _lastInteractable, Interactable.Value)) com.interactable = _lastInteractable;
-        if(FxUtil.Changed(ref _lastBlocksRaycasts, BlocksRaycasts.Value)) com.blocksRaycasts = _lastBlocksRaycasts;
-        if(FxUtil.Changed(ref _lastIgnoreParentGroups, IgnoreParentGroups.Value)) com.ignoreParentGroups = _lastIgnoreParentGroups;
+        if (FxUtil.Changed(ref _lastAlpha, Alpha.Value)) com.alpha = _lastAlpha;
+        if (FxUtil.Changed(ref _lastInteractable, Interactable.Value)) com.interactable = _lastInteractable;
+        if (FxUtil.Changed(ref _lastBlocksRaycasts, BlocksRaycasts.Value)) com.blocksRaycasts = _lastBlocksRaycasts;
+        if (FxUtil.Changed(ref _lastIgnoreParentGroups, IgnoreParentGroups.Value)) com.ignoreParentGroups = _lastIgnoreParentGroups;
     }
 
     public override JToken Serialize() {

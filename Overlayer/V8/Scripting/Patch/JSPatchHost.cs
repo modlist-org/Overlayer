@@ -59,17 +59,17 @@ public class JSPatchHost(JSScriptLoader loader, string filePath) {
     public string FilePath { get; } = filePath;
 
     public int AddPatch(object target, object options, string prefixSource, string postfixSource) {
-        if(target is not string targetText || string.IsNullOrWhiteSpace(targetText)) {
+        if (target is not string targetText || string.IsNullOrWhiteSpace(targetText)) {
             Diag("target must be a \"Type::Method\" or \"Type::Method(Args)\" string.");
             return -1;
         }
         ScriptObject prefix = null;
         ScriptObject postfix = null;
-        if(options is ScriptObject obj) {
+        if (options is ScriptObject obj) {
             prefix = AsFunc(obj.GetProperty("prefix"));
             postfix = AsFunc(obj.GetProperty("postfix"));
         }
-        if(prefix == null && postfix == null) {
+        if (prefix == null && postfix == null) {
             Diag("AddPatch needs at least a prefix or a postfix function in options.");
             return -1;
         }
@@ -82,7 +82,7 @@ public class JSPatchHost(JSScriptLoader loader, string filePath) {
         MethodBase resolved;
         try {
             resolved = Resolve(targetText.Trim(), prefixEff, postfixEff);
-        } catch(Exception e) {
+        } catch (Exception e) {
             Diag(e.Message);
             return -1;
         }
@@ -90,7 +90,7 @@ public class JSPatchHost(JSScriptLoader loader, string filePath) {
             return JSPatchManager.Add(FilePath, resolved, prefix, postfix,
                 prefixSource, postfixSource, prefixArity, postfixArity, prefixRest, postfixRest,
                 prefixInstance, postfixInstance);
-        } catch(Exception e) {
+        } catch (Exception e) {
             Diag(e.Message);
             return -1;
         }
@@ -119,12 +119,12 @@ public class JSPatchHost(JSScriptLoader loader, string filePath) {
     //   prefix: (args, __instance) => { ... }
     //   postfix: (args, result, __instance) => { ... }
     private static int InstanceIndex(string source, int arity) {
-        if(arity <= 0 || string.IsNullOrWhiteSpace(source)) {
+        if (arity <= 0 || string.IsNullOrWhiteSpace(source)) {
             return -1;
         }
         var names = ParamNames(source);
-        for(int i = 0; i < names.Count; i++) {
-            if(names[i] == "__instance") {
+        for (int i = 0; i < names.Count; i++) {
+            if (names[i] == "__instance") {
                 return i;
             }
         }
@@ -133,14 +133,14 @@ public class JSPatchHost(JSScriptLoader loader, string filePath) {
 
     private static List<string> ParamNames(string source) {
         string inner = ParamsOf(source).Trim();
-        if(inner.Length >= 2 && inner[0] == '(' && inner[^1] == ')') {
+        if (inner.Length >= 2 && inner[0] == '(' && inner[^1] == ')') {
             inner = inner[1..^1];
         }
-        if(string.IsNullOrWhiteSpace(inner)) {
+        if (string.IsNullOrWhiteSpace(inner)) {
             return [];
         }
         var names = new List<string>();
-        foreach(string part in SplitTopLevel(inner)) {
+        foreach (string part in SplitTopLevel(inner)) {
             names.Add(SimpleName(part));
         }
         return names;
@@ -148,23 +148,23 @@ public class JSPatchHost(JSScriptLoader loader, string filePath) {
 
     private static string SimpleName(string param) {
         string t = param.Trim();
-        if(t.StartsWith("...", StringComparison.Ordinal)) {
+        if (t.StartsWith("...", StringComparison.Ordinal)) {
             return null;
         }
         t = t.TrimStart();
-        if(t.Length == 0 || t[0] is '{' or '[' or '(') {
+        if (t.Length == 0 || t[0] is '{' or '[' or '(') {
             return null;
         }
         int eq = t.IndexOf('=');
-        if(eq >= 0) {
+        if (eq >= 0) {
             t = t[..eq].TrimEnd();
         }
         int i = 0;
-        while(i < t.Length && (char.IsLetterOrDigit(t[i]) || t[i] == '_' || t[i] == '$')) {
+        while (i < t.Length && (char.IsLetterOrDigit(t[i]) || t[i] == '_' || t[i] == '$')) {
             i++;
         }
         string ident = t[..i];
-        if(ident.Length == 0 || t[i..].Trim().Length != 0) {
+        if (ident.Length == 0 || t[i..].Trim().Length != 0) {
             return null;
         }
         return ident;
@@ -172,16 +172,16 @@ public class JSPatchHost(JSScriptLoader loader, string filePath) {
 
     private static int Arity(ScriptObject fn, string source, out bool rest) {
         rest = false;
-        if(fn == null) {
+        if (fn == null) {
             return 0;
         }
         try {
             object len = fn.GetProperty("length");
-            if(len is int i) {
+            if (len is int i) {
                 rest = HasRest(source);
                 return i;
             }
-            if(len is double d) {
+            if (len is double d) {
                 rest = HasRest(source);
                 return (int)d;
             }
@@ -191,8 +191,8 @@ public class JSPatchHost(JSScriptLoader loader, string filePath) {
     }
 
     private static bool HasRest(string source) {
-        foreach(string p in SplitTopLevel(ParamsOf(source))) {
-            if(p.TrimStart().StartsWith("...", StringComparison.Ordinal)) {
+        foreach (string p in SplitTopLevel(ParamsOf(source))) {
+            if (p.TrimStart().StartsWith("...", StringComparison.Ordinal)) {
                 return true;
             }
         }
@@ -201,32 +201,32 @@ public class JSPatchHost(JSScriptLoader loader, string filePath) {
 
     private static int CountParams(string source) {
         string inner = ParamsOf(source).Trim();
-        if(inner.Length >= 2 && inner[0] == '(' && inner[^1] == ')') {
+        if (inner.Length >= 2 && inner[0] == '(' && inner[^1] == ')') {
             inner = inner[1..^1];
         }
-        if(string.IsNullOrWhiteSpace(inner)) {
+        if (string.IsNullOrWhiteSpace(inner)) {
             return 0;
         }
         return SplitTopLevel(inner).Count;
     }
 
     private static string ParamsOf(string source) {
-        if(string.IsNullOrWhiteSpace(source)) {
+        if (string.IsNullOrWhiteSpace(source)) {
             return string.Empty;
         }
         int open = source.IndexOf('(');
-        if(open < 0) {
+        if (open < 0) {
             int arrow = source.IndexOf("=>", StringComparison.Ordinal);
-            if(arrow < 0) {
+            if (arrow < 0) {
                 return string.Empty;
             }
             string head = source[..arrow].Trim();
             return head.StartsWith("...", StringComparison.Ordinal) ? "...x" : head.Contains(',') ? head : head;
         }
         int depth = 0;
-        for(int i = open; i < source.Length; i++) {
-            if(source[i] == '(') depth++;
-            else if(source[i] == ')' && --depth == 0) {
+        for (int i = open; i < source.Length; i++) {
+            if (source[i] == '(') depth++;
+            else if (source[i] == ')' && --depth == 0) {
                 return source[(open + 1)..i];
             }
         }
@@ -237,11 +237,11 @@ public class JSPatchHost(JSScriptLoader loader, string filePath) {
         var parts = new List<string>();
         int depth = 0;
         int start = 0;
-        for(int i = 0; i < source.Length; i++) {
+        for (int i = 0; i < source.Length; i++) {
             char c = source[i];
-            if(c is '(' or '[' or '{' or '<') depth++;
-            else if(c is ')' or ']' or '}' or '>') depth--;
-            else if(c == ',' && depth == 0) {
+            if (c is '(' or '[' or '{' or '<') depth++;
+            else if (c is ')' or ']' or '}' or '>') depth--;
+            else if (c == ',' && depth == 0) {
                 parts.Add(source[start..i]);
                 start = i + 1;
             }
@@ -252,7 +252,7 @@ public class JSPatchHost(JSScriptLoader loader, string filePath) {
 
     private static MethodBase Resolve(string target, int prefixArity, int postfixArity) {
         int sep = target.IndexOf("::", StringComparison.Ordinal);
-        if(sep < 0) {
+        if (sep < 0) {
             throw new InvalidOperationException($"Bad target \"{target}\". Use \"Type::Method\" or \"Type::Method(Arg, ...)\"");
         }
         string typeName = target[..sep].Trim();
@@ -260,14 +260,14 @@ public class JSPatchHost(JSScriptLoader loader, string filePath) {
         string methodName = rest;
         string[] explicitSig = null;
         int paren = rest.IndexOf('(');
-        if(paren >= 0 && rest.EndsWith(")", StringComparison.Ordinal)) {
+        if (paren >= 0 && rest.EndsWith(")", StringComparison.Ordinal)) {
             methodName = rest[..paren].Trim();
             explicitSig = SplitTopLevel(rest[(paren + 1)..^1])
                 .Where(s => !string.IsNullOrWhiteSpace(s))
                 .Select(s => s.Trim())
                 .ToArray();
         }
-        if(string.IsNullOrEmpty(methodName)) {
+        if (string.IsNullOrEmpty(methodName)) {
             throw new InvalidOperationException($"Bad target \"{target}\". Missing method name.");
         }
         Type type = FindType(typeName)
@@ -275,33 +275,33 @@ public class JSPatchHost(JSScriptLoader loader, string filePath) {
         var candidates = type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static)
             .Where(m => m.Name == methodName && !m.IsGenericMethodDefinition)
             .ToArray();
-        if(candidates.Length == 0) {
+        if (candidates.Length == 0) {
             throw new InvalidOperationException($"Method not found: {typeName}::{methodName}");
         }
-        if(explicitSig != null) {
+        if (explicitSig != null) {
             var hit = candidates.FirstOrDefault(m =>
                 ParamsMatch(m.GetParameters(), explicitSig));
-            if(hit == null) {
+            if (hit == null) {
                 throw new InvalidOperationException(
                     $"No overload matches {target}. Candidates: {string.Join("; ", candidates.Select(Sig))}");
             }
             return hit;
         }
-        if(candidates.Length == 1) {
+        if (candidates.Length == 1) {
             return candidates[0];
         }
         int? wanted = null;
-        if(prefixArity > 1) {
+        if (prefixArity > 1) {
             wanted = prefixArity;
-        } else if(postfixArity > 2) {
+        } else if (postfixArity > 2) {
             wanted = postfixArity - 1;
         }
-        if(wanted != null) {
+        if (wanted != null) {
             var hits = candidates.Where(m => m.GetParameters().Length == wanted.Value).ToArray();
-            if(hits.Length == 1) {
+            if (hits.Length == 1) {
                 return hits[0];
             }
-            if(hits.Length == 0) {
+            if (hits.Length == 0) {
                 throw new InvalidOperationException(
                     $"No overload of {typeName}::{methodName} takes {wanted} args (__instance does not count toward callback arity). Candidates: {string.Join("; ", candidates.Select(Sig))}");
             }
@@ -312,11 +312,11 @@ public class JSPatchHost(JSScriptLoader loader, string filePath) {
     }
 
     private static bool ParamsMatch(ParameterInfo[] parameters, string[] tokens) {
-        if(parameters.Length != tokens.Length) {
+        if (parameters.Length != tokens.Length) {
             return false;
         }
-        for(int i = 0; i < parameters.Length; i++) {
-            if(!TokenMatches(parameters[i].ParameterType, tokens[i])) {
+        for (int i = 0; i < parameters.Length; i++) {
+            if (!TokenMatches(parameters[i].ParameterType, tokens[i])) {
                 return false;
             }
         }
@@ -324,16 +324,16 @@ public class JSPatchHost(JSScriptLoader loader, string filePath) {
     }
 
     private static bool TokenMatches(Type type, string token) {
-        if(Keywords.TryGetValue(token, out var kw)) {
+        if (Keywords.TryGetValue(token, out var kw)) {
             return kw == type;
         }
-        if(token == type.Name || token == type.FullName) {
+        if (token == type.Name || token == type.FullName) {
             return true;
         }
-        if(token.EndsWith("[]", StringComparison.Ordinal) && type.IsArray) {
+        if (token.EndsWith("[]", StringComparison.Ordinal) && type.IsArray) {
             return TokenMatches(type.GetElementType(), token[..^2]);
         }
-        if(token.EndsWith("?", StringComparison.Ordinal)
+        if (token.EndsWith("?", StringComparison.Ordinal)
             && type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>)) {
             return TokenMatches(type.GetGenericArguments()[0], token[..^1]);
         }
@@ -344,30 +344,30 @@ public class JSPatchHost(JSScriptLoader loader, string filePath) {
         $"{m.Name}({string.Join(", ", m.GetParameters().Select(p => p.ParameterType.Name))})";
 
     private static Type FindType(string name) {
-        if(Keywords.TryGetValue(name, out var kw)) {
+        if (Keywords.TryGetValue(name, out var kw)) {
             return kw;
         }
-        if(name.EndsWith("[]", StringComparison.Ordinal)) {
+        if (name.EndsWith("[]", StringComparison.Ordinal)) {
             Type elem = FindType(name[..^2]);
             return elem?.MakeArrayType();
         }
-        if(name.EndsWith("?", StringComparison.Ordinal)) {
+        if (name.EndsWith("?", StringComparison.Ordinal)) {
             Type elem = FindType(name[..^1]);
             return elem != null && elem.IsValueType ? typeof(Nullable<>).MakeGenericType(elem) : elem;
         }
         Type direct = Type.GetType(name, false);
-        if(direct != null) {
+        if (direct != null) {
             return direct;
         }
-        foreach(var asm in AppDomain.CurrentDomain.GetAssemblies()) {
+        foreach (var asm in AppDomain.CurrentDomain.GetAssemblies()) {
             Type[] types;
             try {
                 types = asm.GetTypes();
             } catch {
                 continue;
             }
-            foreach(var t in types) {
-                if(t.Name == name || t.FullName == name) {
+            foreach (var t in types) {
+                if (t.Name == name || t.FullName == name) {
                     return t;
                 }
             }

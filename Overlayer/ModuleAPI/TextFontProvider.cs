@@ -20,7 +20,7 @@ public static class TextFontProvider {
     }
 
     public static IDisposable Register(Func<TMP_FontAsset> fontProvider) {
-        if(fontProvider == null) {
+        if (fontProvider == null) {
             throw new ArgumentNullException(nameof(fontProvider));
         }
         provider = fontProvider;
@@ -29,7 +29,7 @@ public static class TextFontProvider {
 
     private sealed class Registration(Func<TMP_FontAsset> registeredProvider) : IDisposable {
         public void Dispose() {
-            if(ReferenceEquals(provider, registeredProvider)) {
+            if (ReferenceEquals(provider, registeredProvider)) {
                 provider = static () => null;
             }
         }

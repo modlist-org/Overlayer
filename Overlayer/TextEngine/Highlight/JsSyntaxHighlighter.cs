@@ -72,11 +72,11 @@ public static class JsSyntaxHighlighter {
             case TokenType.Keyword:
             case TokenType.BooleanLiteral:
             case TokenType.NullLiteral: {
-                string word = source[start..end];
-                spans.Add(new(start, end - start,
-                    ControlKeywords.Contains(word) ? TagSyntaxKind.JsControl : TagSyntaxKind.JsKeyword));
-                return;
-            }
+                    string word = source[start..end];
+                    spans.Add(new(start, end - start,
+                        ControlKeywords.Contains(word) ? TagSyntaxKind.JsControl : TagSyntaxKind.JsKeyword));
+                    return;
+                }
             case TokenType.StringLiteral:
                 AddStringWithEscapes(spans, source, start, end);
                 return;
@@ -91,13 +91,13 @@ public static class JsSyntaxHighlighter {
                 spans.Add(new(start, end - start, TagSyntaxKind.JsNumber));
                 return;
             case TokenType.Identifier: {
-                var kind = ClassifyIdentifier(source, tokens, index);
-                if (kind.HasValue) {
-                    spans.Add(new(start, end - start, kind.Value));
-                }
+                    var kind = ClassifyIdentifier(source, tokens, index);
+                    if (kind.HasValue) {
+                        spans.Add(new(start, end - start, kind.Value));
+                    }
 
-                return;
-            }
+                    return;
+                }
         }
     }
 

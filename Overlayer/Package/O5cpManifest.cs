@@ -18,17 +18,17 @@ public static class O5cpFormat {
         } catch {
             return false;
         }
-        if(string.IsNullOrEmpty(name)
+        if (string.IsNullOrEmpty(name)
             || !name.StartsWith("pkg_", StringComparison.OrdinalIgnoreCase)
             || !name.EndsWith(".js", StringComparison.OrdinalIgnoreCase)
             || name.Length < 13
             || name[11] != '_') {
             return false;
         }
-        for(int i = 4; i < 11; i++) {
+        for (int i = 4; i < 11; i++) {
             char c = name[i];
             bool hex = (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
-            if(!hex) {
+            if (!hex) {
                 return false;
             }
         }
@@ -200,7 +200,7 @@ public sealed class O5cpManifest {
 
             ["extensions"] = new JObject(),
         };
-        if(!string.IsNullOrEmpty(ThumbnailFile)) {
+        if (!string.IsNullOrEmpty(ThumbnailFile)) {
             manifest["thumbnail"] = new JObject {
                 ["file"] = ThumbnailFile,
             };
@@ -210,18 +210,17 @@ public sealed class O5cpManifest {
 
     public static bool TryParse(JToken token, out O5cpManifest manifest, out string error) {
         manifest = new O5cpManifest();
-        if(token is not JObject obj) {
+        if (token is not JObject obj) {
             error = "manifest is not an object";
             return false;
         }
-        if((string)obj["format"] != O5cpFormat.Format) {
+        if ((string)obj["format"] != O5cpFormat.Format) {
             error = $"not an {O5cpFormat.Format} package";
             return false;
         }
 
         manifest.FormatVersion = (int?)obj["formatVersion"] ?? O5cpFormat.FormatVersion;
-        var pkg = obj["package"] as JObject;
-        if(pkg != null) {
+        if (obj["package"] is JObject pkg) {
             manifest.Package.Id = (string)pkg["id"] ?? string.Empty;
             manifest.Package.Name = (string)pkg["name"] ?? string.Empty;
             manifest.Package.Version = (string)pkg["version"] ?? "1.0.0";
@@ -233,13 +232,13 @@ public sealed class O5cpManifest {
             manifest.Package.MinAppVersion = (string)pkg["minAppVersion"] ?? string.Empty;
         }
         manifest.CanvasFile = (string)(obj["canvas"] as JObject)?["file"];
-        if(string.IsNullOrWhiteSpace(manifest.CanvasFile)) {
+        if (string.IsNullOrWhiteSpace(manifest.CanvasFile)) {
             manifest.CanvasFile = O5cpFormat.DefaultCanvasFile;
         }
         manifest.ThumbnailFile = (string)(obj["thumbnail"] as JObject)?["file"];
-        if(obj["modules"] is JArray modules) {
-            foreach(var m in modules) {
-                if(m is not JObject mo) continue;
+        if (obj["modules"] is JArray modules) {
+            foreach (var m in modules) {
+                if (m is not JObject mo) continue;
                 manifest.Modules.Add(new O5cpModuleEntry {
                     Name = (string)mo["name"] ?? string.Empty,
                     Version = (string)mo["version"] ?? string.Empty,
@@ -247,10 +246,9 @@ public sealed class O5cpManifest {
                 });
             }
         }
-        var res = obj["resources"] as JObject;
-        if(res != null) {
-            foreach(var f in res["fonts"] as JArray ?? []) {
-                if(f is not JObject fo) continue;
+        if (obj["resources"] is JObject res) {
+            foreach (var f in res["fonts"] as JArray ?? []) {
+                if (f is not JObject fo) continue;
                 manifest.Fonts.Add(new O5cpFontEntry {
                     Key = (string)fo["key"] ?? string.Empty,
                     File = (string)fo["file"] ?? string.Empty,
@@ -258,8 +256,8 @@ public sealed class O5cpManifest {
                     Bytes = (long?)fo["bytes"] ?? 0,
                 });
             }
-            foreach(var t in res["textures"] as JArray ?? []) {
-                if(t is not JObject to) continue;
+            foreach (var t in res["textures"] as JArray ?? []) {
+                if (t is not JObject to) continue;
                 manifest.Textures.Add(new O5cpTextureEntry {
                     Key = (string)to["key"] ?? string.Empty,
                     File = (string)to["file"] ?? string.Empty,
@@ -270,8 +268,8 @@ public sealed class O5cpManifest {
                     Folder = (string)to["folder"] ?? string.Empty,
                 });
             }
-            foreach(var s in res["sprites"] as JArray ?? []) {
-                if(s is not JObject so) continue;
+            foreach (var s in res["sprites"] as JArray ?? []) {
+                if (s is not JObject so) continue;
                 manifest.Sprites.Add(new O5cpSpriteEntry {
                     Key = (string)so["key"] ?? string.Empty,
                     TextureKey = (string)so["textureKey"] ?? string.Empty,
@@ -282,8 +280,8 @@ public sealed class O5cpManifest {
                     Folder = (string)so["folder"] ?? string.Empty,
                 });
             }
-            foreach(var s in res["scripts"] as JArray ?? []) {
-                if(s is not JObject so) continue;
+            foreach (var s in res["scripts"] as JArray ?? []) {
+                if (s is not JObject so) continue;
                 manifest.Scripts.Add(new O5cpScriptEntry {
                     File = (string)so["file"] ?? string.Empty,
                     OriginalName = (string)so["originalName"] ?? string.Empty,
@@ -292,31 +290,30 @@ public sealed class O5cpManifest {
                 });
             }
         }
-        var exc = obj["excluded"] as JObject;
-        if(exc != null) {
-            foreach(var e in exc["fonts"] as JArray ?? []) {
-                if(e is not JObject eo) continue;
+        if (obj["excluded"] is JObject exc) {
+            foreach (var e in exc["fonts"] as JArray ?? []) {
+                if (e is not JObject eo) continue;
                 manifest.ExcludedFonts.Add(new O5cpExcludedEntry {
                     Key = (string)eo["key"] ?? string.Empty,
                     Sha256 = (string)eo["sha256"] ?? string.Empty,
                 });
             }
-            foreach(var e in exc["textures"] as JArray ?? []) {
-                if(e is not JObject eo) continue;
+            foreach (var e in exc["textures"] as JArray ?? []) {
+                if (e is not JObject eo) continue;
                 manifest.ExcludedTextures.Add(new O5cpExcludedEntry {
                     Key = (string)eo["key"] ?? string.Empty,
                     Sha256 = (string)eo["sha256"] ?? string.Empty,
                 });
             }
-            foreach(var e in exc["scripts"] as JArray ?? []) {
-                if(e is not JObject eo) continue;
+            foreach (var e in exc["scripts"] as JArray ?? []) {
+                if (e is not JObject eo) continue;
                 manifest.ExcludedScripts.Add(new O5cpExcludedEntry {
                     Key = (string)eo["key"] ?? string.Empty,
                     Sha256 = (string)eo["sha256"] ?? string.Empty,
                 });
             }
         }
-        if(string.IsNullOrWhiteSpace(manifest.Package.Id)) {
+        if (string.IsNullOrWhiteSpace(manifest.Package.Id)) {
             error = "manifest.package.id is missing";
             return false;
         }
@@ -325,11 +322,11 @@ public sealed class O5cpManifest {
     }
 
     private static float[] ReadFloats(JToken token, float[] fallback) {
-        if(token is not JArray arr || arr.Count != fallback.Length) {
+        if (token is not JArray arr || arr.Count != fallback.Length) {
             return (float[])fallback.Clone();
         }
         var result = new float[fallback.Length];
-        for(int i = 0; i < result.Length; i++) {
+        for (int i = 0; i < result.Length; i++) {
             try {
                 result[i] = arr[i].Value<float>();
             } catch {

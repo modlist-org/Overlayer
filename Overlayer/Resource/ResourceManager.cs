@@ -43,28 +43,28 @@ public sealed class ResourceManager(Assembly assembly, string resourcePath) : ID
     private readonly Dictionary<string, object> cache = [];
 
     public byte[] Load(string path) {
-        if(string.IsNullOrWhiteSpace(path)) {
+        if (string.IsNullOrWhiteSpace(path)) {
             return null;
         }
 
         try {
             using Stream stream = assembly.GetManifestResourceStream(resourcePath + path);
 
-            if(stream == null) {
+            if (stream == null) {
                 return null;
             }
 
-            if(stream.Length <= 0) {
+            if (stream.Length <= 0) {
                 return [];
             }
 
             byte[] data = new byte[stream.Length];
             int offset = 0;
 
-            while(offset < data.Length) {
+            while (offset < data.Length) {
                 int read = stream.Read(data, offset, data.Length - offset);
 
-                if(read <= 0) {
+                if (read <= 0) {
                     break;
                 }
 
@@ -78,19 +78,19 @@ public sealed class ResourceManager(Assembly assembly, string resourcePath) : ID
     }
 
     public Texture2D LoadTexture(string path, FilterMode filter = FilterMode.Bilinear) {
-        if(cache.TryGetValue(path, out object cached)) {
+        if (cache.TryGetValue(path, out object cached)) {
             return cached as Texture2D;
         }
 
         byte[] data = Load(path);
 
-        if(data == null || data.Length == 0) {
+        if (data == null || data.Length == 0) {
             return null;
         }
 
         Texture2D texture = new(2, 2, TextureFormat.RGBA32, false, false);
 
-        if(!O5Texture.LoadImage(texture, data)) {
+        if (!O5Texture.LoadImage(texture, data)) {
             Object.Destroy(texture);
             return null;
         }
@@ -101,17 +101,17 @@ public sealed class ResourceManager(Assembly assembly, string resourcePath) : ID
     }
 
     public TMP_FontAsset LoadFont(string path, string tempPath) {
-        if(cache.TryGetValue(path, out object cached)) {
+        if (cache.TryGetValue(path, out object cached)) {
             return cached as TMP_FontAsset;
         }
 
         byte[] data = Load(path);
-        if(data == null) {
+        if (data == null) {
             return null;
         }
 
         string directory = Path.GetDirectoryName(tempPath);
-        if(!string.IsNullOrEmpty(directory)) {
+        if (!string.IsNullOrEmpty(directory)) {
             Directory.CreateDirectory(directory);
         }
 
@@ -120,21 +120,21 @@ public sealed class ResourceManager(Assembly assembly, string resourcePath) : ID
         Font font = new(tempPath);
         TMP_FontAsset asset = TMP_FontAsset.CreateFontAsset(font);
 
-        if(path.Contains("JetBrainsMonoNL")) {
+        if (path.Contains("JetBrainsMonoNL")) {
             string fileName = Path.GetFileNameWithoutExtension(path);
             string style = fileName.Split('-')[1];
 
-            if(Enum.TryParse("SUIT_" + style, out Asset suitAsset)) {
+            if (Enum.TryParse("SUIT_" + style, out Asset suitAsset)) {
                 string suitPath = assetMap[suitAsset];
                 string suitTempPath = Path.Combine(MainCore.Paths.TempPath, $"SUIT_{style}.otf");
 
                 TMP_FontAsset suitFont = LoadFont(suitPath, suitTempPath);
 
-                if(suitFont != null) {
+                if (suitFont != null) {
 #pragma warning disable IDE0028
                     asset.fallbackFontAssetTable ??= new();
 #pragma warning restore IDE0028
-                    if(!asset.fallbackFontAssetTable.Contains(suitFont)) {
+                    if (!asset.fallbackFontAssetTable.Contains(suitFont)) {
                         asset.fallbackFontAssetTable.Add(suitFont);
                     }
                 }
@@ -146,7 +146,7 @@ public sealed class ResourceManager(Assembly assembly, string resourcePath) : ID
     }
 
     public T Get<T>(Asset asset) where T : class {
-        if(!assetMap.TryGetValue(asset, out string path)) {
+        if (!assetMap.TryGetValue(asset, out string path)) {
             return null;
         }
 
@@ -154,7 +154,7 @@ public sealed class ResourceManager(Assembly assembly, string resourcePath) : ID
     }
 
     public T Get<T>(string path) where T : class {
-        if(string.IsNullOrWhiteSpace(path)) {
+        if (string.IsNullOrWhiteSpace(path)) {
             return null;
         }
 
@@ -165,9 +165,9 @@ public sealed class ResourceManager(Assembly assembly, string resourcePath) : ID
     private T GetInternal<T>(string path, string assetNameForFont) where T : class {
         object result = null;
 
-        if(typeof(T) == typeof(Texture2D)) {
+        if (typeof(T) == typeof(Texture2D)) {
             result = LoadTexture(path);
-        } else if(typeof(T) == typeof(TMP_FontAsset)) {
+        } else if (typeof(T) == typeof(TMP_FontAsset)) {
             string tempPath = Path.Combine(MainCore.Paths.TempPath, assetNameForFont + ".otf");
             result = LoadFont(path, tempPath);
         }
@@ -176,8 +176,8 @@ public sealed class ResourceManager(Assembly assembly, string resourcePath) : ID
     }
 
     public void Dispose() {
-        foreach(object item in cache.Values) {
-            switch(item) {
+        foreach (object item in cache.Values) {
+            switch (item) {
                 case Texture2D texture:
                     Object.Destroy(texture);
                     break;

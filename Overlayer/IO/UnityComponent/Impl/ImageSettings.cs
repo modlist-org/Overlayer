@@ -51,7 +51,7 @@ public class ImageSettings : UnityComponentSettingsBase, ICopyable<ImageSettings
 
     public override bool ToUnity(GameObject target) {
         var com = target.GetComponent<Image>();
-        if(com == null) {
+        if (com == null) {
             return false;
         }
 
@@ -86,12 +86,12 @@ public class ImageSettings : UnityComponentSettingsBase, ICopyable<ImageSettings
 
     public override bool FromUnity(GameObject source) {
         var com = source.GetComponent<Image>();
-        if(com == null) {
+        if (com == null) {
             return false;
         }
 
         Color.Value = com.color;
-        if(com.sprite != null) {
+        if (com.sprite != null) {
             UserResourceManager.Spr.TryGetKey(
                 x => x.sprite == com.sprite,
                 out var key
@@ -128,30 +128,30 @@ public class ImageSettings : UnityComponentSettingsBase, ICopyable<ImageSettings
     }
 
     public override void RefreshFx(GameObject target) {
-        if(!HasAnyFx) {
+        if (!HasAnyFx) {
             return;
         }
 
         var com = target.GetComponent<Image>();
-        if(com == null) {
+        if (com == null) {
             return;
         }
 
         RefreshEnabled(com);
-        if(FxUtil.Changed(ref _lastColor, Color.Value)) com.color = _lastColor;
-        if(FxUtil.ApplyIfChanged(ref _lastSpriteKey, SpriteKey.Value, _ => { })) {
+        if (FxUtil.Changed(ref _lastColor, Color.Value)) com.color = _lastColor;
+        if (FxUtil.ApplyIfChanged(ref _lastSpriteKey, SpriteKey.Value, _ => { })) {
             com.sprite = UserResourceManager.Spr.TryGet(_lastSpriteKey, out var value) ? value.sprite : null;
         }
-        if(FxUtil.Changed(ref _lastPreserveAspect, PreserveAspect.Value)) com.preserveAspect = _lastPreserveAspect;
-        if(FxUtil.Changed(ref _lastRaycastTarget, RaycastTarget.Value)) com.raycastTarget = _lastRaycastTarget;
-        if(FxUtil.Changed(ref _lastUseSpriteMesh, UseSpriteMesh.Value)) com.useSpriteMesh = _lastUseSpriteMesh;
-        if(FxUtil.Changed(ref _lastType, Type.Value)) com.type = _lastType;
-        if(FxUtil.Changed(ref _lastFillCenter, FillCenter.Value)) com.fillCenter = _lastFillCenter;
-        if(FxUtil.Changed(ref _lastPixelsPerUnitMultiplier, PixelsPerUnitMultiplier.Value)) com.pixelsPerUnitMultiplier = _lastPixelsPerUnitMultiplier;
-        if(FxUtil.Changed(ref _lastFillMethod, FillMethod.Value)) com.fillMethod = _lastFillMethod;
-        if(FxUtil.Changed(ref _lastFillAmount, FillAmount.Value)) com.fillAmount = _lastFillAmount;
-        if(FxUtil.Changed(ref _lastFillOrigin, FillOrigin.Value)) com.fillOrigin = _lastFillOrigin;
-        if(FxUtil.Changed(ref _lastFillClockwise, FillClockwise.Value)) com.fillClockwise = _lastFillClockwise;
+        if (FxUtil.Changed(ref _lastPreserveAspect, PreserveAspect.Value)) com.preserveAspect = _lastPreserveAspect;
+        if (FxUtil.Changed(ref _lastRaycastTarget, RaycastTarget.Value)) com.raycastTarget = _lastRaycastTarget;
+        if (FxUtil.Changed(ref _lastUseSpriteMesh, UseSpriteMesh.Value)) com.useSpriteMesh = _lastUseSpriteMesh;
+        if (FxUtil.Changed(ref _lastType, Type.Value)) com.type = _lastType;
+        if (FxUtil.Changed(ref _lastFillCenter, FillCenter.Value)) com.fillCenter = _lastFillCenter;
+        if (FxUtil.Changed(ref _lastPixelsPerUnitMultiplier, PixelsPerUnitMultiplier.Value)) com.pixelsPerUnitMultiplier = _lastPixelsPerUnitMultiplier;
+        if (FxUtil.Changed(ref _lastFillMethod, FillMethod.Value)) com.fillMethod = _lastFillMethod;
+        if (FxUtil.Changed(ref _lastFillAmount, FillAmount.Value)) com.fillAmount = _lastFillAmount;
+        if (FxUtil.Changed(ref _lastFillOrigin, FillOrigin.Value)) com.fillOrigin = _lastFillOrigin;
+        if (FxUtil.Changed(ref _lastFillClockwise, FillClockwise.Value)) com.fillClockwise = _lastFillClockwise;
     }
 
     public override JToken Serialize() {

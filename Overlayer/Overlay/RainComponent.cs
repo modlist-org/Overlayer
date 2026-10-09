@@ -40,7 +40,7 @@ public sealed class OvRainComponent
     private bool meshHasTrails;
 
     private void EnsureGraphic() {
-        if(graphic != null) {
+        if (graphic != null) {
             return;
         }
         var go = new GameObject("Rain", typeof(RectTransform));
@@ -59,14 +59,14 @@ public sealed class OvRainComponent
     private void OnDisable() {
         current = null;
         meshHasTrails = false;
-        if(graphic != null) {
+        if (graphic != null) {
             graphic.Trails.Clear();
             graphic.gameObject.SetActive(false);
         }
     }
 
     private void OnDestroy() {
-        if(graphic != null) {
+        if (graphic != null) {
             Destroy(graphic.gameObject);
         }
     }
@@ -76,39 +76,39 @@ public sealed class OvRainComponent
         Layout();
 
         var trails = graphic.Trails;
-        if(Active && current == null) {
-            while(trails.Count > 0 && trails.Count >= Mathf.Max(1, MaxTrails)) {
+        if (Active && current == null) {
+            while (trails.Count > 0 && trails.Count >= Mathf.Max(1, MaxTrails)) {
                 trails.RemoveAt(0);
             }
             current = new RainTrail();
             trails.Add(current);
-        } else if(!Active && current != null) {
+        } else if (!Active && current != null) {
             current.Held = false;
             current = null;
         }
 
         float step = Mathf.Max(0f, Speed) * Time.unscaledDeltaTime;
         float length = Mathf.Max(0f, Length);
-        for(int i = trails.Count - 1; i >= 0; i--) {
+        for (int i = trails.Count - 1; i >= 0; i--) {
             var trail = trails[i];
             // Head stops at the far edge so a long hold doesn't grow without bound.
             trail.Head = Mathf.Min(trail.Head + step, length);
-            if(!trail.Held) {
+            if (!trail.Held) {
                 trail.Tail += step;
-                if(trail.Tail >= length) {
+                if (trail.Tail >= length) {
                     trails.RemoveAt(i);
                 }
             }
         }
 
         var sprite = !string.IsNullOrEmpty(SpriteKey) && UserResourceManager.Spr.TryGet(SpriteKey, out var res) ? res.sprite : null;
-        if(sprite != graphic.Sprite) {
+        if (sprite != graphic.Sprite) {
             graphic.Sprite = sprite;
             graphic.SetMaterialDirty();
         }
         // Idle rain (no trails now or last frame) keeps an empty mesh; skip the rebuild.
         bool hasTrails = trails.Count > 0;
-        if(hasTrails || meshHasTrails) {
+        if (hasTrails || meshHasTrails) {
             graphic.SetVerticesDirty();
         }
         meshHasTrails = hasTrails;
@@ -157,35 +157,35 @@ public sealed class OvRainGraphic
 
     protected override void OnPopulateMesh(VertexHelper vh) {
         vh.Clear();
-        if(Owner == null || Trails.Count == 0) {
+        if (Owner == null || Trails.Count == 0) {
             return;
         }
         Rect rect = rectTransform.rect;
         float length = Mathf.Max(0f, Owner.Length);
-        if(length <= 0f || rect.width <= 0f || rect.height <= 0f) {
+        if (length <= 0f || rect.width <= 0f || rect.height <= 0f) {
             return;
         }
         float fadeIn = Mathf.Clamp(Owner.FadeIn, 0f, length);
         float fadeOut = Mathf.Clamp(Owner.FadeOut, 0f, length);
         Vector4 uv = Sprite != null ? UnityEngine.Sprites.DataUtility.GetOuterUV(Sprite) : new Vector4(0f, 0f, 1f, 1f);
 
-        foreach(var trail in Trails) {
+        foreach (var trail in Trails) {
             float a0 = Mathf.Max(0f, trail.Tail);
             float a1 = Mathf.Min(length, trail.Head);
-            if(a1 - a0 <= 0.01f) {
+            if (a1 - a0 <= 0.01f) {
                 continue;
             }
             // Split at the fade edges so the alpha ramps stay exact instead of being linearly smeared.
             cuts.Clear();
             cuts.Add(a0);
-            if(fadeIn > a0 && fadeIn < a1) cuts.Add(fadeIn);
-            if(length - fadeOut > a0 && length - fadeOut < a1) cuts.Add(length - fadeOut);
+            if (fadeIn > a0 && fadeIn < a1) cuts.Add(fadeIn);
+            if (length - fadeOut > a0 && length - fadeOut < a1) cuts.Add(length - fadeOut);
             cuts.Add(a1);
             cuts.Sort();
             float span = Mathf.Max(0.01f, trail.Head - trail.Tail);
-            for(int i = 0; i < cuts.Count - 1; i++) {
+            for (int i = 0; i < cuts.Count - 1; i++) {
                 float s0 = cuts[i], s1 = cuts[i + 1];
-                if(s1 - s0 <= 0.001f) {
+                if (s1 - s0 <= 0.001f) {
                     continue;
                 }
                 AddQuad(vh, rect, s0, s1, (s0 - trail.Tail) / span, (s1 - trail.Tail) / span, length, fadeIn, fadeOut, uv);
@@ -196,7 +196,7 @@ public sealed class OvRainGraphic
     private void AddQuad(VertexHelper vh, Rect rect, float s0, float s1, float t0, float t1, float length, float fadeIn, float fadeOut, Vector4 uv) {
         int start = vh.currentVertCount;
         // (along, cross) for the 4 corners; cross 0 = left/bottom side.
-        for(int k = 0; k < 4; k++) {
+        for (int k = 0; k < 4; k++) {
             float s = k < 2 ? s0 : s1;
             float t = k < 2 ? t0 : t1;
             float c = k is 0 or 3 ? 0f : 1f;
@@ -209,8 +209,8 @@ public sealed class OvRainGraphic
                 UnityEngine.Color.Lerp(g.TL, g.TR, nx),
                 ny) * color;
             float alpha = 1f;
-            if(fadeIn > 0f) alpha = Mathf.Min(alpha, s / fadeIn);
-            if(fadeOut > 0f) alpha = Mathf.Min(alpha, (length - s) / fadeOut);
+            if (fadeIn > 0f) alpha = Mathf.Min(alpha, s / fadeIn);
+            if (fadeOut > 0f) alpha = Mathf.Min(alpha, (length - s) / fadeOut);
             col.a *= Mathf.Clamp01(alpha);
             // Sprite stretches over the whole trail: along the trail = sprite height.
             Vector2 tex = new(Mathf.Lerp(uv.x, uv.z, c), Mathf.Lerp(uv.y, uv.w, t));

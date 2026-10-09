@@ -21,7 +21,7 @@ public class OutlineSettings : UnityComponentSettingsBase, ICopyable<OutlineSett
 
     public override bool ToUnity(GameObject target) {
         var com = target.GetComponent<Outline>();
-        if(com == null) {
+        if (com == null) {
             return false;
         }
 
@@ -38,7 +38,7 @@ public class OutlineSettings : UnityComponentSettingsBase, ICopyable<OutlineSett
 
     public override bool FromUnity(GameObject source) {
         var com = source.GetComponent<Outline>();
-        if(com == null) {
+        if (com == null) {
             return false;
         }
 
@@ -54,19 +54,19 @@ public class OutlineSettings : UnityComponentSettingsBase, ICopyable<OutlineSett
     }
 
     public override void RefreshFx(GameObject target) {
-        if(!HasAnyFx) {
+        if (!HasAnyFx) {
             return;
         }
 
         var com = target.GetComponent<Outline>();
-        if(com == null) {
+        if (com == null) {
             return;
         }
 
         RefreshEnabled(com);
-        if(FxUtil.Changed(ref _lastEffectColor, EffectColor.Value)) com.effectColor = _lastEffectColor;
-        if(FxUtil.Changed(ref _lastEffectDistance, EffectDistance.Value)) com.effectDistance = _lastEffectDistance;
-        if(FxUtil.Changed(ref _lastUseGraphicAlpha, UseGraphicAlpha.Value)) com.useGraphicAlpha = _lastUseGraphicAlpha;
+        if (FxUtil.Changed(ref _lastEffectColor, EffectColor.Value)) com.effectColor = _lastEffectColor;
+        if (FxUtil.Changed(ref _lastEffectDistance, EffectDistance.Value)) com.effectDistance = _lastEffectDistance;
+        if (FxUtil.Changed(ref _lastUseGraphicAlpha, UseGraphicAlpha.Value)) com.useGraphicAlpha = _lastUseGraphicAlpha;
     }
 
     public override JToken Serialize() {
@@ -79,7 +79,7 @@ public class OutlineSettings : UnityComponentSettingsBase, ICopyable<OutlineSett
 
     public override void Deserialize(JToken token) {
         DeserializeComponent(token);
-        if(token?["Enabled"] != null && token?[nameof(ComponentEnabled)] == null) {
+        if (token?["Enabled"] != null && token?[nameof(ComponentEnabled)] == null) {
             ComponentEnabled = IOUtils.ReadFx(token, "Enabled", ComponentEnabled);
         }
         EffectColor = IOUtils.ReadFx(token, nameof(EffectColor), EffectColor);

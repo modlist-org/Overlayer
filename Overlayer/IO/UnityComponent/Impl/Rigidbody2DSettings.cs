@@ -49,7 +49,7 @@ public class Rigidbody2DSettings : UnityComponentSettingsBase, ICopyable<Rigidbo
 
     public override bool ToUnity(GameObject target) {
         var com = target.GetComponent<Rigidbody2D>();
-        if(com == null) {
+        if (com == null) {
             return false;
         }
 
@@ -83,7 +83,7 @@ public class Rigidbody2DSettings : UnityComponentSettingsBase, ICopyable<Rigidbo
 
     public override bool FromUnity(GameObject source) {
         var com = source.GetComponent<Rigidbody2D>();
-        if(com == null) {
+        if (com == null) {
             return false;
         }
 
@@ -116,27 +116,27 @@ public class Rigidbody2DSettings : UnityComponentSettingsBase, ICopyable<Rigidbo
     }
 
     public override void RefreshFx(GameObject target) {
-        if(!HasAnyFx) {
+        if (!HasAnyFx) {
             return;
         }
 
         var com = target.GetComponent<Rigidbody2D>();
-        if(com == null) {
+        if (com == null) {
             return;
         }
 
-        if(FxUtil.Changed(ref _lastBodyType, BodyType.Value)) com.bodyType = _lastBodyType;
-        if(FxUtil.Changed(ref _lastSimulated, Simulated.Value)) com.simulated = _lastSimulated;
-        if(FxUtil.Changed(ref _lastUseAutoMass, UseAutoMass.Value)) com.useAutoMass = _lastUseAutoMass;
-        if(FxUtil.Changed(ref _lastMass, Mass.Value)) com.mass = _lastMass;
-        if(FxUtil.Changed(ref _lastLinearDamping, LinearDamping.Value)) com.linearDamping = _lastLinearDamping;
-        if(FxUtil.Changed(ref _lastAngularDamping, AngularDamping.Value)) com.angularDamping = _lastAngularDamping;
-        if(FxUtil.Changed(ref _lastGravityScale, GravityScale.Value)) com.gravityScale = _lastGravityScale;
-        if(FxUtil.Changed(ref _lastCollisionDetectionMode, CollisionDetectionMode.Value)) com.collisionDetectionMode = _lastCollisionDetectionMode;
-        if(FxUtil.Changed(ref _lastSleepMode, SleepMode.Value)) com.sleepMode = _lastSleepMode;
-        if(FxUtil.Changed(ref _lastInterpolation, Interpolation.Value)) com.interpolation = _lastInterpolation;
-        if(FxUtil.Changed(ref _lastConstraints, Constraints.Value)) com.constraints = _lastConstraints;
-        if(FxUtil.Changed(ref _lastFreezeRotation, FreezeRotation.Value)) com.freezeRotation = _lastFreezeRotation;
+        if (FxUtil.Changed(ref _lastBodyType, BodyType.Value)) com.bodyType = _lastBodyType;
+        if (FxUtil.Changed(ref _lastSimulated, Simulated.Value)) com.simulated = _lastSimulated;
+        if (FxUtil.Changed(ref _lastUseAutoMass, UseAutoMass.Value)) com.useAutoMass = _lastUseAutoMass;
+        if (FxUtil.Changed(ref _lastMass, Mass.Value)) com.mass = _lastMass;
+        if (FxUtil.Changed(ref _lastLinearDamping, LinearDamping.Value)) com.linearDamping = _lastLinearDamping;
+        if (FxUtil.Changed(ref _lastAngularDamping, AngularDamping.Value)) com.angularDamping = _lastAngularDamping;
+        if (FxUtil.Changed(ref _lastGravityScale, GravityScale.Value)) com.gravityScale = _lastGravityScale;
+        if (FxUtil.Changed(ref _lastCollisionDetectionMode, CollisionDetectionMode.Value)) com.collisionDetectionMode = _lastCollisionDetectionMode;
+        if (FxUtil.Changed(ref _lastSleepMode, SleepMode.Value)) com.sleepMode = _lastSleepMode;
+        if (FxUtil.Changed(ref _lastInterpolation, Interpolation.Value)) com.interpolation = _lastInterpolation;
+        if (FxUtil.Changed(ref _lastConstraints, Constraints.Value)) com.constraints = _lastConstraints;
+        if (FxUtil.Changed(ref _lastFreezeRotation, FreezeRotation.Value)) com.freezeRotation = _lastFreezeRotation;
     }
 
     public override JToken Serialize() {

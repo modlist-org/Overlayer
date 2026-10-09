@@ -47,7 +47,7 @@ public static class JavaScirpt {
         Desc = "Evaluates JavaScript expressions using the V8 engine.\nOptimized with pre-compiled script execution."
     )]
     public static Func<string> JSExpr(ParsedTag parsed, DiagnosticContext ctx, List<CompileDiagnostic> diags) {
-        if(parsed.Args == null || parsed.Args.Length == 0) {
+        if (parsed.Args == null || parsed.Args.Length == 0) {
             diags.Add(new CompileDiagnostic(
                 DiagnosticId.AdvancedTagException,
                 CompileSeverity.Error,
@@ -60,7 +60,7 @@ public static class JavaScirpt {
         string restoredJsCode = ExtractJsCode(parsed);
 
         var v8Manager = MainCore.V8;
-        if(v8Manager?.Engine == null) {
+        if (v8Manager?.Engine == null) {
             diags.Add(new CompileDiagnostic(
                 DiagnosticId.AdvancedTagException,
                 CompileSeverity.Error,
@@ -74,7 +74,7 @@ public static class JavaScirpt {
         V8Script compiledScript;
         try {
             compiledScript = v8Manager.Engine.Compile(wrappedJsCode);
-        } catch(Exception ex) {
+        } catch (Exception ex) {
             diags.Add(new CompileDiagnostic(
                 DiagnosticId.AdvancedTagException,
                 CompileSeverity.Error,

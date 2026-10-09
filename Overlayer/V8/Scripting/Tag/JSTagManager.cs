@@ -7,20 +7,20 @@ public static class JSTagManager {
     private static readonly object _lock = new();
 
     public static void Add(string name, ScriptObject func, TagType type, string desc, Type returnType = null) {
-        lock(_lock) {
+        lock (_lock) {
             _jsTags[name] = (func, type, desc, returnType ?? typeof(object));
         }
     }
 
     public static void Remove(string name) {
-        lock(_lock) {
+        lock (_lock) {
             _jsTags.Remove(name);
         }
     }
 
     public static bool TryGet(string name, out ScriptObject func) {
-        lock(_lock) {
-            if(_jsTags.TryGetValue(name, out var data)) {
+        lock (_lock) {
+            if (_jsTags.TryGetValue(name, out var data)) {
                 func = data.Func;
                 return true;
             }
@@ -30,14 +30,14 @@ public static class JSTagManager {
     }
 
     public static IEnumerable<string> GetAllNames() {
-        lock(_lock) {
+        lock (_lock) {
             return _jsTags.Keys.ToList();
         }
     }
 
     /// <summary>Removes every entry, returning the removed tag names.</summary>
     public static List<string> Clear() {
-        lock(_lock) {
+        lock (_lock) {
             var names = _jsTags.Keys.ToList();
             _jsTags.Clear();
             return names;

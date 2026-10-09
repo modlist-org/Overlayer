@@ -31,40 +31,40 @@ public sealed class ClrAccess {
             const BindingFlags flags = BindingFlags.Public | BindingFlags.NonPublic
                 | BindingFlags.Static | BindingFlags.Instance;
             var field = type.GetField(member, flags);
-            if(field != null) {
+            if (field != null) {
                 reader = Utility.Access.Access.Getter<object>(type.FullName, member);
-                if(!field.IsInitOnly) {
+                if (!field.IsInitOnly) {
                     writer = Utility.Access.Access.Setter<object>(type.FullName, member);
                 }
                 return;
             }
             var property = type.GetProperty(member, flags);
-            if(property != null) {
-                if(property.CanRead) {
+            if (property != null) {
+                if (property.CanRead) {
                     reader = Utility.Access.Access.Getter<object>(type.FullName, member);
                 }
-                if(property.CanWrite) {
+                if (property.CanWrite) {
                     writer = Utility.Access.Access.Setter<object>(type.FullName, member);
                 }
-                if(reader == null && writer == null) {
+                if (reader == null && writer == null) {
                     throw new MissingMemberException(type.FullName, member);
                 }
                 return;
             }
-            if(!type.GetMethods(flags).Any(m => m.Name == member)) {
+            if (!type.GetMethods(flags).Any(m => m.Name == member)) {
                 throw new MissingMemberException(type.FullName, member);
             }
         }
 
         public object Get() {
-            if(reader == null) {
+            if (reader == null) {
                 throw new MissingMemberException(member);
             }
             return reader(owner.StaticTarget(targetOrTypeName));
         }
 
         public void Set(object value) {
-            if(writer == null) {
+            if (writer == null) {
                 throw new MissingMemberException(member);
             }
             writer(owner.StaticTarget(targetOrTypeName), value);
@@ -73,8 +73,8 @@ public sealed class ClrAccess {
         public object Call(params object[] args) {
             args ??= [];
             Func<object, object[], object> invoker;
-            lock(arityGate) {
-                if(!byArity.TryGetValue(args.Length, out invoker)) {
+            lock (arityGate) {
+                if (!byArity.TryGetValue(args.Length, out invoker)) {
                     invoker = owner.ResolveInvoker(targetOrTypeName, member, args);
                     byArity[args.Length] = invoker;
                 }
@@ -123,17 +123,17 @@ public sealed class ClrAccess {
     public object Create(string typeName, params object[] args) {
         args ??= [];
         var argTypes = new System.Type[args.Length];
-        for(int i = 0; i < args.Length; i++) {
+        for (int i = 0; i < args.Length; i++) {
             argTypes[i] = args[i]?.GetType() ?? typeof(object);
         }
         var key = (typeName, string.Join(",", argTypes.Select(t => t.AssemblyQualifiedName)));
         Func<object[], object> creator;
-        lock(gate) {
+        lock (gate) {
             creators.TryGetValue(key, out creator);
         }
-        if(creator == null) {
+        if (creator == null) {
             creator = Utility.Access.Access.Creator(typeName, argTypes);
-            lock(gate) {
+            lock (gate) {
                 creators[key] = creator;
             }
         }
@@ -141,10 +141,10 @@ public sealed class ClrAccess {
     }
 
     public object Get(object targetOrTypeName, string member) {
-        if(targetOrTypeName is string typeName) {
+        if (targetOrTypeName is string typeName) {
             return StaticGetter(typeName, member)(null);
         }
-        if(targetOrTypeName == null) {
+        if (targetOrTypeName == null) {
             return null;
         }
         object value;
@@ -152,11 +152,11 @@ public sealed class ClrAccess {
     }
 
     public void Set(object targetOrTypeName, string member, object value) {
-        if(targetOrTypeName is string typeName) {
+        if (targetOrTypeName is string typeName) {
             StaticSetter(typeName, member)(null, value);
             return;
         }
-        if(targetOrTypeName == null) {
+        if (targetOrTypeName == null) {
             return;
         }
         Utility.Access.SafeAccess.TryWrite(targetOrTypeName, member, value);
@@ -175,13 +175,13 @@ public sealed class ClrAccess {
     // Failures are not cached, so they keep throwing the same exception.
     private Func<object, object> StaticGetter(string typeName, string member) {
         var key = (typeName, member);
-        lock(gate) {
-            if(staticGetters.TryGetValue(key, out var cached)) {
+        lock (gate) {
+            if (staticGetters.TryGetValue(key, out var cached)) {
                 return cached;
             }
         }
         var built = Utility.Access.Access.Getter<object>(typeName, member);
-        lock(gate) {
+        lock (gate) {
             staticGetters[key] = built;
         }
         return built;
@@ -189,13 +189,13 @@ public sealed class ClrAccess {
 
     private Action<object, object> StaticSetter(string typeName, string member) {
         var key = (typeName, member);
-        lock(gate) {
-            if(staticSetters.TryGetValue(key, out var cached)) {
+        lock (gate) {
+            if (staticSetters.TryGetValue(key, out var cached)) {
                 return cached;
             }
         }
         var built = Utility.Access.Access.Setter<object>(typeName, member);
-        lock(gate) {
+        lock (gate) {
             staticSetters[key] = built;
         }
         return built;
@@ -205,10 +205,10 @@ public sealed class ClrAccess {
         => targetOrTypeName is string ? null : targetOrTypeName;
 
     private Type StaticType(object targetOrTypeName) {
-        if(targetOrTypeName is string typeName) {
+        if (targetOrTypeName is string typeName) {
             return Utility.Access.Access.RequireType(typeName);
         }
-        if(targetOrTypeName != null) {
+        if (targetOrTypeName != null) {
             return targetOrTypeName.GetType();
         }
         throw new MissingMemberException(string.Empty, "target");
@@ -217,8 +217,8 @@ public sealed class ClrAccess {
     private Func<object, object[], object> ResolveInvoker(object targetOrTypeName, string method, object[] args) {
         object keyTarget = targetOrTypeName is string ? targetOrTypeName : targetOrTypeName?.GetType();
         var key = (keyTarget, method, args.Length);
-        lock(gate) {
-            if(invokers.TryGetValue(key, out var cached)) {
+        lock (gate) {
+            if (invokers.TryGetValue(key, out var cached)) {
                 return cached;
             }
             var built = BuildInvoker(targetOrTypeName, method, args);
@@ -230,9 +230,9 @@ public sealed class ClrAccess {
     private static Func<object, object[], object> BuildInvoker(object targetOrTypeName, string method, object[] args) {
         Type type;
         bool hasInstance = false;
-        if(targetOrTypeName is string typeName) {
+        if (targetOrTypeName is string typeName) {
             type = Utility.Access.Access.RequireType(typeName);
-        } else if(targetOrTypeName != null) {
+        } else if (targetOrTypeName != null) {
             type = targetOrTypeName.GetType();
             hasInstance = true;
         } else {
@@ -241,28 +241,28 @@ public sealed class ClrAccess {
         const BindingFlags flags = BindingFlags.Public | BindingFlags.NonPublic
             | BindingFlags.Static | BindingFlags.Instance;
         MethodInfo match = null;
-        foreach(var m in type.GetMethods(flags)) {
-            if(m.Name != method || m.GetParameters().Length != args.Length) {
+        foreach (var m in type.GetMethods(flags)) {
+            if (m.Name != method || m.GetParameters().Length != args.Length) {
                 continue;
             }
-            if(match == null) {
+            if (match == null) {
                 match = m;
             }
             var ps = m.GetParameters();
             bool exact = true;
-            for(int i = 0; i < ps.Length; i++) {
+            for (int i = 0; i < ps.Length; i++) {
                 var at = args[i]?.GetType();
-                if(at == null || (!ps[i].ParameterType.IsAssignableFrom(at) && !IsNumericPair(ps[i].ParameterType, at))) {
+                if (at == null || (!ps[i].ParameterType.IsAssignableFrom(at) && !IsNumericPair(ps[i].ParameterType, at))) {
                     exact = false;
                     break;
                 }
             }
-            if(exact) {
+            if (exact) {
                 match = m;
                 break;
             }
         }
-        if(match == null) {
+        if (match == null) {
             throw new MissingMemberException(type.FullName, method);
         }
         // Invokers are cached per type, so the instance must come from the
@@ -275,7 +275,7 @@ public sealed class ClrAccess {
     }
 
     private static bool IsNumeric(Type type) {
-        switch(System.Type.GetTypeCode(type)) {
+        switch (System.Type.GetTypeCode(type)) {
             case TypeCode.Byte:
             case TypeCode.SByte:
             case TypeCode.Int16:
@@ -298,7 +298,7 @@ public sealed class ClrAccess {
         var args = System.Linq.Expressions.Expression.Parameter(typeof(object[]), "args");
         var ps = match.GetParameters();
         var callArgs = new System.Linq.Expressions.Expression[ps.Length];
-        for(int i = 0; i < ps.Length; i++) {
+        for (int i = 0; i < ps.Length; i++) {
             callArgs[i] = System.Linq.Expressions.Expression.Convert(
                 System.Linq.Expressions.Expression.ArrayIndex(args, System.Linq.Expressions.Expression.Constant(i)),
                 ps[i].ParameterType);
@@ -308,7 +308,7 @@ public sealed class ClrAccess {
             : instance
                 ? System.Linq.Expressions.Expression.Convert(inst, match.DeclaringType)
                 : null;
-        if(target == null && !match.IsStatic) {
+        if (target == null && !match.IsStatic) {
             throw new MissingMemberException(match.DeclaringType?.FullName, match.Name);
         }
         System.Linq.Expressions.Expression call = System.Linq.Expressions.Expression.Call(target, match, callArgs);

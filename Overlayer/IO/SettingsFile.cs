@@ -19,7 +19,7 @@ public sealed class SettingsFile<T>(string path) where T : class, ISettingsFile,
 
     public bool Load() {
         try {
-            if(!File.Exists(Path)) {
+            if (!File.Exists(Path)) {
                 return false;
             }
 
@@ -28,7 +28,7 @@ public sealed class SettingsFile<T>(string path) where T : class, ISettingsFile,
             Data.Deserialize(token);
 
             return true;
-        } catch(Exception e) {
+        } catch (Exception e) {
             MainCore.Log.Err(
                 $"[{nameof(SettingsFile<>)}] Failed to load settings '{Path}': {e}"
             );
@@ -38,11 +38,11 @@ public sealed class SettingsFile<T>(string path) where T : class, ISettingsFile,
     }
 
     public bool Save() {
-        lock(saveLock) {
+        lock (saveLock) {
             try {
                 string dir = System.IO.Path.GetDirectoryName(Path);
 
-                if(!string.IsNullOrEmpty(dir)) {
+                if (!string.IsNullOrEmpty(dir)) {
                     Directory.CreateDirectory(dir);
                 }
 
@@ -50,7 +50,7 @@ public sealed class SettingsFile<T>(string path) where T : class, ISettingsFile,
                 File.WriteAllText(Path, json);
 
                 return true;
-            } catch(Exception e) {
+            } catch (Exception e) {
                 MainCore.Log.Err(
                     $"[{nameof(SettingsFile<>)}] Failed to save settings '{Path}': {e}"
                 );
@@ -69,7 +69,7 @@ public sealed class SettingsFile<T>(string path) where T : class, ISettingsFile,
 
         CancellationToken token = saveCts.Token;
 
-        if(saveScheduled) {
+        if (saveScheduled) {
             return;
         }
 
@@ -79,13 +79,13 @@ public sealed class SettingsFile<T>(string path) where T : class, ISettingsFile,
             try {
                 await Task.Delay(delay, token);
 
-                if(token.IsCancellationRequested) {
+                if (token.IsCancellationRequested) {
                     return;
                 }
 
                 Save();
-            } catch(OperationCanceledException) {
-            } catch(Exception e) {
+            } catch (OperationCanceledException) {
+            } catch (Exception e) {
                 MainCore.Log.Err(
                     $"[{nameof(SettingsFile<>)}] Failed to request save '{Path}': {e}"
                 );
@@ -99,13 +99,13 @@ public sealed class SettingsFile<T>(string path) where T : class, ISettingsFile,
         saveCts?.Cancel();
         try {
             saveTask?.Wait();
-        } catch(AggregateException) {
+        } catch (AggregateException) {
         }
         saveTask = null;
         saveCts = null;
         saveScheduled = false;
 
-        if(Data is IDisposable disposable) {
+        if (Data is IDisposable disposable) {
             disposable.Dispose();
         }
     }

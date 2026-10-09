@@ -12,7 +12,7 @@ public sealed class TagInvokeTests {
         public static int OptSecond(string a, int b = 7) => b;
         public static int SumAll(params int[] xs) {
             int total = 0;
-            foreach(int x in xs) total += x;
+            foreach (int x in xs) total += x;
             return total;
         }
         public static DayOfWeek EnumEcho(DayOfWeek d) => d;

@@ -19,7 +19,7 @@ public class ContentSizeFitterSettings : UnityComponentSettingsBase, ICopyable<C
 
     public override bool ToUnity(GameObject target) {
         var component = target.GetComponent<ContentSizeFitter>();
-        if(component == null) {
+        if (component == null) {
             return false;
         }
 
@@ -34,7 +34,7 @@ public class ContentSizeFitterSettings : UnityComponentSettingsBase, ICopyable<C
 
     public override bool FromUnity(GameObject source) {
         var component = source.GetComponent<ContentSizeFitter>();
-        if(component == null) {
+        if (component == null) {
             return false;
         }
 
@@ -47,20 +47,20 @@ public class ContentSizeFitterSettings : UnityComponentSettingsBase, ICopyable<C
     }
 
     public override void RefreshFx(GameObject target) {
-        if(!HasAnyFx) {
+        if (!HasAnyFx) {
             return;
         }
 
         var component = target.GetComponent<ContentSizeFitter>();
-        if(component == null) {
+        if (component == null) {
             return;
         }
 
         RefreshEnabled(component);
         bool changed = false;
-        if(FxUtil.Changed(ref _lastHorizontalFit, HorizontalFit.Value)) { component.horizontalFit = _lastHorizontalFit; changed = true; }
-        if(FxUtil.Changed(ref _lastVerticalFit, VerticalFit.Value)) { component.verticalFit = _lastVerticalFit; changed = true; }
-        if(changed) {
+        if (FxUtil.Changed(ref _lastHorizontalFit, HorizontalFit.Value)) { component.horizontalFit = _lastHorizontalFit; changed = true; }
+        if (FxUtil.Changed(ref _lastVerticalFit, VerticalFit.Value)) { component.verticalFit = _lastVerticalFit; changed = true; }
+        if (changed) {
             LayoutRebuilder.MarkLayoutForRebuild(target.GetComponent<RectTransform>());
         }
     }
@@ -73,7 +73,7 @@ public class ContentSizeFitterSettings : UnityComponentSettingsBase, ICopyable<C
     }
 
     public override void Deserialize(JToken token) {
-        if(token == null) {
+        if (token == null) {
             return;
         }
 

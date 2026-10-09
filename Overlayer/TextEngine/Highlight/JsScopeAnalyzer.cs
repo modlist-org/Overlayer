@@ -30,40 +30,40 @@ public static class JsScopeAnalyzer {
 
         switch (node) {
             case VariableDeclaration declaration: {
-                string detail = declaration.Kind.ToString().ToLowerInvariant();
-                foreach (var declarator in declaration.Declarations) {
-                    AddIdentifier(declarator.Id, detail, false, declared, seen);
-                }
+                    string detail = declaration.Kind.ToString().ToLowerInvariant();
+                    foreach (var declarator in declaration.Declarations) {
+                        AddIdentifier(declarator.Id, detail, false, declared, seen);
+                    }
 
-                break;
-            }
+                    break;
+                }
             case FunctionDeclaration function: {
-                if (function.Id != null) {
-                    AddName(function.Id.Name, "function", true, declared, seen);
-                }
+                    if (function.Id != null) {
+                        AddName(function.Id.Name, "function", true, declared, seen);
+                    }
 
-                AddParameters(function.Params, declared, seen);
-                break;
-            }
+                    AddParameters(function.Params, declared, seen);
+                    break;
+                }
             case ClassDeclaration cls: {
-                if (cls.Id != null) {
-                    AddName(cls.Id.Name, "class", false, declared, seen);
-                }
+                    if (cls.Id != null) {
+                        AddName(cls.Id.Name, "class", false, declared, seen);
+                    }
 
-                break;
-            }
+                    break;
+                }
             case CatchClause catcher: {
-                AddIdentifier(catcher.Param, "param", false, declared, seen);
-                break;
-            }
+                    AddIdentifier(catcher.Param, "param", false, declared, seen);
+                    break;
+                }
             case ArrowFunctionExpression arrow: {
-                AddParameters(arrow.Params, declared, seen);
-                break;
-            }
+                    AddParameters(arrow.Params, declared, seen);
+                    break;
+                }
             case FunctionExpression expression: {
-                AddParameters(expression.Params, declared, seen);
-                break;
-            }
+                    AddParameters(expression.Params, declared, seen);
+                    break;
+                }
         }
 
         foreach (var child in node.ChildNodes) {

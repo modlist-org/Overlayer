@@ -66,7 +66,7 @@ public class RectTransformSettings : UnityComponentSettingsBase, ICopyable<RectT
 
     public override bool ToUnity(GameObject target) {
         var com = target.GetComponent<RectTransform>();
-        if(com == null) {
+        if (com == null) {
             return false;
         }
 
@@ -76,7 +76,7 @@ public class RectTransformSettings : UnityComponentSettingsBase, ICopyable<RectT
         _lastAnchoredPosition = AnchoredPosition.Value;
         _lastAnchoredPositionZ = AnchoredPositionZ.Value;
         _lastSizeDelta = SizeDelta.Value;
-        if(!SizeDelta.UseFx && TryPositionSizeOverflow(out var overflowSize)) {
+        if (!SizeDelta.UseFx && TryPositionSizeOverflow(out var overflowSize)) {
             _lastSizeDelta = overflowSize;
         }
         var rotXY = RotationXY.Value;
@@ -96,7 +96,7 @@ public class RectTransformSettings : UnityComponentSettingsBase, ICopyable<RectT
 
     public override bool FromUnity(GameObject source) {
         var com = source.GetComponent<RectTransform>();
-        if(com == null) {
+        if (com == null) {
             return false;
         }
 
@@ -125,30 +125,30 @@ public class RectTransformSettings : UnityComponentSettingsBase, ICopyable<RectT
     }
 
     public override void RefreshFx(GameObject target) {
-        if(!HasAnyFx) {
+        if (!HasAnyFx) {
             return;
         }
 
         var com = target.GetComponent<RectTransform>();
-        if(com == null) {
+        if (com == null) {
             return;
         }
 
-        if(AnchorMin.HasFx) if(FxUtil.Changed(ref _lastAnchorMin, AnchorMin.Value)) com.anchorMin = _lastAnchorMin;
-        if(AnchorMax.HasFx) if(FxUtil.Changed(ref _lastAnchorMax, AnchorMax.Value)) com.anchorMax = _lastAnchorMax;
-        if(Pivot.HasFx) if(FxUtil.Changed(ref _lastPivot, Pivot.Value)) com.pivot = _lastPivot;
+        if (AnchorMin.HasFx) if (FxUtil.Changed(ref _lastAnchorMin, AnchorMin.Value)) com.anchorMin = _lastAnchorMin;
+        if (AnchorMax.HasFx) if (FxUtil.Changed(ref _lastAnchorMax, AnchorMax.Value)) com.anchorMax = _lastAnchorMax;
+        if (Pivot.HasFx) if (FxUtil.Changed(ref _lastPivot, Pivot.Value)) com.pivot = _lastPivot;
         var position = com.anchoredPosition3D;
         var xy = AnchoredPosition.HasFx ? AnchoredPosition.Value : new Vector2(position.x, position.y);
         var z = AnchoredPositionZ.HasFx ? AnchoredPositionZ.Value : position.z;
         bool posChanged = AnchoredPosition.HasFx && !_lastAnchoredPosition.Equals(xy);
         bool zChanged = AnchoredPositionZ.HasFx && !_lastAnchoredPositionZ.Equals(z);
-        if(posChanged || zChanged) {
+        if (posChanged || zChanged) {
             _lastAnchoredPosition = xy;
             _lastAnchoredPositionZ = z;
             com.anchoredPosition3D = new Vector3(_lastAnchoredPosition.x, _lastAnchoredPosition.y, _lastAnchoredPositionZ);
         }
-        if(SizeDelta.HasFx) if(FxUtil.Changed(ref _lastSizeDelta, SizeDelta.Value)) com.sizeDelta = _lastSizeDelta;
-        if(!SizeDelta.UseFx && AnchoredPosition.HasFx && TryPositionSizeOverflow(out var overflowSize)
+        if (SizeDelta.HasFx) if (FxUtil.Changed(ref _lastSizeDelta, SizeDelta.Value)) com.sizeDelta = _lastSizeDelta;
+        if (!SizeDelta.UseFx && AnchoredPosition.HasFx && TryPositionSizeOverflow(out var overflowSize)
             && FxUtil.Changed(ref _lastSizeDelta, overflowSize)) {
             com.sizeDelta = _lastSizeDelta;
         }
@@ -157,12 +157,12 @@ public class RectTransformSettings : UnityComponentSettingsBase, ICopyable<RectT
         var rotationZ = Rotation.HasFx ? Rotation.Value : angles.z;
         bool rotChanged = RotationXY.HasFx && !_lastRotationXY.Equals(rotationXY);
         bool rotZChanged = Rotation.HasFx && !_lastRotation.Equals(rotationZ);
-        if(rotChanged || rotZChanged) {
+        if (rotChanged || rotZChanged) {
             _lastRotationXY = rotationXY;
             _lastRotation = rotationZ;
             com.localEulerAngles = new Vector3(_lastRotationXY.x, _lastRotationXY.y, _lastRotation);
         }
-        if(Scale.HasFx) if(FxUtil.Changed(ref _lastScale, Scale.Value)) com.localScale = _lastScale;
+        if (Scale.HasFx) if (FxUtil.Changed(ref _lastScale, Scale.Value)) com.localScale = _lastScale;
     }
 
     public override JToken Serialize() {
@@ -197,14 +197,14 @@ public class RectTransformSettings : UnityComponentSettingsBase, ICopyable<RectT
 
     private bool TryPositionSizeOverflow(out Vector2 size) {
         size = default;
-        if(SizeDelta.UseFx || !AnchoredPosition.UseFx) {
+        if (SizeDelta.UseFx || !AnchoredPosition.UseFx) {
             return false;
         }
         try {
-            if(!FxValue.TryEvaluateJs(FxValue.WrapJsBlock(AnchoredPosition.Expression), out var result)) {
+            if (!FxValue.TryEvaluateJs(FxValue.WrapJsBlock(AnchoredPosition.Expression), out var result)) {
                 return false;
             }
-            if(result is not System.Collections.IList list || list.Count < 4) {
+            if (result is not System.Collections.IList list || list.Count < 4) {
                 return false;
             }
             size = new Vector2(

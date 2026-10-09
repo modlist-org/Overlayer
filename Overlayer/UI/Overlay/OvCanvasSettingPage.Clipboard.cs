@@ -29,17 +29,17 @@ public partial class OvCanvasSettingPage {
     private readonly System.Collections.Generic.List<(RectTransform Card, UnityComponentSettingsBase Settings)> componentCards = [];
 
     internal void Tick() {
-        if(!GameObject.activeInHierarchy || !CanvasGroup.blocksRaycasts || currentCanvas == null || IsTyping()) {
+        if (!GameObject.activeInHierarchy || !CanvasGroup.blocksRaycasts || currentCanvas == null || IsTyping()) {
             return;
         }
-        if(!O5Input.GetKey(KeyCode.LeftControl) && !O5Input.GetKey(KeyCode.RightControl)
+        if (!O5Input.GetKey(KeyCode.LeftControl) && !O5Input.GetKey(KeyCode.RightControl)
             && !O5Input.GetKey(KeyCode.LeftCommand) && !O5Input.GetKey(KeyCode.RightCommand)) {
             return;
         }
 
-        if(O5Input.GetKeyDown(KeyCode.C)) {
+        if (O5Input.GetKeyDown(KeyCode.C)) {
             Copy();
-        } else if(O5Input.GetKeyDown(KeyCode.V)) {
+        } else if (O5Input.GetKeyDown(KeyCode.V)) {
             Paste();
         }
     }
@@ -51,12 +51,12 @@ public partial class OvCanvasSettingPage {
     }
 
     private void Copy() {
-        if(selectedObject == null) {
+        if (selectedObject == null) {
             return;
         }
 
         var hovered = HoveredComponent();
-        if(hovered != null) {
+        if (hovered != null) {
             copiedObject = null;
             copiedComponentType = hovered.GetType();
             copiedComponent = hovered.Serialize();
@@ -72,8 +72,8 @@ public partial class OvCanvasSettingPage {
 
     private UnityComponentSettingsBase HoveredComponent() {
         Vector2 mouse = O5Input.MousePosition;
-        foreach(var (card, settings) in componentCards) {
-            if(card != null && RectTransformUtility.RectangleContainsScreenPoint(card, mouse, null)) {
+        foreach (var (card, settings) in componentCards) {
+            if (card != null && RectTransformUtility.RectangleContainsScreenPoint(card, mouse, null)) {
                 return settings;
             }
         }
@@ -81,7 +81,7 @@ public partial class OvCanvasSettingPage {
     }
 
     private void Paste() {
-        if(copiedObject != null) {
+        if (copiedObject != null) {
             var obj = new OvObject();
             obj.Deserialize(copiedObject);
             InsertAfter(selectedObject, obj);
@@ -92,28 +92,28 @@ public partial class OvCanvasSettingPage {
             return;
         }
 
-        if(copiedComponent == null || selectedObject == null) {
+        if (copiedComponent == null || selectedObject == null) {
             return;
         }
 
         var config = selectedObject.Config;
         // Same rules as the Add Component dropdown.
-        if((copiedComponentType == typeof(TextMeshProUGUISettings) && config.ImageConfig != null)
+        if ((copiedComponentType == typeof(TextMeshProUGUISettings) && config.ImageConfig != null)
             || (copiedComponentType == typeof(ImageSettings) && config.TextConfig != null)
             || (copiedComponentType == typeof(ColorRangeSettings) && config.TextConfig == null)) {
             return;
         }
 
         var field = typeof(OvObjectSettings).GetFields().FirstOrDefault(f => f.FieldType == copiedComponentType);
-        if(field == null) {
+        if (field == null) {
             return;
         }
         var settings = (ISettingsFile)Activator.CreateInstance(copiedComponentType);
         settings.Deserialize(copiedComponent);
         field.SetValue(config, settings);
-        if(copiedComponentType == typeof(TextMeshProUGUISettings)) {
+        if (copiedComponentType == typeof(TextMeshProUGUISettings)) {
             config.TextEngineConfig = new OvTextSettings();
-            if(copiedTextEngine != null) {
+            if (copiedTextEngine != null) {
                 config.TextEngineConfig.Deserialize(copiedTextEngine);
             }
         }

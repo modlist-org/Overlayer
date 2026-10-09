@@ -11,7 +11,7 @@ public sealed class FxStore {
             return fallback;
         }
 
-        lock(_lock) {
+        lock (_lock) {
             return _values.TryGetValue(key, out var value) ? value : fallback;
         }
     }
@@ -21,7 +21,7 @@ public sealed class FxStore {
             return value;
         }
 
-        lock(_lock) {
+        lock (_lock) {
             if (_values.Count >= MaxEntries && !_values.ContainsKey(key)) {
                 _values.Clear();
             }
@@ -36,7 +36,7 @@ public sealed class FxStore {
             return false;
         }
 
-        lock(_lock) {
+        lock (_lock) {
             return _values.ContainsKey(key);
         }
     }
@@ -46,19 +46,19 @@ public sealed class FxStore {
             return false;
         }
 
-        lock(_lock) {
+        lock (_lock) {
             return _values.Remove(key);
         }
     }
 
     public void Clear() {
-        lock(_lock) {
+        lock (_lock) {
             _values.Clear();
         }
     }
 
     public string[] Keys() {
-        lock(_lock) {
+        lock (_lock) {
             var keys = new List<string>(_values.Keys);
             return keys.ToArray();
         }
@@ -66,7 +66,7 @@ public sealed class FxStore {
 
     public int Count {
         get {
-            lock(_lock) {
+            lock (_lock) {
                 return _values.Count;
             }
         }

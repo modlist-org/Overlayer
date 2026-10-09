@@ -14,7 +14,7 @@ public class MaskSettings : UnityComponentSettingsBase, ICopyable<MaskSettings> 
 
     public override bool ToUnity(GameObject target) {
         var com = target.GetComponent<Mask>();
-        if(com == null) {
+        if (com == null) {
             return false;
         }
 
@@ -27,7 +27,7 @@ public class MaskSettings : UnityComponentSettingsBase, ICopyable<MaskSettings> 
 
     public override bool FromUnity(GameObject source) {
         var com = source.GetComponent<Mask>();
-        if(com == null) {
+        if (com == null) {
             return false;
         }
 
@@ -39,17 +39,17 @@ public class MaskSettings : UnityComponentSettingsBase, ICopyable<MaskSettings> 
     }
 
     public override void RefreshFx(GameObject target) {
-        if(!HasAnyFx) {
+        if (!HasAnyFx) {
             return;
         }
 
         var com = target.GetComponent<Mask>();
-        if(com == null) {
+        if (com == null) {
             return;
         }
 
         RefreshEnabled(com);
-        if(FxUtil.Changed(ref _lastShowMaskGraphic, ShowMaskGraphic.Value)) com.showMaskGraphic = _lastShowMaskGraphic;
+        if (FxUtil.Changed(ref _lastShowMaskGraphic, ShowMaskGraphic.Value)) com.showMaskGraphic = _lastShowMaskGraphic;
     }
 
     public override JToken Serialize() {

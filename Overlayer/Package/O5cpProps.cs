@@ -36,7 +36,7 @@ public sealed class O5cpProps {
 
     public static O5cpProps Parse(JToken token) {
         var props = new O5cpProps();
-        if(token is not JObject obj) {
+        if (token is not JObject obj) {
             return props;
         }
         props.ThumbnailPath = (string)obj["thumbnailPath"] ?? string.Empty;
@@ -44,10 +44,10 @@ public sealed class O5cpProps {
         props.Description = (string)obj["description"] ?? string.Empty;
         props.Version = (string)obj["version"] ?? "1.0.0";
         props.License = (string)obj["license"] ?? string.Empty;
-        if(obj["extraScripts"] is JArray arr) {
-            foreach(var item in arr) {
+        if (obj["extraScripts"] is JArray arr) {
+            foreach (var item in arr) {
                 string path = item?.Value<string>();
-                if(!string.IsNullOrWhiteSpace(path) && !props.ExtraScripts.Contains(path)) {
+                if (!string.IsNullOrWhiteSpace(path) && !props.ExtraScripts.Contains(path)) {
                     props.ExtraScripts.Add(path);
                 }
             }

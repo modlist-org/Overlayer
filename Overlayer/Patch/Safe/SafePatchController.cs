@@ -6,7 +6,7 @@ public static class SafePatchController {
     private static readonly List<SafeConditionalPatch> patches = [];
 
     public static void Add(SafeConditionalPatch patch) {
-        if(!patches.Contains(patch)) {
+        if (!patches.Contains(patch)) {
             patches.Add(patch);
             MainCore.Log.Msg($"[{nameof(SafePatchController)}] {patch.GetType().Name}");
         } else {
@@ -15,12 +15,12 @@ public static class SafePatchController {
     }
 
     public static void Remove(SafeConditionalPatch patch) {
-        if(!patches.Contains(patch)) {
+        if (!patches.Contains(patch)) {
             MainCore.Log.Wrn($"[{nameof(SafePatchController)}] Cannot remove patch. Not found in controller: {patch.GetType().Name}");
             return;
         }
 
-        if(patch.IsApplied) {
+        if (patch.IsApplied) {
             patch.Remove();
         }
 
@@ -34,9 +34,9 @@ public static class SafePatchController {
     }
 
     public static SafeConditionalPatch Find(Type patchType) {
-        lock(patches) {
-            foreach(var patch in patches) {
-                if(patch != null && patch.GetType() == patchType) {
+        lock (patches) {
+            foreach (var patch in patches) {
+                if (patch != null && patch.GetType() == patchType) {
                     return patch;
                 }
             }
@@ -45,13 +45,13 @@ public static class SafePatchController {
     }
 
     public static void ApplyAll() {
-        foreach(var patch in patches) {
+        foreach (var patch in patches) {
             patch.Apply();
         }
     }
 
     public static void UnloadAll() {
-        foreach(var patch in patches) {
+        foreach (var patch in patches) {
             patch.Remove();
         }
     }

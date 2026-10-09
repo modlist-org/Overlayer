@@ -80,14 +80,14 @@ internal static class PageJS {
 
         CreateDisabledPanel(root);
         MainCore.OnModEnabledChanged += (isEnabled, isDispose) => {
-            if(!isDispose) {
+            if (!isDispose) {
                 ToggleUIStateByMod(isEnabled);
             }
         };
         ToggleUIStateByMod(MainCore.IsModEnabled);
 
         MenuFactory.OnStateChanged += state => {
-            if(state == (int)OriginalMenuState.JS) {
+            if (state == (int)OriginalMenuState.JS) {
                 Refresh();
             }
         };
@@ -100,7 +100,7 @@ internal static class PageJS {
     }
 
     private static void ToggleUIStateByMod(bool isEnabled) {
-        if(disabledPanel == null) {
+        if (disabledPanel == null) {
             return;
         }
         disabledPanel.SetActive(!isEnabled);
@@ -142,7 +142,7 @@ internal static class PageJS {
     private static async Task ReloadAllAsync() {
         try {
             await MainCore.V8.ReloadScriptsAsync();
-        } catch(Exception e) {
+        } catch (Exception e) {
             MainCore.Log.Err($"[JS] Reload failed: {e.Message}");
         } finally {
             QueueRefresh();
@@ -154,10 +154,10 @@ internal static class PageJS {
         try {
             await MainCore.V8.SetScriptEnabledAsync(file, enabled);
             success = true;
-        } catch(Exception e) {
+        } catch (Exception e) {
             MainCore.Log.Err($"[JS] Script toggle failed: {e.Message}");
         } finally {
-            if(success) {
+            if (success) {
                 MainThread.Enqueue(() => RefreshFileStatus(file));
             } else {
                 QueueRefresh();
@@ -166,14 +166,14 @@ internal static class PageJS {
     }
 
     private static void RefreshFileStatus(string file) {
-        if(listContent == null) {
+        if (listContent == null) {
             return;
         }
-        if(!scriptStatus.TryGetValue(file, out var status) || status == null) {
+        if (!scriptStatus.TryGetValue(file, out var status) || status == null) {
             Refresh();
             return;
         }
-        if(!MainCore.V8.IsScriptEnabled(file)) {
+        if (!MainCore.V8.IsScriptEnabled(file)) {
             status.text = T("JS_DISABLED", "Disabled");
             return;
         }
@@ -183,7 +183,7 @@ internal static class PageJS {
     }
 
     private static void QueueRefresh() {
-        if(Interlocked.Exchange(ref refreshQueued, 1) != 0) {
+        if (Interlocked.Exchange(ref refreshQueued, 1) != 0) {
             return;
         }
         MainThread.Enqueue(() => {
@@ -195,16 +195,16 @@ internal static class PageJS {
     private static void OpenFolder() {
         try {
             Application.OpenURL("file://" + MainCore.V8.ScriptFolderPath);
-        } catch(Exception e) {
+        } catch (Exception e) {
             MainCore.Log.Err($"[JS] Cannot open script folder: {e.Message}");
         }
     }
 
     public static void Refresh() {
-        if(listContent == null) {
+        if (listContent == null) {
             return;
         }
-        for(int i = listContent.childCount - 1; i >= 0; i--) {
+        for (int i = listContent.childCount - 1; i >= 0; i--) {
             UnityEngine.Object.Destroy(listContent.GetChild(i).gameObject);
         }
         scriptStatus.Clear();
@@ -220,20 +220,20 @@ internal static class PageJS {
         var folders = files
             .GroupBy(file => FolderOf(JSScriptLoader.RelativeName(root, file)), StringComparer.OrdinalIgnoreCase)
             .OrderBy(group => group.Key, StringComparer.OrdinalIgnoreCase);
-        foreach(var folder in folders) {
+        foreach (var folder in folders) {
             string[] folderFiles = folder.OrderBy(Path.GetFileName, StringComparer.OrdinalIgnoreCase).ToArray();
             bool inFolder = folder.Key.Length > 0;
-            if(inFolder) {
+            if (inFolder) {
                 BuildFolderRow(folder.Key, folderFiles);
-                if(collapsedFolders.Contains(folder.Key)) {
+                if (collapsedFolders.Contains(folder.Key)) {
                     continue;
                 }
             }
-            foreach(string file in folderFiles) {
+            foreach (string file in folderFiles) {
                 BuildFileRow(file, MainCore.V8.IsScriptEnabled(file), inFolder);
             }
         }
-        if(diagText != null) {
+        if (diagText != null) {
             int errors = MainCore.V8.LoaderDiagnostics.Count(d => !O5cpFormat.IsPackageScript(d.FilePath));
             diagText.text = errors == 0
                 ? T("JS_NO_ERRORS", "No script errors.")
@@ -262,7 +262,7 @@ internal static class PageJS {
         }, $"js_folder_enabled_{folder}", T("JS_TOGGLE_FOLDER", "Enable/disable all scripts in folder"));
 
         var header = FolderHeader.Create(row, folder, files.Length, collapsedFolders.Contains(folder), () => {
-            if(!collapsedFolders.Remove(folder)) {
+            if (!collapsedFolders.Remove(folder)) {
                 collapsedFolders.Add(folder);
             }
             Refresh();
@@ -330,11 +330,11 @@ internal static class PageJS {
             string.Empty,
             id);
         var hoverOutline = toggle.Rect.transform.Find("Hover");
-        if(hoverOutline != null) {
+        if (hoverOutline != null) {
             UnityEngine.Object.Destroy(hoverOutline.gameObject);
         }
         var toggleBg = toggle.Rect.GetComponent<Image>();
-        if(toggleBg != null) {
+        if (toggleBg != null) {
             toggleBg.color = Color.clear;
         }
         toggleGo.transform.AddToolTip(O5KitAdapters.Ctx, () => tip);

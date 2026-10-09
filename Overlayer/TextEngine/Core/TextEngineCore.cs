@@ -18,7 +18,7 @@ public sealed class TextEngineCore {
     public string Text {
         get;
         set {
-            if(field == value) {
+            if (field == value) {
                 return;
             }
 
@@ -34,8 +34,8 @@ public sealed class TextEngineCore {
     public TextEngineState State => state;
 
     public CompileDiagnostic[] GetDiagnostics() {
-        lock(_lock) {
-            if(state == TextEngineState.Error) {
+        lock (_lock) {
+            if (state == TextEngineState.Error) {
                 return engineDiagnostic.HasValue ? [engineDiagnostic.Value] : [];
             }
 
@@ -45,7 +45,7 @@ public sealed class TextEngineCore {
     }
 
     private void StartCompile() {
-        lock(_lock) {
+        lock (_lock) {
             state = TextEngineState.Compiling;
             engineDiagnostic = null;
 
@@ -60,7 +60,7 @@ public sealed class TextEngineCore {
             var tags = Parser.Parse(snapshot);
             var newSegments = tags.Count > 0 ? new CompiledSegment[tags.Count] : [];
 
-            for(int i = 0; i < tags.Count; i++) {
+            for (int i = 0; i < tags.Count; i++) {
                 var t = tags[i];
                 newSegments[i] = new CompiledSegment(
                     t.Index,
@@ -72,9 +72,9 @@ public sealed class TextEngineCore {
             }
 
             CompiledSegment[] oldSegments;
-            lock(_lock) {
-                if(generation != compileGeneration) {
-                    foreach(var seg in newSegments) {
+            lock (_lock) {
+                if (generation != compileGeneration) {
+                    foreach (var seg in newSegments) {
                         seg.Replacer.Dispose();
                     }
 
@@ -86,14 +86,14 @@ public sealed class TextEngineCore {
                 state = TextEngineState.Ready;
             }
 
-            if(oldSegments != null) {
-                foreach(var seg in oldSegments) {
+            if (oldSegments != null) {
+                foreach (var seg in oldSegments) {
                     seg.Replacer.Dispose();
                 }
             }
-        } catch(Exception e) {
-            lock(_lock) {
-                if(generation != compileGeneration) {
+        } catch (Exception e) {
+            lock (_lock) {
+                if (generation != compileGeneration) {
                     return;
                 }
 
@@ -114,19 +114,19 @@ public sealed class TextEngineCore {
     public string Get() {
         string text = Text ?? string.Empty;
 
-        if(state == TextEngineState.Compiling) {
+        if (state == TextEngineState.Compiling) {
             return $"[ {MainCore.Tr.Get("COMPILING", "Compiling")}{GetLoadingText()} ]";
         }
 
         var segs = segments;
 
-        if(segs == null || segs.Length == 0) {
+        if (segs == null || segs.Length == 0) {
             return text;
         }
 
         var reps = memoSegs == segs && memoReps != null ? scratchReps ??= new string[segs.Length] : new string[segs.Length];
         bool same = memoSegs == segs && ReferenceEquals(memoText, text) && memoReps != null;
-        for(int i = 0; i < segs.Length; i++) {
+        for (int i = 0; i < segs.Length; i++) {
             string r;
             try {
                 r = segs[i].Replacer.Get();
@@ -134,27 +134,27 @@ public sealed class TextEngineCore {
                 r = null;
             }
             reps[i] = r;
-            if(same && !ReferenceEquals(r, memoReps[i])) {
+            if (same && !ReferenceEquals(r, memoReps[i])) {
                 same = false;
             }
         }
-        if(same) {
+        if (same) {
             return memoResult;
         }
 
         var sb = new StringBuilder(text.Length);
         int last = 0;
 
-        for(int i = 0; i < segs.Length; i++) {
+        for (int i = 0; i < segs.Length; i++) {
             var s = segs[i];
             int from = Math.Clamp(s.Index, 0, text.Length);
-            if(from > last) {
+            if (from > last) {
                 sb.Append(text, last, from - last);
             }
             string replacement = reps[i];
-            if(replacement == null) {
+            if (replacement == null) {
                 int end = Math.Clamp(s.Index + s.Length, 0, text.Length);
-                if(end > from) {
+                if (end > from) {
                     sb.Append(text, from, end - from);
                 }
                 last = Math.Max(last, end);
@@ -164,7 +164,7 @@ public sealed class TextEngineCore {
             }
         }
 
-        if(last < text.Length) {
+        if (last < text.Length) {
             sb.Append(text, last, text.Length - last);
         }
 
@@ -192,9 +192,9 @@ public sealed class TextEngineCore {
     }
 
     public void Dispose() {
-        lock(_lock) {
-            if(segments != null) {
-                foreach(var seg in segments) {
+        lock (_lock) {
+            if (segments != null) {
+                foreach (var seg in segments) {
                     seg.Replacer.Dispose();
                 }
                 segments = null;

@@ -45,7 +45,7 @@ internal static class PageSettings {
 
         var inputRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
         var findInput =
-        O5Factory.Input(O5KitAdapters.Ctx, 
+        O5Factory.Input(O5KitAdapters.Ctx,
             inputRow,
             null,
             null,
@@ -53,25 +53,25 @@ internal static class PageSettings {
                 bool isBlank = string.IsNullOrWhiteSpace(value);
                 Dictionary<GameObject, bool> labelActivationMap = [];
 
-                foreach(var pair in objects.Where(pair => pair.Value.LabelRow != null)) {
+                foreach (var pair in objects.Where(pair => pair.Value.LabelRow != null)) {
                     labelActivationMap[pair.Value.LabelRow] = isBlank;
                 }
 
                 string normalizedQuery = StringUtils.Normalize(value);
 
-                if(MainCore.Conf.Language.Value == "ko-KR") {
+                if (MainCore.Conf.Language.Value == "ko-KR") {
                     normalizedQuery = StringUtils.NormalizeToHangulChosung(normalizedQuery);
                 }
 
-                foreach(var (labelLoc, valueTuple) in objects) {
+                foreach (var (labelLoc, valueTuple) in objects) {
                     var (labelRow, mainRow) = valueTuple;
 
-                    if(labelRow == null || mainRow == null) {
+                    if (labelRow == null || mainRow == null) {
                         continue;
                     }
 
                     string normalizedTarget = labelLoc != null ? StringUtils.Normalize(labelLoc.Value) : string.Empty;
-                    if(MainCore.Conf.Language.Value == "ko-KR" && !string.IsNullOrEmpty(normalizedTarget)) {
+                    if (MainCore.Conf.Language.Value == "ko-KR" && !string.IsNullOrEmpty(normalizedTarget)) {
                         normalizedTarget = StringUtils.NormalizeToHangulChosung(normalizedTarget);
                     }
 
@@ -83,12 +83,12 @@ internal static class PageSettings {
 
                     mainRow.SetActive(isMainMatch);
 
-                    if(isMainMatch) {
+                    if (isMainMatch) {
                         labelActivationMap[labelRow] = true;
                     }
                 }
 
-                foreach(var kvp in labelActivationMap) {
+                foreach (var kvp in labelActivationMap) {
                     kvp.Key.SetActive(kvp.Value);
                 }
 
@@ -109,13 +109,13 @@ internal static class PageSettings {
         const float languageReloadWidth = 240f;
         const float languageControlSpacing = 8f;
         var langRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
-        languageDropdown = O5Factory.DropDown(O5KitAdapters.Ctx, 
+        languageDropdown = O5Factory.DropDown(O5KitAdapters.Ctx,
             langRow,
             null,
             MainCore.Tr.Language,
             langs,
             lang => {
-                if(lang == Translator.FALLBACK_LANGUAGE) {
+                if (lang == Translator.FALLBACK_LANGUAGE) {
                     return "DEFAULT";
                 }
 
@@ -136,7 +136,7 @@ internal static class PageSettings {
             "language_dropdown"
         );
         languageDropdown.Rect.offsetMax = new Vector2(-(languageReloadWidth + languageControlSpacing), 0f);
-        var langBtn = O5Factory.Button(O5KitAdapters.Ctx, 
+        var langBtn = O5Factory.Button(O5KitAdapters.Ctx,
             langRow,
             () => { },
             "Reload",
@@ -172,7 +172,7 @@ internal static class PageSettings {
         var overlayerTextTr = overlayerText.gameObject.AddComponent<TextLocalization>().Init("OVERLAYER", "Overlayer");
 
         var startupRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
-        var startupToggle = O5Factory.Toggle(O5KitAdapters.Ctx, 
+        var startupToggle = O5Factory.Toggle(O5KitAdapters.Ctx,
             startupRow,
             defSet.ShowOnStartup,
             MainCore.Conf.ShowOnStartup,
@@ -216,7 +216,7 @@ internal static class PageSettings {
         advTooltipToggle.SetBlocked(!MainCore.Conf.Tooltip.Value);
 
         var middleClickRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
-        O5Toggle middleClickToggle = O5Factory.Toggle(O5KitAdapters.Ctx, 
+        O5Toggle middleClickToggle = O5Factory.Toggle(O5KitAdapters.Ctx,
             middleClickRow,
             defSet.MiddleClickToDefault,
             MainCore.Conf.MiddleClickToDefault,
@@ -238,7 +238,7 @@ internal static class PageSettings {
         ITweenHandle scaleSeq = null;
 
         var uiScaleRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
-        var uiScale = O5Factory.Slider(O5KitAdapters.Ctx, 
+        var uiScale = O5Factory.Slider(O5KitAdapters.Ctx,
             uiScaleRow,
             defSet.UIScale,
             0.8f,
@@ -287,7 +287,7 @@ internal static class PageSettings {
         objects[uiScaleTr] = (overlayerText.gameObject, uiScaleRow.gameObject);
 
         var sliderSensitivityRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
-        var sliderSensitivity = O5Factory.Slider(O5KitAdapters.Ctx, 
+        var sliderSensitivity = O5Factory.Slider(O5KitAdapters.Ctx,
             sliderSensitivityRow,
             defSet.SliderSensitivity,
             0.1f,
@@ -346,7 +346,7 @@ internal static class PageSettings {
     private static Action refreshUpdates;
 
     private static void BuildUpdates(GameObject content, CoreSettings defSet) {
-        if(!UpdateService.Supported) {
+        if (!UpdateService.Supported) {
             return;
         }
 
@@ -419,7 +419,7 @@ internal static class PageSettings {
             checkBtn.SetBlocked(status is UpdateStatus.Checking or UpdateStatus.Installing or UpdateStatus.Installed);
             installBtn.SetBlocked(status != UpdateStatus.Available);
         };
-        if(!updatesHooked) {
+        if (!updatesHooked) {
             updatesHooked = true;
             UpdateService.OnChanged += () => refreshUpdates?.Invoke();
             MainCore.Tr.OnLanguageChanged += _ => refreshUpdates?.Invoke();
@@ -439,11 +439,11 @@ internal static class PageSettings {
 
     private static void BuildFontPickers(GameObject content, Dictionary<TextLocalization, (GameObject, GameObject)> objects, TextMeshProUGUI overlayerText) {
         fontOptionRefreshers.Clear();
-        if(!fontRefreshHooked) {
+        if (!fontRefreshHooked) {
             fontRefreshHooked = true;
             Overlayer.UI.Factory.MenuFactory.OnStateChanged += state => {
-                if(state == (int)Overlayer.UI.OriginalMenuState.Settings) {
-                    foreach(var refresh in fontOptionRefreshers.ToArray()) {
+                if (state == (int)Overlayer.UI.OriginalMenuState.Settings) {
+                    foreach (var refresh in fontOptionRefreshers.ToArray()) {
                         refresh();
                     }
                 }
@@ -475,7 +475,7 @@ internal static class PageSettings {
             FontOptionLabel,
             value => {
                 fx.Value = value == BuiltinFontOption ? null : value;
-                if(fallbacks.Value != null) {
+                if (fallbacks.Value != null) {
                     fallbacks.Value.RemoveAll(k => k == fx.Value);
                 }
                 MainCore.ConfMgr.RequestSave();
@@ -486,7 +486,7 @@ internal static class PageSettings {
             key.ToLowerInvariant() + "_dropdown"
         );
         dropdown.Rect.AddToolTip(O5KitAdapters.Ctx, () => {
-            if(key == "SYSTEM_FONT") {
+            if (key == "SYSTEM_FONT") {
                 return MainCore.Tr.Get("DESC_SYSTEM_FONT",
                     "UI font, loaded from Resources. Empty means the built-in default.");
             }
@@ -523,8 +523,8 @@ internal static class PageSettings {
                 .Where(k => !O5cpFormat.IsPackageKey(k))
                 .OrderBy(k => k, StringComparer.OrdinalIgnoreCase)
                 .FirstOrDefault(k => k != fx.Value && !chain.Contains(k));
-            if(first == null) {
-                if(chain.Contains(BuiltinFontOption)) {
+            if (first == null) {
+                if (chain.Contains(BuiltinFontOption)) {
                     return;
                 }
                 first = BuiltinFontOption;
@@ -538,7 +538,7 @@ internal static class PageSettings {
         }, MainCore.Tr.Get("ADD_FALLBACK", "Add Fallback"), key.ToLowerInvariant() + "_fallback_add", 44f);
 
         fontOptionRefreshers.Add(() => {
-            if(dropdown != null && fallbackList.Root != null) {
+            if (dropdown != null && fallbackList.Root != null) {
                 dropdown.SetValues(FontOptions(includeBuiltin: true, includeKey: fx.Value));
                 RefreshFallbackRows(fallbackList, fallbacks, fx.Value);
             }
@@ -546,19 +546,19 @@ internal static class PageSettings {
     }
 
     private static void RefreshFallbackRows(FallbackListView list, FxValue<List<string>> fallbacks, string primaryKey) {
-        if(list?.Root == null) {
+        if (list?.Root == null) {
             return;
         }
-        foreach(var control in list.Controls) {
+        foreach (var control in list.Controls) {
             control?.Dispose();
         }
         list.Controls.Clear();
         GameObject listBox = list.Root;
-        for(int i = listBox.transform.childCount - 1; i >= 0; i--) {
+        for (int i = listBox.transform.childCount - 1; i >= 0; i--) {
             UnityEngine.Object.Destroy(listBox.transform.GetChild(i).gameObject);
         }
         var chain = fallbacks.Value ?? [];
-        for(int i = 0; i < chain.Count; i++) {
+        for (int i = 0; i < chain.Count; i++) {
             int index = i;
             RectTransform row = O5Factory.Row(O5KitAdapters.Ctx, listBox.transform, 44f);
             var rowLayout = row.gameObject.AddComponent<HorizontalLayoutGroup>();
@@ -576,7 +576,7 @@ internal static class PageSettings {
                 value => {
                     var next = fallbacks.Value ?? [];
                     string selected = value;
-                    if(index < next.Count && selected != primaryKey &&
+                    if (index < next.Count && selected != primaryKey &&
                         !next.Where((_, i) => i != index).Contains(selected)) {
                         next[index] = selected;
                         fallbacks.Value = next;
@@ -592,7 +592,7 @@ internal static class PageSettings {
             );
             list.Controls.Add(dropdown);
             var dropLe = dropdown.Rect.gameObject.GetComponent<LayoutElement>();
-            if(dropLe == null) {
+            if (dropLe == null) {
                 dropLe = dropdown.Rect.gameObject.AddComponent<LayoutElement>();
             }
             dropLe.flexibleWidth = 1f;
@@ -600,7 +600,7 @@ internal static class PageSettings {
             list.Controls.Add(IconButton(row, MainCore.Spr.Get(UISprite.Triangle128), 0f, $"fallback_down_{index}", () => MoveFallback(list, fallbacks, index, 1, primaryKey)));
             list.Controls.Add(IconButton(row, MainCore.Spr.Get(UISprite.X128), 0f, $"fallback_del_{index}", () => {
                 var next = fallbacks.Value ?? [];
-                if(index < next.Count) {
+                if (index < next.Count) {
                     next.RemoveAt(index);
                     fallbacks.Value = next;
                     MainCore.ConfMgr.RequestSave();
@@ -615,7 +615,7 @@ internal static class PageSettings {
     private static void MoveFallback(FallbackListView list, FxValue<List<string>> fallbacks, int index, int dir, string primaryKey) {
         var next = fallbacks.Value ?? [];
         int other = index + dir;
-        if(index < 0 || index >= next.Count || other < 0 || other >= next.Count) {
+        if (index < 0 || index >= next.Count || other < 0 || other >= next.Count) {
             return;
         }
         (next[index], next[other]) = (next[other], next[index]);
@@ -628,7 +628,7 @@ internal static class PageSettings {
 
     private static O5Button IconButton(Transform parent, Sprite sprite, float rotationDeg, string id, Action onClick) {
         var button = O5Factory.Button(O5KitAdapters.Ctx, parent, onClick, sprite, id, 5f, 44f);
-        if(rotationDeg != 0f && button.Icon != null) {
+        if (rotationDeg != 0f && button.Icon != null) {
             button.Icon.rectTransform.localEulerAngles = new Vector3(0f, 0f, rotationDeg);
         }
         var le = button.Rect.gameObject.GetComponent<LayoutElement>();
@@ -650,10 +650,10 @@ internal static class PageSettings {
             .OrderBy(k => UserResourceSettings.FolderOf(folders, k), StringComparer.OrdinalIgnoreCase)
             .ThenBy(k => k, StringComparer.OrdinalIgnoreCase)
             .ToList();
-        if(includeBuiltin) {
+        if (includeBuiltin) {
             keys.Insert(0, BuiltinFontOption);
         }
-        if(!string.IsNullOrEmpty(includeKey) && !keys.Contains(includeKey)) {
+        if (!string.IsNullOrEmpty(includeKey) && !keys.Contains(includeKey)) {
             keys.Add(includeKey);
         }
         return [.. keys];

@@ -106,7 +106,7 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
 
         rows = new CompletionRow[MaxItems];
 
-        for(int i = 0; i < MaxItems; i++) {
+        for (int i = 0; i < MaxItems; i++) {
             rows[i] = CreateRow(popup.transform, i);
         }
 
@@ -114,11 +114,11 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
     }
 
     public bool HandleKey(KeyCode key) {
-        if(!visible || matches.Count == 0) {
+        if (!visible || matches.Count == 0) {
             return false;
         }
 
-        switch(key) {
+        switch (key) {
             case KeyCode.Tab:
             case KeyCode.Return:
             case KeyCode.KeypadEnter:
@@ -143,27 +143,27 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
     }
 
     public void Refresh(bool composing) {
-        if(canvasRect == null || popupRect == null || !canvasRect.gameObject) {
+        if (canvasRect == null || popupRect == null || !canvasRect.gameObject) {
             return;
         }
 
         bool focused = input.isFocused || EventSystem.current?.currentSelectedGameObject == input.gameObject;
-        if(!focused) {
+        if (!focused) {
             Hide();
             return;
         }
 
-        if(composing || input.selectionAnchorPosition != input.selectionFocusPosition) {
+        if (composing || input.selectionAnchorPosition != input.selectionFocusPosition) {
             Hide();
             return;
         }
 
         string text = input.text ?? string.Empty;
         int caret = Math.Clamp(input.selectionFocusPosition, 0, text.Length);
-        if(suppressRefresh) {
+        if (suppressRefresh) {
             bool sameState = text == suppressedText && caret == suppressedCaret;
             suppressRefresh = false;
-            if(sameState) {
+            if (sameState) {
                 Hide();
                 return;
             }
@@ -173,7 +173,7 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
             ? TryGetJsExprContext(text, caret, out string query, out int start, out string qualifier)
             : TryGetContext(text, caret, out query, out start, out qualifier);
 
-        if(!hasContext) {
+        if (!hasContext) {
             Hide();
             return;
         }
@@ -182,7 +182,7 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
         replacementLength = caret - start;
         // Refresh runs every frame; only re-collect/re-score when the inputs change.
         // ponytail: tags registered while the popup stays open show up on the next keystroke.
-        if(visible && query == matchedQuery && qualifier == matchedQualifier && text == matchedText) {
+        if (visible && query == matchedQuery && qualifier == matchedQualifier && text == matchedText) {
             popupRect.SetAsLastSibling();
             PositionPopup(caret);
             return;
@@ -192,7 +192,7 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
         matchedQualifier = qualifier;
         matchedText = text;
         RebuildMatches(query, qualifier);
-        if(matches.Count == 0) {
+        if (matches.Count == 0) {
             Hide();
             return;
         }
@@ -243,7 +243,7 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
 
         var rowOvent = row.AddComponent<OventHandler>();
         rowOvent.OnClick += button => {
-            if(button == PointerEventData.InputButton.Left) {
+            if (button == PointerEventData.InputButton.Left) {
                 Accept(windowStart + index);
             }
         };
@@ -266,13 +266,13 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
     }
 
     private void SetHoveredRow(int rowIndex) {
-        if(!visible) {
+        if (!visible) {
             return;
         }
 
         int matchIndex = windowStart + rowIndex;
 
-        if(rowIndex < 0 ||
+        if (rowIndex < 0 ||
             rowIndex >= visibleRowCount ||
             matchIndex < 0 ||
             matchIndex >= matches.Count) {
@@ -286,7 +286,7 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
     private void ClearHoveredRow(int rowIndex) {
         int matchIndex = windowStart + rowIndex;
 
-        if(hoveredIndex != matchIndex) {
+        if (hoveredIndex != matchIndex) {
             return;
         }
 
@@ -301,18 +301,18 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
 
         matches.Clear();
         scored.Clear();
-        foreach(var item in CollectItems(qualifier)) {
+        foreach (var item in CollectItems(qualifier)) {
             int score = GetScore(query, item.Name);
-            if(string.IsNullOrEmpty(query) || score >= 45) {
+            if (string.IsNullOrEmpty(query) || score >= 45) {
                 scored.Add((item, score));
             }
         }
 
-        if(qualifier == null) {
-            foreach(var (name, detail, callable) in JsScopeAnalyzer.GetDeclared(input.text ?? string.Empty)) {
+        if (qualifier == null) {
+            foreach (var (name, detail, callable) in JsScopeAnalyzer.GetDeclared(input.text ?? string.Empty)) {
                 scored.RemoveAll(m => m.Item.Name == name);
                 int score = GetScore(query, name);
-                if(string.IsNullOrEmpty(query) || score >= 45) {
+                if (string.IsNullOrEmpty(query) || score >= 45) {
                     scored.Add((new JsItem(name, detail, callable), score));
                 }
             }
@@ -323,26 +323,26 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
             int score = right.Score.CompareTo(left.Score);
             return score != 0 ? score : StringComparer.OrdinalIgnoreCase.Compare(left.Item.Name, right.Item.Name);
         });
-        foreach(var entry in scored) {
+        foreach (var entry in scored) {
             matches.Add(entry.Item);
         }
         scored.Clear();
 
         selectedIndex = 0;
-        if(previousSelection != null) {
+        if (previousSelection != null) {
             int previousIndex = matches.FindIndex(item => item.Name == previousSelection);
-            if(previousIndex >= 0) {
+            if (previousIndex >= 0) {
                 selectedIndex = previousIndex;
             }
         }
     }
 
     private static IEnumerable<JsItem> CollectItems(string qualifier) {
-        if(qualifier != null) {
-            if(qualifier == "Tag") {
+        if (qualifier != null) {
+            if (qualifier == "Tag") {
                 var seen = new HashSet<string>(StringComparer.Ordinal);
-                foreach(var tag in Overlayer.Tag.Core.TagManager.GetAllTags()) {
-                    if(string.IsNullOrEmpty(tag.Name) || tag.IsHidden || !seen.Add(tag.Name)) {
+                foreach (var tag in Overlayer.Tag.Core.TagManager.GetAllTags()) {
+                    if (string.IsNullOrEmpty(tag.Name) || tag.IsHidden || !seen.Add(tag.Name)) {
                         continue;
                     }
 
@@ -352,24 +352,24 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
                 yield break;
             }
 
-            if(qualifier == "Math") {
-                foreach(var (name, callable) in MathMembers) {
+            if (qualifier == "Math") {
+                foreach (var (name, callable) in MathMembers) {
                     yield return new JsItem(name, "Math static", callable);
                 }
 
                 yield break;
             }
 
-            if(qualifier == "JSON") {
-                foreach(var (name, callable) in JsonMembers) {
+            if (qualifier == "JSON") {
+                foreach (var (name, callable) in JsonMembers) {
                     yield return new JsItem(name, "JSON static", callable);
                 }
 
                 yield break;
             }
 
-            if(qualifier == "Store") {
-                foreach(var (name, callable) in StoreMembers) {
+            if (qualifier == "Store") {
+                foreach (var (name, callable) in StoreMembers) {
                     yield return new JsItem(name, "Store", callable);
                 }
 
@@ -384,17 +384,17 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
         yield return new JsItem("Math", "namespace", false);
         yield return new JsItem("JSON", "namespace", false);
 
-        foreach(string keyword in Keywords) {
+        foreach (string keyword in Keywords) {
             yield return new JsItem(keyword, "keyword", false);
         }
 
-        foreach(string constant in Constants) {
+        foreach (string constant in Constants) {
             yield return new JsItem(constant, "constant", false);
         }
 
         var seenTags = new HashSet<string>(StringComparer.Ordinal);
-        foreach(var tag in Overlayer.Tag.Core.TagManager.GetAllTags()) {
-            if(string.IsNullOrEmpty(tag.Name) || tag.IsHidden || !seenTags.Add(tag.Name)) {
+        foreach (var tag in Overlayer.Tag.Core.TagManager.GetAllTags()) {
+            if (string.IsNullOrEmpty(tag.Name) || tag.IsHidden || !seenTags.Add(tag.Name)) {
                 continue;
             }
 
@@ -403,12 +403,12 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
     }
 
     private static string FormatTagDetail(Overlayer.Tag.Core.TagCore tag) {
-        if(tag.Parameters.Length == 0) {
+        if (tag.Parameters.Length == 0) {
             return string.IsNullOrEmpty(tag.ReturnType?.Name) ? "tag" : tag.ReturnType.Name;
         }
 
         var names = new List<string>();
-        for(int i = 0; i < tag.Parameters.Length; i++) {
+        for (int i = 0; i < tag.Parameters.Length; i++) {
             var parameter = tag.Parameters[i];
             names.Add(string.IsNullOrEmpty(parameter?.Name) ? $"arg{i + 1}" : parameter.Name);
         }
@@ -424,29 +424,29 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
                 : Fuzz.WeightedRatio(query, name);
 
     private void UpdateRows() {
-        if(matches.Count == 0) {
+        if (matches.Count == 0) {
             return;
         }
 
         int pageSize = Math.Max(1, visibleRowCount);
-        if(selectedIndex < windowStart) {
+        if (selectedIndex < windowStart) {
             windowStart = selectedIndex;
-        } else if(selectedIndex >= windowStart + pageSize) {
+        } else if (selectedIndex >= windowStart + pageSize) {
             windowStart = selectedIndex - pageSize + 1;
         }
 
-        for(int i = 0; i < rows.Length; i++) {
+        for (int i = 0; i < rows.Length; i++) {
             int matchIndex = windowStart + i;
             bool active = visible && i < visibleRowCount && matchIndex < matches.Count;
             rows[i].Rect.gameObject.SetActive(active);
-            if(!active) {
+            if (!active) {
                 continue;
             }
 
             JsItem item = matches[matchIndex];
-            if(matchIndex == selectedIndex) {
+            if (matchIndex == selectedIndex) {
                 rows[i].Image.color = UIColors.MenuHover;
-            } else if(matchIndex == hoveredIndex) {
+            } else if (matchIndex == hoveredIndex) {
                 Color hoverColor = UIColors.MenuHover;
                 hoverColor.a *= 0.35f;
                 rows[i].Image.color = hoverColor;
@@ -459,7 +459,7 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
     }
 
     private void Accept(int index) {
-        if(index < 0 || index >= matches.Count) {
+        if (index < 0 || index >= matches.Count) {
             return;
         }
 
@@ -470,7 +470,7 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
 
         string insertion = item.Name;
         int caretOffset = insertion.Length;
-        if(item.Callable) {
+        if (item.Callable) {
             insertion += "()";
             caretOffset = insertion.Length - 1;
         }
@@ -490,7 +490,7 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
     }
 
     private void MoveSelection(int delta) {
-        if(!visible || matches.Count == 0) {
+        if (!visible || matches.Count == 0) {
             return;
         }
 
@@ -513,7 +513,7 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
 
     private void Dispose() {
         Hide();
-        if(popupRect != null) {
+        if (popupRect != null) {
             UnityEngine.Object.Destroy(popupRect.gameObject);
         }
     }
@@ -526,10 +526,10 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
         TMP_TextInfo textInfo = sourceText.textInfo;
         Vector3 localPosition = Vector3.zero;
 
-        if(textInfo.characterCount > 0) {
+        if (textInfo.characterCount > 0) {
             int characterIndex = Math.Clamp(caret, 0, textInfo.characterCount - 1);
             TMP_CharacterInfo character = textInfo.characterInfo[characterIndex];
-            if(caret >= textInfo.characterCount) {
+            if (caret >= textInfo.characterCount) {
                 localPosition = new(character.xAdvance, character.bottomLeft.y - 4f, 0f);
             } else {
                 localPosition = new(character.origin, character.bottomLeft.y - 4f, 0f);
@@ -567,7 +567,7 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
         );
 
         popupRect.pivot = new(0f, 1f);
-        if(canvasPosition.y - height < canvasRect.rect.yMin + 4f &&
+        if (canvasPosition.y - height < canvasRect.rect.yMin + 4f &&
             topCanvasPosition.y + height <= canvasRect.rect.yMax - 4f) {
             popupRect.pivot = new(0f, 0f);
             canvasPosition.y = topCanvasPosition.y;
@@ -580,30 +580,30 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
         query = string.Empty;
         start = caret;
         qualifier = null;
-        if(caret <= 0 || caret > text.Length) {
+        if (caret <= 0 || caret > text.Length) {
             return false;
         }
 
         int end = caret;
         int i = end - 1;
-        while(i >= 0 && IsWordChar(text[i])) {
+        while (i >= 0 && IsWordChar(text[i])) {
             i--;
         }
 
         start = i + 1;
-        if(start >= end) {
+        if (start >= end) {
             return false;
         }
 
         query = text[start..end];
 
-        if(i >= 0 && text[i] == '.') {
+        if (i >= 0 && text[i] == '.') {
             int j = i - 1;
-            while(j >= 0 && IsWordChar(text[j])) {
+            while (j >= 0 && IsWordChar(text[j])) {
                 j--;
             }
 
-            if(j + 1 > i - 1) {
+            if (j + 1 > i - 1) {
                 return false;
             }
 
@@ -617,52 +617,52 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
         query = string.Empty;
         start = caret;
         qualifier = null;
-        if(caret <= 0 || caret > text.Length) {
+        if (caret <= 0 || caret > text.Length) {
             return false;
         }
 
         int open = text.LastIndexOf('{', caret - 1);
-        if(open < 0) {
+        if (open < 0) {
             return false;
         }
 
         const string tag = "JSExpr";
         int p = open + 1;
-        if(p + tag.Length + 1 > caret
+        if (p + tag.Length + 1 > caret
             || !text.Substring(p, tag.Length).Equals(tag, StringComparison.OrdinalIgnoreCase)) {
             return false;
         }
 
         p += tag.Length;
-        if(text[p] != ':' && text[p] != '(') {
+        if (text[p] != ':' && text[p] != '(') {
             return false;
         }
 
         int close = text.LastIndexOf('}', caret - 1);
-        if(close > open) {
+        if (close > open) {
             return false;
         }
 
         int end = caret;
         int i = end - 1;
-        while(i > p && IsWordChar(text[i])) {
+        while (i > p && IsWordChar(text[i])) {
             i--;
         }
 
         start = i + 1;
-        if(start >= end || start <= p) {
+        if (start >= end || start <= p) {
             return false;
         }
 
         query = text[start..end];
 
-        if(text[i] == '.') {
+        if (text[i] == '.') {
             int j = i - 1;
-            while(j > p && IsWordChar(text[j])) {
+            while (j > p && IsWordChar(text[j])) {
                 j--;
             }
 
-            if(j + 1 > i - 1) {
+            if (j + 1 > i - 1) {
                 return false;
             }
 

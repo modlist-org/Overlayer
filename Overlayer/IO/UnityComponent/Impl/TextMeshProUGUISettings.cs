@@ -90,7 +90,7 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
 
     public override bool ToUnity(GameObject target) {
         var com = target.GetComponent<TextMeshProUGUI>();
-        if(com == null) {
+        if (com == null) {
             return false;
         }
 
@@ -133,7 +133,7 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
         }
         com.color = UnityEngine.Color.white;
         com.colorGradient = _lastColor;
-        if(!string.IsNullOrEmpty(_lastFontKey) && UserResourceManager.Fnt.TryGet(_lastFontKey, out var fontAsset)) {
+        if (!string.IsNullOrEmpty(_lastFontKey) && UserResourceManager.Fnt.TryGet(_lastFontKey, out var fontAsset)) {
             com.font = fontAsset;
         }
         com.fontSize = _lastFontSize;
@@ -144,10 +144,10 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
         com.characterSpacing = _lastCharacterSpacing;
         com.wordSpacing = _lastWordSpacing;
         var mat = com.fontMaterial;
-        if(mat != null && !_lastOutlineColor.SolidColor && !mat.HasProperty(ShaderUtilities.ID_OutlineTex)) {
+        if (mat != null && !_lastOutlineColor.SolidColor && !mat.HasProperty(ShaderUtilities.ID_OutlineTex)) {
             try {
                 Shader sdf = Shader.Find("TextMeshPro/Distance Field");
-                if(sdf != null) {
+                if (sdf != null) {
                     mat.shader = sdf;
                 }
             } catch {
@@ -164,7 +164,7 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
         com.outlineWidth = outlineWidth;
         mat = com.fontMaterial;
         mat.SetColor(ShaderUtilities.ID_OutlineColor, appliedOutlineColor);
-        if(mat.HasProperty(ShaderUtilities.ID_OutlineTex)) {
+        if (mat.HasProperty(ShaderUtilities.ID_OutlineTex)) {
             mat.SetTexture(ShaderUtilities.ID_OutlineTex, outlineGradient ? OutlineGradientTexture() : Texture2D.whiteTexture);
             // Map per-character UV 0..1 onto the 2x2 texel centers so it matches the face vertex gradient.
             mat.SetTextureScale(ShaderUtilities.ID_OutlineTex, outlineGradient ? new Vector2(0.5f, 0.5f) : Vector2.one);
@@ -173,7 +173,7 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
         mat.SetFloat(ShaderUtilities.ID_OutlineWidth, outlineWidth);
         mat.SetFloat(ShaderUtilities.ID_FaceDilate, _lastFaceDilate);
         mat.SetFloat(ShaderUtilities.ID_OutlineSoftness, outlineSoftness);
-        if(outlineWidth > 0f) {
+        if (outlineWidth > 0f) {
             mat.EnableKeyword(ShaderUtilities.Keyword_Outline);
         } else {
             mat.DisableKeyword(ShaderUtilities.Keyword_Outline);
@@ -185,7 +185,7 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
         mat.SetFloat(ShaderUtilities.ID_UnderlayOffsetY, _lastShadowOffset.y);
         mat.SetFloat(ShaderUtilities.ID_UnderlayDilate, Mathf.Clamp01(_lastShadowDilate));
         mat.SetFloat(ShaderUtilities.ID_UnderlaySoftness, Mathf.Clamp01(_lastShadowSoftness));
-        if(_lastEnableShadow) {
+        if (_lastEnableShadow) {
             mat.EnableKeyword(ShaderUtilities.Keyword_Underlay);
         } else {
             mat.DisableKeyword(ShaderUtilities.Keyword_Underlay);
@@ -198,7 +198,7 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
     }
 
     private Texture2D OutlineGradientTexture() {
-        if(_outlineGradientTex == null) {
+        if (_outlineGradientTex == null) {
             _outlineGradientTex = new Texture2D(2, 2, TextureFormat.RGBA32, false) {
                 filterMode = FilterMode.Bilinear,
                 wrapMode = TextureWrapMode.Clamp
@@ -215,7 +215,7 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
 
     public override bool FromUnity(GameObject source) {
         var com = source.GetComponent<TextMeshProUGUI>();
-        if(com == null) {
+        if (com == null) {
             return false;
         }
 
@@ -230,7 +230,7 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
         CharacterSpacing.Value = com.characterSpacing;
         WordSpacing.Value = com.wordSpacing;
         var mat = com.fontMaterial;
-        if(OutlineColor.Value.SolidColor) {
+        if (OutlineColor.Value.SolidColor) {
             OutlineColor.Value = new GradientColor(mat.GetColor(ShaderUtilities.ID_OutlineColor), true);
         }
         OutlineWidth.Value = mat.GetFloat(ShaderUtilities.ID_OutlineWidth);
@@ -277,12 +277,12 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
     }
 
     public override void RefreshFx(GameObject target) {
-        if(!HasAnyFx) {
+        if (!HasAnyFx) {
             return;
         }
 
         var com = target.GetComponent<TextMeshProUGUI>();
-        if(com == null) {
+        if (com == null) {
             return;
         }
 
@@ -311,7 +311,7 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
         changed |= FxUtil.ApplyIfChanged(ref _lastOverFlowMode, OverFlowMode.Value, _ => { });
         changed |= FxUtil.ApplyIfChanged(ref _lastAutoSize, AutoSize.Value, _ => { });
         changed |= FxUtil.ApplyIfChanged(ref _lastFontSizeRange, FontSizeRange.Value, _ => { });
-        if(!changed) {
+        if (!changed) {
             return;
         }
 
@@ -355,7 +355,7 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
         Color = IOUtils.ReadFx(token, nameof(Color), Color);
         FontKey = IOUtils.ReadFx(token, nameof(FontKey), FontKey);
         FontSize = IOUtils.ReadFx(token, nameof(FontSize), FontSize);
-        if(!FontSize.UseFx && Mathf.Approximately(FontSize.Value, 42f)) {
+        if (!FontSize.UseFx && Mathf.Approximately(FontSize.Value, 42f)) {
             FontSize.Value = 48f;
         }
         RichText = IOUtils.ReadFx(token, nameof(RichText), RichText);
@@ -367,14 +367,14 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
         EnableOutline = IOUtils.ReadFx(token, nameof(EnableOutline), EnableOutline);
         OutlineColor = IOUtils.ReadFx(token, nameof(OutlineColor), OutlineColor);
         OutlineWidth = IOUtils.ReadFx(token, nameof(OutlineWidth), OutlineWidth);
-        if(!OutlineWidth.UseFx && Mathf.Approximately(OutlineWidth.Value, 0.2f)) {
+        if (!OutlineWidth.UseFx && Mathf.Approximately(OutlineWidth.Value, 0.2f)) {
             OutlineWidth.Value = 0.05f;
         }
         FaceDilate = IOUtils.ReadFx(token, nameof(FaceDilate), FaceDilate);
         EnableShadow = IOUtils.ReadFx(token, nameof(EnableShadow), EnableShadow);
         ShadowColor = IOUtils.ReadFx(token, nameof(ShadowColor), ShadowColor);
         ShadowOffset = IOUtils.ReadFx(token, nameof(ShadowOffset), ShadowOffset);
-        if(!ShadowOffset.UseFx && ((Mathf.Approximately(ShadowOffset.Value.x, 0.5f)
+        if (!ShadowOffset.UseFx && ((Mathf.Approximately(ShadowOffset.Value.x, 0.5f)
                 && Mathf.Approximately(ShadowOffset.Value.y, -0.5f))
             || (Mathf.Approximately(ShadowOffset.Value.x, 0.25f)
                 && Mathf.Approximately(ShadowOffset.Value.y, -0.25f)))) {

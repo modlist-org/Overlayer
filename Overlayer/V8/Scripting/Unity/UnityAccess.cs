@@ -35,7 +35,7 @@ public sealed class UnityAccess {
     private static bool ToFloat(object value, out float result) {
         result = 0f;
         value = Norm(value);
-        if(value == null) {
+        if (value == null) {
             return false;
         }
         try {
@@ -56,43 +56,43 @@ public sealed class UnityAccess {
     }
 
     private Type ResolveType(string name) {
-        if(string.IsNullOrWhiteSpace(name)) {
+        if (string.IsNullOrWhiteSpace(name)) {
             return null;
         }
         name = name.Trim();
-        lock(gate) {
-            if(typeCache.TryGetValue(name, out var cached)) {
+        lock (gate) {
+            if (typeCache.TryGetValue(name, out var cached)) {
                 return cached;
             }
         }
         var assemblies = AppDomain.CurrentDomain.GetAssemblies();
-        lock(gate) {
-            if(missCache.TryGetValue(name, out int scanned) && scanned == assemblies.Length) {
+        lock (gate) {
+            if (missCache.TryGetValue(name, out int scanned) && scanned == assemblies.Length) {
                 return null;
             }
         }
         Type direct = Type.GetType(name, false);
-        if(direct == null) {
-            foreach(var asm in assemblies) {
+        if (direct == null) {
+            foreach (var asm in assemblies) {
                 Type[] types;
                 try {
                     types = asm.GetTypes();
                 } catch {
                     continue;
                 }
-                foreach(var t in types) {
-                    if(t.Name == name || t.FullName == name) {
+                foreach (var t in types) {
+                    if (t.Name == name || t.FullName == name) {
                         direct = t;
                         break;
                     }
                 }
-                if(direct != null) {
+                if (direct != null) {
                     break;
                 }
             }
         }
-        lock(gate) {
-            if(direct != null) {
+        lock (gate) {
+            if (direct != null) {
                 typeCache[name] = direct;
                 missCache.Remove(name);
             } else {
@@ -104,7 +104,7 @@ public sealed class UnityAccess {
 
     private Type ResolveComponent(string name) {
         var type = ResolveType(name);
-        if(type == null || !typeof(Component).IsAssignableFrom(type)) {
+        if (type == null || !typeof(Component).IsAssignableFrom(type)) {
             return null;
         }
         return type;
@@ -113,7 +113,7 @@ public sealed class UnityAccess {
     // Same names as UnityEngine.Object, string-typed overloads.
     public object[] FindObjectsOfType(string typeName) {
         var type = ResolveType(typeName);
-        if(type == null) {
+        if (type == null) {
             return [];
         }
         try {
@@ -127,7 +127,7 @@ public sealed class UnityAccess {
 
     public object FindObjectOfType(string typeName) {
         var type = ResolveType(typeName);
-        if(type == null) {
+        if (type == null) {
             return null;
         }
         try {
@@ -143,7 +143,7 @@ public sealed class UnityAccess {
     public object AddComponent(object obj, string typeName) {
         var go = AsGameObject(obj);
         var type = ResolveComponent(typeName);
-        if(go == null || type == null) {
+        if (go == null || type == null) {
             return null;
         }
         try {
@@ -156,7 +156,7 @@ public sealed class UnityAccess {
     public object GetComponent(object obj, string typeName) {
         var go = AsGameObject(obj);
         var type = ResolveComponent(typeName);
-        if(go == null || type == null) {
+        if (go == null || type == null) {
             return null;
         }
         try {
@@ -169,7 +169,7 @@ public sealed class UnityAccess {
     public object[] GetComponents(object obj, string typeName) {
         var go = AsGameObject(obj);
         var type = ResolveComponent(typeName);
-        if(go == null || type == null) {
+        if (go == null || type == null) {
             return [];
         }
         try {
@@ -186,7 +186,7 @@ public sealed class UnityAccess {
     // Dead Unity objects still look non-null from JS. Use this.
     public bool IsValid(object obj) {
         obj = Norm(obj);
-        if(obj is UnityEngine.Object u) {
+        if (obj is UnityEngine.Object u) {
             return u != null;
         }
         return obj != null;
@@ -195,7 +195,7 @@ public sealed class UnityAccess {
     // Run fn on the Unity main thread next frame. Needed when touching
     // Unity API from script load time (loads run off the main thread).
     public bool NextTick(object fn) {
-        if(Norm(fn) is not ScriptObject callback) {
+        if (Norm(fn) is not ScriptObject callback) {
             return false;
         }
         try {
@@ -227,24 +227,24 @@ public sealed class UnityAccess {
     // every frame. Returns a handle for CancelTick (0 = bad args).
     // Same cost class as a per-frame patch callback: keep fn light.
     public int Repeat(object seconds, object fn) {
-        if(Norm(fn) is not ScriptObject callback) {
+        if (Norm(fn) is not ScriptObject callback) {
             return 0;
         }
         float interval = 0f;
-        if(Norm(seconds) != null && !ToFloat(seconds, out interval)) {
+        if (Norm(seconds) != null && !ToFloat(seconds, out interval)) {
             return 0;
         }
-        if(interval < 0f) {
+        if (interval < 0f) {
             interval = 0f;
         }
-        lock(repeatGate) {
+        lock (repeatGate) {
             int handle = nextRepeatHandle++;
             repeats[handle] = new RepeatEntry {
                 Interval = interval,
                 Next = UnityEngine.Time.realtimeSinceStartup,
                 Fn = callback,
             };
-            if(!pumpQueued) {
+            if (!pumpQueued) {
                 pumpQueued = true;
                 MainThread.Enqueue(Pump);
             }
@@ -253,46 +253,46 @@ public sealed class UnityAccess {
     }
 
     public bool CancelTick(object handle) {
-        if(!ToInt(handle, out int id)) {
+        if (!ToInt(handle, out int id)) {
             return false;
         }
-        lock(repeatGate) {
+        lock (repeatGate) {
             return repeats.Remove(id);
         }
     }
 
     private void Pump() {
         List<ScriptObject> due = null;
-        lock(repeatGate) {
+        lock (repeatGate) {
             pumpQueued = false;
-            if(repeats.Count == 0) {
+            if (repeats.Count == 0) {
                 return;
             }
             double now = UnityEngine.Time.realtimeSinceStartup;
-            foreach(var entry in repeats.Values) {
-                if(now >= entry.Next) {
+            foreach (var entry in repeats.Values) {
+                if (now >= entry.Next) {
                     entry.Next = now + entry.Interval;
                     (due ??= new List<ScriptObject>()).Add(entry.Fn);
                 }
             }
-            if(repeats.Count > 0) {
+            if (repeats.Count > 0) {
                 pumpQueued = true;
                 MainThread.Enqueue(Pump);
             }
         }
-        if(due == null) {
+        if (due == null) {
             return;
         }
-        foreach(var fn in due) {
+        foreach (var fn in due) {
             try {
                 MainCore.V8.InvokeCallback(fn, []);
-            } catch(ObjectDisposedException) {
+            } catch (ObjectDisposedException) {
                 RemoveFn(fn);
-            } catch(Exception e) {
+            } catch (Exception e) {
                 string message = e.Message ?? "error";
-                lock(repeatGate) {
-                    foreach(var entry in repeats.Values) {
-                        if(entry.Fn == fn && entry.LastError != message) {
+                lock (repeatGate) {
+                    foreach (var entry in repeats.Values) {
+                        if (entry.Fn == fn && entry.LastError != message) {
                             entry.LastError = message;
                             try {
                                 MainCore.Log.Wrn($"[Unity] Repeat callback threw, keeping it: {message}");
@@ -307,15 +307,15 @@ public sealed class UnityAccess {
     }
 
     private void RemoveFn(ScriptObject fn) {
-        lock(repeatGate) {
+        lock (repeatGate) {
             int found = 0;
-            foreach(var pair in repeats) {
-                if(pair.Value.Fn == fn) {
+            foreach (var pair in repeats) {
+                if (pair.Value.Fn == fn) {
                     found = pair.Key;
                     break;
                 }
             }
-            if(found != 0) {
+            if (found != 0) {
                 repeats.Remove(found);
             }
         }
@@ -324,7 +324,7 @@ public sealed class UnityAccess {
     private static bool ToInt(object value, out int result) {
         result = 0;
         value = Norm(value);
-        if(value == null) {
+        if (value == null) {
             return false;
         }
         try {

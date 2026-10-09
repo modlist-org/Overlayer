@@ -65,9 +65,9 @@ public static class UICore {
 
         CreatePanel();
         ResizeHandle.CreateResizeHandles(O5KitAdapters.Ctx, Panel, CanvasObj.GetComponent<RectTransform>());
-        for(int i = 0; i < Panel.childCount; i++) {
+        for (int i = 0; i < Panel.childCount; i++) {
             Transform child = Panel.GetChild(i);
-            if(child.GetComponent<ResizeHandle>() == null) {
+            if (child.GetComponent<ResizeHandle>() == null) {
                 continue;
             }
 
@@ -80,13 +80,13 @@ public static class UICore {
         RegisterToggleShortcut();
 
         _onPageSettings = state => {
-            if(state == TranslationFailState.Success) {
+            if (state == TranslationFailState.Success) {
                 PageSettings.OnTranslatorLoadEnd();
             }
         };
 
         _onRefresh = state => {
-            if(state == TranslationFailState.Success) {
+            if (state == TranslationFailState.Success) {
                 TextLocalization.RefreshAll();
             }
         };
@@ -96,11 +96,11 @@ public static class UICore {
 
         TextLocalization.RefreshAll();
 
-        if(MainCore.Conf.IsFirstRun) {
+        if (MainCore.Conf.IsFirstRun) {
             MakeFirstRunHelper();
         }
 
-        if(MainCore.Conf.ShowOnStartup) {
+        if (MainCore.Conf.ShowOnStartup) {
             Open(true);
         }
     }
@@ -210,7 +210,7 @@ public static class UICore {
             .Join(done => firstRunHelperText.TAlpha(0f, 2.0f, O5Ease.Linear, done))
 
             .AppendCallback(() => {
-                if(!firstRunCanvasObj) {
+                if (!firstRunCanvasObj) {
                     UnityEngine.Object.Destroy(firstRunCanvasObj);
                 }
             })
@@ -587,12 +587,12 @@ public static class UICore {
 #else
             eventData as PointerEventData;
 #endif
-        if(pointer == null || pointer.button != PointerEventData.InputButton.Left) {
+        if (pointer == null || pointer.button != PointerEventData.InputButton.Left) {
             return;
         }
 
         float now = Time.unscaledTime;
-        if(now - lastTopBarClickTime <= 0.2f) {
+        if (now - lastTopBarClickTime <= 0.2f) {
             lastTopBarClickTime = float.NegativeInfinity;
             TogglePanelMaximize();
         } else {
@@ -601,7 +601,7 @@ public static class UICore {
     }
 
     private static void TogglePanelMaximize() {
-        if(Panel == null || CanvasObj == null) {
+        if (Panel == null || CanvasObj == null) {
             return;
         }
 
@@ -609,7 +609,7 @@ public static class UICore {
         resetSequence?.Kill();
         Vector2 targetPosition;
         Vector2 targetSize;
-        if(!isPanelMaximized) {
+        if (!isPanelMaximized) {
             preMaximizePanelPosition = Panel.anchoredPosition;
             preMaximizePanelSize = Panel.sizeDelta;
             Canvas.ForceUpdateCanvases();
@@ -630,7 +630,7 @@ public static class UICore {
     }
 
     private static void MarkPanelUnmaximizedByUser() {
-        if(!isPanelMaximized) {
+        if (!isPanelMaximized) {
             return;
         }
 
@@ -644,7 +644,7 @@ public static class UICore {
     );
 
     public static void HandleUpdate() {
-        if(CanvasObj == null) {
+        if (CanvasObj == null) {
             return;
         }
 
@@ -653,7 +653,7 @@ public static class UICore {
         // Controls only live under the UI canvas; skip ticking them while it is hidden.
         // One trailing tick after hiding lets input fields release their input block.
         bool active = CanvasObj.activeSelf;
-        if(active || wasCanvasActive) {
+        if (active || wasCanvasActive) {
             O5Object.TickAll();
         }
         wasCanvasActive = active;
@@ -696,7 +696,7 @@ public static class UICore {
     }
 
     public static void Open(bool noAnimate = false) {
-        if(isOpen) {
+        if (isOpen) {
             return;
         }
 
@@ -705,15 +705,15 @@ public static class UICore {
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
 
-        if(panelTweener != null) {
+        if (panelTweener != null) {
             panelTweener.Kill(true);
         }
 
-        if(resetSequence != null) {
+        if (resetSequence != null) {
             resetSequence.Kill(true);
         }
 
-        if(noAnimate) {
+        if (noAnimate) {
             Panel.anchoredPosition = LastPanelPosition;
             Panel.sizeDelta = LastPanelSize;
 
@@ -730,14 +730,14 @@ public static class UICore {
 
         panelTweener = Panel.TAnchorPos(LastPanelPosition, 0.1f, O5Ease.OutExpo);
 
-        if(firstRunHelperActivated) {
+        if (firstRunHelperActivated) {
             firstRunHelperActivated = false;
             EndFirstRunHelper();
         }
     }
 
     public static void Close(bool noAnimate = false) {
-        if(!isOpen) {
+        if (!isOpen) {
             return;
         }
 
@@ -753,15 +753,15 @@ public static class UICore {
             0f
         );
 
-        if(panelTweener != null) {
+        if (panelTweener != null) {
             panelTweener.Kill(true);
         }
 
-        if(resetSequence != null) {
+        if (resetSequence != null) {
             resetSequence.Kill(true);
         }
 
-        if(noAnimate) {
+        if (noAnimate) {
             CanvasObj.SetActive(false);
             return;
         }
@@ -772,7 +772,7 @@ public static class UICore {
     }
 
     public static void Toggle(bool noAnimate = false) {
-        if(isOpen) {
+        if (isOpen) {
             Close(noAnimate);
         } else {
             Open(noAnimate);
@@ -789,7 +789,7 @@ public static class UICore {
         panelTweener?.Kill();
         resetSequence?.Kill();
 
-        if(noAnimate) {
+        if (noAnimate) {
             Panel.anchoredPosition = LastPanelPosition;
             Panel.sizeDelta = LastPanelSize;
             return;
@@ -838,7 +838,7 @@ public static class UICore {
     }
 
     public static void ToggleMenu() {
-        if(isMenuOpen) {
+        if (isMenuOpen) {
             CloseMenu();
         } else {
             OpenMenu();

@@ -12,7 +12,7 @@ internal static class NativeImageFilePicker {
                     ["Images"] = "png,jpg,jpeg,bmp,tga"
                 }
             );
-        } catch(Exception e) {
+        } catch (Exception e) {
             MainCore.Log.Err($"[{nameof(NativeImageFilePicker)}] File dialog failed: {e}");
             return null;
         }

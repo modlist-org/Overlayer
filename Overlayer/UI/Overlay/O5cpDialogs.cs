@@ -14,7 +14,7 @@ internal static class O5cpDialogs {
     public sealed class Modal {
         public GameObject Root;
         public void Close() {
-            if(Root) {
+            if (Root) {
                 UnityEngine.Object.Destroy(Root);
             }
         }
@@ -161,12 +161,12 @@ internal static class O5cpDialogs {
         var bar = ButtonBar(panel, 40f);
 
         var (_, content, _) = O5Factory.ScrollView(O5KitAdapters.Ctx, body, 8f, 8f, true);
-        if(warnings == null || warnings.Count == 0) {
+        if (warnings == null || warnings.Count == 0) {
             var row = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
             var label = O5Factory.ControlText(O5KitAdapters.Ctx, row, 18f, true);
             label.text = T("O5CP_NO_WARNINGS", "No warnings.");
         } else {
-            foreach(string warning in warnings) {
+            foreach (string warning in warnings) {
                 var row = O5Factory.Row(O5KitAdapters.Ctx, content.transform, 30f);
                 var label = O5Factory.ControlText(O5KitAdapters.Ctx, row, 17f, true);
                 label.text = "• " + warning;
@@ -186,12 +186,12 @@ internal static class O5cpDialogs {
         var bar = ButtonBar(panel, 40f);
 
         var (_, content, _) = O5Factory.ScrollView(O5KitAdapters.Ctx, body, 8f, 8f, true);
-        if(presets.Count == 0) {
+        if (presets.Count == 0) {
             var row = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
             var label = O5Factory.ControlText(O5KitAdapters.Ctx, row, 18f, true);
             label.text = T("O5CP_PRESET_EMPTY", "No presets.");
         } else {
-            foreach(var preset in presets) {
+            foreach (var preset in presets) {
                 var captured = preset;
                 var row = O5Factory.Row(O5KitAdapters.Ctx, content.transform, 44f);
                 var label = O5Factory.ControlText(O5KitAdapters.Ctx, row, 17f, true);
@@ -225,7 +225,7 @@ internal static class O5cpDialogs {
         Action onApply
     ) {
         string title = T("O5CP_PROMOTE_TITLE", "Copy to editable canvas");
-        if(entry?.Manifest?.Package?.Name is string pkgName && !string.IsNullOrEmpty(pkgName)) {
+        if (entry?.Manifest?.Package?.Name is string pkgName && !string.IsNullOrEmpty(pkgName)) {
             title += $" — {pkgName}";
         }
         var modal = ShowModal("O5cpPromoteDialog", new Vector2(660f, 580f), title);
@@ -235,8 +235,8 @@ internal static class O5cpDialogs {
 
         var (_, content, _) = O5Factory.ScrollView(O5KitAdapters.Ctx, body, 8f, 8f, true);
         var renameInputs = new Dictionary<Package.O5cpPromoteItem, O5InputField>();
-        foreach(var item in plan.Items) {
-            if(!item.IsConflict) {
+        foreach (var item in plan.Items) {
+            if (!item.IsConflict) {
                 var infoRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform, 30f);
                 var info = O5Factory.ControlText(O5KitAdapters.Ctx, infoRow, 16f, true);
                 info.text = $"[{item.Kind}] {item.Key} — " + (item.Choice == Package.O5cpConflictChoice.Reuse
@@ -266,7 +266,7 @@ internal static class O5cpDialogs {
                     _ => Package.O5cpConflictChoice.Overwrite,
                 };
                 choiceBtn.Label.text = ChoiceText(item.Choice);
-                if(renameInputs.TryGetValue(item, out var input)) {
+                if (renameInputs.TryGetValue(item, out var input)) {
                     input.Rect.gameObject.SetActive(item.Choice == Package.O5cpConflictChoice.Rename);
                 }
             };
@@ -280,21 +280,21 @@ internal static class O5cpDialogs {
         }
 
         BarButtonLeft(bar, T("O5CP_ALL_OVERWRITE", "All: overwrite"), 0f, 24f, 160f, () => {
-            foreach(var item in plan.Items.Where(i => i.IsConflict)) {
+            foreach (var item in plan.Items.Where(i => i.IsConflict)) {
                 item.Choice = Package.O5cpConflictChoice.Overwrite;
             }
             modal.Close();
             ShowPromoteConflicts(entry, plan, onApply);
         }, "o5cp_bulk_overwrite");
         BarButtonLeft(bar, T("O5CP_ALL_RENAME", "All: rename"), 170f, 24f, 150f, () => {
-            foreach(var item in plan.Items.Where(i => i.IsConflict)) {
+            foreach (var item in plan.Items.Where(i => i.IsConflict)) {
                 item.Choice = Package.O5cpConflictChoice.Rename;
             }
             modal.Close();
             ShowPromoteConflicts(entry, plan, onApply);
         }, "o5cp_bulk_rename");
         BarButtonLeft(bar, T("O5CP_ALL_SKIP", "All: skip"), 330f, 24f, 140f, () => {
-            foreach(var item in plan.Items.Where(i => i.IsConflict)) {
+            foreach (var item in plan.Items.Where(i => i.IsConflict)) {
                 item.Choice = Package.O5cpConflictChoice.Skip;
             }
             modal.Close();

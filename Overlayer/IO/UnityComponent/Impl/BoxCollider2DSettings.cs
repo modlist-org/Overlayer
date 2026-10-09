@@ -31,7 +31,7 @@ public class BoxCollider2DSettings : UnityComponentSettingsBase, ICopyable<BoxCo
 
     public override bool ToUnity(GameObject target) {
         var com = target.GetComponent<BoxCollider2D>();
-        if(com == null) {
+        if (com == null) {
             return false;
         }
 
@@ -53,7 +53,7 @@ public class BoxCollider2DSettings : UnityComponentSettingsBase, ICopyable<BoxCo
 
     public override bool FromUnity(GameObject source) {
         var com = source.GetComponent<BoxCollider2D>();
-        if(com == null) {
+        if (com == null) {
             return false;
         }
 
@@ -74,21 +74,21 @@ public class BoxCollider2DSettings : UnityComponentSettingsBase, ICopyable<BoxCo
     }
 
     public override void RefreshFx(GameObject target) {
-        if(!HasAnyFx) {
+        if (!HasAnyFx) {
             return;
         }
 
         var com = target.GetComponent<BoxCollider2D>();
-        if(com == null) {
+        if (com == null) {
             return;
         }
 
-        if(FxUtil.Changed(ref _lastSize, Size.Value)) com.size = _lastSize;
-        if(FxUtil.Changed(ref _lastOffset, Offset.Value)) com.offset = _lastOffset;
-        if(FxUtil.Changed(ref _lastIsTrigger, IsTrigger.Value)) com.isTrigger = _lastIsTrigger;
-        if(FxUtil.Changed(ref _lastUsedByEffector, UsedByEffector.Value)) com.usedByEffector = _lastUsedByEffector;
-        if(FxUtil.Changed(ref _lastCompositeOperation, CompositeOperation.Value)) com.compositeOperation = _lastCompositeOperation;
-        if(FxUtil.Changed(ref _lastEdgeRadius, EdgeRadius.Value)) com.edgeRadius = _lastEdgeRadius;
+        if (FxUtil.Changed(ref _lastSize, Size.Value)) com.size = _lastSize;
+        if (FxUtil.Changed(ref _lastOffset, Offset.Value)) com.offset = _lastOffset;
+        if (FxUtil.Changed(ref _lastIsTrigger, IsTrigger.Value)) com.isTrigger = _lastIsTrigger;
+        if (FxUtil.Changed(ref _lastUsedByEffector, UsedByEffector.Value)) com.usedByEffector = _lastUsedByEffector;
+        if (FxUtil.Changed(ref _lastCompositeOperation, CompositeOperation.Value)) com.compositeOperation = _lastCompositeOperation;
+        if (FxUtil.Changed(ref _lastEdgeRadius, EdgeRadius.Value)) com.edgeRadius = _lastEdgeRadius;
     }
 
     public override JToken Serialize() {

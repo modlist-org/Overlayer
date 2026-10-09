@@ -12,10 +12,10 @@ public static class ExpressionBuilder {
 
         var values = new Expression[parameters.Length];
 
-        for(int i = 0; i < parameters.Length; i++) {
+        for (int i = 0; i < parameters.Length; i++) {
             Expression value;
 
-            if(i < sig.Args.Length) {
+            if (i < sig.Args.Length) {
                 value = Expression.Constant(
                     ArgConverter.Convert(sig.Args[i], parameters[i].ParameterType),
                     typeof(object)
@@ -25,7 +25,7 @@ public static class ExpressionBuilder {
                 try {
                     defaultValue = parameters[i].DefaultValue;
                 } catch { }
-                if(defaultValue == null || defaultValue == DBNull.Value || defaultValue is Missing) {
+                if (defaultValue == null || defaultValue == DBNull.Value || defaultValue is Missing) {
                     Type paramType = parameters[i].ParameterType;
                     object fallback = paramType.IsValueType ? Activator.CreateInstance(paramType) : null;
                     value = Expression.Constant(fallback, typeof(object));
@@ -59,8 +59,8 @@ public static class ExpressionBuilder {
 
         Expression result;
 
-        if(tag.IsJS) {
-            if(sig.HasFormat) {
+        if (tag.IsJS) {
+            if (sig.HasFormat) {
                 result = Expression.Call(
                     typeof(JsResultFormatter),
                     nameof(JsResultFormatter.ToFormattedString),
@@ -76,9 +76,9 @@ public static class ExpressionBuilder {
                     call
                 );
             }
-        } else if(tag.ReturnType == typeof(string)) {
+        } else if (tag.ReturnType == typeof(string)) {
             result = Expression.Coalesce(call, Expression.Constant(""));
-        } else if(MemoKeyType(tag.ReturnType) is Type keyType) {
+        } else if (MemoKeyType(tag.ReturnType) is Type keyType) {
             var value = Expression.Variable(tag.ReturnType, "value");
             var key = Expression.Variable(keyType, "key");
             var memoType = typeof(StringMemo<>).MakeGenericType(keyType);
@@ -96,9 +96,9 @@ public static class ExpressionBuilder {
                         Expression.Convert(value, typeof(double))
                     )),
                 Expression.Condition(
-                    Expression.Call(memo, memoType.GetMethod(nameof(StringMemo<int>.Matches))!, key),
-                    Expression.Field(memo, memoType.GetField(nameof(StringMemo<int>.Text))!),
-                    Expression.Call(memo, memoType.GetMethod(nameof(StringMemo<int>.Store))!, key,
+                    Expression.Call(memo, memoType.GetMethod(nameof(StringMemo<>.Matches))!, key),
+                    Expression.Field(memo, memoType.GetField(nameof(StringMemo<>.Text))!),
+                    Expression.Call(memo, memoType.GetMethod(nameof(StringMemo<>.Store))!, key,
                         FormatValue(tag.ReturnType, value, sig))
                 )
             );
@@ -110,7 +110,7 @@ public static class ExpressionBuilder {
     }
 
     private static Expression FormatValue(Type type, Expression value, ResolvedSignature sig) {
-        if(sig.HasFormat && typeof(IFormattable).IsAssignableFrom(type)) {
+        if (sig.HasFormat && typeof(IFormattable).IsAssignableFrom(type)) {
             var direct = type.GetMethod(
                 nameof(IFormattable.ToString),
                 [typeof(string), typeof(IFormatProvider)]
@@ -139,7 +139,7 @@ public static class ExpressionBuilder {
     }
 
     private static Type MemoKeyType(Type type) {
-        if(type == typeof(double) || type == typeof(float)) {
+        if (type == typeof(double) || type == typeof(float)) {
             return typeof(long);
         }
         return type == typeof(int) || type == typeof(long) || type == typeof(uint)
@@ -154,7 +154,7 @@ public static class ExpressionBuilder {
     Expression[] values) {
         var list = new Expression[parameters.Length];
 
-        for(int i = 0; i < parameters.Length; i++) {
+        for (int i = 0; i < parameters.Length; i++) {
             list[i] = Expression.Convert(
                 values[i],
                 parameters[i].ParameterType

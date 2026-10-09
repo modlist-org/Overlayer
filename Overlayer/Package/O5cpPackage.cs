@@ -26,14 +26,14 @@ public static class O5cpPackage {
 
     public static string SanitizeSegment(string name, string ext) {
         var builder = new System.Text.StringBuilder();
-        foreach(char c in name ?? string.Empty) {
+        foreach (char c in name ?? string.Empty) {
             builder.Append(char.IsLetterOrDigit(c) || c is '-' or '_' or '.' ? c : '_');
         }
         string clean = builder.ToString().Trim('.', '_');
-        if(clean.Length > 64) {
-            clean = clean.Substring(0, 64);
+        if (clean.Length > 64) {
+            clean = clean[..64];
         }
-        if(string.IsNullOrEmpty(clean)) {
+        if (string.IsNullOrEmpty(clean)) {
             clean = "res";
         }
         return clean + (ext ?? string.Empty).ToLowerInvariant();
@@ -41,53 +41,53 @@ public static class O5cpPackage {
 
     public static string MakePackageId(string name, string seedHex) {
         var builder = new System.Text.StringBuilder();
-        foreach(char c in name ?? string.Empty) {
-            if(char.IsLetterOrDigit(c)) {
+        foreach (char c in name ?? string.Empty) {
+            if (char.IsLetterOrDigit(c)) {
                 builder.Append(c);
-            } else if(builder.Length > 0 && builder[^1] != '_') {
+            } else if (builder.Length > 0 && builder[^1] != '_') {
                 builder.Append('_');
             }
         }
         string slug = builder.ToString().Trim('_');
-        if(slug.Length > 32) {
-            slug = slug.Substring(0, 32);
+        if (slug.Length > 32) {
+            slug = slug[..32];
         }
-        if(string.IsNullOrEmpty(slug)) {
+        if (string.IsNullOrEmpty(slug)) {
             slug = "Canvas";
         }
         string hash = (seedHex ?? string.Empty).ToLowerInvariant();
-        hash = hash.Length >= 6 ? hash.Substring(0, 6) : hash.PadRight(6, '0');
+        hash = hash.Length >= 6 ? hash[..6] : hash.PadRight(6, '0');
         return $"{slug}_{hash}";
     }
 
     public static bool IsAllowedPath(string rel, out O5cpEntryKind kind) {
         kind = default;
-        if(string.IsNullOrEmpty(rel)) {
+        if (string.IsNullOrEmpty(rel)) {
             return false;
         }
         string path = rel.Replace('\\', '/');
-        if(path == O5cpFormat.ManifestFile) {
+        if (path == O5cpFormat.ManifestFile) {
             kind = O5cpEntryKind.Manifest;
             return true;
         }
-        if(path.EndsWith(".json", StringComparison.OrdinalIgnoreCase)
+        if (path.EndsWith(".json", StringComparison.OrdinalIgnoreCase)
             && !path.Contains('/')) {
             kind = O5cpEntryKind.Canvas;
             return true;
         }
-        if(path.StartsWith(O5cpFormat.FontsPrefix, StringComparison.Ordinal)) {
+        if (path.StartsWith(O5cpFormat.FontsPrefix, StringComparison.Ordinal)) {
             kind = O5cpEntryKind.Font;
             return O5cpFormat.FontExt.Contains(Path.GetExtension(path));
         }
-        if(path.StartsWith(O5cpFormat.TexturesPrefix, StringComparison.Ordinal)) {
+        if (path.StartsWith(O5cpFormat.TexturesPrefix, StringComparison.Ordinal)) {
             kind = O5cpEntryKind.Texture;
             return O5cpFormat.TextureExt.Contains(Path.GetExtension(path));
         }
-        if(path.StartsWith(O5cpFormat.ScriptsPrefix, StringComparison.Ordinal)) {
+        if (path.StartsWith(O5cpFormat.ScriptsPrefix, StringComparison.Ordinal)) {
             kind = O5cpEntryKind.Script;
             return O5cpFormat.ScriptExt.Contains(Path.GetExtension(path));
         }
-        if(path.StartsWith(O5cpFormat.AssetsPrefix, StringComparison.Ordinal)) {
+        if (path.StartsWith(O5cpFormat.AssetsPrefix, StringComparison.Ordinal)) {
             kind = O5cpEntryKind.Thumbnail;
             return O5cpFormat.ThumbnailExt.Contains(Path.GetExtension(path));
         }
@@ -96,16 +96,16 @@ public static class O5cpPackage {
 
     public static void WriteZip(string zipPath, IEnumerable<(string path, byte[] data)> files) {
         string dir = Path.GetDirectoryName(zipPath);
-        if(!string.IsNullOrEmpty(dir) && !Directory.Exists(dir)) {
+        if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir)) {
             Directory.CreateDirectory(dir);
         }
-        if(File.Exists(zipPath)) {
+        if (File.Exists(zipPath)) {
             File.Delete(zipPath);
         }
         using var zip = ZipFile.Open(zipPath, ZipArchiveMode.Create);
-        foreach(var (path, data) in files) {
+        foreach (var (path, data) in files) {
             string rel = (path ?? string.Empty).Replace('\\', '/');
-            if(!IsAllowedPath(rel, out _)) {
+            if (!IsAllowedPath(rel, out _)) {
                 throw new InvalidDataException($"refusing to pack disallowed path: {rel}");
             }
             var entry = zip.CreateEntry(rel, CompressionLevel.Optimal);
@@ -116,27 +116,27 @@ public static class O5cpPackage {
 
     public static List<string> ExtractZip(string zipPath, string stageDir) {
         string stage = WithSeparator(Path.GetFullPath(stageDir));
-        if(Directory.Exists(stageDir)) {
+        if (Directory.Exists(stageDir)) {
             Directory.Delete(stageDir, true);
         }
         Directory.CreateDirectory(stageDir);
         var written = new List<string>();
         long extracted = 0;
         int count = 0;
-        using(ZipArchive zip = ZipFile.OpenRead(zipPath)) {
-            foreach(ZipArchiveEntry entry in zip.Entries) {
-                if(string.IsNullOrEmpty(entry.Name)) {
+        using (ZipArchive zip = ZipFile.OpenRead(zipPath)) {
+            foreach (ZipArchiveEntry entry in zip.Entries) {
+                if (string.IsNullOrEmpty(entry.Name)) {
                     continue;
                 }
                 string rel = entry.FullName.Replace('\\', '/');
-                if(!IsAllowedPath(rel, out _)) {
+                if (!IsAllowedPath(rel, out _)) {
                     throw new InvalidDataException($"package contains a disallowed path: {rel}");
                 }
                 extracted = checked(extracted + entry.Length);
-                if(extracted > O5cpFormat.MaxExtractedBytes) {
+                if (extracted > O5cpFormat.MaxExtractedBytes) {
                     throw new InvalidDataException("package expands beyond the safety limit");
                 }
-                if(++count > O5cpFormat.MaxEntries) {
+                if (++count > O5cpFormat.MaxEntries) {
                     throw new InvalidDataException("package has too many files");
                 }
                 string dest = Contained(stage, rel);
@@ -154,7 +154,7 @@ public static class O5cpPackage {
         JToken token;
         try {
             token = JToken.Parse(File.ReadAllText(path));
-        } catch(Exception e) {
+        } catch (Exception e) {
             error = $"bad manifest: {e.Message}";
             return false;
         }
@@ -163,7 +163,7 @@ public static class O5cpPackage {
 
     private static string Contained(string rootWithSeparator, string relative) {
         string full = Path.GetFullPath(Path.Combine(rootWithSeparator, relative));
-        if(!full.StartsWith(rootWithSeparator, StringComparison.Ordinal)) {
+        if (!full.StartsWith(rootWithSeparator, StringComparison.Ordinal)) {
             throw new InvalidDataException("package contains an unsafe path: " + relative);
         }
         return full;

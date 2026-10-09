@@ -5,7 +5,7 @@ namespace Overlayer.Tag.Compile;
 
 public static class SignatureResolver {
     public static ResolvedSignature Resolve(TagCore tag, Placeholder placeholder, List<CompileDiagnostic> diag, DiagnosticContext context) {
-        if(tag.MemberType == TagMemberType.Unknown) {
+        if (tag.MemberType == TagMemberType.Unknown) {
             diag.Add(new CompileDiagnostic(
                 DiagnosticId.InternalError,
                 CompileSeverity.Error,
@@ -15,7 +15,7 @@ public static class SignatureResolver {
             return ResolvedSignature.Invalid;
         }
 
-        if((tag.TagType & TagType.JsOnly) != 0) {
+        if ((tag.TagType & TagType.JsOnly) != 0) {
             diag.Add(new CompileDiagnostic(
                 DiagnosticId.JsOnlyBlocked,
                 CompileSeverity.Error,
@@ -34,23 +34,23 @@ public static class SignatureResolver {
         string format = null;
         int minRequired = tag.RequiredParameterCount;
 
-        if(parameters.Length == 0) {
-            if(rawArgs.Length > 0 && (hasFormatFlag || !tag.IsJS)) {
+        if (parameters.Length == 0) {
+            if (rawArgs.Length > 0 && (hasFormatFlag || !tag.IsJS)) {
                 format = rawArgs[0];
             }
-        } else if(hasFormatFlag && rawArgs.Length > 0) {
-            if(!TryTakeAllAsValues(rawArgs, parameters, minRequired)) {
+        } else if (hasFormatFlag && rawArgs.Length > 0) {
+            if (!TryTakeAllAsValues(rawArgs, parameters, minRequired)) {
                 format = rawArgs[^1];
                 args = rawArgs[..^1];
             }
         }
 
         int valueParamCount = parameters.Length;
-        if(format != null) {
+        if (format != null) {
             valueParamCount++;
         }
 
-        if(args.Length < minRequired) {
+        if (args.Length < minRequired) {
             diag.Add(new CompileDiagnostic(
                 DiagnosticId.ArgTooFew,
                 CompileSeverity.Error,
@@ -61,7 +61,7 @@ public static class SignatureResolver {
             return ResolvedSignature.Invalid;
         }
 
-        if(args.Length > valueParamCount) {
+        if (args.Length > valueParamCount) {
             diag.Add(new CompileDiagnostic(
                 DiagnosticId.ArgTooMany,
                 CompileSeverity.Warning,
@@ -70,16 +70,16 @@ public static class SignatureResolver {
             ));
         }
 
-        if(format != null) {
+        if (format != null) {
             bool valid;
             Exception e;
-            if(tag.IsJS) {
+            if (tag.IsJS) {
                 valid = FormatValidator.TryValidateJs(format, out e);
             } else {
                 valid = FormatValidator.TryValidate(tag.ReturnType, format, out e);
             }
 
-            if(!valid) {
+            if (!valid) {
                 diag.Add(new(
                     DiagnosticId.FormatFail,
                     CompileSeverity.Error,
@@ -91,10 +91,10 @@ public static class SignatureResolver {
             }
         }
 
-        for(int i = 0; i < args.Length && i < parameters.Length; i++) {
+        for (int i = 0; i < args.Length && i < parameters.Length; i++) {
             try {
                 ArgConverter.Convert(args[i], parameters[i].ParameterType);
-            } catch(Exception e) {
+            } catch (Exception e) {
                 diag.Add(new CompileDiagnostic(
                 DiagnosticId.ArgConvertFail,
                     CompileSeverity.Error,
@@ -122,13 +122,13 @@ public static class SignatureResolver {
     }
 
     private static bool TryTakeAllAsValues(string[] rawArgs, System.Reflection.ParameterInfo[] parameters, int minRequired) {
-        if(rawArgs.Length > parameters.Length || rawArgs.Length < minRequired) {
+        if (rawArgs.Length > parameters.Length || rawArgs.Length < minRequired) {
             return false;
         }
-        if(rawArgs.Length <= 1 && minRequired == 0) {
+        if (rawArgs.Length <= 1 && minRequired == 0) {
             return false;
         }
-        for(int i = 0; i < rawArgs.Length; i++) {
+        for (int i = 0; i < rawArgs.Length; i++) {
             try {
                 ArgConverter.Convert(rawArgs[i], parameters[i].ParameterType);
             } catch {

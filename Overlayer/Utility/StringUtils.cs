@@ -2,13 +2,13 @@ namespace Overlayer.Utility;
 
 public static class StringUtils {
     public static List<string> Search(string query, IEnumerable<string> source) {
-        if(string.IsNullOrWhiteSpace(query)) {
+        if (string.IsNullOrWhiteSpace(query)) {
             return [.. source];
         }
 
         string q = Normalize(query);
 
-        if(string.IsNullOrEmpty(q)) {
+        if (string.IsNullOrEmpty(q)) {
             return [];
         }
 
@@ -29,11 +29,11 @@ public static class StringUtils {
     }
 
     private static int ScoreMatch(string normalizedValue, string normalizedQuery) {
-        if(normalizedValue == normalizedQuery) {
+        if (normalizedValue == normalizedQuery) {
             return 100;
         }
 
-        if(normalizedValue.StartsWith(normalizedQuery)) {
+        if (normalizedValue.StartsWith(normalizedQuery)) {
             return 80;
         }
 
@@ -41,13 +41,13 @@ public static class StringUtils {
     }
 
     public static string Normalize(string input) {
-        if(string.IsNullOrEmpty(input)) {
+        if (string.IsNullOrEmpty(input)) {
             return string.Empty;
         }
 
         var sb = new System.Text.StringBuilder(input.Length);
-        foreach(char c in input) {
-            if(char.IsLetterOrDigit(c)) {
+        foreach (char c in input) {
+            if (char.IsLetterOrDigit(c)) {
                 sb.Append(char.ToLowerInvariant(c));
             }
         }
@@ -63,14 +63,14 @@ public static class StringUtils {
     /// (Magic Hangul Tool)
     /// </summary>
     public static string NormalizeToHangulChosung(string input) {
-        if(string.IsNullOrEmpty(input)) {
+        if (string.IsNullOrEmpty(input)) {
             return input;
         }
 
         var result = new System.Text.StringBuilder();
 
-        foreach(char c in input) {
-            if(c is >= (char)0xAC00 and <= (char)0xD7A3) {
+        foreach (char c in input) {
+            if (c is >= (char)0xAC00 and <= (char)0xD7A3) {
                 int index = (c - 0xAC00) / 588; // ㅋ (lol)
                 result.Append(ChosungTable[index]);
             } else {

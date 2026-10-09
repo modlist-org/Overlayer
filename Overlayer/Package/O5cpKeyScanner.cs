@@ -18,7 +18,7 @@ public static class O5cpKeyScanner {
 
     public static O5cpKeyScanResult Scan(JToken canvas) {
         var result = new O5cpKeyScanResult();
-        if(canvas == null) {
+        if (canvas == null) {
             return result;
         }
         Visit(canvas, result);
@@ -29,55 +29,55 @@ public static class O5cpKeyScanner {
     }
 
     private static void Visit(JToken token, O5cpKeyScanResult result) {
-        if(token is JObject obj) {
-            foreach(var property in obj.Properties()) {
-                if(property.Name == "FontKey" || property.Name == "SpriteKey") {
+        if (token is JObject obj) {
+            foreach (var property in obj.Properties()) {
+                if (property.Name == "FontKey" || property.Name == "SpriteKey") {
                     bool isFont = property.Name == "FontKey";
                     CollectKeyToken(property.Value, isFont, result);
                 } else {
                     Visit(property.Value, result);
                 }
             }
-        } else if(token is JArray array) {
-            foreach(var item in array) {
+        } else if (token is JArray array) {
+            foreach (var item in array) {
                 Visit(item, result);
             }
         }
     }
 
     private static void CollectKeyToken(JToken token, bool isFont, O5cpKeyScanResult result) {
-        if(token == null || token.Type is JTokenType.Null or JTokenType.Undefined) {
+        if (token == null || token.Type is JTokenType.Null or JTokenType.Undefined) {
             return;
         }
-        if(token.Type == JTokenType.String) {
+        if (token.Type == JTokenType.String) {
             AddStatic(token.Value<string>(), isFont, result);
             return;
         }
-        if(token is not JObject obj) {
+        if (token is not JObject obj) {
             return;
         }
 
         string expression = obj["Fx"]?.Value<string>();
         JToken staticValue = obj["Value"];
-        if(staticValue != null && staticValue.Type == JTokenType.String) {
+        if (staticValue != null && staticValue.Type == JTokenType.String) {
             AddStatic(staticValue.Value<string>(), isFont, result);
         }
-        if(!string.IsNullOrEmpty(expression)) {
-            foreach(string literal in ExtractLiterals(expression)) {
+        if (!string.IsNullOrEmpty(expression)) {
+            foreach (string literal in ExtractLiterals(expression)) {
                 AddGuess(literal, isFont, result);
             }
         }
     }
 
     private static void AddStatic(string key, bool isFont, O5cpKeyScanResult result) {
-        if(string.IsNullOrEmpty(key)) {
+        if (string.IsNullOrEmpty(key)) {
             return;
         }
         (isFont ? result.FontKeys : result.SpriteKeys).Add(key);
     }
 
     private static void AddGuess(string key, bool isFont, O5cpKeyScanResult result) {
-        if(string.IsNullOrEmpty(key)) {
+        if (string.IsNullOrEmpty(key)) {
             return;
         }
         (isFont ? result.GuessedFontKeys : result.GuessedSpriteKeys).Add(key);
@@ -85,22 +85,22 @@ public static class O5cpKeyScanner {
 
     public static List<string> ExtractLiterals(string expression) {
         var literals = new List<string>();
-        if(string.IsNullOrEmpty(expression)) {
+        if (string.IsNullOrEmpty(expression)) {
             return literals;
         }
-        foreach(Match match in StringLiteralRegex.Matches(expression)) {
+        foreach (Match match in StringLiteralRegex.Matches(expression)) {
             string raw = match.Value;
-            if(raw.Length < 2) {
+            if (raw.Length < 2) {
                 continue;
             }
-            string inner = raw.Substring(1, raw.Length - 2);
+            string inner = raw[1..^1];
             literals.Add(Unescape(inner));
         }
         return literals;
     }
 
     private static string Unescape(string value) {
-        if(!value.Contains('\\')) {
+        if (!value.Contains('\\')) {
             return value;
         }
         return value
@@ -117,7 +117,7 @@ public static class O5cpKeyScanner {
 public static class O5cpKeyMapper {
     public static int RewriteStaticKeys(JToken canvas, Func<string, string> map) {
         int count = 0;
-        if(canvas == null || map == null) {
+        if (canvas == null || map == null) {
             return count;
         }
         Rewrite(canvas, map, ref count);
@@ -125,39 +125,39 @@ public static class O5cpKeyMapper {
     }
 
     private static void Rewrite(JToken token, Func<string, string> map, ref int count) {
-        if(token is JObject obj) {
-            foreach(var property in obj.Properties()) {
-                if(property.Name == "FontKey" || property.Name == "SpriteKey") {
-                    if(TryRewriteKey(property.Value, map)) {
+        if (token is JObject obj) {
+            foreach (var property in obj.Properties()) {
+                if (property.Name == "FontKey" || property.Name == "SpriteKey") {
+                    if (TryRewriteKey(property.Value, map)) {
                         count++;
                     }
                 } else {
                     Rewrite(property.Value, map, ref count);
                 }
             }
-        } else if(token is JArray array) {
-            foreach(var item in array) {
+        } else if (token is JArray array) {
+            foreach (var item in array) {
                 Rewrite(item, map, ref count);
             }
         }
     }
 
     private static bool TryRewriteKey(JToken token, Func<string, string> map) {
-        if(token == null) {
+        if (token == null) {
             return false;
         }
-        if(token is JValue value && value.Type == JTokenType.String) {
+        if (token is JValue value && value.Type == JTokenType.String) {
             string key = value.Value<string>();
-            if(string.IsNullOrEmpty(key)) {
+            if (string.IsNullOrEmpty(key)) {
                 return false;
             }
             value.Value = map(key);
             return true;
         }
-        if(token is JObject obj && obj["Value"] is JValue fallback
+        if (token is JObject obj && obj["Value"] is JValue fallback
             && fallback.Type == JTokenType.String) {
             string key = fallback.Value<string>();
-            if(string.IsNullOrEmpty(key)) {
+            if (string.IsNullOrEmpty(key)) {
                 return false;
             }
             fallback.Value = map(key);
@@ -171,7 +171,7 @@ public static class O5cpKeyMapper {
 
     public static int RewriteKeyLiterals(JToken canvas, Func<string, string> map) {
         int count = 0;
-        if(canvas == null || map == null) {
+        if (canvas == null || map == null) {
             return count;
         }
         RewriteLiterals(canvas, map, ref count);
@@ -179,24 +179,24 @@ public static class O5cpKeyMapper {
     }
 
     private static void RewriteLiterals(JToken token, Func<string, string> map, ref int count) {
-        if(token is JObject obj) {
-            foreach(var property in obj.Properties()) {
-                if((property.Name == "FontKey" || property.Name == "SpriteKey")
+        if (token is JObject obj) {
+            foreach (var property in obj.Properties()) {
+                if ((property.Name == "FontKey" || property.Name == "SpriteKey")
                     && property.Value is JObject keyObj
                     && keyObj["Fx"] is JValue fx
                     && fx.Type == JTokenType.String) {
                     string expression = fx.Value<string>();
-                    if(!string.IsNullOrEmpty(expression)) {
+                    if (!string.IsNullOrEmpty(expression)) {
                         int[] changed = [0];
                         string rewritten = LiteralRegex.Replace(expression, match => {
                             string replacement = ReplaceLiteral(match.Value, map);
-                            if(replacement == null) {
+                            if (replacement == null) {
                                 return match.Value;
                             }
                             changed[0]++;
                             return replacement;
                         });
-                        if(changed[0] > 0) {
+                        if (changed[0] > 0) {
                             fx.Value = rewritten;
                             count += changed[0];
                         }
@@ -205,33 +205,33 @@ public static class O5cpKeyMapper {
                     RewriteLiterals(property.Value, map, ref count);
                 }
             }
-        } else if(token is JArray array) {
-            foreach(var item in array) {
+        } else if (token is JArray array) {
+            foreach (var item in array) {
                 RewriteLiterals(item, map, ref count);
             }
         }
     }
 
     private static string ReplaceLiteral(string raw, Func<string, string> map) {
-        if(raw.Length < 2) {
+        if (raw.Length < 2) {
             return null;
         }
         char quote = raw[0];
-        string key = UnescapeLiteral(raw.Substring(1, raw.Length - 2));
+        string key = UnescapeLiteral(raw[1..^1]);
         string mapped;
         try {
             mapped = map(key);
         } catch {
             return null;
         }
-        if(string.IsNullOrEmpty(mapped) || mapped == key) {
+        if (string.IsNullOrEmpty(mapped) || mapped == key) {
             return null;
         }
         return quote + EscapeLiteral(mapped, quote) + quote;
     }
 
     private static string UnescapeLiteral(string value) {
-        if(!value.Contains('\\')) {
+        if (!value.Contains('\\')) {
             return value;
         }
         return value
