@@ -34,7 +34,8 @@ public sealed class OvGraphComponent : MaskableGraphic {
 
     private void Update() {
         float now = Time.realtimeSinceStartup;
-        if(now - lastPushTime < 0.0001f) {
+        float interval = Math.Max(0.01f, Window) / Math.Max(8, Samples);
+        if(now - lastPushTime < interval) {
             return;
         }
         lastPushTime = now;
@@ -56,12 +57,13 @@ public sealed class OvGraphComponent : MaskableGraphic {
             return;
         }
         history.Add(new Vector2(now, value));
-        float cutoff = now - Math.Max(0.01f, Window);
+        float keep = Math.Max(Math.Max(0.01f, Window), 60f);
+        float cutoff = now - keep;
         int trim = 0;
         while(trim < history.Count && history[trim].x < cutoff) {
             trim++;
         }
-        int over = history.Count - trim - Math.Max(8, Samples);
+        int over = history.Count - trim - 65536;
         if(over > 0) {
             trim += over;
         }
@@ -129,24 +131,44 @@ public sealed class OvGraphComponent : MaskableGraphic {
         float now = Time.realtimeSinceStartup;
         float window = Math.Max(0.01f, Window);
         float start = now - window;
+        int first = 0;
+        while(first < history.Count && history[first].x < start) {
+            first++;
+        }
         float lo = Min, hi = Max;
-        if(AutoScale && history.Count > 0) {
-            lo = hi = history[0].y;
-            foreach(var p in history) {
-                if(p.y < lo) lo = p.y;
-                if(p.y > hi) hi = p.y;
+        if(AutoScale && first < history.Count) {
+            float dlo = history[first].y, dhi = dlo;
+            for(int i = first + 1; i < history.Count; i++) {
+                float y = history[i].y;
+                if(y < dlo) dlo = y;
+                if(y > dhi) dhi = y;
             }
-            if(hi - lo < 0.001f) {
-                hi = lo + 1f;
+            if(dhi - dlo < 0.001f) {
+                dhi = dlo + 1f;
             }
-        } else if(hi - lo < 0.001f) {
+            lo = Math.Min(Min, dlo);
+            hi = Math.Max(Max, dhi);
+        }
+        if(hi - lo < 0.001f) {
             hi = lo + 1f;
         }
 
         Vector2 Map(Vector2 p) {
-            float x = (p.x - start) / window * rect.width - rect.width * 0.5f;
-            float y = (p.y - lo) / (hi - lo) * rect.height - rect.height * 0.5f;
+            float x = rect.xMin + (p.x - start) / window * rect.width;
+            float y = rect.yMin + (p.y - lo) / (hi - lo) * rect.height;
             return new Vector2(x, y);
+        }
+
+        Vector2 ClipLeft(Vector2 a, Vector2 b, float x0) {
+            if(a.x >= x0) {
+                return a;
+            }
+            float d = b.x - a.x;
+            if(d <= 0.000001f) {
+                return b;
+            }
+            float t = (x0 - a.x) / d;
+            return a + (b - a) * t;
         }
 
         UIVertex vert = UIVertex.simpleVert;
@@ -171,29 +193,33 @@ public sealed class OvGraphComponent : MaskableGraphic {
         if(ShowGrid) {
             Color grid = new(LineColor.r, LineColor.g, LineColor.b, LineColor.a * 0.25f);
             for(int i = 1; i < 4; i++) {
-                float y = -rect.height * 0.5f + rect.height * i / 4f;
-                Quad(new Vector2(-rect.width * 0.5f, y), new Vector2(rect.width * 0.5f, y), 1f, grid);
+                float y = rect.yMin + rect.height * i / 4f;
+                Quad(new Vector2(rect.xMin, y), new Vector2(rect.xMin + rect.width, y), 1f, grid);
             }
             for(int i = 1; i < 6; i++) {
-                float x = -rect.width * 0.5f + rect.width * i / 6f;
-                Quad(new Vector2(x, -rect.height * 0.5f), new Vector2(x, rect.height * 0.5f), 1f, grid);
+                float x = rect.xMin + rect.width * i / 6f;
+                Quad(new Vector2(x, rect.yMin), new Vector2(x, rect.yMin + rect.height), 1f, grid);
             }
         }
 
-        if(history.Count == 0) {
+        if(history.Count == 0 || first >= history.Count) {
             return;
         }
 
-        if(ShowFill && history.Count > 1) {
-            float baseY = -rect.height * 0.5f;
-            for(int i = 1; i < history.Count; i++) {
+        if(ShowFill && history.Count > first) {
+            float baseY = rect.yMin;
+            for(int i = Math.Max(1, first); i < history.Count; i++) {
                 Vector2 a = Map(history[i - 1]), b = Map(history[i]);
+                if(b.x < rect.xMin) {
+                    continue;
+                }
+                Vector2 sa = ClipLeft(a, b, rect.xMin);
                 int baseIndex = vh.currentVertCount;
                 vert.color = FillColor;
-                vert.position = new Vector2(a.x, baseY); vh.AddVert(vert);
+                vert.position = new Vector2(sa.x, baseY); vh.AddVert(vert);
                 vert.position = new Vector2(b.x, baseY); vh.AddVert(vert);
                 vert.position = b; vh.AddVert(vert);
-                vert.position = a; vh.AddVert(vert);
+                vert.position = sa; vh.AddVert(vert);
                 vh.AddTriangle(baseIndex, baseIndex + 1, baseIndex + 2);
                 vh.AddTriangle(baseIndex, baseIndex + 2, baseIndex + 3);
             }
@@ -202,14 +228,22 @@ public sealed class OvGraphComponent : MaskableGraphic {
         if(ShowAxes) {
             Color axis = new(LineColor.r, LineColor.g, LineColor.b, LineColor.a * 0.6f);
             if(lo <= 0f && 0f <= hi) {
-                float y = (0f - lo) / (hi - lo) * rect.height - rect.height * 0.5f;
-                Quad(new Vector2(-rect.width * 0.5f, y), new Vector2(rect.width * 0.5f, y), 1f, axis);
+                float y = rect.yMin + (0f - lo) / (hi - lo) * rect.height;
+                Quad(new Vector2(rect.xMin, y), new Vector2(rect.xMin + rect.width, y), 1f, axis);
             }
         }
 
         float half = Math.Max(0.5f, Thickness) * 0.5f;
-        for(int i = 1; i < history.Count; i++) {
+        Vector2 drawStart = Map(history[first]);
+        for(int i = Math.Max(1, first); i < history.Count; i++) {
             Vector2 a = Map(history[i - 1]), b = Map(history[i]);
+            if(b.x < rect.xMin) {
+                continue;
+            }
+            a = ClipLeft(a, b, rect.xMin);
+            if(i == Math.Max(1, first)) {
+                drawStart = a;
+            }
             Vector2 dir = b - a;
             float len = dir.magnitude;
             if(len < 0.001f) {
@@ -241,7 +275,7 @@ public sealed class OvGraphComponent : MaskableGraphic {
             }
         }
 
-        Cap(Map(history[0]));
+        Cap(drawStart);
         Cap(Map(history[^1]));
     }
 }

@@ -76,6 +76,9 @@ public class RectTransformSettings : UnityComponentSettingsBase, ICopyable<RectT
         _lastAnchoredPosition = AnchoredPosition.Value;
         _lastAnchoredPositionZ = AnchoredPositionZ.Value;
         _lastSizeDelta = SizeDelta.Value;
+        if(!SizeDelta.UseFx && TryPositionSizeOverflow(out var overflowSize)) {
+            _lastSizeDelta = overflowSize;
+        }
         var rotXY = RotationXY.Value;
         _lastRotationXY = rotXY;
         _lastRotation = Rotation.Value;
@@ -145,6 +148,10 @@ public class RectTransformSettings : UnityComponentSettingsBase, ICopyable<RectT
             com.anchoredPosition3D = new Vector3(_lastAnchoredPosition.x, _lastAnchoredPosition.y, _lastAnchoredPositionZ);
         }
         if(SizeDelta.HasFx) if(FxUtil.Changed(ref _lastSizeDelta, SizeDelta.Value)) com.sizeDelta = _lastSizeDelta;
+        if(!SizeDelta.UseFx && AnchoredPosition.HasFx && TryPositionSizeOverflow(out var overflowSize)
+            && FxUtil.Changed(ref _lastSizeDelta, overflowSize)) {
+            com.sizeDelta = _lastSizeDelta;
+        }
         var angles = com.localEulerAngles;
         var rotationXY = RotationXY.HasFx ? RotationXY.Value : new Vector2(angles.x, angles.y);
         var rotationZ = Rotation.HasFx ? Rotation.Value : angles.z;
@@ -186,6 +193,27 @@ public class RectTransformSettings : UnityComponentSettingsBase, ICopyable<RectT
         Pivot = IOUtils.ReadFx(token, nameof(Pivot), Pivot);
         OffsetMin = IOUtils.ReadFx(token, nameof(OffsetMin), OffsetMin);
         OffsetMax = IOUtils.ReadFx(token, nameof(OffsetMax), OffsetMax);
+    }
+
+    private bool TryPositionSizeOverflow(out Vector2 size) {
+        size = default;
+        if(SizeDelta.UseFx || !AnchoredPosition.UseFx) {
+            return false;
+        }
+        try {
+            if(!FxValue.TryEvaluateJs(FxValue.WrapJsBlock(AnchoredPosition.Expression), out var result)) {
+                return false;
+            }
+            if(result is not System.Collections.IList list || list.Count < 4) {
+                return false;
+            }
+            size = new Vector2(
+                Convert.ToSingle(list[2], System.Globalization.CultureInfo.InvariantCulture),
+                Convert.ToSingle(list[3], System.Globalization.CultureInfo.InvariantCulture));
+            return true;
+        } catch {
+            return false;
+        }
     }
 
     public RectTransformSettings Copy() {
