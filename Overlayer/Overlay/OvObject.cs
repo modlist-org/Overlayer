@@ -90,6 +90,10 @@ public sealed class OvObject : ISettingsFile {
         }
         Config.MovingManConfig?.ToUnity(GameObject);
         Config.ColorRangeConfig?.ToUnity(GameObject);
+        Config.CanvasConfig?.ToUnity(GameObject);
+        Config.HorizontalLayoutGroupConfig?.ToUnity(GameObject);
+        Config.VerticalLayoutGroupConfig?.ToUnity(GameObject);
+        Config.GridLayoutGroupConfig?.ToUnity(GameObject);
         Config.GraphConfig?.ToUnity(GameObject);
         Config.RainConfig?.ToUnity(GameObject);
         Config.ImageConfig?.ToUnity(GameObject);
@@ -123,6 +127,10 @@ public sealed class OvObject : ISettingsFile {
             }
             Config.MovingManConfig?.RefreshFx(GameObject);
             Config.ColorRangeConfig?.RefreshFx(GameObject);
+            Config.CanvasConfig?.RefreshFx(GameObject);
+            Config.HorizontalLayoutGroupConfig?.RefreshFx(GameObject);
+            Config.VerticalLayoutGroupConfig?.RefreshFx(GameObject);
+            Config.GridLayoutGroupConfig?.RefreshFx(GameObject);
             Config.GraphConfig?.RefreshFx(GameObject);
             Config.RainConfig?.RefreshFx(GameObject);
             Config.ImageConfig?.RefreshFx(GameObject);
@@ -188,6 +196,10 @@ public sealed class OvObject : ISettingsFile {
         }
         var movingMan = EnsureComponent<MovingManComponent>(Config.MovingManConfig != null);
         var colorRange = EnsureComponent<ColorRangeComponent>(tc && Config.ColorRangeConfig != null);
+        EnsureComponent<Canvas>(Config.CanvasConfig != null);
+        EnsureComponent<HorizontalLayoutGroup>(Config.HorizontalLayoutGroupConfig != null);
+        EnsureComponent<VerticalLayoutGroup>(Config.VerticalLayoutGroupConfig != null);
+        EnsureComponent<GridLayoutGroup>(Config.GridLayoutGroupConfig != null);
         EnsureComponent<OvGraphComponent>(Config.GraphConfig != null);
         EnsureComponent<OvRainComponent>(Config.RainConfig != null);
         var text = GameObject.GetComponent<TextMeshProUGUI>();

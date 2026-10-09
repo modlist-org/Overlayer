@@ -36,6 +36,7 @@ public class CanvasSettings : UnityComponentSettingsBase, ICopyable<CanvasSettin
         com.sortingOrder = _lastSortingOrder;
         com.pixelPerfect = _lastPixelPerfect;
         com.overrideSorting = _lastOverrideSorting;
+        ToUnity(com);
 
         return true;
     }
@@ -68,6 +69,7 @@ public class CanvasSettings : UnityComponentSettingsBase, ICopyable<CanvasSettin
             return;
         }
 
+        RefreshEnabled(com);
         if(FxUtil.Changed(ref _lastRenderMode, RenderMode.Value)) com.renderMode = _lastRenderMode;
         if(FxUtil.Changed(ref _lastSortingOrder, SortingOrder.Value)) com.sortingOrder = _lastSortingOrder;
         if(FxUtil.Changed(ref _lastPixelPerfect, PixelPerfect.Value)) com.pixelPerfect = _lastPixelPerfect;

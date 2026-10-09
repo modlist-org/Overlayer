@@ -14,6 +14,10 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
 
     public TextMeshProUGUISettings TextConfig = null;
     public OvTextSettings TextEngineConfig = null;
+    public CanvasSettings CanvasConfig = null;
+    public HorizontalLayoutGroupSettings HorizontalLayoutGroupConfig = null;
+    public VerticalLayoutGroupSettings VerticalLayoutGroupConfig = null;
+    public GridLayoutGroupSettings GridLayoutGroupConfig = null;
     public MovingManSettings MovingManConfig = null;
     public ColorRangeSettings ColorRangeConfig = null;
     public GraphSettings GraphConfig = null;
@@ -35,6 +39,10 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
         || (CanvasGroupConfig?.HasAnyFx ?? false)
         || (ContentSizeFitterConfig?.HasAnyFx ?? false)
         || (TextConfig?.HasAnyFx ?? false)
+        || (CanvasConfig?.HasAnyFx ?? false)
+        || (HorizontalLayoutGroupConfig?.HasAnyFx ?? false)
+        || (VerticalLayoutGroupConfig?.HasAnyFx ?? false)
+        || (GridLayoutGroupConfig?.HasAnyFx ?? false)
         || FxUtil.HasFx(TextEngineConfig?.PlayingText)
         || FxUtil.HasFx(TextEngineConfig?.NotPlayingText)
         || (MovingManConfig?.HasAnyFx ?? false)
@@ -65,6 +73,18 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
         if(TextConfig != null) {
             obj[nameof(TextConfig)] = TextConfig.Serialize();
             obj[nameof(TextEngineConfig)] = (TextEngineConfig ?? OvTextSettings.FromLegacy(TextConfig.Text.Value)).Serialize();
+        }
+        if(CanvasConfig != null) {
+            obj[nameof(CanvasConfig)] = CanvasConfig.Serialize();
+        }
+        if(HorizontalLayoutGroupConfig != null) {
+            obj[nameof(HorizontalLayoutGroupConfig)] = HorizontalLayoutGroupConfig.Serialize();
+        }
+        if(VerticalLayoutGroupConfig != null) {
+            obj[nameof(VerticalLayoutGroupConfig)] = VerticalLayoutGroupConfig.Serialize();
+        }
+        if(GridLayoutGroupConfig != null) {
+            obj[nameof(GridLayoutGroupConfig)] = GridLayoutGroupConfig.Serialize();
         }
         if(MovingManConfig != null) {
             obj[nameof(MovingManConfig)] = MovingManConfig.Serialize();
@@ -137,6 +157,10 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
         }
         TextConfig = ReadConfig<TextMeshProUGUISettings>(obj, nameof(TextConfig));
         TextEngineConfig = ReadConfig<OvTextSettings>(obj, nameof(TextEngineConfig));
+        CanvasConfig = ReadConfig<CanvasSettings>(obj, nameof(CanvasConfig));
+        HorizontalLayoutGroupConfig = ReadConfig<HorizontalLayoutGroupSettings>(obj, nameof(HorizontalLayoutGroupConfig));
+        VerticalLayoutGroupConfig = ReadConfig<VerticalLayoutGroupSettings>(obj, nameof(VerticalLayoutGroupConfig));
+        GridLayoutGroupConfig = ReadConfig<GridLayoutGroupSettings>(obj, nameof(GridLayoutGroupConfig));
         if(TextConfig != null) {
             TextEngineConfig ??= OvTextSettings.FromLegacy(TextConfig.Text.Value);
         } else {
@@ -167,6 +191,10 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
             ContentSizeFitterConfig = ContentSizeFitterConfig?.Copy(),
             TextConfig = TextConfig?.Copy(),
             TextEngineConfig = TextEngineConfig?.Copy(),
+            CanvasConfig = CanvasConfig?.Copy(),
+            HorizontalLayoutGroupConfig = HorizontalLayoutGroupConfig?.Copy(),
+            VerticalLayoutGroupConfig = VerticalLayoutGroupConfig?.Copy(),
+            GridLayoutGroupConfig = GridLayoutGroupConfig?.Copy(),
             MovingManConfig = MovingManConfig?.Copy(),
             ColorRangeConfig = ColorRangeConfig?.Copy(),
             GraphConfig = GraphConfig?.Copy(),

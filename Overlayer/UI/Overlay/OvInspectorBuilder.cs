@@ -98,6 +98,18 @@ internal sealed class OvInspectorBuilder(
         if(obj.Config.TextConfig != null) {
             BuildText(obj, obj.Config.TextConfig);
         }
+        if(obj.Config.CanvasConfig != null) {
+            BuildCanvasComponent(obj, obj.Config.CanvasConfig);
+        }
+        if(obj.Config.HorizontalLayoutGroupConfig != null) {
+            BuildHorizontalLayoutGroup(obj, obj.Config.HorizontalLayoutGroupConfig);
+        }
+        if(obj.Config.VerticalLayoutGroupConfig != null) {
+            BuildVerticalLayoutGroup(obj, obj.Config.VerticalLayoutGroupConfig);
+        }
+        if(obj.Config.GridLayoutGroupConfig != null) {
+            BuildGridLayoutGroup(obj, obj.Config.GridLayoutGroupConfig);
+        }
         if(obj.Config.MovingManConfig != null) {
             BuildMovingMan(obj, obj.Config.MovingManConfig);
         }
@@ -422,13 +434,80 @@ internal sealed class OvInspectorBuilder(
 
 
 
-    private void BuildGraph(OvObject obj, GraphSettings cfg) {
-        var (_, card) = ComponentCard("Graph", cfg, () => {
+    private void BuildCanvasComponent(OvObject obj, CanvasSettings cfg) {
+        var (_, card) = ComponentCard("Canvas", cfg, () => {
+            obj.Config.CanvasConfig = null;
+            RefreshComponents(obj);
+        });
+
+        FxEnum(card, "Render Mode", cfg.RenderMode, RenderMode.ScreenSpaceOverlay, "canvas_render_mode");
+        FxIntSlider(card, "Sorting Order", cfg.SortingOrder, 32760, -32768f, 32767f, "canvas_sort");
+        FxToggle(card, "Override Sorting", cfg.OverrideSorting, true, "canvas_override_sorting");
+        FxToggle(card, "Pixel Perfect", cfg.PixelPerfect, false, "canvas_pixel_perfect");
+    }
+
+    private void BuildHorizontalLayoutGroup(OvObject obj, HorizontalLayoutGroupSettings cfg) {
+        var (_, card) = ComponentCard("Horizontal Layout Group", cfg, () => {
+            obj.Config.HorizontalLayoutGroupConfig = null;
+            RefreshComponents(obj);
+        });
+
+        BuildLayoutGroupCommon(card, cfg.Spacing, cfg.PaddingH, cfg.PaddingV, cfg.ChildAlignment,
+            cfg.ChildControlWidth, cfg.ChildControlHeight,
+            cfg.ChildForceExpandWidth, cfg.ChildForceExpandHeight, "h_layout");
+        FxToggle(card, "Child Scale Width", cfg.ChildScaleWidth, false, "h_layout_scale_w");
+        FxToggle(card, "Child Scale Height", cfg.ChildScaleHeight, false, "h_layout_scale_h");
+        FxToggle(card, "Reverse Arrangement", cfg.ReverseArrangement, false, "h_layout_reverse");
+    }
+
+    private void BuildVerticalLayoutGroup(OvObject obj, VerticalLayoutGroupSettings cfg) {
+        var (_, card) = ComponentCard("Vertical Layout Group", cfg, () => {
+            obj.Config.VerticalLayoutGroupConfig = null;
+            RefreshComponents(obj);
+        });
+
+        BuildLayoutGroupCommon(card, cfg.Spacing, cfg.PaddingH, cfg.PaddingV, cfg.ChildAlignment,
+            cfg.ChildControlWidth, cfg.ChildControlHeight,
+            cfg.ChildForceExpandWidth, cfg.ChildForceExpandHeight, "v_layout");
+        FxToggle(card, "Child Scale Width", cfg.ChildScaleWidth, false, "v_layout_scale_w");
+        FxToggle(card, "Child Scale Height", cfg.ChildScaleHeight, false, "v_layout_scale_h");
+        FxToggle(card, "Reverse Arrangement", cfg.ReverseArrangement, false, "v_layout_reverse");
+    }
+
+    private void BuildLayoutGroupCommon(Transform card, FxValue<float> spacing, FxValue<Vector2> paddingH, FxValue<Vector2> paddingV, FxValue<TextAnchor> alignment, FxValue<bool> controlW, FxValue<bool> controlH, FxValue<bool> expandW, FxValue<bool> expandH, string id) {
+        FxSlider(card, "Spacing", spacing, 0f, 0f, 200f, $"{id}_spacing", "F1");
+        FxVector2(card, "Padding H", paddingH, Vector2.zero, 0f, 500f, $"{id}_pad_h", "F0");
+        FxVector2(card, "Padding V", paddingV, Vector2.zero, 0f, 500f, $"{id}_pad_v", "F0");
+        FxEnum(card, "Child Alignment", alignment, TextAnchor.UpperLeft, $"{id}_align");
+        FxToggle(card, "Control Child Width", controlW, true, $"{id}_control_w");
+        FxToggle(card, "Control Child Height", controlH, true, $"{id}_control_h");
+        FxToggle(card, "Expand Child Width", expandW, true, $"{id}_expand_w");
+        FxToggle(card, "Expand Child Height", expandH, true, $"{id}_expand_h");
+    }
+
+    private void BuildGridLayoutGroup(OvObject obj, GridLayoutGroupSettings cfg) {
+        var (_, card) = ComponentCard("Grid Layout Group", cfg, () => {
+            obj.Config.GridLayoutGroupConfig = null;
+            RefreshComponents(obj);
+        });
+
+        FxVector2(card, "Padding H", cfg.PaddingH, Vector2.zero, 0f, 500f, "grid_layout_pad_h", "F0");
+        FxVector2(card, "Padding V", cfg.PaddingV, Vector2.zero, 0f, 500f, "grid_layout_pad_v", "F0");
+        FxVector2(card, "Cell Size", cfg.CellSize, new Vector2(100f, 100f), 1f, 2000f, "grid_layout_cell", "F0");
+        FxVector2(card, "Spacing", cfg.Spacing, Vector2.zero, 0f, 500f, "grid_layout_spacing", "F0");
+        FxEnum(card, "Start Corner", cfg.StartCorner, GridLayoutGroup.Corner.UpperLeft, "grid_layout_corner");
+        FxEnum(card, "Start Axis", cfg.StartAxis, GridLayoutGroup.Axis.Horizontal, "grid_layout_axis");
+        FxEnum(card, "Child Alignment", cfg.ChildAlignment, TextAnchor.UpperLeft, "grid_layout_align");
+        FxEnum(card, "Constraint", cfg.Constraint, GridLayoutGroup.Constraint.Flexible, "grid_layout_constraint");
+        FxIntSlider(card, "Constraint Count", cfg.ConstraintCount, 2, 1, 20, "grid_layout_constraint_count", "F0");
+    }
+
+    private void BuildGraph(OvObject obj, GraphSettings cfg) {        var (_, card) = ComponentCard("Graph", cfg, () => {
             obj.Config.GraphConfig = null;
             RefreshComponents(obj);
         });
 
-        Label(card, "JS function f(t), t is seconds. Sampled once per frame into a scrolling history.");
+        Label(card, "JS function f(t), t is seconds. Window only changes the view, old data is kept.");
         var jsLanguage = new CodeEditorLanguage {
             Highlight = JsSyntaxHighlighter.GetSpans,
             Diagnose = null,
@@ -576,6 +655,18 @@ internal sealed class OvInspectorBuilder(
             options.Add("Graph");
         }
 
+        if(obj.Config.CanvasConfig == null) {
+            options.Add("Canvas");
+        }
+
+        if(obj.Config.HorizontalLayoutGroupConfig == null
+            && obj.Config.VerticalLayoutGroupConfig == null
+            && obj.Config.GridLayoutGroupConfig == null) {
+            options.Add("Horizontal Layout Group");
+            options.Add("Vertical Layout Group");
+            options.Add("Grid Layout Group");
+        }
+
         if(obj.Config.RainConfig == null) {
             options.Add("Rain");
         }
@@ -618,7 +709,6 @@ internal sealed class OvInspectorBuilder(
                 case "Text":
                     obj.Config.TextConfig = new TextMeshProUGUISettings();
                     obj.Config.TextEngineConfig = new OvTextSettings();
-                    obj.Config.ContentSizeFitterConfig ??= new ContentSizeFitterSettings();
                     break;
                 case "Image":
                     obj.Config.ImageConfig = new ImageSettings();
@@ -631,6 +721,18 @@ internal sealed class OvInspectorBuilder(
                     break;
                 case "Graph":
                     obj.Config.GraphConfig = new GraphSettings();
+                    break;
+                case "Canvas":
+                    obj.Config.CanvasConfig = new CanvasSettings();
+                    break;
+                case "Horizontal Layout Group":
+                    obj.Config.HorizontalLayoutGroupConfig = new HorizontalLayoutGroupSettings();
+                    break;
+                case "Vertical Layout Group":
+                    obj.Config.VerticalLayoutGroupConfig = new VerticalLayoutGroupSettings();
+                    break;
+                case "Grid Layout Group":
+                    obj.Config.GridLayoutGroupConfig = new GridLayoutGroupSettings();
                     break;
                 case "Rain":
                     obj.Config.RainConfig = new RainSettings();
@@ -2102,18 +2204,21 @@ internal sealed class OvInspectorBuilder(
 
     private Action AnchorPresetControl(Transform parent, OvObject obj, Action positionFieldsChanged) {
         RectTransformSettings cfg = obj.Config.RectTransformConfig;
-        RectTransform buttonRow = O5Factory.Row(O5KitAdapters.Ctx, parent, 58f);
+        RectTransform buttonRow = O5Factory.Row(O5KitAdapters.Ctx, parent, 66f);
         var buttonLayout = buttonRow.GetComponent<LayoutElement>();
-        buttonLayout.minWidth = 58f;
-        buttonLayout.preferredWidth = 58f;
+        buttonLayout.minWidth = 66f;
+        buttonLayout.preferredWidth = 66f;
         buttonLayout.flexibleWidth = 0f;
+        buttonLayout.minHeight = 66f;
+        buttonLayout.preferredHeight = 66f;
+        buttonLayout.flexibleHeight = 0f;
         var summary = O5Factory.Button(O5KitAdapters.Ctx, buttonRow, null, string.Empty, "transform_anchor_presets");
         summary.Label.gameObject.SetActive(false);
         summary.Rect.anchorMin = new Vector2(0f, 0.5f);
         summary.Rect.anchorMax = new Vector2(0f, 0.5f);
         summary.Rect.pivot = new Vector2(0f, 0.5f);
         summary.Rect.anchoredPosition = Vector2.zero;
-        summary.Rect.sizeDelta = new Vector2(58f, 52f);
+        summary.Rect.sizeDelta = new Vector2(66f, 66f);
         controls.Add(summary);
 
         GameObject summaryGraphic = AddAnchorGraphic(summary.Rect, ModeForAxis(cfg, 0), ModeForAxis(cfg, 1), false, false, 42f);
@@ -2317,18 +2422,21 @@ internal sealed class OvInspectorBuilder(
     }
 
     private Action AnchorPresetControl(Transform parent, RectTransformSettings cfg, RectTransform targetTransform, Action positionFieldsChanged) {
-        RectTransform buttonRow = O5Factory.Row(O5KitAdapters.Ctx, parent, 58f);
+        RectTransform buttonRow = O5Factory.Row(O5KitAdapters.Ctx, parent, 66f);
         var buttonLayout = buttonRow.GetComponent<LayoutElement>();
-        buttonLayout.minWidth = 58f;
-        buttonLayout.preferredWidth = 58f;
+        buttonLayout.minWidth = 66f;
+        buttonLayout.preferredWidth = 66f;
         buttonLayout.flexibleWidth = 0f;
+        buttonLayout.minHeight = 66f;
+        buttonLayout.preferredHeight = 66f;
+        buttonLayout.flexibleHeight = 0f;
         var summary = O5Factory.Button(O5KitAdapters.Ctx, buttonRow, null, string.Empty, "transform_anchor_presets");
         summary.Label.gameObject.SetActive(false);
         summary.Rect.anchorMin = new Vector2(0f, 0.5f);
         summary.Rect.anchorMax = new Vector2(0f, 0.5f);
         summary.Rect.pivot = new Vector2(0f, 0.5f);
         summary.Rect.anchoredPosition = Vector2.zero;
-        summary.Rect.sizeDelta = new Vector2(58f, 52f);
+        summary.Rect.sizeDelta = new Vector2(66f, 66f);
         controls.Add(summary);
 
         GameObject summaryGraphic = AddAnchorGraphic(summary.Rect, ModeForAxis(cfg, 0), ModeForAxis(cfg, 1), false, false, 42f);
