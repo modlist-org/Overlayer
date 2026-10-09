@@ -47,6 +47,7 @@ public class TagCore {
     public bool IsProperty => MemberType == TagMemberType.Property;
     public bool IsField => MemberType == TagMemberType.Field;
     public bool IsJS => MemberType == TagMemberType.JS;
+    public bool IsHidden => (TagType & TagType.Hide) != 0;
 
     public TagCore(string name, MemberInfo member, TagType tagType, string description = null) {
         Name = name;

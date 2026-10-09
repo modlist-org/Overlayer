@@ -143,6 +143,7 @@ public sealed class TagCache {
         }
 
         var (Name, Score) = TagManager.GetAllTags()
+            .Where(tag => !tag.IsHidden)
             .Select(tag => (tag.Name, Score: Fuzz.WeightedRatio(name, tag.Name)))
             .OrderByDescending(item => item.Score)
             .FirstOrDefault();

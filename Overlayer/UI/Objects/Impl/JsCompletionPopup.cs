@@ -342,7 +342,7 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
             if(qualifier == "Tag") {
                 var seen = new HashSet<string>(StringComparer.Ordinal);
                 foreach(var tag in Overlayer.Tag.Core.TagManager.GetAllTags()) {
-                    if(string.IsNullOrEmpty(tag.Name) || !seen.Add(tag.Name)) {
+                    if(string.IsNullOrEmpty(tag.Name) || tag.IsHidden || !seen.Add(tag.Name)) {
                         continue;
                     }
 
@@ -394,7 +394,7 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
 
         var seenTags = new HashSet<string>(StringComparer.Ordinal);
         foreach(var tag in Overlayer.Tag.Core.TagManager.GetAllTags()) {
-            if(string.IsNullOrEmpty(tag.Name) || !seenTags.Add(tag.Name)) {
+            if(string.IsNullOrEmpty(tag.Name) || tag.IsHidden || !seenTags.Add(tag.Name)) {
                 continue;
             }
 

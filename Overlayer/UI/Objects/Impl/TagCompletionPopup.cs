@@ -284,6 +284,10 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
         matches.Clear();
         scored.Clear();
         foreach(TagCore tag in TagManager.GetAllTags()) {
+            if(tag.IsHidden) {
+                continue;
+            }
+
             int score = GetScore(query, tag.Name);
             if(string.IsNullOrEmpty(query) || score >= 45) {
                 scored.Add((tag, score));
