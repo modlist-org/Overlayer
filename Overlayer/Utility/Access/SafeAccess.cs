@@ -88,7 +88,7 @@ public static class SafeAccess {
                 }
             }
 
-            if (!typeName.Contains('.')) {
+            if (typeName.IndexOf('.') < 0) {
                 Type unique = null;
                 bool ambiguous = false;
                 foreach (var asm in AppDomain.CurrentDomain.GetAssemblies()) {

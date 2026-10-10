@@ -54,4 +54,9 @@
     <Compile Include="..\Overlayer\Utility\StringUtils.cs" />
   </ItemGroup>
 
+  <!-- Embedded GTweens engine sources (from O5Kit ThirdParty) for engine-level tests. -->
+  <ItemGroup>
+    <Compile Include="..\..\O5Kit\src\O5Kit\ThirdParty\GTweens\Source\**\*.cs" />
+  </ItemGroup>
+
 </Project>

@@ -1,4 +1,4 @@
-﻿using Microsoft.ClearScript.V8;
+using Microsoft.ClearScript.V8;
 using Overlayer.Async;
 using Overlayer.Compat.Interface;
 using Overlayer.Core;
@@ -33,6 +33,10 @@ public class V8Manager : IRuntimeService {
     public Task InitializationTask { get; private set; }
     private FileSystemWatcher _watcher;
 
+    /// <summary>False when the V8 native library could not be loaded (JS disabled, rest of the mod keeps running).</summary>
+    public bool IsAvailable { get; private set; }
+    public string UnavailableReason { get; private set; }
+
     public const string ImplFileName = "impl.js";
     public const string ImplDtsFileName = "impl.d.ts";
     public const string ScriptFolderName = "Script";
@@ -54,6 +58,7 @@ public class V8Manager : IRuntimeService {
 
     public void Initialize() => InitializationTask = InitializeAsync();
 
+    /// <summary>Never throws: a missing V8 native library disables JS instead of aborting mod init.</summary>
     public Task InitializeAsync() {
         ImplFilePath = Path.Combine(MainCore.Paths.JSPath, ImplFileName);
         ImplDtsFilePath = Path.Combine(MainCore.Paths.JSPath, ImplDtsFileName);
@@ -64,11 +69,39 @@ public class V8Manager : IRuntimeService {
             MainCore.Log.Msg($"[{nameof(V8Manager)}] Script folder created at: {ScriptFolderPath}");
         }
         lock (_engineLock) {
-            _engine = new V8ScriptEngine();
-            BindEngine(_engine);
+            _engine = TryCreateEngineLocked();
         }
 
         return LoadDisabledScriptsAsync();
+    }
+
+    /// <summary>Creates + binds an engine. Caller must hold <see cref="_engineLock"/>. Returns null on failure.</summary>
+    private V8ScriptEngine TryCreateEngineLocked() {
+        try {
+            ClearScriptNativeLoader.EnsureLoaded(
+                msg => MainCore.Log.Msg(msg),
+                warn => MainCore.Log.Wrn(warn));
+        } catch (Exception ex) {
+            MainCore.Log.Wrn($"[{nameof(V8Manager)}] Native preload failed: {ex.Message}");
+        }
+        try {
+            var engine = new V8ScriptEngine();
+            BindEngine(engine);
+            IsAvailable = true;
+            UnavailableReason = null;
+            return engine;
+        } catch (DllNotFoundException ex) {
+            IsAvailable = false;
+            UnavailableReason = ex.Message;
+            MainCore.Log.Wrn($"[{nameof(V8Manager)}] V8 unavailable (native library not resolved: {ex.Message}). JS tags/scripts are disabled; the rest of Overlayer keeps running.");
+            MainCore.Log.Msg($"[{nameof(V8Manager)}] Fix: reinstall the matching per-OS zip (linux/mac zips must contain ClearScriptV8.linux-x64.so / .dylib in UserLibs) and restart the game once so it can be staged next to the executable.");
+            return null;
+        } catch (Exception ex) {
+            IsAvailable = false;
+            UnavailableReason = ex.Message;
+            MainCore.Log.Wrn($"[{nameof(V8Manager)}] V8 unavailable: {ex.GetType().Name}: {ex.Message}. JS tags/scripts are disabled; the rest of Overlayer keeps running.");
+            return null;
+        }
     }
 
     public async Task LoadScriptsAsync() {
@@ -76,6 +109,10 @@ public class V8Manager : IRuntimeService {
         try {
             try {
                 await InitializationTask.ConfigureAwait(false);
+                if (_engine == null) {
+                    MainCore.Log.Wrn($"[{nameof(V8Manager)}] Engine unavailable, skipping script load.");
+                    return;
+                }
                 if (await _scriptLoader.LoadAllScriptsAsync(ScriptFolderPath, _engine, syncChanges: false).ConfigureAwait(false)) {
                     foreach (var diag in LoaderDiagnostics) {
                         MainCore.Log.Msg(diag.ToString());
@@ -118,6 +155,7 @@ public class V8Manager : IRuntimeService {
         engine.AddHostType("Application", typeof(UnityEngine.Application));
         engine.AddHostType("Screen", typeof(UnityEngine.Screen));
         engine.AddHostType("Input", typeof(UnityEngine.Input));
+        engine.AddHostType("O5Input", typeof(O5Kit.Input.O5Input));
         engine.AddHostType("KeyCode", typeof(UnityEngine.KeyCode));
         engine.AddHostType("Cursor", typeof(UnityEngine.Cursor));
         engine.AddHostType("CursorLockMode", typeof(UnityEngine.CursorLockMode));
@@ -144,9 +182,14 @@ public class V8Manager : IRuntimeService {
     public void Reset() {
         lock (_engineLock) {
             ClearFxScriptCache();
-            _engine?.Dispose();
-            _engine = new V8ScriptEngine();
-            BindEngine(_engine);
+            try {
+                _engine?.Dispose();
+            } catch {
+            }
+            _engine = TryCreateEngineLocked();
+            if (_engine == null) {
+                return;
+            }
         }
         Scripting.Patch.JSPatchManager.RemoveAll();
         Scripting.UI.JSUIHost.RemoveAll();
@@ -178,15 +221,22 @@ public class V8Manager : IRuntimeService {
             lock (_engineLock) {
                 ClearFxScriptCache();
                 jsTags = JSTagManager.Clear();
-                _engine.Dispose();
-                _engine = new V8ScriptEngine();
-                BindEngine(_engine);
+                try {
+                    _engine?.Dispose();
+                } catch {
+                }
+                _engine = TryCreateEngineLocked();
             }
 
             if (jsTags.Count > 0) {
                 TagManager.Unregister([.. jsTags], recompile: false);
             }
             _scriptLoader.ResetTracking();
+
+            if (_engine == null) {
+                MainCore.Log.Wrn($"[{nameof(V8Manager)}] Engine unavailable, skipping script rebuild.");
+                return;
+            }
         }).ConfigureAwait(false);
 
         if (await _scriptLoader.LoadAllScriptsAsync(ScriptFolderPath, _engine, syncChanges: false).ConfigureAwait(false)) {
@@ -214,6 +264,9 @@ public class V8Manager : IRuntimeService {
         var dtsContent = BuildImplDtsContent(tags);
 
         lock (_engineLock) {
+            if (_engine == null) {
+                return;
+            }
             try {
                 bool jsUpToDate = !force && File.Exists(ImplFilePath) &&
                     File.ReadAllText(ImplFilePath) == jsContent;
@@ -557,6 +610,9 @@ public class V8Manager : IRuntimeService {
     private long _evalActive = -1;
 
     private (V8Script Script, string Error) CompileFx(string code) {
+        if (_engine == null) {
+            return (null, "V8 engine unavailable");
+        }
         if (_fxScriptCache.TryGetValue(code, out var cached) && ReferenceEquals(cached.Engine, _engine)) {
             return (cached.Script, cached.Error);
         }
@@ -759,6 +815,9 @@ public class V8Manager : IRuntimeService {
 
     public void LoadImplJs() {
         lock (_engineLock) {
+            if (_engine == null) {
+                return;
+            }
             if (File.Exists(ImplFilePath)) {
                 try {
                     _engine.Execute(File.ReadAllText(ImplFilePath));
@@ -793,6 +852,10 @@ public class V8Manager : IRuntimeService {
         await InitializationTask.ConfigureAwait(false);
         await _reloadGate.WaitAsync().ConfigureAwait(false);
         try {
+            if (_engine == null) {
+                MainCore.Log.Wrn($"[{nameof(V8Manager)}] Engine unavailable, skipping script reload.");
+                return;
+            }
             await Task.Run(() => _scriptLoader.ReloadFile(filePath, _engine)).ConfigureAwait(false);
             foreach (var diag in LoaderDiagnostics) {
                 MainCore.Log.Msg(diag.ToString());
@@ -835,7 +898,7 @@ public class V8Manager : IRuntimeService {
             if (!File.Exists(path)) {
                 return;
             }
-            string json = await File.ReadAllTextAsync(path).ConfigureAwait(false);
+            string json = await Task.Run(() => File.ReadAllText(path)).ConfigureAwait(false);
             var names = Newtonsoft.Json.JsonConvert.DeserializeObject<HashSet<string>>(json);
             if (names == null) {
                 return;
@@ -872,7 +935,8 @@ public class V8Manager : IRuntimeService {
         await _disabledScriptsSaveGate.WaitAsync().ConfigureAwait(false);
         try {
             string path = Path.Combine(ScriptFolderPath, DisabledScriptsFileName);
-            await File.WriteAllTextAsync(path, SerializeDisabledScripts()).ConfigureAwait(false);
+            string content = SerializeDisabledScripts();
+            await Task.Run(() => File.WriteAllText(path, content)).ConfigureAwait(false);
         } catch (Exception e) {
             MainCore.Log.Wrn($"[{nameof(V8Manager)}] Failed to save disabled scripts: {e.Message}");
         } finally {

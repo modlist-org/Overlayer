@@ -1,5 +1,6 @@
 using Overlayer.Compat;
 using FuzzySharp;
+using O5Kit.Core;
 using O5Kit.Input;
 using Overlayer.Tag.Core;
 using O5Kit.Factory;
@@ -147,7 +148,7 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
         }
 
         string text = input.text ?? string.Empty;
-        int caret = Math.Clamp(input.selectionFocusPosition, 0, text.Length);
+        int caret = MathCompat.Clamp(input.selectionFocusPosition, 0, text.Length);
         if (suppressRefresh) {
             bool sameState = text == suppressedText && caret == suppressedCaret;
             suppressRefresh = false;
@@ -205,7 +206,7 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
         name.fontSize = 14f;
         name.alignment = TextAlignmentOptions.Left;
         name.verticalAlignment = VerticalAlignmentOptions.Middle;
-        name.textWrappingMode = TextWrappingModes.NoWrap;
+        TmpCompat.SetNoWrap(name);
         name.overflowMode = TextOverflowModes.Ellipsis;
         name.rectTransform.offsetMin = new(10f, 0f);
         name.rectTransform.offsetMax = new(-150f, 0f);
@@ -216,7 +217,7 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
         detail.fontSize = 11f;
         detail.alignment = TextAlignmentOptions.Right;
         detail.verticalAlignment = VerticalAlignmentOptions.Middle;
-        detail.textWrappingMode = TextWrappingModes.NoWrap;
+        TmpCompat.SetNoWrap(detail);
         detail.overflowMode = TextOverflowModes.Ellipsis;
         detail.color = new Color(1f, 1f, 1f, 0.48f);
         detail.rectTransform.offsetMin = new(150f, 0f);
@@ -361,8 +362,8 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
         }
 
         string text = input.text ?? string.Empty;
-        int start = Math.Clamp(replacementStart, 0, text.Length);
-        int end = Math.Clamp(start + replacementLength, start, text.Length);
+        int start = MathCompat.Clamp(replacementStart, 0, text.Length);
+        int end = MathCompat.Clamp(start + replacementLength, start, text.Length);
         TagCore tag = matches[index];
         string name = tag.Name;
         bool hasClosingDelimiter = end < text.Length && text[end] == '}';
@@ -455,7 +456,7 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
 
     private void SetCaret(int caret) {
         int length = input.text?.Length ?? 0;
-        caret = Math.Clamp(caret, 0, length);
+        caret = MathCompat.Clamp(caret, 0, length);
         input.selectionAnchorPosition = caret;
         input.selectionFocusPosition = caret;
         input.ForceLabelUpdate();
@@ -477,7 +478,7 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
 
         string currentText = input.text ?? string.Empty;
         SnippetStop active = snippetStops[snippetIndex];
-        int caret = Math.Clamp(input.selectionFocusPosition, 0, currentText.Length);
+        int caret = MathCompat.Clamp(input.selectionFocusPosition, 0, currentText.Length);
         int delta = currentText.Length - snippetText.Length;
         int expectedEnd = active.End + delta;
         if (caret < active.Start || caret > expectedEnd) {
@@ -537,7 +538,7 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
         Vector3 localPosition = Vector3.zero;
 
         if (textInfo.characterCount > 0) {
-            int characterIndex = Math.Clamp(caret, 0, textInfo.characterCount - 1);
+            int characterIndex = MathCompat.Clamp(caret, 0, textInfo.characterCount - 1);
             TMP_CharacterInfo character = textInfo.characterInfo[characterIndex];
             if (caret >= textInfo.characterCount) {
                 localPosition = new(character.xAdvance, character.bottomLeft.y - 4f, 0f);

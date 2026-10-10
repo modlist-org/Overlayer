@@ -311,6 +311,7 @@
     "UPDATE_INSTALLED": "{0} installed. Restart the game to apply.",
     "UPDATE_INSTALLING": "Installing {0}...",
     "UPDATE_UP_TO_DATE": "Up to date ({0})",
+    "UPDATE_HTTP_UNAVAILABLE": "HTTP networking is unavailable.",
     "O5CP_EXPORT_TITLE": "Export Package",
     "O5CP_INCLUDE_IMAGES": "Include images",
     "O5CP_INCLUDE_FONTS": "Include fonts",

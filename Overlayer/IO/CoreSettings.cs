@@ -17,7 +17,7 @@ public sealed class CoreSettings : ISettingsFile {
     public FxValue<float> SliderSensitivity = new(1.0f);
     public FxValue<float> AnimationSpeed = new(1.0f);
     public FxValue<bool> EnableJSScriptWatcher = new(true);
-    public FxValue<bool> AutoUpdate = new(true);
+    public FxValue<bool> AutoUpdate = new(false);
     public FxValue<bool> UpdateBeta = new(false);
     public FxValue<string> SystemFontKey = FxValue<string>.FromValue(null);
     public FxValue<string> CodeFontKey = FxValue<string>.FromValue(null);

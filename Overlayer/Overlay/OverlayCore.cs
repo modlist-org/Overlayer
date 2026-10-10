@@ -13,7 +13,7 @@ public static class OverlayCore {
 
     public static readonly List<OvCanvas> Canvases = [];
 
-    private static readonly string SaveDir = Path.Combine(MainCore.Paths.RootPath, "Canvases");
+    private static string SaveDir => Path.Combine(MainCore.Paths?.RootPath ?? Path.Combine(Environment.CurrentDirectory, "UserData", "Overlayer"), "Canvases");
     public static string ExportDir => Path.Combine(SaveDir, "Export");
     private static int pendingLayoutRefreshes;
     private static readonly HashSet<string> knownFiles = new(StringComparer.OrdinalIgnoreCase);
@@ -47,6 +47,36 @@ public static class OverlayCore {
         LoadAllCanvases();
         PackageStore.Initialize();
         PresetStore.Initialize();
+    }
+
+    /// <summary>
+    /// Rebuilds overlay state after a scene wipe destroyed our objects.
+    /// Drops dead canvases (reloaded from disk) and recreates the core.
+    /// </summary>
+    public static void Reinitialize(GameObject parent) {
+        for (int i = Canvases.Count - 1; i >= 0; i--) {
+            try {
+                var c = Canvases[i];
+                if (c == null || c.GameObject == null) {
+                    try {
+                        c?.Dispose();
+                    } catch {
+                    }
+                    Canvases.RemoveAt(i);
+                }
+            } catch {
+                try {
+                    Canvases.RemoveAt(i);
+                } catch {
+                }
+            }
+        }
+        try {
+            Core = null;
+        } catch {
+        }
+        pendingLayoutRefreshes = 0;
+        Initialize(parent);
     }
 
     public static OvCanvas CreateOvCanvas() {

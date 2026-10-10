@@ -30,8 +30,8 @@ public sealed class UICodeInputField
     public bool CanUndo => undoHistory.Count > 0;
     public bool CanRedo => redoHistory.Count > 0;
 
-    private readonly Stack<HistoryState> undoHistory = [];
-    private readonly Stack<HistoryState> redoHistory = [];
+    private readonly List<HistoryState> undoHistory = [];
+    private readonly List<HistoryState> redoHistory = [];
     private HistoryState lastState;
     private EditInfo lastEdit;
     private bool hasLastEdit;
@@ -111,12 +111,12 @@ public sealed class UICodeInputField
         SyncCaretTransform();
         HandleShortcuts();
         if (textComponent != null) {
-            AfterLabelUpdate?.Invoke(textComponent, isFocused && !string.IsNullOrEmpty(Input.compositionString));
+            AfterLabelUpdate?.Invoke(textComponent, isFocused && !string.IsNullOrEmpty(O5Input.CompositionString));
         }
     }
 
     public override void OnUpdateSelected(BaseEventData eventData) {
-        if (isFocused && string.IsNullOrEmpty(Input.compositionString)) {
+        if (isFocused && string.IsNullOrEmpty(O5Input.CompositionString)) {
             KeyCode key = O5Input.GetKeyDown(KeyCode.Tab) ? KeyCode.Tab
                 : O5Input.GetKeyDown(KeyCode.Return) ? KeyCode.Return
                 : O5Input.GetKeyDown(KeyCode.KeypadEnter) ? KeyCode.KeypadEnter
@@ -173,8 +173,10 @@ public sealed class UICodeInputField
             return;
         }
 
-        HistoryState previous = undoHistory.Pop();
-        redoHistory.Push(CaptureState());
+        int last = undoHistory.Count - 1;
+        HistoryState previous = undoHistory[last];
+        undoHistory.RemoveAt(last);
+        redoHistory.Add(CaptureState());
         SetHistoryValue(previous);
     }
 
@@ -183,8 +185,10 @@ public sealed class UICodeInputField
             return;
         }
 
-        HistoryState next = redoHistory.Pop();
-        undoHistory.Push(CaptureState());
+        int last = redoHistory.Count - 1;
+        HistoryState next = redoHistory[last];
+        redoHistory.RemoveAt(last);
+        undoHistory.Add(CaptureState());
         SetHistoryValue(next);
     }
 
@@ -219,27 +223,21 @@ public sealed class UICodeInputField
 
     private HistoryState CaptureState(string value = null) {
         string current = value ?? text ?? string.Empty;
-        int anchor = Math.Clamp(selectionAnchorPosition, 0, current.Length);
-        int focus = Math.Clamp(selectionFocusPosition, 0, current.Length);
+        int anchor = O5Kit.Core.MathCompat.Clamp(selectionAnchorPosition, 0, current.Length);
+        int focus = O5Kit.Core.MathCompat.Clamp(selectionFocusPosition, 0, current.Length);
         return new HistoryState(current, anchor, focus);
     }
 
     private void RestoreSelection(HistoryState state) {
         int length = state.Text?.Length ?? 0;
-        selectionAnchorPosition = Math.Clamp(state.Anchor, 0, length);
-        selectionFocusPosition = Math.Clamp(state.Focus, 0, length);
+        selectionAnchorPosition = O5Kit.Core.MathCompat.Clamp(state.Anchor, 0, length);
+        selectionFocusPosition = O5Kit.Core.MathCompat.Clamp(state.Focus, 0, length);
     }
 
     private void PushUndo(HistoryState state) {
-        undoHistory.Push(state);
-        if (undoHistory.Count <= MaxHistory) {
-            return;
-        }
-
-        HistoryState[] values = [.. undoHistory.Take(MaxHistory)];
-        undoHistory.Clear();
-        for (int i = values.Length - 1; i >= 0; i--) {
-            undoHistory.Push(values[i]);
+        undoHistory.Add(state);
+        if (undoHistory.Count > MaxHistory) {
+            undoHistory.RemoveAt(0);
         }
     }
 
@@ -384,20 +382,20 @@ public sealed class UICodeInputField
     }
 
     private void HandleShortcuts() {
-        if (!isFocused || !string.IsNullOrEmpty(Input.compositionString) ||
-           (!Input.GetKey(KeyCode.LeftControl) && !Input.GetKey(KeyCode.RightControl) &&
-           !Input.GetKey(KeyCode.LeftCommand) && !Input.GetKey(KeyCode.RightCommand))) {
+        if (!isFocused || !string.IsNullOrEmpty(O5Input.CompositionString) ||
+           (!O5Input.GetKey(KeyCode.LeftControl) && !O5Input.GetKey(KeyCode.RightControl) &&
+           !O5Input.GetKey(KeyCode.LeftCommand) && !O5Input.GetKey(KeyCode.RightCommand))) {
             return;
         }
 
-        bool shift = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
-        if (Input.GetKeyDown(KeyCode.Z)) {
+        bool shift = O5Input.GetKey(KeyCode.LeftShift) || O5Input.GetKey(KeyCode.RightShift);
+        if (O5Input.GetKeyDown(KeyCode.Z)) {
             if (shift) {
                 Redo();
             } else {
                 Undo();
             }
-        } else if (Input.GetKeyDown(KeyCode.Y)) {
+        } else if (O5Input.GetKeyDown(KeyCode.Y)) {
             Redo();
         }
     }

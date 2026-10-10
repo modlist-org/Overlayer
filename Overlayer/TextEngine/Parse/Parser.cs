@@ -1,4 +1,4 @@
-﻿using System.Text.RegularExpressions;
+using System.Text.RegularExpressions;
 
 namespace Overlayer.TextEngine.Parse;
 
@@ -26,7 +26,7 @@ public static class Parser {
                         : m.Groups["args"].Success ? m.Groups["args"].Value : ""
                     let args = (string[])(string.IsNullOrWhiteSpace(argsRaw)
                         ? []
-                        : [.. argsRaw.Split(',').Select(s => s.Trim())])
+                        : [.. argsRaw.Split([',']).Select(s => s.Trim())])
                     select new ParsedTag(m.Value, name, args, m.Index, m.Length)];
 
         tags.AddRange(jsRanges.Select(r =>

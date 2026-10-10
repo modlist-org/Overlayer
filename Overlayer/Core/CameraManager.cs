@@ -35,7 +35,7 @@ public class CameraManager {
     }
 
     public Camera UpdateCamera() {
-        var found = (CustomCameraProvider?.Invoke()) ?? Camera.main ?? UnityEngine.Object.FindFirstObjectByType<Camera>();
+        var found = (CustomCameraProvider?.Invoke()) ?? Camera.main ?? UnityEngine.Object.FindObjectOfType<Camera>();
         SetCamera(found);
         return cachedCamera;
     }

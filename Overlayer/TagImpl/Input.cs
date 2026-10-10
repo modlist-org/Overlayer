@@ -54,8 +54,8 @@ public static class Input {
     public static float MouseDeltaY => O5Input.MouseDelta.y;
 
     [Tag(Desc = "[Unity] Returns true while any key or mouse button is held down")]
-    public static bool IsAnyKeyHeld => UnityEngine.Input.anyKey;
+    public static bool IsAnyKeyHeld => O5Input.AnyKey;
 
     [Tag(Desc = "[Unity] Returns true only on the frame any key or mouse button was pressed")]
-    public static bool IsAnyKeyDown => UnityEngine.Input.anyKeyDown;
+    public static bool IsAnyKeyDown => O5Input.AnyKeyDown;
 }

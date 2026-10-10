@@ -1,5 +1,6 @@
 #if !IL2CPP
 using Newtonsoft.Json.Linq;
+using Overlayer.Compat;
 using Overlayer.IO.Fx;
 using Overlayer.IO.Interface;
 using UnityEngine;
@@ -11,14 +12,14 @@ public class BoxCollider2DSettings : UnityComponentSettingsBase, ICopyable<BoxCo
     public FxValue<Vector2> Offset = new(Vector2.zero);
     public FxValue<bool> IsTrigger = new(false);
     public FxValue<bool> UsedByEffector = new(false);
-    public FxValue<Collider2D.CompositeOperation> CompositeOperation = new(Collider2D.CompositeOperation.None);
+    public FxValue<int> CompositeOperation = new(ColliderCompat.CompositeNone);
     public FxValue<float> EdgeRadius = new(0f);
 
     private Vector2 _lastSize = Vector2.one;
     private Vector2 _lastOffset = Vector2.zero;
     private bool _lastIsTrigger;
     private bool _lastUsedByEffector;
-    private Collider2D.CompositeOperation _lastCompositeOperation = Collider2D.CompositeOperation.None;
+    private int _lastCompositeOperation = ColliderCompat.CompositeNone;
     private float _lastEdgeRadius;
 
     public override bool HasAnyFx => base.HasAnyFx
@@ -45,7 +46,7 @@ public class BoxCollider2DSettings : UnityComponentSettingsBase, ICopyable<BoxCo
         com.offset = _lastOffset;
         com.isTrigger = _lastIsTrigger;
         com.usedByEffector = _lastUsedByEffector;
-        com.compositeOperation = _lastCompositeOperation;
+        ColliderCompat.SetCompositeOperation(com, _lastCompositeOperation);
         com.edgeRadius = _lastEdgeRadius;
 
         return true;
@@ -61,13 +62,13 @@ public class BoxCollider2DSettings : UnityComponentSettingsBase, ICopyable<BoxCo
         Offset.Value = com.offset;
         IsTrigger.Value = com.isTrigger;
         UsedByEffector.Value = com.usedByEffector;
-        CompositeOperation.Value = com.compositeOperation;
+        CompositeOperation.Value = ColliderCompat.GetCompositeOperation(com);
         EdgeRadius.Value = com.edgeRadius;
         _lastSize = com.size;
         _lastOffset = com.offset;
         _lastIsTrigger = com.isTrigger;
         _lastUsedByEffector = com.usedByEffector;
-        _lastCompositeOperation = com.compositeOperation;
+        _lastCompositeOperation = ColliderCompat.GetCompositeOperation(com);
         _lastEdgeRadius = com.edgeRadius;
 
         return true;
@@ -87,7 +88,7 @@ public class BoxCollider2DSettings : UnityComponentSettingsBase, ICopyable<BoxCo
         if (FxUtil.Changed(ref _lastOffset, Offset.Value)) com.offset = _lastOffset;
         if (FxUtil.Changed(ref _lastIsTrigger, IsTrigger.Value)) com.isTrigger = _lastIsTrigger;
         if (FxUtil.Changed(ref _lastUsedByEffector, UsedByEffector.Value)) com.usedByEffector = _lastUsedByEffector;
-        if (FxUtil.Changed(ref _lastCompositeOperation, CompositeOperation.Value)) com.compositeOperation = _lastCompositeOperation;
+        if (FxUtil.Changed(ref _lastCompositeOperation, CompositeOperation.Value)) ColliderCompat.SetCompositeOperation(com, _lastCompositeOperation);
         if (FxUtil.Changed(ref _lastEdgeRadius, EdgeRadius.Value)) com.edgeRadius = _lastEdgeRadius;
     }
 
@@ -107,8 +108,20 @@ public class BoxCollider2DSettings : UnityComponentSettingsBase, ICopyable<BoxCo
         Offset = IOUtils.ReadFx(token, nameof(Offset), Offset);
         IsTrigger = IOUtils.ReadFx(token, nameof(IsTrigger), IsTrigger);
         UsedByEffector = IOUtils.ReadFx(token, nameof(UsedByEffector), UsedByEffector);
-        CompositeOperation = IOUtils.ReadFx(token, nameof(CompositeOperation), CompositeOperation);
+        CompositeOperation = ReadCompositeOperation(token, nameof(CompositeOperation), CompositeOperation);
         EdgeRadius = IOUtils.ReadFx(token, nameof(EdgeRadius), EdgeRadius);
+    }
+
+    private static FxValue<int> ReadCompositeOperation(JToken token, string key, FxValue<int> fallback) {
+        if (token is JObject obj && obj.TryGetValue(key, out var child)) {
+            if (child is JValue value && value.Type == JTokenType.String) {
+                obj[key] = new JValue(ColliderCompat.CompositeFromName(value.Value<string>(), ColliderCompat.CompositeNone));
+            } else if (child is JObject fx && fx.TryGetValue("Value", out var inner)
+                && inner is JValue innerValue && innerValue.Type == JTokenType.String) {
+                fx["Value"] = new JValue(ColliderCompat.CompositeFromName(innerValue.Value<string>(), ColliderCompat.CompositeNone));
+            }
+        }
+        return IOUtils.ReadFx(token, key, fallback);
     }
 
     public BoxCollider2DSettings Copy() {

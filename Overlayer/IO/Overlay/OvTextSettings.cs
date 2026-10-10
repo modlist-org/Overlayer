@@ -5,26 +5,39 @@ using Overlayer.IO.Interface;
 namespace Overlayer.IO.Overlay;
 
 public sealed class OvTextSettings : ISettingsFile, ICopyable<OvTextSettings> {
-    public FxValue<string> PlayingText = FxValue<string>.FromValue("Text");
-    public FxValue<string> NotPlayingText = FxValue<string>.FromValue("Text");
+    public FxValue<string> Text = FxValue<string>.FromValue("Text");
+
+    [Obsolete("Use Text instead.")]
+    public FxValue<string> PlayingText {
+        get => Text;
+        set => Text = value;
+    }
+
+    [Obsolete("Use Text instead.")]
+    public FxValue<string> NotPlayingText {
+        get => Text;
+        set => Text = value;
+    }
 
     public JToken Serialize() => new JObject {
-        [nameof(PlayingText)] = IOUtils.WriteFx(PlayingText),
-        [nameof(NotPlayingText)] = IOUtils.WriteFx(NotPlayingText)
+        [nameof(Text)] = IOUtils.WriteFx(Text)
     };
 
     public void Deserialize(JToken token) {
-        PlayingText = IOUtils.ReadFx(token, nameof(PlayingText), PlayingText);
-        NotPlayingText = IOUtils.ReadFx(token, nameof(NotPlayingText), NotPlayingText);
+        // Breaking: Playing/NotPlaying merged into Text.
+        // Migrate legacy PlayingText, drop NotPlayingText.
+        if (token["PlayingText"] != null) {
+            Text = IOUtils.ReadFx(token, "PlayingText", Text);
+        } else {
+            Text = IOUtils.ReadFx(token, nameof(Text), Text);
+        }
     }
 
     public OvTextSettings Copy() => new() {
-        PlayingText = PlayingText?.Copy(),
-        NotPlayingText = NotPlayingText?.Copy()
+        Text = Text?.Copy()
     };
 
     public static OvTextSettings FromLegacy(string text) => new() {
-        PlayingText = FxValue<string>.FromValue(text ?? string.Empty),
-        NotPlayingText = FxValue<string>.FromValue(text ?? string.Empty)
+        Text = FxValue<string>.FromValue(text ?? string.Empty)
     };
 }

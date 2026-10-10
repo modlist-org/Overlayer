@@ -1,5 +1,6 @@
 using Newtonsoft.Json.Linq;
 using System.IO.Compression;
+using System.Net;
 using System.Security.Cryptography;
 
 namespace Overlayer.Update;
@@ -87,6 +88,54 @@ public static class UpdatePackage {
         string actual = BitConverter.ToString(sha.ComputeHash(stream)).Replace("-", "").ToLowerInvariant();
         if (actual != expected) throw new InvalidDataException($"checksum mismatch: expected {expected}, got {actual}");
     }
+
+#pragma warning disable SYSLIB0014
+    // Verifies that HTTP networking types and HTTPS requests can be created
+    // without throwing TypeLoadException, NotSupportedException, etc.
+    public static bool ProbeHttpCapabilities(out string error) {
+        error = null;
+        try {
+            Type reqType = typeof(HttpWebRequest);
+            Type respType = typeof(HttpWebResponse);
+            Type svcPointType = typeof(ServicePointManager);
+            if (reqType == null || respType == null || svcPointType == null) {
+                error = "System.Net HTTP networking types are missing";
+                return false;
+            }
+
+            try {
+                ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
+            } catch {
+                // TLS 1.2 may already be negotiated or not directly configurable.
+            }
+
+            HttpWebRequest probe = (HttpWebRequest)WebRequest.Create("https://api.github.com");
+            if (probe == null) {
+                error = "WebRequest.Create returned null for HTTPS URL";
+                return false;
+            }
+
+            probe.Timeout = 5000;
+            probe.UserAgent = "Overlayer-Probe";
+            return true;
+        } catch (TypeLoadException ex) {
+            error = "HTTP networking type load failure: " + ex.Message;
+            return false;
+        } catch (FileNotFoundException ex) {
+            error = "HTTP networking assembly missing: " + ex.Message;
+            return false;
+        } catch (PlatformNotSupportedException ex) {
+            error = "HTTP networking not supported on this platform: " + ex.Message;
+            return false;
+        } catch (NotSupportedException ex) {
+            error = "HTTP networking not supported: " + ex.Message;
+            return false;
+        } catch (Exception ex) {
+            error = "HTTP networking probe failed: " + ex.Message;
+            return false;
+        }
+    }
+#pragma warning restore SYSLIB0014
 
     // Installs the release zip (Mods/ UserLibs/ UserData/) over gameRoot.
     // Everything is extracted to stageRoot first so a bad zip fails before the

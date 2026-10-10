@@ -1,11 +1,14 @@
-﻿using Overlayer.Core;
+using Overlayer.Core;
 using Overlayer.IO.Fx;
 using Overlayer.IO.User.Impl;
 
 namespace Overlayer.IO.User;
 
 public static class UserResourceManager {
-    public static SettingsFile<UserResourceSettings> Config { get; } = new(MainCore.Paths.UserResourcePath);
+    private static SettingsFile<UserResourceSettings> _config;
+    public static SettingsFile<UserResourceSettings> Config =>
+        _config ??= new(MainCore.Paths?.UserResourcePath ?? Path.Combine(Environment.CurrentDirectory, "UserData", "Overlayer", "UserResources.json"));
+
     public static UserTexture2D T2D => Config.Data.T2D;
     public static UserSprite Spr => Config.Data.Spr;
     public static UserFont Fnt => Config.Data.Fnt;
@@ -27,7 +30,12 @@ public static class UserResourceManager {
             return path;
         }
 
-        return path.Replace(MainCore.Paths.RootPath, ModPathToken, StringComparison.OrdinalIgnoreCase);
+        string root = MainCore.Paths.RootPath;
+        if (!string.IsNullOrEmpty(root) && path.StartsWith(root, StringComparison.OrdinalIgnoreCase)) {
+            return ModPathToken + path.Substring(root.Length);
+        }
+
+        return path;
     }
 
     public static string FromUser(string path) {

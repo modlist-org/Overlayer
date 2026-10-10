@@ -26,9 +26,16 @@ public class Loader : MelonMod, IOverlayerHost, IOverlayerLogger {
 
     public override void OnUpdate() => MainCore.Tick();
 
-    public override void OnSceneWasLoaded(int buildIndex, string sceneName) => OverlayCore.RequestLayoutRefresh();
+    public override void OnSceneWasLoaded(int buildIndex, string sceneName) {
+        MainCore.EnsureInitialized();
+        MainCore.EnsureRootAlive();
+        OverlayCore.RequestLayoutRefresh();
+    }
 
-    public override void OnSceneWasInitialized(int buildIndex, string sceneName) => OverlayCore.RequestLayoutRefresh();
+    public override void OnSceneWasInitialized(int buildIndex, string sceneName) {
+        MainCore.EnsureInitialized();
+        OverlayCore.RequestLayoutRefresh();
+    }
 
     public void OverlayerMsg(string msg) => MelonLogger.Msg(msg);
     public void OverlayerWrn(string msg) => MelonLogger.Warning(msg);

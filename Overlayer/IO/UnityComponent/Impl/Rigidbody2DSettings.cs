@@ -69,8 +69,10 @@ public class Rigidbody2DSettings : UnityComponentSettingsBase, ICopyable<Rigidbo
         com.simulated = _lastSimulated;
         com.useAutoMass = _lastUseAutoMass;
         com.mass = _lastMass;
-        com.linearDamping = _lastLinearDamping;
-        com.angularDamping = _lastAngularDamping;
+#pragma warning disable CS0618
+        com.drag = _lastLinearDamping;
+        com.angularDrag = _lastAngularDamping;
+#pragma warning restore CS0618
         com.gravityScale = _lastGravityScale;
         com.collisionDetectionMode = _lastCollisionDetectionMode;
         com.sleepMode = _lastSleepMode;
@@ -91,8 +93,10 @@ public class Rigidbody2DSettings : UnityComponentSettingsBase, ICopyable<Rigidbo
         Simulated.Value = com.simulated;
         UseAutoMass.Value = com.useAutoMass;
         Mass.Value = com.mass;
-        LinearDamping.Value = com.linearDamping;
-        AngularDamping.Value = com.angularDamping;
+#pragma warning disable CS0618
+        LinearDamping.Value = com.drag;
+        AngularDamping.Value = com.angularDrag;
+#pragma warning restore CS0618
         GravityScale.Value = com.gravityScale;
         CollisionDetectionMode.Value = com.collisionDetectionMode;
         SleepMode.Value = com.sleepMode;
@@ -103,8 +107,10 @@ public class Rigidbody2DSettings : UnityComponentSettingsBase, ICopyable<Rigidbo
         _lastSimulated = com.simulated;
         _lastUseAutoMass = com.useAutoMass;
         _lastMass = com.mass;
-        _lastLinearDamping = com.linearDamping;
-        _lastAngularDamping = com.angularDamping;
+#pragma warning disable CS0618
+        _lastLinearDamping = com.drag;
+        _lastAngularDamping = com.angularDrag;
+#pragma warning restore CS0618
         _lastGravityScale = com.gravityScale;
         _lastCollisionDetectionMode = com.collisionDetectionMode;
         _lastSleepMode = com.sleepMode;
@@ -129,8 +135,10 @@ public class Rigidbody2DSettings : UnityComponentSettingsBase, ICopyable<Rigidbo
         if (FxUtil.Changed(ref _lastSimulated, Simulated.Value)) com.simulated = _lastSimulated;
         if (FxUtil.Changed(ref _lastUseAutoMass, UseAutoMass.Value)) com.useAutoMass = _lastUseAutoMass;
         if (FxUtil.Changed(ref _lastMass, Mass.Value)) com.mass = _lastMass;
-        if (FxUtil.Changed(ref _lastLinearDamping, LinearDamping.Value)) com.linearDamping = _lastLinearDamping;
-        if (FxUtil.Changed(ref _lastAngularDamping, AngularDamping.Value)) com.angularDamping = _lastAngularDamping;
+#pragma warning disable CS0618
+        if (FxUtil.Changed(ref _lastLinearDamping, LinearDamping.Value)) com.drag = _lastLinearDamping;
+        if (FxUtil.Changed(ref _lastAngularDamping, AngularDamping.Value)) com.angularDrag = _lastAngularDamping;
+#pragma warning restore CS0618
         if (FxUtil.Changed(ref _lastGravityScale, GravityScale.Value)) com.gravityScale = _lastGravityScale;
         if (FxUtil.Changed(ref _lastCollisionDetectionMode, CollisionDetectionMode.Value)) com.collisionDetectionMode = _lastCollisionDetectionMode;
         if (FxUtil.Changed(ref _lastSleepMode, SleepMode.Value)) com.sleepMode = _lastSleepMode;

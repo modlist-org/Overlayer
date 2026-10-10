@@ -266,8 +266,8 @@ public sealed class OvGraphComponent : MaskableGraphic {
             const int capSegs = 6;
             vert.position = p; vh.AddVert(vert);
             for (int i = 0; i <= capSegs; i++) {
-                float a = i / (float)capSegs * MathF.PI * 2f;
-                vert.position = p + new Vector2(MathF.Cos(a) * half, MathF.Sin(a) * half);
+                float a = i / (float)capSegs * Mathf.PI * 2f;
+                vert.position = p + new Vector2(Mathf.Cos(a) * half, Mathf.Sin(a) * half);
                 vh.AddVert(vert);
             }
             for (int i = 1; i <= capSegs; i++) {

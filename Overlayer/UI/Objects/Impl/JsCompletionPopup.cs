@@ -2,6 +2,7 @@ using Overlayer.Compat;
 using FuzzySharp;
 using Overlayer.Tag.Core;
 using Overlayer.TextEngine.Highlight;
+using O5Kit.Core;
 using O5Kit.Factory;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -159,7 +160,7 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
         }
 
         string text = input.text ?? string.Empty;
-        int caret = Math.Clamp(input.selectionFocusPosition, 0, text.Length);
+        int caret = MathCompat.Clamp(input.selectionFocusPosition, 0, text.Length);
         if (suppressRefresh) {
             bool sameState = text == suppressedText && caret == suppressedCaret;
             suppressRefresh = false;
@@ -223,7 +224,7 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
         name.fontSize = 14f;
         name.alignment = TextAlignmentOptions.Left;
         name.verticalAlignment = VerticalAlignmentOptions.Middle;
-        name.textWrappingMode = TextWrappingModes.NoWrap;
+        TmpCompat.SetNoWrap(name);
         name.overflowMode = TextOverflowModes.Ellipsis;
         name.rectTransform.offsetMin = new(10f, 0f);
         name.rectTransform.offsetMax = new(-150f, 0f);
@@ -234,7 +235,7 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
         detail.fontSize = 11f;
         detail.alignment = TextAlignmentOptions.Right;
         detail.verticalAlignment = VerticalAlignmentOptions.Middle;
-        detail.textWrappingMode = TextWrappingModes.NoWrap;
+        TmpCompat.SetNoWrap(detail);
         detail.overflowMode = TextOverflowModes.Ellipsis;
         detail.color = new Color(1f, 1f, 1f, 0.48f);
         detail.rectTransform.offsetMin = new(150f, 0f);
@@ -464,8 +465,8 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
         }
 
         string text = input.text ?? string.Empty;
-        int start = Math.Clamp(replacementStart, 0, text.Length);
-        int end = Math.Clamp(start + replacementLength, start, text.Length);
+        int start = MathCompat.Clamp(replacementStart, 0, text.Length);
+        int end = MathCompat.Clamp(start + replacementLength, start, text.Length);
         JsItem item = matches[index];
 
         string insertion = item.Name;
@@ -478,7 +479,7 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
         input.text = text[..start] + insertion + text[end..];
         input.ActivateInputField();
 
-        int caret = Math.Clamp(start + caretOffset, 0, (input.text ?? string.Empty).Length);
+        int caret = MathCompat.Clamp(start + caretOffset, 0, (input.text ?? string.Empty).Length);
         input.selectionAnchorPosition = caret;
         input.selectionFocusPosition = caret;
         input.ForceLabelUpdate();
@@ -527,7 +528,7 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
         Vector3 localPosition = Vector3.zero;
 
         if (textInfo.characterCount > 0) {
-            int characterIndex = Math.Clamp(caret, 0, textInfo.characterCount - 1);
+            int characterIndex = MathCompat.Clamp(caret, 0, textInfo.characterCount - 1);
             TMP_CharacterInfo character = textInfo.characterInfo[characterIndex];
             if (caret >= textInfo.characterCount) {
                 localPosition = new(character.xAdvance, character.bottomLeft.y - 4f, 0f);

@@ -1,4 +1,4 @@
-﻿using Overlayer.Tween;
+using Overlayer.Tween;
 using Overlayer.IO.Fx;
 using Overlayer.Compat;
 using O5Kit.Core;
@@ -266,22 +266,18 @@ internal sealed class OvInspectorBuilder(
             obj.Config.ColorRangeConfig = null;
             RefreshComponents(obj);
         });
-        CodeEditor(card, "Playing Text", "text_playing", textCfg.PlayingText.Value, value => {
-            textCfg.PlayingText.Value = value;
+        CodeEditor(card, "Text", "text", textCfg.Text.Value, value => {
+            textCfg.Text.Value = value;
             cfg.Text.Value = value;
             apply();
-        }, () => obj.TextUpdater?.PlayingEngine);
-        CodeEditor(card, "Not Playing Text", "text_not_playing", textCfg.NotPlayingText.Value, value => {
-            textCfg.NotPlayingText.Value = value;
-            apply();
-        }, () => obj.TextUpdater?.NotPlayingEngine);
+        }, () => obj.TextUpdater?.Engine);
         FontDropDown(card, cfg);
         FxSlider(card, "Font Size", cfg.FontSize, 48f, 1f, 512f, "text_size", "F1");
         FxToggle(card, "Rich Text", cfg.RichText, true, "text_rich");
         FxToggle(card, "Auto Size", cfg.AutoSize, false, "text_auto_size");
         FxVector2(card, "Font Range", cfg.FontSizeRange, new Vector2(16, 64), 1f, 512f, "text_font_range", "F1");
         FxEnum(card, "Alignment", cfg.Alignment, TextAlignmentOptions.Center, "text_alignment");
-        FxEnum(card, "Wrapping", cfg.TextWrappingMode, TextWrappingModes.Normal, "text_wrapping");
+        FxWrapping(card, cfg);
         FxEnum(card, "Overflow", cfg.OverFlowMode, TextOverflowModes.Overflow, "text_overflow");
         FxSlider(card, "Line Spacing", cfg.LineSpacing, 0f, -100f, 100f, "text_line_spacing", "F1");
         FxSlider(card, "Character Spacing", cfg.CharacterSpacing, 0f, -100f, 100f, "text_char_spacing", "F1");
@@ -611,7 +607,7 @@ internal sealed class OvInspectorBuilder(
         FxVector2(card, "Offset", cfg.Offset, Vector2.zero, -1024f, 1024f, "box_collider_offset", "F1");
         FxToggle(card, "Is Trigger", cfg.IsTrigger, false, "box_collider_trigger");
         FxToggle(card, "Used By Effector", cfg.UsedByEffector, false, "box_collider_effector");
-        FxEnum(card, "Composite Operation", cfg.CompositeOperation, Collider2D.CompositeOperation.None, "box_collider_composite");
+        FxCompositeOperation(card, cfg);
         FxSlider(card, "Edge Radius", cfg.EdgeRadius, 0f, 0f, 100f, "box_collider_edge_radius", "F2");
     }
 
@@ -885,11 +881,11 @@ internal sealed class OvInspectorBuilder(
         text.fontSize = 16f;
         text.characterSpacing = 0f;
         text.lineSpacing = 4f;
-        text.textWrappingMode = TextWrappingModes.NoWrap;
+        TmpCompat.SetNoWrap(text);
 
         input.Placeholder.fontSize = 16f;
         input.Placeholder.characterSpacing = 0f;
-        input.Placeholder.textWrappingMode = TextWrappingModes.NoWrap;
+        TmpCompat.SetNoWrap(input.Placeholder);
 
         RectTransform viewport = input.InputField.textViewport;
         Vector2 viewportMin = viewport.offsetMin;
@@ -917,7 +913,7 @@ internal sealed class OvInspectorBuilder(
         diagnosticsText.characterSpacing = 0f;
         diagnosticsText.alignment = TextAlignmentOptions.TopLeft;
         diagnosticsText.verticalAlignment = VerticalAlignmentOptions.Top;
-        diagnosticsText.textWrappingMode = TextWrappingModes.NoWrap;
+        TmpCompat.SetNoWrap(diagnosticsText);
         diagnosticsText.overflowMode = TextOverflowModes.Overflow;
         diagnosticsText.color = new Color(1f, 1f, 1f, 0.42f);
         diagnosticsText.raycastTarget = false;
@@ -957,7 +953,7 @@ internal sealed class OvInspectorBuilder(
         lineNumbers.lineSpacing = text.lineSpacing;
         lineNumbers.alignment = TextAlignmentOptions.TopRight;
         lineNumbers.verticalAlignment = VerticalAlignmentOptions.Top;
-        lineNumbers.textWrappingMode = TextWrappingModes.NoWrap;
+        TmpCompat.SetNoWrap(lineNumbers);
         lineNumbers.color = new Color(1f, 1f, 1f, 0.28f);
         lineNumbers.raycastTarget = false;
         var numbersRect = lineNumbers.rectTransform;
@@ -1012,8 +1008,8 @@ internal sealed class OvInspectorBuilder(
                     int stringIndex = text.textInfo.characterInfo[charIndex].index;
                     CompileDiagnostic[] covering = [.. displayedDiagnostics
                         .Where(d => {
-                            int start = Math.Clamp(d.Context.Index, 0, displayedText.Length);
-                            int end = Math.Clamp(start + Math.Max(1, d.Context.Length), start, displayedText.Length);
+                            int start = MathCompat.Clamp(d.Context.Index, 0, displayedText.Length);
+                            int end = MathCompat.Clamp(start + Math.Max(1, d.Context.Length), start, displayedText.Length);
                             return stringIndex >= start && stringIndex < end;
                         })
                         .OrderByDescending(d => d.Severity)];
@@ -1209,7 +1205,7 @@ internal sealed class OvInspectorBuilder(
     private static bool TryFindHexColor(string source, int position, out int start, out int length) {
         static bool IsWordChar(char c) => char.IsLetterOrDigit(c) || c == '_';
 
-        start = Math.Clamp(position, 0, source.Length);
+        start = MathCompat.Clamp(position, 0, source.Length);
         int end = start;
         while (start > 0 && Uri.IsHexDigit(source[start - 1])) {
             start--;
@@ -1328,8 +1324,8 @@ internal sealed class OvInspectorBuilder(
         float boundMaxY = boundMinY + rootHeight;
 
         foreach (var group in groups) {
-            int start = Math.Clamp(group.Key.Index, 0, source.Length);
-            int end = Math.Clamp(start + Math.Max(1, group.Key.Length), start, source.Length);
+            int start = MathCompat.Clamp(group.Key.Index, 0, source.Length);
+            int end = MathCompat.Clamp(start + Math.Max(1, group.Key.Length), start, source.Length);
             Color underlineColor = SeverityUnityColor(group.Max(d => d.Severity));
             var characters = sourceText.textInfo.characterInfo
                 .Take(sourceText.textInfo.characterCount)
@@ -1403,8 +1399,8 @@ internal sealed class OvInspectorBuilder(
         TagSyntaxKind?[] kinds = source == null ? [] : new TagSyntaxKind?[source.Length];
         if (source != null) {
             foreach (var span in spans) {
-                int start = Math.Clamp(span.Index, 0, kinds.Length);
-                int end = Math.Clamp(start + span.Length, start, kinds.Length);
+                int start = MathCompat.Clamp(span.Index, 0, kinds.Length);
+                int end = MathCompat.Clamp(start + span.Length, start, kinds.Length);
                 for (int i = start; i < end; i++) {
                     kinds[i] = span.Kind;
                 }
@@ -1537,7 +1533,7 @@ internal sealed class OvInspectorBuilder(
 
     private static int GetLine(string source, int index) {
         source ??= string.Empty;
-        int limit = Math.Clamp(index, 0, source.Length);
+        int limit = MathCompat.Clamp(index, 0, source.Length);
         int line = 0;
         for (int i = 0; i < limit; i++) {
             if (source[i] == '\n') {
@@ -1732,6 +1728,45 @@ internal sealed class OvInspectorBuilder(
 
     private RectTransform FxEnumMapped<TEnum>(Transform parent, string label, FxValue<int> fx, int defaultValue, string id, Func<int, TEnum> toEnum, Func<TEnum, int> fromEnum, Action completed = null) where TEnum : struct, Enum {
         return FxBlock(parent, label, fx, g => EnumDropDown(g, label, toEnum(defaultValue), toEnum(fx.Value), value => fx.Value = fromEnum(value), id, completed), id, dropdown: true);
+    }
+
+    private RectTransform FxWrapping(Transform parent, TextMeshProUGUISettings cfg) {
+        string[] options = ["NoWrap", "Normal", "PreserveWhitespace", "PreserveWhitespaceNoWrap"];
+        return FxBlock(parent, "Wrapping", cfg.TextWrappingMode, g => {
+            string label = InspectorLabel("Wrapping");
+            int current = Math.Min(Math.Max(cfg.TextWrappingMode.Value, TmpCompat.NoWrap), TmpCompat.PreserveWhitespaceNoWrap);
+            var row = O5Factory.Row(O5KitAdapters.Ctx, g, 50f);
+            var dropdown = O5Factory.DropDown(O5KitAdapters.Ctx, row,
+                TmpCompat.ToName(TmpCompat.Normal), TmpCompat.ToName(current), options,
+                option => $"{label}: {option}", selected => {
+                    cfg.TextWrappingMode.Value = TmpCompat.FromName(selected, TmpCompat.Normal);
+                    ApplyAndSave();
+                }, "text_wrapping");
+            Track(dropdown);
+        }, "text_wrapping", dropdown: true);
+    }
+
+    private void FxCompositeOperation(Transform parent, BoxCollider2DSettings cfg) {
+        if (!ColliderCompat.HasCompositeOperation) {
+            Label(parent, InspectorText("INSPECTOR_COMPOSITE_UNSUPPORTED",
+                "Composite Operation is not supported on this Unity version."));
+            return;
+        }
+        string[] options = ["None", "Merge", "Intersect", "Difference", "Flip"];
+        FxBlock(parent, "Composite Operation", cfg.CompositeOperation, g => {
+            string label = InspectorLabel("Composite Operation");
+            int current = Math.Min(Math.Max(cfg.CompositeOperation.Value,
+                ColliderCompat.CompositeNone), ColliderCompat.CompositeFlip);
+            var row = O5Factory.Row(O5KitAdapters.Ctx, g, 50f);
+            var dropdown = O5Factory.DropDown(O5KitAdapters.Ctx, row,
+                ColliderCompat.CompositeToName(ColliderCompat.CompositeNone),
+                ColliderCompat.CompositeToName(current), options,
+                option => $"{label}: {option}", selected => {
+                    cfg.CompositeOperation.Value = ColliderCompat.CompositeFromName(selected, ColliderCompat.CompositeNone);
+                    ApplyAndSave();
+                }, "box_collider_composite");
+            Track(dropdown);
+        }, "box_collider_composite", dropdown: true);
     }
 
     private RectTransform FxVector2(Transform parent, string label, FxValue<Vector2> fx, Vector2 defaults, float min, float max, string id, string format = "F2") {

@@ -22,7 +22,7 @@ public static class IOUtils {
     #endregion
     #region Fx
     public static FxValue<T> ReadFx<T>(JToken token, string key, FxValue<T> fallback) {
-        if (token is not JObject obj || !obj.TryGetValue(key, out var childToken)) {
+        if (token is not JObject obj || !obj.TryGetValue(key, out var childToken) || childToken == null || childToken.Type == JTokenType.Null) {
             return fallback;
         }
 

@@ -1,4 +1,4 @@
-﻿namespace Overlayer.Tag.Core;
+namespace Overlayer.Tag.Core;
 
 public readonly struct Placeholder(
     string name,
@@ -29,19 +29,16 @@ public readonly struct Placeholder(
     }
 
     public override int GetHashCode() {
-        HashCode hash = new();
-
-        hash.Add(Name);
-
-        if (Args == null) {
-            return hash.ToHashCode();
+        unchecked {
+            int hash = Name != null ? Name.GetHashCode() : 0;
+            if (Args != null) {
+                for (int i = 0; i < Args.Length; i++) {
+                    string arg = Args[i];
+                    hash = (hash * 397) ^ (arg != null ? arg.GetHashCode() : 0);
+                }
+            }
+            return hash;
         }
-
-        foreach (var t in Args) {
-            hash.Add(t);
-        }
-
-        return hash.ToHashCode();
     }
 
     public static bool operator ==(

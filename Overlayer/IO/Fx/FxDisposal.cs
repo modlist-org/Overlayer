@@ -19,10 +19,12 @@ internal static class FxDisposal {
             return;
         }
         var seen = new HashSet<object>(RefComparer.Instance);
-        var stack = new Stack<object>();
-        stack.Push(root);
+        var stack = new List<object>();
+        stack.Add(root);
         while (stack.Count > 0) {
-            object current = stack.Pop();
+            int lastIndex = stack.Count - 1;
+            object current = stack[lastIndex];
+            stack.RemoveAt(lastIndex);
             if (current == null || !seen.Add(current)) {
                 continue;
             }
@@ -56,7 +58,7 @@ internal static class FxDisposal {
                 if (value == null || value.GetType().IsPrimitive || value is string) {
                     continue;
                 }
-                stack.Push(value);
+                stack.Add(value);
             }
         }
     }

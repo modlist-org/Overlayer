@@ -1,4 +1,4 @@
-﻿using Overlayer.Core;
+using Overlayer.Core;
 using Overlayer.Tag.Diagnostics;
 using Overlayer.Tag.Runtime;
 using Overlayer.TextEngine.Parse;
@@ -147,20 +147,20 @@ public sealed class TextEngineCore {
 
         for (int i = 0; i < segs.Length; i++) {
             var s = segs[i];
-            int from = Math.Clamp(s.Index, 0, text.Length);
+            int from = O5Kit.Core.MathCompat.Clamp(s.Index, 0, text.Length);
             if (from > last) {
                 sb.Append(text, last, from - last);
             }
             string replacement = reps[i];
             if (replacement == null) {
-                int end = Math.Clamp(s.Index + s.Length, 0, text.Length);
+                int end = O5Kit.Core.MathCompat.Clamp(s.Index + s.Length, 0, text.Length);
                 if (end > from) {
                     sb.Append(text, from, end - from);
                 }
                 last = Math.Max(last, end);
             } else {
                 sb.Append(replacement);
-                last = Math.Max(last, Math.Clamp(s.Index + s.Length, 0, text.Length));
+                last = Math.Max(last, O5Kit.Core.MathCompat.Clamp(s.Index + s.Length, 0, text.Length));
             }
         }
 

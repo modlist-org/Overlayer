@@ -100,7 +100,7 @@ public static class O5cpKeyScanner {
     }
 
     private static string Unescape(string value) {
-        if (!value.Contains('\\')) {
+        if (value.IndexOf('\\') < 0) {
             return value;
         }
         return value
@@ -231,7 +231,7 @@ public static class O5cpKeyMapper {
     }
 
     private static string UnescapeLiteral(string value) {
-        if (!value.Contains('\\')) {
+        if (value.IndexOf('\\') < 0) {
             return value;
         }
         return value

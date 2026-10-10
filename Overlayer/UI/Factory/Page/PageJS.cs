@@ -100,7 +100,7 @@ internal static class PageJS {
     }
 
     private static void ToggleUIStateByMod(bool isEnabled) {
-        if (disabledPanel == null) {
+        if (disabledPanel == null || disabledPanel.Equals(null)) {
             return;
         }
         disabledPanel.SetActive(!isEnabled);
@@ -166,7 +166,7 @@ internal static class PageJS {
     }
 
     private static void RefreshFileStatus(string file) {
-        if (listContent == null) {
+        if (listContent == null || listContent.Equals(null)) {
             return;
         }
         if (!scriptStatus.TryGetValue(file, out var status) || status == null) {
@@ -201,7 +201,7 @@ internal static class PageJS {
     }
 
     public static void Refresh() {
-        if (listContent == null) {
+        if (listContent == null || listContent.Equals(null)) {
             return;
         }
         for (int i = listContent.childCount - 1; i >= 0; i--) {

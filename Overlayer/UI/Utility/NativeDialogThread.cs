@@ -2,12 +2,12 @@ using HarmonyLib;
 using NativeFileDialog.Extended;
 using Overlayer.Async;
 using System.Reflection;
-using System.Runtime.InteropServices;
+using UnityEngine;
 
 namespace Overlayer.UI.Utility;
 
 internal static class NativeDialogThread {
-    private static readonly bool IsMac = RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
+    private static readonly bool IsMac = Application.platform == RuntimePlatform.OSXPlayer || Application.platform == RuntimePlatform.OSXEditor;
     private static int mainThreadId;
 
     // macOS AppKit (NSOpenPanel/NSSavePanel) aborts the process when used off the main thread,

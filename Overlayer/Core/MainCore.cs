@@ -39,17 +39,98 @@ public static class MainCore {
         if (Runtime != null) {
             return;
         }
+        if (IsSceneLoaded()) {
+            DoInitialize(host);
+        } else {
+            // No scene is active yet (e.g. Superliminal 2019.4 inits mods ~3s
+            // before the first scene load). GameObjects + DontDestroyOnLoad
+            // created now die with the bootstrap context on first scene load,
+            // killing our root, UI and update pumps. Defer until the scene.
+            _pendingHost = host;
+            try {
+                host.OverlayerLogger.OverlayerMsg("[Overlayer] No scene loaded yet; deferring initialization to first scene load.");
+            } catch {
+            }
+        }
+    }
+
+    /// <summary>Runs deferred initialization, if any. Called on scene load.</summary>
+    public static void EnsureInitialized() {
+        if (Runtime != null || _pendingHost == null) {
+            return;
+        }
+        var host = _pendingHost;
+        _pendingHost = null;
+        DoInitialize(host);
+    }
+
+    /// <summary>Rebuilds root-owned state if a scene wipe destroyed it. Called on scene load.</summary>
+    public static void EnsureRootAlive() {
+        try {
+            Runtime?.EnsureRootAlive();
+        } catch {
+        }
+    }
+
+    private static void DoInitialize(IOverlayerHost host) {
+        if (Runtime != null) {
+            return;
+        }
 
         Runtime = new OverlayerRuntime(host);
 
         Runtime.Initialize();
     }
 
-    public static void Tick() {
-        Runtime?.Tick();
-        OverlayCore.Tick();
-        UI.Factory.Page.PageOverlayer.Tick();
+    private static IOverlayerHost _pendingHost;
+
+    private static bool IsSceneLoaded() {
+        try {
+            var scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+            return scene.IsValid() && scene.isLoaded;
+        } catch {
+            return true;
+        }
     }
+
+    public static void Tick() {
+        // Driven from two sources (MelonLoader OnUpdate + our own UpdatePump).
+        // Run once per frame: Time.frameCount exists on every Unity version.
+        try {
+            int frame = UnityEngine.Time.frameCount;
+            if (frame == _lastTickFrame) {
+                return;
+            }
+            _lastTickFrame = frame;
+        } catch {
+        }
+        try {
+            Runtime?.Tick();
+        } catch (Exception e) {
+            try {
+                Runtime?.Logger?.Err($"[MainCore] Tick failed: {e.GetType().Name}: {e.Message}");
+            } catch {
+            }
+        }
+        try {
+            OverlayCore.Tick();
+        } catch (Exception e) {
+            try {
+                Runtime?.Logger?.Err($"[MainCore] Overlay tick failed: {e.Message}");
+            } catch {
+            }
+        }
+        try {
+            UI.Factory.Page.PageOverlayer.Tick();
+        } catch (Exception e) {
+            try {
+                Runtime?.Logger?.Err($"[MainCore] Page tick failed: {e.Message}");
+            } catch {
+            }
+        }
+    }
+
+    private static int _lastTickFrame = -1;
 
     public static void Dispose() {
         if (Runtime == null) {

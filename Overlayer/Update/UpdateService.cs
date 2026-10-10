@@ -1,9 +1,9 @@
 using MelonLoader.Utils;
 using Overlayer.Async;
 using Overlayer.Core;
+using System.IO;
 using System.Net;
-using System.Net.Http;
-using System.Runtime.InteropServices;
+using System.Text;
 
 namespace Overlayer.Update;
 
@@ -29,46 +29,80 @@ public static class UpdateService {
     public static string Error { get; private set; } = "";
     public static event Action OnChanged;
 
+    public static bool IsHttpAvailable {
+        get {
+            if (_httpAvailable.HasValue) return _httpAvailable.Value;
+            bool ok = UpdatePackage.ProbeHttpCapabilities(out string err);
+            if (!ok && !string.IsNullOrEmpty(err)) {
+                MainCore.Log?.Wrn($"[Update] HTTP capability check failed: {err}");
+            }
+            _httpAvailable = ok;
+            return ok;
+        }
+    }
+
+    private static bool? _httpAvailable;
+
 #if IL2CPP
     // Releases only ship the Mono build; installing it over IL2CPP would break the mod.
     public static bool Supported => false;
 #else
-    public static bool Supported => true;
+    public static bool Supported => IsHttpAvailable;
 #endif
 
-    private static readonly HttpClient Http = CreateClient();
-
     private static string AssetName =>
-        RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "Overlayer_ML_win.zip"
-        : RuntimeInformation.IsOSPlatform(OSPlatform.OSX) ? "Overlayer_ML_mac.zip"
+        (UnityEngine.Application.platform == UnityEngine.RuntimePlatform.WindowsPlayer || UnityEngine.Application.platform == UnityEngine.RuntimePlatform.WindowsEditor) ? "Overlayer_ML_win.zip"
+        : (UnityEngine.Application.platform == UnityEngine.RuntimePlatform.OSXPlayer || UnityEngine.Application.platform == UnityEngine.RuntimePlatform.OSXEditor) ? "Overlayer_ML_mac.zip"
         : "Overlayer_ML_linux.zip";
 
-    private static HttpClient CreateClient() {
+    private static HttpWebRequest CreateRequest(string url, string accept) {
         try {
             ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
         } catch {
             // Already negotiated by the runtime.
         }
-        HttpClient client = new() { Timeout = TimeSpan.FromSeconds(20) };
-        client.DefaultRequestHeaders.UserAgent.ParseAdd("Overlayer-Updater/" + Info.Version);
-        client.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
-        return client;
+        HttpWebRequest req = (HttpWebRequest)WebRequest.Create(url);
+        req.Timeout = 20000;
+        req.ReadWriteTimeout = 20000;
+        req.UserAgent = "Overlayer-Updater/" + Info.Version;
+        req.Accept = accept;
+        req.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
+        return req;
+    }
+
+    private static string GetString(string url) {
+        HttpWebRequest req = CreateRequest(url, "application/vnd.github+json");
+        using HttpWebResponse resp = (HttpWebResponse)req.GetResponse();
+        using Stream stream = resp.GetResponseStream();
+        using StreamReader reader = new(stream, Encoding.UTF8);
+        return reader.ReadToEnd();
     }
 
     public static void Initialize() {
-        if (!Supported) return;
+        if (!Supported) {
+            if (MainCore.Conf.AutoUpdate) {
+                MainCore.Log?.Wrn("[Update] AutoUpdate is enabled, but HTTP networking / update service is not supported on this platform.");
+            }
+            return;
+        }
         UpdatePackage.SweepOld(MelonEnvironment.GameRootDirectory);
-        if (MainCore.Conf.AutoUpdate) Check(install: true);
+        if (MainCore.Conf.AutoUpdate) {
+            if (!IsHttpAvailable) {
+                MainCore.Log?.Wrn("[Update] AutoUpdate is enabled, but HTTP networking is not available.");
+                return;
+            }
+            Check(install: true);
+        }
     }
 
     public static async void Check(bool install = false) {
-        if (!Supported || Status is UpdateStatus.Checking or UpdateStatus.Installing or UpdateStatus.Installed) return;
+        if (!Supported || !IsHttpAvailable || Status is UpdateStatus.Checking or UpdateStatus.Installing or UpdateStatus.Installed) return;
         bool beta = MainCore.Conf.UpdateBeta;
         Version current = MainCore.Version;
         Set(UpdateStatus.Checking);
         try {
             string url = $"https://api.github.com/repos/{RepoOwner}/{RepoName}/releases?per_page=30";
-            string json = await Task.Run(() => Http.GetStringAsync(url));
+            string json = await Task.Run(() => GetString(url));
             Available = UpdatePackage.PickRelease(json, current, AssetName, beta);
         } catch (Exception e) {
             Fail("check", e);
@@ -80,14 +114,14 @@ public static class UpdateService {
 
     public static async void Install() {
         ReleaseInfo info = Available;
-        if (!Supported || info == null || Status == UpdateStatus.Installing) return;
+        if (!Supported || !IsHttpAvailable || info == null || Status == UpdateStatus.Installing) return;
         string zip = Path.Combine(MainCore.Paths.TempPath, "Update.zip");
         string stage = Path.Combine(MainCore.Paths.TempPath, "Update");
         string root = MelonEnvironment.GameRootDirectory;
         Set(UpdateStatus.Installing);
         try {
-            int count = await Task.Run(async () => {
-                await Download(info.AssetUrl, zip);
+            int count = await Task.Run(() => {
+                Download(info.AssetUrl, zip);
                 UpdatePackage.VerifySha256(zip, info.Sha256);
                 return UpdatePackage.Install(zip, stage, root);
             });
@@ -105,18 +139,18 @@ public static class UpdateService {
         }
     }
 
-    private static async Task Download(string url, string path) {
-        using HttpResponseMessage resp = await Http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
-        resp.EnsureSuccessStatusCode();
-        using Stream src = await resp.Content.ReadAsStreamAsync();
+    private static void Download(string url, string path) {
+        HttpWebRequest req = CreateRequest(url, "application/octet-stream");
+        using HttpWebResponse resp = (HttpWebResponse)req.GetResponse();
+        using Stream src = resp.GetResponseStream();
         using FileStream dst = new(path, FileMode.Create, FileAccess.Write, FileShare.None);
         byte[] buffer = new byte[81920];
         long total = 0;
         int read;
-        while ((read = await src.ReadAsync(buffer, 0, buffer.Length)) > 0) {
+        while ((read = src.Read(buffer, 0, buffer.Length)) > 0) {
             total += read;
             if (total > UpdatePackage.MaxDownloadBytes) throw new InvalidDataException("the update download is too large");
-            await dst.WriteAsync(buffer, 0, read);
+            dst.Write(buffer, 0, read);
         }
     }
 

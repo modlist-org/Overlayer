@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json.Linq;
+using Newtonsoft.Json.Linq;
+using Overlayer.Core;
 
 namespace Overlayer.Localization;
 
@@ -253,10 +254,18 @@ public class Translator {
 
         IsLoading = false;
 
-        try {
-            OnLoadEnd.Invoke(FailState);
-        } catch (Exception e) {
-            Log($"{LOG_PREFIX_EXCEPTION}Exception during OnLoadEnd event: {e.GetType().Name}: {e.Message}");
+        Action dispatch = () => {
+            try {
+                OnLoadEnd.Invoke(FailState);
+            } catch (Exception e) {
+                Log($"{LOG_PREFIX_EXCEPTION}Exception during OnLoadEnd event: {e}");
+            }
+        };
+
+        if (MainCore.Root != null) {
+            Overlayer.Async.MainThread.Enqueue(dispatch);
+        } else {
+            dispatch();
         }
     }
 

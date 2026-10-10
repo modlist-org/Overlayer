@@ -1,4 +1,4 @@
-﻿using Microsoft.ClearScript.V8;
+using Microsoft.ClearScript.V8;
 using Overlayer.Async;
 using Overlayer.Core;
 using Overlayer.Tag.Core;
@@ -22,7 +22,7 @@ public class JSScriptLoader {
     /// <summary>All *.js files under <paramref name="root"/>, including subfolders. Skips dot-folders and node_modules.</summary>
     public static string[] FindScripts(string root) => [.. Directory
         .GetFiles(root, "*.js", SearchOption.AllDirectories)
-        .Where(file => !RelativeName(root, file).Split('/').Any(part => part.StartsWith(".") || part.Equals("node_modules", StringComparison.OrdinalIgnoreCase)))];
+        .Where(file => !RelativeName(root, file).Split(['/']).Any(part => part.StartsWith(".") || part.Equals("node_modules", StringComparison.OrdinalIgnoreCase)))];
 
     /// <summary>Path of <paramref name="file"/> relative to <paramref name="root"/>, with '/' separators.</summary>
     public static string RelativeName(string root, string file) => file.StartsWith(root, StringComparison.OrdinalIgnoreCase)
@@ -60,6 +60,9 @@ public class JSScriptLoader {
     }
 
     public async Task<bool> LoadAllScriptsAsync(string folderPath, V8ScriptEngine engine, bool syncChanges = true) {
+        if (engine == null) {
+            return false;
+        }
         if (!await _debounceLock.WaitAsync(0)) {
             return false;
         }
@@ -112,6 +115,9 @@ public class JSScriptLoader {
     }
 
     public void LoadScript(string filePath, string hash, V8ScriptEngine engine) {
+        if (engine == null) {
+            return;
+        }
         lock (_syncLock) {
             UnloadScript(filePath);
             LoadScriptInternal(filePath, hash, engine);
@@ -121,6 +127,11 @@ public class JSScriptLoader {
     }
 
     private void LoadScriptInternal(string filePath, string hash, V8ScriptEngine engine) {
+        if (engine == null) {
+            Diagnostics.Add(new JSDiagnostic(JSTagDiagnosticId.ScriptError, JSSeverity.Error, filePath,
+                new InvalidOperationException("V8 engine unavailable (native library not loaded)")));
+            return;
+        }
         var host = new JSTagRegistrationHost(this, filePath);
         engine.AddHostObject(
             JSTagRegistrationHost.HostBindingName,
@@ -257,6 +268,9 @@ public class JSScriptLoader {
     }
 
     public void ReloadFile(string filePath, V8ScriptEngine engine) {
+        if (engine == null) {
+            return;
+        }
         lock (_syncLock) {
             if (IsDisabled(filePath)) {
                 if (_fileHashes.ContainsKey(filePath)) {

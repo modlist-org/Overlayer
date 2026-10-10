@@ -1,4 +1,5 @@
 using Newtonsoft.Json.Linq;
+using Overlayer.Compat;
 using Overlayer.IO.Fx;
 using Overlayer.IO.Interface;
 using UnityEngine;
@@ -80,7 +81,7 @@ public class HorizontalLayoutGroupSettings : UnityComponentSettingsBase, ICopyab
         component.childForceExpandHeight = _lastChildForceExpandHeight;
         component.childScaleWidth = _lastChildScaleWidth;
         component.childScaleHeight = _lastChildScaleHeight;
-        component.reverseArrangement = _lastReverseArrangement;
+        LayoutGroupCompat.SetReverseArrangement(component, _lastReverseArrangement);
     }
 
     public override bool FromUnity(GameObject source) {
@@ -99,7 +100,7 @@ public class HorizontalLayoutGroupSettings : UnityComponentSettingsBase, ICopyab
         ChildForceExpandHeight.Value = component.childForceExpandHeight;
         ChildScaleWidth.Value = component.childScaleWidth;
         ChildScaleHeight.Value = component.childScaleHeight;
-        ReverseArrangement.Value = component.reverseArrangement;
+        ReverseArrangement.Value = LayoutGroupCompat.GetReverseArrangement(component);
         _lastSpacing = Spacing.Value;
         _lastPaddingH = PaddingH.Value;
         _lastPaddingV = PaddingV.Value;

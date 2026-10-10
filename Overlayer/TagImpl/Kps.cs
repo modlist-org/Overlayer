@@ -1,3 +1,4 @@
+using O5Kit.Input;
 using Overlayer.Compat.Interface;
 using Overlayer.Tag.Core;
 using UnityEngine;
@@ -11,7 +12,7 @@ public sealed class KpsTracker : IRuntimeTick {
     private const int MaxSamples = 1024;
 
     private static readonly KeyCode[] KeyboardKeys = BuildKeyboardKeys();
-    private readonly Queue<double> keyTimes = new();
+    private readonly List<double> keyTimes = new();
     private readonly Dictionary<int, (double value, double next)> held = [];
     private readonly object gate = new();
 
@@ -28,14 +29,9 @@ public sealed class KpsTracker : IRuntimeTick {
     }
 
     public void Tick() {
-        if (!SuppressUnityKeys && UnityEngine.Input.anyKeyDown) {
+        if (!SuppressUnityKeys && O5Input.AnyKeyboardKeyDown) {
             double now = UnityEngine.Time.realtimeSinceStartup;
-            int keys = 0;
-            for (int i = 0; i < KeyboardKeys.Length; i++) {
-                if (UnityEngine.Input.GetKeyDown(KeyboardKeys[i])) {
-                    keys++;
-                }
-            }
+            int keys = O5Input.GetDownKeyCount(KeyboardKeys);
             if (keys > 0) {
                 lock (gate) {
                     for (int i = 0; i < keys; i++) {
@@ -82,18 +78,18 @@ public sealed class KpsTracker : IRuntimeTick {
         }
     }
 
-    private static void Enqueue(Queue<double> queue, double time) {
+    private static void Enqueue(List<double> queue, double time) {
         if (queue.Count >= MaxSamples) {
-            queue.Dequeue();
+            queue.RemoveAt(0);
         }
-        queue.Enqueue(time);
+        queue.Add(time);
     }
 
-    private static void Prune(Queue<double> queue, double windowMs) {
+    private static void Prune(List<double> queue, double windowMs) {
         double now = UnityEngine.Time.realtimeSinceStartup;
         double window = windowMs / 1000d;
-        while (queue.Count > 0 && now - queue.Peek() > window) {
-            queue.Dequeue();
+        while (queue.Count > 0 && now - queue[0] > window) {
+            queue.RemoveAt(0);
         }
     }
 

@@ -8,6 +8,10 @@ public sealed class UIService : IRuntimeService, IRuntimeTick {
         Overlayer.Compat.O5KitAdapters.Setup();
         UICore.Initialize();
     }
+
+    /// <summary>Rebuilds UI state after a scene wipe destroyed our objects.</summary>
+    public void Reinitialize() => UICore.Reinitialize();
+
     public void Dispose() => UICore.Dispose();
     public void Tick() => UICore.HandleUpdate();
 }

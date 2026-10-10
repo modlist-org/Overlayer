@@ -35,8 +35,7 @@ public sealed class OvObject : ISettingsFile {
     private bool _lastEnabled;
     private bool _lastHasRectMask2D;
     private bool _lastRectMask2DEnabled;
-    private string _lastPlayingText;
-    private string _lastNotPlayingText;
+    private string _lastText;
 
     public OvObject() {
         GameObject = new GameObject("OvObject");
@@ -84,9 +83,8 @@ public sealed class OvObject : ISettingsFile {
 
             Config.TextConfig.ToUnity(GameObject);
             Config.TextEngineConfig ??= OvTextSettings.FromLegacy(Config.TextConfig.Text.Value);
-            _lastPlayingText = Config.TextEngineConfig.PlayingText.Value;
-            _lastNotPlayingText = Config.TextEngineConfig.NotPlayingText.Value;
-            TextUpdater?.SetText(_lastPlayingText, _lastNotPlayingText);
+            _lastText = Config.TextEngineConfig.Text.Value;
+            TextUpdater?.SetText(_lastText);
         }
         Config.MovingManConfig?.ToUnity(GameObject);
         Config.ColorRangeConfig?.ToUnity(GameObject);
@@ -122,8 +120,7 @@ public sealed class OvObject : ISettingsFile {
             Config.CanvasGroupConfig?.RefreshFx(GameObject);
             Config.TextConfig?.RefreshFx(GameObject);
             if (Config.TextEngineConfig != null && TextUpdater != null) {
-                if (FxUtil.Changed(ref _lastPlayingText, Config.TextEngineConfig.PlayingText.Value)) TextUpdater.PlayingEngine.Text = _lastPlayingText;
-                if (FxUtil.Changed(ref _lastNotPlayingText, Config.TextEngineConfig.NotPlayingText.Value)) TextUpdater.NotPlayingEngine.Text = _lastNotPlayingText;
+                if (FxUtil.Changed(ref _lastText, Config.TextEngineConfig.Text.Value)) TextUpdater.Engine.Text = _lastText;
             }
             Config.MovingManConfig?.RefreshFx(GameObject);
             Config.ColorRangeConfig?.RefreshFx(GameObject);
@@ -293,7 +290,7 @@ public sealed class OvObject : ISettingsFile {
 
         Children.RemoveAt(currentIndex);
 
-        index = Math.Clamp(index, 0, Children.Count);
+        index = O5Kit.Core.MathCompat.Clamp(index, 0, Children.Count);
         Children.Insert(index, child);
 
         for (int i = 0; i < Children.Count; i++) {
@@ -396,20 +393,17 @@ public sealed class OvObject : ISettingsFile {
         private static readonly List<WeakReference<TextEngineUpdater>> AllUpdaters = [];
 
         public TextMeshProUGUI Tmp;
-        public TextEngineCore PlayingEngine;
-        public TextEngineCore NotPlayingEngine;
+        public TextEngineCore Engine;
 
         public void Awake() => AllUpdaters.Add(new WeakReference<TextEngineUpdater>(this));
 
         public void Init(TextMeshProUGUI tmp) {
             Tmp = tmp;
-            PlayingEngine ??= new();
-            NotPlayingEngine ??= new();
+            Engine ??= new();
         }
 
-        public void SetText(string playingText, string notPlayingText) {
-            PlayingEngine.Text = playingText ?? string.Empty;
-            NotPlayingEngine.Text = notPlayingText ?? string.Empty;
+        public void SetText(string text) {
+            Engine.Text = text ?? string.Empty;
         }
 
         public void Update() {
@@ -417,26 +411,22 @@ public sealed class OvObject : ISettingsFile {
                 return;
             }
 
-            TextEngineCore engine = PlaybackState.IsPlaying ? PlayingEngine : NotPlayingEngine;
-
-            if (engine == null) {
+            if (Engine == null) {
                 return;
             }
 
-            Tmp.text = engine.Get();
+            Tmp.text = Engine.Get();
         }
 
         public void OnDestroy() {
-            PlayingEngine?.Dispose();
-            NotPlayingEngine?.Dispose();
+            Engine?.Dispose();
             AllUpdaters.RemoveAll(wr => !wr.TryGetTarget(out var u) || u == this);
         }
 
         public static void RecompileAll() {
             foreach (var wr in AllUpdaters) {
                 if (wr.TryGetTarget(out var updater)) {
-                    updater.PlayingEngine?.ForceRecompile();
-                    updater.NotPlayingEngine?.ForceRecompile();
+                    updater.Engine?.ForceRecompile();
                 }
             }
         }

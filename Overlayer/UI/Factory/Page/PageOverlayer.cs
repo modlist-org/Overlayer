@@ -16,6 +16,7 @@ using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using static UnityEngine.EventSystems.PointerEventData;
 using O5Kit.Core;
+using O5Kit.Input;
 
 #if ML && IL2CPP
 using MelonLoader;
@@ -129,7 +130,7 @@ internal static class PageOverlayer {
         // running file dialogs); tile construction must run on the main
         // thread, deferred by one frame at most.
         MainThread.Enqueue(() => {
-            if (gridRef == null || !MainCore.IsModEnabled) {
+            if (gridRef == null || gridRef.Equals(null) || !MainCore.IsModEnabled) {
                 return;
             }
             BuildAllTiles(gridRef);
@@ -137,6 +138,9 @@ internal static class PageOverlayer {
     }
 
     private static void ToggleUIStateByMod(Transform transform, bool isEnabled) {
+        if (transform == null || transform.Equals(null)) {
+            return;
+        }
         if (!isEnabled) {
             settingPage?.Close(true);
             propsPage?.Close(true);
@@ -154,7 +158,7 @@ internal static class PageOverlayer {
     }
 
     private static void BuildAllTiles(Transform transform) {
-        if (transform == null) {
+        if (transform == null || transform.Equals(null)) {
             return;
         }
 
@@ -652,7 +656,7 @@ internal static class PageOverlayer {
     }
 
     private static bool ShiftSkipConfirm()
-        => Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+        => O5Input.GetKey(KeyCode.LeftShift) || O5Input.GetKey(KeyCode.RightShift);
 
     private static void BeginPromote(PackageEntry entry) {
         if (entry == null) {
@@ -734,7 +738,7 @@ internal static class PageOverlayer {
         if (es == null || tile == null) {
             return false;
         }
-        var ped = new PointerEventData(es) { position = UnityEngine.Input.mousePosition };
+        var ped = new PointerEventData(es) { position = O5Input.MousePosition };
         var hits = new List<RaycastResult>();
         es.RaycastAll(ped, hits);
         foreach (var h in hits) {
@@ -782,7 +786,7 @@ internal static class PageOverlayer {
                 return;
             }
             if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(
-                root, UnityEngine.Input.mousePosition, null, out var local)) {
+                root, O5Input.MousePosition, null, out var local)) {
                 return;
             }
             Rect rect = root.rect;
@@ -882,7 +886,7 @@ internal static class PageOverlayer {
 
         handler.OnHoverUpdate = () => {
             if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(
-                root, UnityEngine.Input.mousePosition, null, out var local)) {
+                root, O5Input.MousePosition, null, out var local)) {
                 return;
             }
             Rect rect = root.rect;

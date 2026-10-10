@@ -29,7 +29,7 @@ public partial class OvCanvasSettingPage {
     private readonly System.Collections.Generic.List<(RectTransform Card, UnityComponentSettingsBase Settings)> componentCards = [];
 
     internal void Tick() {
-        if (!GameObject.activeInHierarchy || !CanvasGroup.blocksRaycasts || currentCanvas == null || IsTyping()) {
+        if (GameObject == null || !GameObject.activeInHierarchy || CanvasGroup == null || !CanvasGroup.blocksRaycasts || currentCanvas == null || IsTyping()) {
             return;
         }
         if (!O5Input.GetKey(KeyCode.LeftControl) && !O5Input.GetKey(KeyCode.RightControl)

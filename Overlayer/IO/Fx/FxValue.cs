@@ -129,7 +129,12 @@ public abstract class FxValue {
             return true;
         }
 
-        return Enum.TryParse(enumType, text, true, out _);
+        try {
+            Enum.Parse(enumType, text, true);
+            return true;
+        } catch {
+            return false;
+        }
     }
 
     internal static float EvaluateNumericComponent(string expr) {
@@ -156,7 +161,11 @@ public sealed class FxValue<T> : FxValue, IFxValue, ISettingsFile, ICopyable<FxV
             RegisterConverter(raw => {
                 if (string.IsNullOrWhiteSpace(raw)) return default!;
                 if (int.TryParse(raw, out var intVal)) return (T)Enum.ToObject(typeof(T), intVal);
-                return Enum.TryParse(typeof(T), raw, true, out var parsed) ? (T)parsed : default!;
+                try {
+                    return (T)Enum.Parse(typeof(T), raw, true);
+                } catch {
+                    return default!;
+                }
             });
             return;
         }
@@ -351,14 +360,36 @@ public sealed class FxValue<T> : FxValue, IFxValue, ISettingsFile, ICopyable<FxV
         }
     }
 
-    // Last-resort guard: JToken.FromObject on Unity structs (Rect, Vector2,
-    // ...) recurses forever (Rect.position -> Vector2.normalized -> ...).
-    // Raw writers should handle those, but never let a save crash here.
+    // Safe serializer for primitive types, enums, collections, and custom objects.
+    // Bypasses reflection-emit JsonSerializer for basic types to avoid Mono/IL2CPP issues.
     private static JToken SafeFromObject(object value) {
-        try {
-            return value != null ? JToken.FromObject(value) : JValue.CreateNull();
-        } catch {
-            return JValue.CreateNull();
+        if (value == null) return JValue.CreateNull();
+        switch (value) {
+            case bool b: return new JValue(b);
+            case string s: return new JValue(s);
+            case int i: return new JValue(i);
+            case float f: return new JValue(f);
+            case double d: return new JValue(d);
+            case long l: return new JValue(l);
+            case short sh: return new JValue(sh);
+            case byte by: return new JValue(by);
+            case decimal dec: return new JValue(dec);
+            case System.Collections.IEnumerable enumerable when value is not string:
+                var arr = new JArray();
+                foreach (var item in enumerable) {
+                    arr.Add(SafeFromObject(item));
+                }
+                return arr;
+            default:
+                if (value.GetType().IsEnum) {
+                    return new JValue(value.ToString());
+                }
+                try {
+                    return JToken.FromObject(value);
+                } catch (Exception ex) {
+                    MainCore.Log?.Err($"[FxValue] SafeFromObject fallback failed for {value.GetType()}: {ex}");
+                    return JValue.CreateNull();
+                }
         }
     }
 
@@ -373,6 +404,7 @@ public sealed class FxValue<T> : FxValue, IFxValue, ISettingsFile, ICopyable<FxV
 
     public JToken Serialize() {
         if (!UseFx) {
+            if (staticValue == null) return JValue.CreateNull();
             if (typeof(T).IsEnum) return new JValue(staticValue.ToString());
             try {
                 if (RawWriters.TryGetValue(typeof(T), out var writer)) {
@@ -381,7 +413,8 @@ public sealed class FxValue<T> : FxValue, IFxValue, ISettingsFile, ICopyable<FxV
                 if (staticValue is ISettingsFile file) {
                     return file.Serialize();
                 }
-            } catch {
+            } catch (Exception ex) {
+                MainCore.Log?.Err($"[FxValue] RawWriter failed for {typeof(T)}: {ex}");
                 return JValue.CreateNull();
             }
             return SafeFromObject(staticValue);
@@ -406,7 +439,7 @@ public sealed class FxValue<T> : FxValue, IFxValue, ISettingsFile, ICopyable<FxV
     public void Deserialize(JToken token) {
         if (token == null || token.Type == JTokenType.Null) {
             UseFx = false;
-            staticValue = default!;
+            // Never overwrite existing fallback with default! when JSON token is null
             return;
         }
 
@@ -417,14 +450,40 @@ public sealed class FxValue<T> : FxValue, IFxValue, ISettingsFile, ICopyable<FxV
             Engine ??= new TextEngineCore();
             Engine.Text = engineText;
             if (obj.ContainsKey("Value")) {
+                var valToken = obj["Value"];
+                if (valToken == null || valToken.Type == JTokenType.Null) return;
                 try {
                     if (RawReaders.TryGetValue(typeof(T), out var raw)) {
-                        var r = raw(obj["Value"]);
+                        var r = raw(valToken);
                         if (r is T typed) {
                             staticValue = typed;
                         }
+                    } else if (typeof(T) == typeof(bool)) {
+                        staticValue = (T)(object)valToken.Value<bool>();
+                    } else if (typeof(T) == typeof(string)) {
+                        staticValue = (T)(object)(valToken.Value<string>() ?? string.Empty);
+                    } else if (typeof(T) == typeof(float)) {
+                        staticValue = (T)(object)valToken.Value<float>();
+                    } else if (typeof(T) == typeof(double)) {
+                        staticValue = (T)(object)valToken.Value<double>();
+                    } else if (typeof(T) == typeof(int)) {
+                        staticValue = (T)(object)valToken.Value<int>();
+                    } else if (typeof(T) == typeof(long)) {
+                        staticValue = (T)(object)valToken.Value<long>();
+                    } else if (typeof(T).IsEnum) {
+                        if (valToken.Type == JTokenType.String) {
+                            try {
+                                staticValue = (T)Enum.Parse(typeof(T), valToken.Value<string>(), true);
+                            } catch { }
+                        } else if (valToken.Type == JTokenType.Integer) {
+                            staticValue = (T)Enum.ToObject(typeof(T), valToken.Value<int>());
+                        }
+                    } else if (typeof(T) == typeof(List<string>) && valToken is JArray jarr) {
+                        var list = new List<string>();
+                        foreach (var el in jarr) list.Add(el?.Value<string>() ?? string.Empty);
+                        staticValue = (T)(object)list;
                     } else {
-                        staticValue = obj["Value"].ToObject<T>()!;
+                        staticValue = valToken.ToObject<T>()!;
                     }
                 } catch {
                 }
@@ -439,9 +498,50 @@ public sealed class FxValue<T> : FxValue, IFxValue, ISettingsFile, ICopyable<FxV
                         return;
                     }
                 }
+                if (typeof(T) == typeof(bool)) {
+                    staticValue = (T)(object)token.Value<bool>();
+                    return;
+                }
+                if (typeof(T) == typeof(string)) {
+                    staticValue = (T)(object)(token.Value<string>() ?? string.Empty);
+                    return;
+                }
+                if (typeof(T) == typeof(float)) {
+                    staticValue = (T)(object)token.Value<float>();
+                    return;
+                }
+                if (typeof(T) == typeof(double)) {
+                    staticValue = (T)(object)token.Value<double>();
+                    return;
+                }
+                if (typeof(T) == typeof(int)) {
+                    staticValue = (T)(object)token.Value<int>();
+                    return;
+                }
+                if (typeof(T) == typeof(long)) {
+                    staticValue = (T)(object)token.Value<long>();
+                    return;
+                }
+                if (typeof(T).IsEnum) {
+                    if (token.Type == JTokenType.String) {
+                        try {
+                            staticValue = (T)Enum.Parse(typeof(T), token.Value<string>(), true);
+                            return;
+                        } catch { }
+                    } else if (token.Type == JTokenType.Integer) {
+                        staticValue = (T)Enum.ToObject(typeof(T), token.Value<int>());
+                        return;
+                    }
+                }
+                if (typeof(T) == typeof(List<string>) && token is JArray jarr) {
+                    var list = new List<string>();
+                    foreach (var el in jarr) list.Add(el?.Value<string>() ?? string.Empty);
+                    staticValue = (T)(object)list;
+                    return;
+                }
                 staticValue = token.ToObject<T>()!;
             } catch {
-                staticValue = default!;
+                // Keep existing staticValue on error
             }
         }
     }

@@ -42,6 +42,12 @@ public sealed class UpdatePackageTests : IDisposable {
         Assert.Equal("6.2.0", Pick(true, Release("6.2.0-beta.1", pre: true), Release("6.2.0")).Tag);
     }
 
+    [Fact]
+    public void ProbeHttpCapabilitiesSucceedsOnTestRuntime() {
+        bool ok = UpdatePackage.ProbeHttpCapabilities(out string err);
+        Assert.True(ok, err ?? "ProbeHttpCapabilities should succeed in .NET test runtime");
+    }
+
     private string Zip(params (string Name, string Body)[] entries) {
         string path = Path.Combine(dir, Guid.NewGuid().ToString("N") + ".zip");
         using ZipArchive zip = ZipFile.Open(path, ZipArchiveMode.Create);

@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json.Linq;
+using Newtonsoft.Json.Linq;
 using Overlayer.IO;
 using Overlayer.IO.Interface;
 using Overlayer.IO.Utility;
@@ -190,8 +190,16 @@ public struct GradientColor : ISettingsFile, ICopyable<GradientColor>, IEquatabl
     public override readonly bool Equals(object obj)
         => obj is GradientColor other && Equals(other);
 
-    public override readonly int GetHashCode()
-        => HashCode.Combine(solidColor, data.topLeft, data.topRight, data.bottomLeft, data.bottomRight);
+    public override readonly int GetHashCode() {
+        unchecked {
+            int hash = solidColor.GetHashCode();
+            hash = (hash * 397) ^ data.topLeft.GetHashCode();
+            hash = (hash * 397) ^ data.topRight.GetHashCode();
+            hash = (hash * 397) ^ data.bottomLeft.GetHashCode();
+            hash = (hash * 397) ^ data.bottomRight.GetHashCode();
+            return hash;
+        }
+    }
 
     public static bool operator ==(GradientColor a, GradientColor b) => a.Equals(b);
 

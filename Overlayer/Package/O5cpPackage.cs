@@ -48,7 +48,7 @@ public static class O5cpPackage {
                 builder.Append('_');
             }
         }
-        string slug = builder.ToString().Trim('_');
+        string slug = builder.ToString().Trim(['_']);
         if (slug.Length > 32) {
             slug = slug[..32];
         }
@@ -71,7 +71,7 @@ public static class O5cpPackage {
             return true;
         }
         if (path.EndsWith(".json", StringComparison.OrdinalIgnoreCase)
-            && !path.Contains('/')) {
+            && path.IndexOf('/') < 0) {
             kind = O5cpEntryKind.Canvas;
             return true;
         }

@@ -1,6 +1,5 @@
 using Overlayer.Compat.Interface;
 using Overlayer.Tag.Core;
-using UnityEngine.Device;
 
 namespace Overlayer.TagImpl;
 
@@ -10,7 +9,7 @@ public sealed class FpsTracker : IRuntimeTick {
     private const int MaxWindowMs = 10000;
     private const int MaxSamples = 4096;
 
-    private readonly Queue<double> frameTimes = new();
+    private readonly List<double> frameTimes = new();
     private readonly Dictionary<int, (double value, double next)> fpsHeld = [];
     private readonly Dictionary<int, (double value, double next)> msHeld = [];
 
@@ -21,9 +20,9 @@ public sealed class FpsTracker : IRuntimeTick {
     public void Tick() {
         double now = UnityEngine.Time.realtimeSinceStartup;
         if (frameTimes.Count >= MaxSamples) {
-            frameTimes.Dequeue();
+            frameTimes.RemoveAt(0);
         }
-        frameTimes.Enqueue(now);
+        frameTimes.Add(now);
         Prune(MaxWindowMs);
     }
 
@@ -68,7 +67,7 @@ public sealed class FpsTracker : IRuntimeTick {
         if (n < 2) {
             return 0d;
         }
-        double span = frameTimes.Last() - frameTimes.Peek();
+        double span = frameTimes[n - 1] - frameTimes[0];
         if (span < 0.000001) {
             return 0d;
         }
@@ -81,7 +80,7 @@ public sealed class FpsTracker : IRuntimeTick {
         if (n < 2) {
             return 0d;
         }
-        double span = frameTimes.Last() - frameTimes.Peek();
+        double span = frameTimes[n - 1] - frameTimes[0];
         if (span < 0.000001) {
             return 0d;
         }
@@ -91,8 +90,8 @@ public sealed class FpsTracker : IRuntimeTick {
     private void Prune(int windowMs) {
         double now = UnityEngine.Time.realtimeSinceStartup;
         double window = windowMs / 1000d;
-        while (frameTimes.Count > 0 && now - frameTimes.Peek() > window) {
-            frameTimes.Dequeue();
+        while (frameTimes.Count > 0 && now - frameTimes[0] > window) {
+            frameTimes.RemoveAt(0);
         }
     }
 }
@@ -105,5 +104,5 @@ public static class Performance {
     public static double Fps(int windowMs = 0) => FpsTracker.Instance?.Fps(windowMs) ?? 0d;
 
     [Tag(Desc = "Total number of logical processor cores available on the system")]
-    public static int ProcessorCount => SystemInfo.processorCount;
+    public static int ProcessorCount => UnityEngine.SystemInfo.processorCount;
 }

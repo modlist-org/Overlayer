@@ -38,6 +38,7 @@ internal static class PageSettings {
     private static O5Dropdown<string> languageDropdown;
 
     public static void Create(RectTransform parent) {
+        objects.Clear();
         var (_, contentRect, _) = O5Factory.ScrollView(O5KitAdapters.Ctx, parent, 12f, 18f);
         GameObject content = contentRect.gameObject;
 
@@ -359,6 +360,10 @@ internal static class PageSettings {
             defSet.AutoUpdate,
             MainCore.Conf.AutoUpdate,
             toggle => {
+                if (toggle && !UpdateService.IsHttpAvailable) {
+                    MainCore.Log.Wrn("[Update] Cannot enable AutoUpdate: HTTP networking is not available.");
+                    return;
+                }
                 MainCore.Conf.AutoUpdate = toggle;
                 MainCore.ConfMgr.RequestSave();
             },
@@ -405,6 +410,12 @@ internal static class PageSettings {
         checkBtn.Label.gameObject.AddComponent<TextLocalization>().Init("UPDATE_CHECK", "Check");
 
         refreshUpdates = () => {
+            if (!UpdateService.IsHttpAvailable) {
+                statusText.text = MainCore.Tr.Get("UPDATE_HTTP_UNAVAILABLE", "HTTP networking is unavailable.");
+                checkBtn.SetBlocked(true);
+                installBtn.SetBlocked(true);
+                return;
+            }
             UpdateStatus status = UpdateService.Status;
             string tag = UpdateService.Available?.Tag;
             statusText.text = status switch {
@@ -659,6 +670,9 @@ internal static class PageSettings {
     }
 
     internal static void OnTranslatorLoadEnd() {
+        if (languageDropdown == null || languageDropdown.IsDisposed || !languageDropdown.Rect) {
+            return;
+        }
         string[] langs = [.. MainCore.Tr.GetLanguages().OrderBy(x => x, StringComparer.OrdinalIgnoreCase)];
 
         languageDropdown.SetValues(langs);

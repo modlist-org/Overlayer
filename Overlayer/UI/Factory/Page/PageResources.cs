@@ -699,7 +699,7 @@ internal static class PageResources {
         Dictionary<string, string> folders = CurrentFolders;
         string[] keys = [.. (currentMode == ResourceMode.Images ? UserResourceManager.Spr.Keys : UserResourceManager.Fnt.Keys)
             .Where(key => !O5cpFormat.IsPackageKey(key))
-            .Where(key => string.IsNullOrEmpty(query) || FullName(folders, key).Contains(query, StringComparison.OrdinalIgnoreCase))
+            .Where(key => string.IsNullOrEmpty(query) || FullName(folders, key).IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0)
             .OrderBy(key => FolderOf(folders, key), StringComparer.OrdinalIgnoreCase)
             .ThenBy(key => key, StringComparer.OrdinalIgnoreCase)];
 
@@ -1227,7 +1227,7 @@ internal static class PageResources {
             return (SanitizeKey(value), string.Empty);
         }
         string folder = string.Join("/", value[..slash]
-            .Split('/', '\\')
+            .Split(['/', '\\'])
             .Select(SanitizeKey)
             .Where(part => part.Length > 0));
         return (SanitizeKey(value[(slash + 1)..]), folder);
@@ -1258,7 +1258,7 @@ internal static class PageResources {
         }
 
         char[] invalid = Path.GetInvalidFileNameChars();
-        string result = new([.. value.Trim().Select(c => invalid.Contains(c) ? '_' : c)]);
+        string result = new(value.Trim().Select(c => invalid.Contains(c) ? '_' : c).ToArray());
         return result.Trim().Trim('.', ' ');
     }
 

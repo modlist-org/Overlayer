@@ -12,6 +12,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using static UnityEngine.EventSystems.PointerEventData;
 using UnityEngine.EventSystems;
+using O5Kit.Input;
 using Overlayer.IO.UnityComponent.Impl;
 using Overlayer.IO.Overlay;
 
@@ -382,7 +383,7 @@ public partial class OvCanvasSettingPage : IDisposable {
                     return;
                 }
 
-                if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)) {
+                if (O5Input.GetKey(KeyCode.LeftShift) || O5Input.GetKey(KeyCode.RightShift)) {
                     DisarmDeleteButton();
                     var skippedDelete = currentCanvas;
 
@@ -730,7 +731,7 @@ public partial class OvCanvasSettingPage : IDisposable {
             label.color = Color.white;
             label.alignment = TextAlignmentOptions.Left;
             label.verticalAlignment = VerticalAlignmentOptions.Middle;
-            label.textWrappingMode = TextWrappingModes.NoWrap;
+            TmpCompat.SetNoWrap(label);
             label.overflowMode = TextOverflowModes.Ellipsis;
             label.raycastTarget = false;
             var labelLE = labelObject.AddComponent<LayoutElement>();
@@ -893,7 +894,7 @@ public partial class OvCanvasSettingPage : IDisposable {
         }
 
         canvasTabs.RemoveAt(currentIndex);
-        canvasTabs.Insert(Math.Clamp(insertIndex, 0, canvasTabs.Count), tab);
+        canvasTabs.Insert(MathCompat.Clamp(insertIndex, 0, canvasTabs.Count), tab);
         for (int i = 0; i < canvasTabs.Count; i++) {
             GetCanvasTabSlotRect(canvasTabs[i]).SetSiblingIndex(i);
         }
@@ -1380,7 +1381,7 @@ public partial class OvCanvasSettingPage : IDisposable {
             currentCanvas.Attach(moving);
             currentCanvas.OvObjects.Remove(moving);
             int index = currentCanvas.OvObjects.IndexOf(target) + (zone == HierarchyDropZone.After ? 1 : 0);
-            currentCanvas.OvObjects.Insert(Math.Clamp(index, 0, currentCanvas.OvObjects.Count), moving);
+            currentCanvas.OvObjects.Insert(MathCompat.Clamp(index, 0, currentCanvas.OvObjects.Count), moving);
             SyncRootSiblingOrder();
         }
 

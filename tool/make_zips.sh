@@ -4,9 +4,13 @@
 #   ./tool/make_zips.sh [.build/Release_ML/Overlayer] [dist]
 #
 # Output:
-#   dist/Overlayer_ML_win.zip    (includes ClearScriptV8.win-x64.dll, excludes linux .so)
-#   dist/Overlayer_ML_linux.zip  (includes ClearScriptV8.linux-x64.so*, excludes win dll/Registry)
-#   dist/Overlayer_ML_mac.zip    (includes ClearScriptV8.osx-*.dylib, excludes win dll/Registry and linux .so)
+#   dist/Overlayer_ML_win.zip    (includes ClearScriptV8.win-x64.dll, excludes linux .so / osx dylib)
+#   dist/Overlayer_ML_linux.zip  (includes linux .so + win dll for Proton/Wine titles, excludes osx dylib)
+#   dist/Overlayer_ML_mac.zip    (includes osx dylib + win dll for Wine/Crossover titles, excludes linux .so)
+#
+# NOTE: NFD natives (nfd.dll / libnfd.so / libnfd.dylib, ~50KB total) are shipped in
+# every zip: Proton/Wine games load nfd.dll even when the host OS is Linux/Mac.
+# Likewise the win ClearScript dll is kept in the linux/mac zips so Proton titles work.
 #
 # Top-level zip layout: Mods/ UserLibs/ UserData/  (extract straight into the game root)
 set -euo pipefail
@@ -22,30 +26,29 @@ for d in "$SRC/Mods" "$SRC/UserLibs" "$SRC/UserData"; do
     fi
 done
 mkdir -p "$DIST"
+rm -f "$DIST"/Overlayer_ML_*.zip
 
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
 # --- win ---
 rm -rf "$WORK/win" && cp -r "$SRC" "$WORK/win"
-rm -f "$WORK"/win/UserLibs/ClearScriptV8.linux-x64.so* "$WORK"/win/UserLibs/ClearScriptV8.osx-*.dylib
-rm -f "$WORK"/win/UserLibs/libnfd.so* "$WORK"/win/UserLibs/libnfd.dylib
+rm -f "$WORK"/win/UserLibs/*.so* "$WORK"/win/UserLibs/*.dylib
 (cd "$WORK/win" && zip -qr "$DIST/Overlayer_ML_win.zip" Mods UserData UserLibs)
 
 # --- linux ---
+# Keep ClearScriptV8.win-x64.dll: Proton/Wine titles on Linux are Windows processes
+# and need the win build (same reason all NFD natives are kept).
 rm -rf "$WORK/linux" && cp -r "$SRC" "$WORK/linux"
-rm -f "$WORK"/linux/UserLibs/ClearScriptV8.win-x64.dll \
-      "$WORK"/linux/UserLibs/Microsoft.Win32.Registry.dll \
+rm -f "$WORK"/linux/UserLibs/Microsoft.Win32.Registry.dll \
       "$WORK"/linux/UserLibs/ClearScriptV8.osx-*.dylib
-rm -f "$WORK"/linux/UserLibs/nfd.dll "$WORK"/linux/UserLibs/libnfd.dylib
 (cd "$WORK/linux" && zip -qr "$DIST/Overlayer_ML_linux.zip" Mods UserData UserLibs)
 
 # --- mac ---
+# Keep ClearScriptV8.win-x64.dll for Wine/Crossover titles; NFD natives all kept.
 rm -rf "$WORK/mac" && cp -r "$SRC" "$WORK/mac"
-rm -f "$WORK"/mac/UserLibs/ClearScriptV8.win-x64.dll \
-      "$WORK"/mac/UserLibs/Microsoft.Win32.Registry.dll \
+rm -f "$WORK"/mac/UserLibs/Microsoft.Win32.Registry.dll \
       "$WORK"/mac/UserLibs/ClearScriptV8.linux-x64.so*
-rm -f "$WORK"/mac/UserLibs/nfd.dll "$WORK"/mac/UserLibs/libnfd.so*
 (cd "$WORK/mac" && zip -qr "$DIST/Overlayer_ML_mac.zip" Mods UserData UserLibs)
 
 ls -la "$DIST"/Overlayer_ML_win.zip "$DIST"/Overlayer_ML_linux.zip "$DIST"/Overlayer_ML_mac.zip

@@ -106,6 +106,7 @@ public static class UICore {
     }
 
     private static bool firstRunHelperActivated = false;
+
     private static GameObject firstRunCanvasObj;
     private static Image firstRunHelperImage;
     private static TextMeshProUGUI firstRunHelperText;
@@ -229,7 +230,7 @@ public static class UICore {
     public static float PanelScale {
         get;
         set {
-            field = value;
+            field = value <= 0.1f ? 1f : value;
             CanvasScaler.referenceResolution =
                 new Vector2(ReferenceResolution.x, ReferenceResolution.y) / field;
         }
@@ -256,7 +257,12 @@ public static class UICore {
         Panel.anchorMax = new(0.5f, 0.5f);
         Panel.pivot = new(0.5f, 0.5f);
         Panel.sizeDelta = LastPanelSize = DefaultPanelSize;
-        LastPanelPosition = Panel.position;
+        // NOTE: must be zero, NOT Panel.position. position is a world-space value
+        // (screen center in canvas units at init time); assigning it to
+        // anchoredPosition pushes the panel a full screen off-center and makes it
+        // invisible. Whether position is (0,0,0) or (960,540) here depends on game
+        // timing, which is why the panel vanished only in some titles.
+        LastPanelPosition = Vector2.zero;
 
         panel.AddComponent<RectMask2D>();
 
@@ -552,19 +558,85 @@ public static class UICore {
     private const string ToggleShortcutId = "overlayer.toggle_panel";
     private const float ToggleHoldSeconds = 0.4f;
 
+    private static readonly string[] ToggleShortcutIds = [
+        ToggleShortcutId,
+        ToggleShortcutId + "_right_alt",
+        ToggleShortcutId + "_ctrl",
+        ToggleShortcutId + "_right_ctrl",
+        ToggleShortcutId + "_tilde_alt",
+        ToggleShortcutId + "_tilde_right_alt",
+        ToggleShortcutId + "_tilde_ctrl",
+        ToggleShortcutId + "_tilde_right_ctrl"
+    ];
+
     private static void RegisterToggleShortcut() {
-        O5ShortcutManager.Unregister(ToggleShortcutId);
+        foreach (var id in ToggleShortcutIds) {
+            O5ShortcutManager.Unregister(id);
+        }
 
-        KeyCode modifier = Application.platform == RuntimePlatform.LinuxPlayer
-            ? KeyCode.LeftControl
-            : KeyCode.LeftAlt;
+        Action<O5Shortcut> onToggle = _ => Toggle();
+        Action<O5Shortcut> onReset = _ => ResetScalePosition(!isOpen);
 
+        // Alt + ` (BackQuote)
         O5ShortcutManager.Register(
             ToggleShortcutId,
-            new O5KeyCombo(O5KitAdapters.Ctx.Config.ToggleKey, modifier),
+            new O5KeyCombo(O5KitAdapters.Ctx.Config.ToggleKey, KeyCode.LeftAlt),
             ToggleHoldSeconds,
-            onPressed: _ => Toggle(),
-            onHeld: _ => ResetScalePosition(!isOpen)
+            onPressed: onToggle,
+            onHeld: onReset
+        );
+        O5ShortcutManager.Register(
+            ToggleShortcutId + "_right_alt",
+            new O5KeyCombo(O5KitAdapters.Ctx.Config.ToggleKey, KeyCode.RightAlt),
+            ToggleHoldSeconds,
+            onPressed: onToggle,
+            onHeld: onReset
+        );
+
+        // Ctrl + ` (BackQuote)
+        O5ShortcutManager.Register(
+            ToggleShortcutId + "_ctrl",
+            new O5KeyCombo(O5KitAdapters.Ctx.Config.ToggleKey, KeyCode.LeftControl),
+            ToggleHoldSeconds,
+            onPressed: onToggle,
+            onHeld: onReset
+        );
+        O5ShortcutManager.Register(
+            ToggleShortcutId + "_right_ctrl",
+            new O5KeyCombo(O5KitAdapters.Ctx.Config.ToggleKey, KeyCode.RightControl),
+            ToggleHoldSeconds,
+            onPressed: onToggle,
+            onHeld: onReset
+        );
+
+        // KeyCode.Tilde fallbacks (in case layout maps ` to Tilde)
+        O5ShortcutManager.Register(
+            ToggleShortcutId + "_tilde_alt",
+            new O5KeyCombo(KeyCode.Tilde, KeyCode.LeftAlt),
+            ToggleHoldSeconds,
+            onPressed: onToggle,
+            onHeld: onReset
+        );
+        O5ShortcutManager.Register(
+            ToggleShortcutId + "_tilde_right_alt",
+            new O5KeyCombo(KeyCode.Tilde, KeyCode.RightAlt),
+            ToggleHoldSeconds,
+            onPressed: onToggle,
+            onHeld: onReset
+        );
+        O5ShortcutManager.Register(
+            ToggleShortcutId + "_tilde_ctrl",
+            new O5KeyCombo(KeyCode.Tilde, KeyCode.LeftControl),
+            ToggleHoldSeconds,
+            onPressed: onToggle,
+            onHeld: onReset
+        );
+        O5ShortcutManager.Register(
+            ToggleShortcutId + "_tilde_right_ctrl",
+            new O5KeyCombo(KeyCode.Tilde, KeyCode.RightControl),
+            ToggleHoldSeconds,
+            onPressed: onToggle,
+            onHeld: onReset
         );
     }
 
@@ -662,8 +734,36 @@ public static class UICore {
 
     private static bool wasCanvasActive;
 
-    private static Vector2 GetRandomOffscreenPosition() {
-        float halfW = Screen.width * 0.5f;
+    /// <summary>
+    /// Keeps the panel at least partially visible: clamps the center offset so a
+    /// bad/stale position (e.g. dragged offscreen, or a world-space value saved by
+    /// mistake) can never open fully outside the screen. Center anchors: (0,0) = centered.
+    /// </summary>
+    private static Vector2 ClampPanelPosition(Vector2 pos) {
+        try {
+            float scale = 1f;
+            try {
+                if (Canvas != null && Canvas.scaleFactor > 0f) {
+                    scale = Canvas.scaleFactor;
+                }
+            } catch {
+                scale = 1f;
+            }
+            Vector2 size = Panel != null ? Panel.sizeDelta : DefaultPanelSize;
+            if (size.x <= 0f || size.y <= 0f) {
+                size = DefaultPanelSize;
+            }
+            const float margin = 80f;
+            float limitX = Screen.width * 0.5f / scale + size.x * 0.5f - margin;
+            float limitY = Screen.height * 0.5f / scale + size.y * 0.5f - margin;
+            pos.x = Mathf.Clamp(pos.x, -Mathf.Max(limitX, 0f), Mathf.Max(limitX, 0f));
+            pos.y = Mathf.Clamp(pos.y, -Mathf.Max(limitY, 0f), Mathf.Max(limitY, 0f));
+        } catch {
+        }
+        return pos;
+    }
+
+    private static Vector2 GetRandomOffscreenPosition() {        float halfW = Screen.width * 0.5f;
         float halfH = Screen.height * 0.5f;
 
         int side = Random.Range(0, 4);
@@ -695,12 +795,94 @@ public static class UICore {
         };
     }
 
+    private static EventSystem uiEventSystem;
+    private static EventSystem gameEventSystem;
+
+    private static void EnsureEventSystem() {
+        if (uiEventSystem != null && !uiEventSystem.Equals(null)) {
+            return;
+        }
+        uiEventSystem = null;
+        var esObj = new GameObject("OverlayerEventSystem");
+        esObj.AddComponent<EventSystem>();
+        esObj.AddComponent<StandaloneInputModule>();
+        if (MainCore.Root != null) {
+            esObj.transform.SetParent(MainCore.Root.transform, false);
+        }
+        uiEventSystem = esObj.GetComponent<EventSystem>();
+    }
+
+    /// <summary>
+    /// Gives our panel a standard Unity input module while open. This title
+    /// drives its UI with Rewired's input module, which does not deliver
+    /// keyboard/character events to TMP input fields on a foreign canvas
+    /// (UniverseLib solves the same problem with its own EventSystem).
+    /// </summary>
+    private static void AcquireEventSystem() {
+        EnsureEventSystem();
+        try {
+            var cur = EventSystem.current;
+            if (cur != null && !cur.Equals(null) && cur != uiEventSystem) {
+                gameEventSystem = cur;
+            } else if (gameEventSystem != null && gameEventSystem.Equals(null)) {
+                gameEventSystem = null;
+            }
+            if (gameEventSystem == null) {
+                foreach (var es in UnityEngine.Object.FindObjectsOfType<EventSystem>()) {
+                    if (es != null && !es.Equals(null) && es != uiEventSystem
+                        && es.gameObject.name != "OverlayerEventSystem") {
+                        gameEventSystem = es;
+                        break;
+                    }
+                }
+            }
+        } catch {
+        }
+        try {
+            if (gameEventSystem != null && !gameEventSystem.Equals(null)) {
+                gameEventSystem.enabled = false;
+            }
+        } catch {
+        }
+        try {
+            if (uiEventSystem != null && !uiEventSystem.Equals(null)) {
+                uiEventSystem.enabled = true;
+                EventSystem.current = uiEventSystem;
+            }
+        } catch {
+        }
+    }
+
+    private static void ReleaseEventSystem() {
+        try {
+            if (gameEventSystem != null && !gameEventSystem.Equals(null)) {
+                gameEventSystem.enabled = true;
+                EventSystem.current = gameEventSystem;
+            }
+        } catch {
+        }
+        try {
+            if (uiEventSystem != null && !uiEventSystem.Equals(null)) {
+                uiEventSystem.enabled = false;
+            }
+        } catch {
+        }
+    }
+
     public static void Open(bool noAnimate = false) {
         if (isOpen) {
             return;
         }
 
+        AcquireEventSystem();
+
+        // Self-heal: never open fully offscreen (e.g. a stale/bad saved position).
+        LastPanelPosition = ClampPanelPosition(LastPanelPosition);
+
         isOpen = true;
+
+        Cursor.visible = true;
+        Cursor.lockState = CursorLockMode.None;
 
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
@@ -743,6 +925,8 @@ public static class UICore {
 
         isOpen = false;
 
+        ReleaseEventSystem();
+
         LastPanelPosition = Panel.anchoredPosition;
         LastPanelSize = Panel.sizeDelta;
 
@@ -772,6 +956,7 @@ public static class UICore {
     }
 
     public static void Toggle(bool noAnimate = false) {
+        MainCore.Log?.Msg($"[UICore] Toggle panel requested. (isOpen: {isOpen} -> {!isOpen})");
         if (isOpen) {
             Close(noAnimate);
         } else {
@@ -846,11 +1031,79 @@ public static class UICore {
     }
 
     public static void Dispose() {
-        O5ShortcutManager.Unregister(ToggleShortcutId);
+        foreach (var id in ToggleShortcutIds) {
+            O5ShortcutManager.Unregister(id);
+        }
         MainCore.Tr.OnLoadEnd -= _onPageSettings;
         MainCore.Tr.OnLoadEnd -= _onRefresh;
         O5KitAdapters.Ctx.Tooltip.Dispose();
+        try {
+            ReleaseEventSystem();
+        } catch {
+        }
+        uiEventSystem = null;
+        gameEventSystem = null;
         UnityEngine.Object.Destroy(CanvasObj);
         CanvasObj = null;
+    }
+
+    /// <summary>
+    /// Rebuilds the whole settings UI after our root was destroyed out from
+    /// under us (scene wipe). Disposes stale state first so event
+    /// subscriptions and shortcut registrations don't duplicate.
+    /// </summary>
+    public static void Reinitialize() {
+        bool wasOpen;
+        try {
+            wasOpen = isOpen;
+        } catch {
+            wasOpen = true;
+        }
+        try {
+            panelTweener?.Kill();
+        } catch {
+        }
+        try {
+            resetSequence?.Kill();
+        } catch {
+        }
+        try {
+            menuSequence?.Kill();
+        } catch {
+        }
+        panelTweener = null;
+        resetSequence = null;
+        menuSequence = null;
+        try {
+            firstRunHelperImageSequence?.Kill();
+        } catch {
+        }
+        try {
+            secondRunHelperTextSequence?.Kill();
+        } catch {
+        }
+        firstRunHelperImageSequence = null;
+        secondRunHelperTextSequence = null;
+        firstRunHelperActivated = false;
+        firstRunCanvasObj = null;
+        firstRunHelperImage = null;
+        firstRunHelperText = null;
+        wasCanvasActive = false;
+        isOpen = false;
+        isMenuOpen = false;
+        uiEventSystem = null;
+        gameEventSystem = null;
+        try {
+            Dispose();
+        } catch (Exception ex) {
+            try {
+                MainCore.Log.Wrn($"[UICore] Dispose during re-init: {ex.Message}");
+            } catch {
+            }
+        }
+        Initialize();
+        if (wasOpen && !isOpen) {
+            Open(true);
+        }
     }
 }

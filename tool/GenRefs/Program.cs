@@ -70,6 +70,120 @@ internal static class GenRefs {
     }
 
     private static int Main(string[] args) {
+        if(args.Length == 3 && args[0] == "retarget") {
+            var asm = Mono.Cecil.AssemblyDefinition.ReadAssembly(args[1]);
+            foreach(var r in asm.MainModule.AssemblyReferences) {
+                if(r.Name == "netstandard") {
+                    r.Version = new Version(2, 0, 0, 0);
+                }
+            }
+            asm.Write(args[2]);
+            Console.WriteLine($"Wrote retargeted assembly to {args[2]}");
+            return 0;
+        }
+        if(args.Length >= 2 && args[0] == "check") {
+            string target = args[1];
+            var searchDirs = new List<string>();
+            for(int i = 2; i < args.Length; i++) {
+                if(Directory.Exists(args[i])) {
+                    searchDirs.Add(args[i]);
+                }
+            }
+            string targetDir = Path.GetDirectoryName(Path.GetFullPath(target));
+            if(!searchDirs.Contains(targetDir)) searchDirs.Add(targetDir);
+
+            var resolver = new InspectionResolver(searchDirs);
+            var asm = Mono.Cecil.AssemblyDefinition.ReadAssembly(target,
+                new Mono.Cecil.ReaderParameters { ReadSymbols = false, AssemblyResolver = resolver });
+
+            int unresolvedTypes = 0;
+            int unresolvedMethods = 0;
+            int unresolvedFields = 0;
+            int totalTypes = 0;
+            int totalMethods = 0;
+            int totalFields = 0;
+
+            foreach(var tr in asm.MainModule.GetTypeReferences()) {
+                totalTypes++;
+                try {
+                    var td = tr.Resolve();
+                    if(td == null) {
+                        Console.WriteLine($"[UNRESOLVED TYPE] {tr.FullName} (Scope: {tr.Scope})");
+                        unresolvedTypes++;
+                    }
+                } catch(Exception ex) {
+                    Console.WriteLine($"[ERROR RESOLVING TYPE] {tr.FullName}: {ex.Message}");
+                    unresolvedTypes++;
+                }
+            }
+
+            foreach(var mr in asm.MainModule.GetMemberReferences()) {
+                if(mr is Mono.Cecil.MethodReference meth) {
+                    if(meth.DeclaringType is Mono.Cecil.ArrayType || meth.DeclaringType is Mono.Cecil.GenericParameter) {
+                        continue;
+                    }
+                    totalMethods++;
+                    try {
+                        var md = meth.Resolve();
+                        if(md == null) {
+                            Console.WriteLine($"[UNRESOLVED METHOD] {meth.DeclaringType.FullName}::{meth.Name} (Scope: {meth.DeclaringType.Scope})");
+                            unresolvedMethods++;
+                        }
+                    } catch(Exception ex) {
+                        Console.WriteLine($"[ERROR RESOLVING METHOD] {meth.FullName}: {ex.Message}");
+                        unresolvedMethods++;
+                    }
+                } else if(mr is Mono.Cecil.FieldReference fld) {
+                    if(fld.DeclaringType is Mono.Cecil.ArrayType || fld.DeclaringType is Mono.Cecil.GenericParameter) {
+                        continue;
+                    }
+                    totalFields++;
+                    try {
+                        var fd = fld.Resolve();
+                        if(fd == null) {
+                            Console.WriteLine($"[UNRESOLVED FIELD] {fld.DeclaringType.FullName}::{fld.Name} (Scope: {fld.DeclaringType.Scope})");
+                            unresolvedFields++;
+                        }
+                    } catch(Exception ex) {
+                        Console.WriteLine($"[ERROR RESOLVING FIELD] {fld.FullName}: {ex.Message}");
+                        unresolvedFields++;
+                    }
+                }
+            }
+
+            Console.WriteLine($"=== Resolution Results for {Path.GetFileName(target)} ===");
+            Console.WriteLine($"Types: {totalTypes - unresolvedTypes}/{totalTypes} resolved, {unresolvedTypes} unresolved");
+            Console.WriteLine($"Methods: {totalMethods - unresolvedMethods}/{totalMethods} resolved, {unresolvedMethods} unresolved");
+            Console.WriteLine($"Fields: {totalFields - unresolvedFields}/{totalFields} resolved, {unresolvedFields} unresolved");
+
+            if(unresolvedTypes > 0 || unresolvedMethods > 0 || unresolvedFields > 0) {
+                return 1;
+            }
+            return 0;
+        }
+        if(args.Length == 2 && args[0] == "dump") {
+            try {
+                var asm = Mono.Cecil.AssemblyDefinition.ReadAssembly(args[1],
+                    new Mono.Cecil.ReaderParameters { ReadSymbols = false });
+                Console.WriteLine($"Assembly: {asm.Name.FullName}");
+                foreach(var r in asm.MainModule.AssemblyReferences) {
+                    Console.WriteLine($"  AssemblyRef: {r.FullName}");
+                }
+                foreach(var tr in asm.MainModule.GetTypeReferences()) {
+                    Console.WriteLine($"  TypeRef: {tr.FullName} (Scope: {tr.Scope})");
+                }
+                foreach(var t in asm.MainModule.Types) {
+                    Console.WriteLine($"  Type: {t.FullName}");
+                    foreach(var m in t.Methods) {
+                        Console.WriteLine($"    Method: {m.FullName}");
+                    }
+                }
+                return 0;
+            } catch(Exception e) {
+                Console.Error.WriteLine("dump failed: " + e.Message);
+                return 2;
+            }
+        }
         if(args.Length == 2 && args[0] == "describe") {
             try {
                 var asm = Mono.Cecil.AssemblyDefinition.ReadAssembly(args[1],
@@ -332,6 +446,40 @@ internal static class GenRefs {
                 if(File.Exists(cand)) {
                     return Mono.Cecil.AssemblyDefinition.ReadAssembly(cand,
                         new Mono.Cecil.ReaderParameters { ReadSymbols = false, AssemblyResolver = this });
+                }
+                throw;
+            }
+        }
+    }
+
+    private sealed class InspectionResolver : Mono.Cecil.DefaultAssemblyResolver {
+        private readonly List<string> dirs;
+        private readonly Dictionary<string, Mono.Cecil.AssemblyDefinition> cache = new(StringComparer.OrdinalIgnoreCase);
+
+        public InspectionResolver(IEnumerable<string> dirs) {
+            this.dirs = new List<string>(dirs);
+            foreach(var d in this.dirs) {
+                AddSearchDirectory(d);
+            }
+        }
+
+        public override Mono.Cecil.AssemblyDefinition Resolve(Mono.Cecil.AssemblyNameReference name) {
+            if(cache.TryGetValue(name.Name, out var cached)) {
+                return cached;
+            }
+            try {
+                var def = base.Resolve(name);
+                cache[name.Name] = def;
+                return def;
+            } catch {
+                foreach(var dir in dirs) {
+                    string cand = Path.Combine(dir, name.Name + ".dll");
+                    if(File.Exists(cand)) {
+                        var def = Mono.Cecil.AssemblyDefinition.ReadAssembly(cand,
+                            new Mono.Cecil.ReaderParameters { ReadSymbols = false, AssemblyResolver = this });
+                        cache[name.Name] = def;
+                        return def;
+                    }
                 }
                 throw;
             }

@@ -86,6 +86,8 @@ public sealed class OverlayerRuntime {
         CreateRootObject();
 
         RootObject.AddComponent<MainThread>();
+        RootObject.AddComponent<UpdatePump>();
+        RenderPump.Ensure(Harmony, Logger);
 
         Config.Load();
 
@@ -121,6 +123,7 @@ public sealed class OverlayerRuntime {
     public void Tick() => ticks.Tick();
 
     public void Dispose() {
+        _disposed = true;
         Compat.O5KitAdapters.Teardown();
         SetModEnabledLate(false, true);
         SetModEnabled(false, true);
@@ -214,5 +217,71 @@ public sealed class OverlayerRuntime {
         Object.DontDestroyOnLoad(
             RootObject
         );
+
+        // UniverseLib pattern: extra protection against scene-unload wipes.
+        try {
+            RootObject.hideFlags |= HideFlags.HideAndDontSave;
+        } catch {
+        }
+    }
+
+    private bool _disposed;
+    private int _resurrectCount;
+
+    /// <summary>
+    /// Rebuilds root-owned state when a scene wipe destroyed it despite
+    /// DontDestroyOnLoad (observed in Superliminal 2019.4: everything under
+    /// our root is dead right after the first scene load). Called on scene
+    /// load; a no-op while the root is alive.
+    /// </summary>
+    public void EnsureRootAlive() {
+        if (_disposed) {
+            return;
+        }
+        bool alive = false;
+        try {
+            alive = RootObject != null;
+        } catch {
+            alive = false;
+        }
+        if (alive) {
+            return;
+        }
+        _resurrectCount++;
+        Logger.Msg($"[Overlayer] Root object lost (rebuild #{_resurrectCount}). Rebuilding UI.");
+        try {
+            int purged = O5Kit.Core.O5Object.PurgeDead();
+            Logger.Msg($"[Overlayer] Purged {purged} dead UI controls.");
+        } catch (Exception ex) {
+            Logger.Wrn($"[Overlayer] Control purge failed: {ex.Message}");
+        }
+        try {
+            CreateRootObject();
+        } catch (Exception ex) {
+            Logger.Err($"[Overlayer] Root recreation failed: {ex.Message}");
+            return;
+        }
+        try {
+            RootObject.AddComponent<MainThread>();
+            RootObject.AddComponent<UpdatePump>();
+        } catch (Exception ex) {
+            Logger.Err($"[Overlayer] Pump recreation failed: {ex.Message}");
+        }
+        try {
+            uiService?.Reinitialize();
+        } catch (Exception ex) {
+            Logger.Err($"[Overlayer] UI rebuild failed: {ex.GetType().Name}: {ex.Message}");
+        }
+        try {
+            OverlayCore.Reinitialize(RootObject);
+        } catch (Exception ex) {
+            Logger.Err($"[Overlayer] Overlay rebuild failed: {ex.GetType().Name}: {ex.Message}");
+        }
+        try {
+            Compat.O5KitAdapters.Ctx?.NotifyEnabledChanged(State.IsEnabled);
+        } catch (Exception ex) {
+            Logger.Wrn($"[Overlayer] Enabled-state push failed: {ex.Message}");
+        }
+        Logger.Msg("[Overlayer] Root rebuild complete.");
     }
 }

@@ -1,4 +1,4 @@
-﻿using Overlayer.Tag.Core;
+using Overlayer.Tag.Core;
 using Overlayer.Tag.Diagnostics;
 
 namespace Overlayer.Tag.Compile;
@@ -35,13 +35,15 @@ public static class SignatureResolver {
         int minRequired = tag.RequiredParameterCount;
 
         if (parameters.Length == 0) {
-            if (rawArgs.Length > 0 && (hasFormatFlag || !tag.IsJS)) {
+            if (rawArgs.Length > 0) {
                 format = rawArgs[0];
             }
         } else if (hasFormatFlag && rawArgs.Length > 0) {
             if (!TryTakeAllAsValues(rawArgs, parameters, minRequired)) {
-                format = rawArgs[^1];
-                args = rawArgs[..^1];
+                format = rawArgs[rawArgs.Length - 1];
+                string[] trimmedArgs = new string[rawArgs.Length - 1];
+                Array.Copy(rawArgs, trimmedArgs, trimmedArgs.Length);
+                args = trimmedArgs;
             }
         }
 
