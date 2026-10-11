@@ -1,5 +1,6 @@
 using Overlayer.IO.User;
 
+using System;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -43,7 +44,8 @@ public sealed class OvRainComponent
         if (graphic != null) {
             return;
         }
-        var go = new GameObject("Rain", typeof(RectTransform));
+        var go = new GameObject("Rain");
+        go.AddComponent<RectTransform>();
         go.transform.SetParent(transform, false);
         go.transform.SetAsFirstSibling();
         graphic = go.AddComponent<OvRainGraphic>();
@@ -155,7 +157,12 @@ public sealed class OvRainGraphic
 
     public override Texture mainTexture => Sprite != null ? Sprite.texture : s_WhiteTexture;
 
-    protected override void OnPopulateMesh(VertexHelper vh) {
+    #if ML && IL2CPP
+    public
+#else
+    protected
+#endif
+    override void OnPopulateMesh(VertexHelper vh) {
         vh.Clear();
         if (Owner == null || Trails.Count == 0) {
             return;

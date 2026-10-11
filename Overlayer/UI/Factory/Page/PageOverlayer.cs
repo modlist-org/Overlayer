@@ -147,7 +147,7 @@ internal static class PageOverlayer {
             FadeCanvasGroup(viewportCanvasGroup, 1f, true, true);
             if (disabledPanel != null) {
                 disabledPanel.SetActive(true);
-                disabledPanel.transform.SetAsLastSibling();
+                disabledPanel.transform.SetSiblingIndex(disabledPanel.transform.parent.childCount - 1);
             }
             ClearAllTiles(transform);
             return;
@@ -280,7 +280,7 @@ internal static class PageOverlayer {
 
         var tileTrigger = bg.AddComponent<EventTrigger>();
         var hoverImg = O5Effects.HoverOutline(O5KitAdapters.Ctx, bg, tileTrigger);
-        hoverImg.transform.SetAsLastSibling();
+        hoverImg.transform.SetSiblingIndex(hoverImg.transform.parent.childCount - 1);
         hoverImg.raycastTarget = false;
         AddTileHoverScale(bg, tileTrigger);
 
@@ -432,7 +432,7 @@ internal static class PageOverlayer {
         DropTileThumb(canvas);
         try {
             var tex = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-            if (!tex.LoadImage(File.ReadAllBytes(disk))) {
+            if (!UnityEngine.ImageConversion.LoadImage(tex, File.ReadAllBytes(disk))) {
                 UnityEngine.Object.Destroy(tex);
                 return null;
             }
@@ -703,7 +703,7 @@ internal static class PageOverlayer {
             string path = Path.Combine(MainCore.Paths.RootPath, "Icons", fileName);
             if (File.Exists(path)) {
                 var tex = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-                if (tex.LoadImage(File.ReadAllBytes(path))) {
+                if (UnityEngine.ImageConversion.LoadImage(tex, File.ReadAllBytes(path))) {
                     tex.filterMode = FilterMode.Bilinear;
                     sprite = Sprite.Create(tex, new Rect(0f, 0f, tex.width, tex.height), new Vector2(0.5f, 0.5f));
                 } else {
@@ -739,7 +739,11 @@ internal static class PageOverlayer {
             return false;
         }
         var ped = new PointerEventData(es) { position = O5Input.MousePosition };
+#if ML && IL2CPP
+        var hits = new Il2CppSystem.Collections.Generic.List<RaycastResult>();
+#else
         var hits = new List<RaycastResult>();
+#endif
         es.RaycastAll(ped, hits);
         foreach (var h in hits) {
             var go = h.gameObject;

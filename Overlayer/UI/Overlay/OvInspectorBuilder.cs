@@ -646,9 +646,11 @@ internal sealed class OvInspectorBuilder(
             options.Add("Color Range");
         }
 
+#if !IL2CPP
         if (obj.Config.GraphConfig == null) {
             options.Add("Graph");
         }
+#endif
 
         if (obj.Config.CanvasConfig == null) {
             options.Add("Canvas");
@@ -1149,8 +1151,13 @@ internal sealed class OvInspectorBuilder(
             }
 
             string hex = hexAlpha || color.a < 1f
+#if ML && IL2CPP
+                ? Overlayer.Compat.HtmlColor.ToHtmlStringRGBA(color)
+                : Overlayer.Compat.HtmlColor.ToHtmlStringRGB(color);
+#else
                 ? ColorUtility.ToHtmlStringRGBA(color)
                 : ColorUtility.ToHtmlStringRGB(color);
+#endif
             if (hexLower) {
                 hex = hex.ToLowerInvariant();
             }
@@ -1162,7 +1169,11 @@ internal sealed class OvInspectorBuilder(
         codeInput.OnDoubleClick = () => {
             string source = codeInput.text ?? string.Empty;
             if (!TryFindHexColor(source, codeInput.stringPosition, out int start, out int length)
+#if ML && IL2CPP
+                || !Overlayer.Compat.HtmlColor.TryParseHtmlString("#" + source.Substring(start, length), out Color color)) {
+#else
                 || !ColorUtility.TryParseHtmlString("#" + source.Substring(start, length), out Color color)) {
+#endif
                 return;
             }
 
@@ -1746,6 +1757,7 @@ internal sealed class OvInspectorBuilder(
         }, "text_wrapping", dropdown: true);
     }
 
+#if !IL2CPP
     private void FxCompositeOperation(Transform parent, BoxCollider2DSettings cfg) {
         if (!ColliderCompat.HasCompositeOperation) {
             Label(parent, InspectorText("INSPECTOR_COMPOSITE_UNSUPPORTED",
@@ -1768,6 +1780,7 @@ internal sealed class OvInspectorBuilder(
             Track(dropdown);
         }, "box_collider_composite", dropdown: true);
     }
+#endif
 
     private RectTransform FxVector2(Transform parent, string label, FxValue<Vector2> fx, Vector2 defaults, float min, float max, string id, string format = "F2") {
         return FxBlock(parent, label, fx, g => NumericPropertyRow(g, label, [
@@ -2304,8 +2317,8 @@ internal sealed class OvInspectorBuilder(
             popupCanvas.interactable = true;
             popupCanvas.blocksRaycasts = true;
             blocker.gameObject.SetActive(true);
-            blocker.SetAsLastSibling();
-            popup.SetAsLastSibling();
+            blocker.SetSiblingIndex(blocker.parent.childCount - 1);
+            popup.SetSiblingIndex(popup.parent.childCount - 1);
             popupTween = PlayPopupAnimation(popup, popupCanvas, true);
         }
 
@@ -2522,8 +2535,8 @@ internal sealed class OvInspectorBuilder(
             popupCanvas.interactable = true;
             popupCanvas.blocksRaycasts = true;
             blocker.gameObject.SetActive(true);
-            blocker.SetAsLastSibling();
-            popup.SetAsLastSibling();
+            blocker.SetSiblingIndex(blocker.parent.childCount - 1);
+            popup.SetSiblingIndex(popup.parent.childCount - 1);
             popupTween = PlayPopupAnimation(popup, popupCanvas, true);
         }
 
@@ -2910,16 +2923,25 @@ internal sealed class OvInspectorBuilder(
         return [ModePosition(mode, size, true)];
     }
 
-    private static float ModePosition(AnchorMode mode, float size, bool edge = false) {
-        float range = edge ? size * 0.5f : size * 0.25f;
+    private static float Axis(Vector2 v, int axis) => axis == 0 ? v.x : v.y;
+
+    private static void SetAxis(ref Vector2 v, int axis, float value) {
+        if (axis == 0) {
+            v.x = value;
+        } else {
+            v.y = value;
+        }
+    }
+
+    private static float ModePosition(AnchorMode mode, float size, bool edge = false) {        float range = edge ? size * 0.5f : size * 0.25f;
         return mode switch { AnchorMode.Min => -range, AnchorMode.Max => range, _ => 0f };
     }
 
     private static float PivotOffset(AnchorMode mode, float size) => mode switch { AnchorMode.Min => size * -0.5f, AnchorMode.Max => size * 0.5f, _ => 0f };
 
     private static AnchorMode ModeForAxis(RectTransformSettings cfg, int axis) {
-        float min = cfg.AnchorMin.Value[axis];
-        float max = cfg.AnchorMax.Value[axis];
+        float min = Axis(cfg.AnchorMin.Value, axis);
+        float max = Axis(cfg.AnchorMax.Value, axis);
         if (Mathf.Approximately(min, 0f) && Mathf.Approximately(max, 0f)) {
             return AnchorMode.Min;
         }
@@ -2978,44 +3000,44 @@ internal sealed class OvInspectorBuilder(
             return;
         }
 
-        float oldMin = cfg.AnchorMin.Value[axis];
-        float oldMax = cfg.AnchorMax.Value[axis];
-        float oldPivot = cfg.Pivot.Value[axis];
+        float oldMin = Axis(cfg.AnchorMin.Value, axis);
+        float oldMax = Axis(cfg.AnchorMax.Value, axis);
+        float oldPivot = Axis(cfg.Pivot.Value, axis);
         float newMin = mode == AnchorMode.Stretch ? 0f : mode switch { AnchorMode.Min => 0f, AnchorMode.Middle => 0.5f, _ => 1f };
         float newMax = mode == AnchorMode.Stretch ? 1f : newMin;
         float oldReference = Mathf.Lerp(oldMin, oldMax, oldPivot);
         float newReference = Mathf.Lerp(newMin, newMax, oldPivot);
 
         var anchoredPosition = cfg.AnchoredPosition.Value;
-        anchoredPosition[axis] += (oldReference - newReference) * parentSize;
+        SetAxis(ref anchoredPosition, axis, Axis(anchoredPosition, axis) + (oldReference - newReference) * parentSize);
         cfg.AnchoredPosition.Value = anchoredPosition;
         var sizeDelta = cfg.SizeDelta.Value;
-        sizeDelta[axis] += (oldMax - oldMin - (newMax - newMin)) * parentSize;
+        SetAxis(ref sizeDelta, axis, Axis(sizeDelta, axis) + (oldMax - oldMin - (newMax - newMin)) * parentSize);
         cfg.SizeDelta.Value = sizeDelta;
         var anchorMin = cfg.AnchorMin.Value;
-        anchorMin[axis] = newMin;
+        SetAxis(ref anchorMin, axis, newMin);
         cfg.AnchorMin.Value = anchorMin;
         var anchorMax = cfg.AnchorMax.Value;
-        anchorMax[axis] = newMax;
+        SetAxis(ref anchorMax, axis, newMax);
         cfg.AnchorMax.Value = anchorMax;
 
         if (setPivot) {
             float newPivot = mode switch { AnchorMode.Min => 0f, AnchorMode.Max => 1f, _ => 0.5f };
-            float rectSize = (parentSize * (newMax - newMin)) + cfg.SizeDelta.Value[axis];
+            float rectSize = (parentSize * (newMax - newMin)) + Axis(cfg.SizeDelta.Value, axis);
             anchoredPosition = cfg.AnchoredPosition.Value;
-            anchoredPosition[axis] += (newPivot - oldPivot) * rectSize;
+            SetAxis(ref anchoredPosition, axis, Axis(anchoredPosition, axis) + (newPivot - oldPivot) * rectSize);
             cfg.AnchoredPosition.Value = anchoredPosition;
             var pivot = cfg.Pivot.Value;
-            pivot[axis] = newPivot;
+            SetAxis(ref pivot, axis, newPivot);
             cfg.Pivot.Value = pivot;
         }
 
         if (setPosition) {
             anchoredPosition = cfg.AnchoredPosition.Value;
-            anchoredPosition[axis] = 0f;
+            SetAxis(ref anchoredPosition, axis, 0f);
             cfg.AnchoredPosition.Value = anchoredPosition;
             sizeDelta = cfg.SizeDelta.Value;
-            sizeDelta[axis] = mode == AnchorMode.Stretch ? 0f : visibleSize;
+            SetAxis(ref sizeDelta, axis, mode == AnchorMode.Stretch ? 0f : visibleSize);
             cfg.SizeDelta.Value = sizeDelta;
         }
     }

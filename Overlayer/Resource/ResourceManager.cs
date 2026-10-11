@@ -100,8 +100,46 @@ public sealed class ResourceManager(Assembly assembly, string resourcePath) : ID
         return texture;
     }
 
-    public TMP_FontAsset LoadFont(string path, string tempPath) {
-        if (cache.TryGetValue(path, out object cached)) {
+    /// <summary>
+    /// Picks a game-shipped font asset for stripped runtimes that cannot
+    /// create fonts from TTF bytes. Prefers well-known UI typefaces, else the
+    /// first asset found. Never cached here: the caller decides, and a miss
+    /// retries later (game fonts may still be streaming in).
+    /// </summary>
+    internal static TMP_FontAsset StealGameFont() {
+        try {
+            TMP_FontAsset[] fonts = Resources.FindObjectsOfTypeAll<TMP_FontAsset>();
+            if (fonts == null || fonts.Length == 0) {
+                return null;
+            }
+
+            TMP_FontAsset fallback = null;
+            foreach (var font in fonts) {
+                if (font == null) {
+                    continue;
+                }
+                fallback ??= font;
+                string name;
+                try {
+                    name = font.name?.ToLowerInvariant();
+                } catch {
+                    continue;
+                }
+                if (string.IsNullOrEmpty(name)) {
+                    continue;
+                }
+                if (name.Contains("liberationsans") || name.Contains("arial")
+                    || name.Contains("notosans") || name.Contains("default")) {
+                    return font;
+                }
+            }
+            return fallback;
+        } catch {
+            return null;
+        }
+    }
+
+    public TMP_FontAsset LoadFont(string path, string tempPath) {        if (cache.TryGetValue(path, out object cached)) {
             return cached as TMP_FontAsset;
         }
 
@@ -110,6 +148,13 @@ public sealed class ResourceManager(Assembly assembly, string resourcePath) : ID
             return null;
         }
 
+#if ML && IL2CPP
+        // Stripped runtimes expose no Font(path) ctor, so custom TTF bytes
+        // cannot become fonts. Fall back to a game-shipped font asset so text
+        // stays readable (wrong typeface beats invisible text). Not cached on
+        // miss: game fonts may stream in later and the next call retries.
+        return StealGameFont();
+#else
         string directory = Path.GetDirectoryName(tempPath);
         if (!string.IsNullOrEmpty(directory)) {
             Directory.CreateDirectory(directory);
@@ -143,6 +188,7 @@ public sealed class ResourceManager(Assembly assembly, string resourcePath) : ID
 
         cache[path] = asset;
         return asset;
+#endif
     }
 
     public T Get<T>(Asset asset) where T : class {

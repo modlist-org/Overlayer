@@ -110,6 +110,19 @@ public sealed class UnityAccess {
         return type;
     }
 
+#if ML && IL2CPP
+    private static Il2CppSystem.Type ToIl2CppType(Type type) {
+        if (type?.FullName == null) {
+            return null;
+        }
+        try {
+            return Il2CppSystem.Type.GetType(type.FullName, false);
+        } catch {
+            return null;
+        }
+    }
+#endif
+
     // Same names as UnityEngine.Object, string-typed overloads.
     public object[] FindObjectsOfType(string typeName) {
         var type = ResolveType(typeName);
@@ -118,7 +131,20 @@ public sealed class UnityAccess {
         }
         try {
 #pragma warning disable CS0618
+#if ML && IL2CPP
+            var ilType = ToIl2CppType(type);
+            if (ilType == null) {
+                return [];
+            }
+            var found = UnityEngine.Object.FindObjectsOfType(ilType);
+            var result = new List<object>();
+            foreach (object item in found) {
+                result.Add(item);
+            }
+            return [.. result];
+#else
             return UnityEngine.Object.FindObjectsOfType(type);
+#endif
 #pragma warning restore CS0618
         } catch {
             return [];
@@ -132,7 +158,15 @@ public sealed class UnityAccess {
         }
         try {
 #pragma warning disable CS0618
+#if ML && IL2CPP
+            var ilType = ToIl2CppType(type);
+            if (ilType == null) {
+                return null;
+            }
+            return UnityEngine.Object.FindObjectOfType(ilType, false);
+#else
             return UnityEngine.Object.FindObjectOfType(type);
+#endif
 #pragma warning restore CS0618
         } catch {
             return null;
@@ -147,7 +181,15 @@ public sealed class UnityAccess {
             return null;
         }
         try {
+#if ML && IL2CPP
+            var ilType = ToIl2CppType(type);
+            if (ilType == null) {
+                return null;
+            }
+            return go.AddComponent(ilType);
+#else
             return go.AddComponent(type);
+#endif
         } catch {
             return null;
         }
@@ -160,7 +202,15 @@ public sealed class UnityAccess {
             return null;
         }
         try {
+#if ML && IL2CPP
+            var ilType = ToIl2CppType(type);
+            if (ilType == null) {
+                return null;
+            }
+            return go.GetComponent(ilType);
+#else
             return go.GetComponent(type);
+#endif
         } catch {
             return null;
         }
@@ -173,7 +223,29 @@ public sealed class UnityAccess {
             return [];
         }
         try {
-            return go.GetComponents(type);
+            // The Type-based overload is stripped on some runtimes; go through
+            // the generic List<T> overload via reflection instead.
+            var listType = typeof(List<>).MakeGenericType(type);
+            var list = Activator.CreateInstance(listType);
+            System.Reflection.MethodInfo generic = null;
+            foreach (var m in typeof(GameObject).GetMethods()) {
+                if (m.Name == "GetComponents" && m.IsGenericMethodDefinition) {
+                    var ps = m.GetParameters();
+                    if (ps.Length == 1 && ps[0].ParameterType.IsGenericType) {
+                        generic = m;
+                        break;
+                    }
+                }
+            }
+            if (generic == null || list == null) {
+                return [];
+            }
+            generic.MakeGenericMethod(type).Invoke(go, [list]);
+            var result = new List<object>();
+            foreach (object item in (System.Collections.IEnumerable)list) {
+                result.Add(item);
+            }
+            return [.. result];
         } catch {
             return [];
         }

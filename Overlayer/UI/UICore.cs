@@ -358,9 +358,10 @@ public static class UICore {
             ITweenHandle powerSeq = null;
             btn.onClick.AddListener(
 #if ML && IL2CPP
-            new Action(
-#endif
+            new Action(() => {
+#else
             () => {
+#endif
                 bool enable = MainCore.Conf.Active.Value = !MainCore.Conf.Active.Value;
                 MainCore.SetModEnabled(enable);
 
@@ -370,11 +371,10 @@ public static class UICore {
 
                 powerSeq?.Kill();
                 powerSeq = powerBg.TColor(target, 0.32f, O5Ease.OutExpo);
-            })
 #if ML && IL2CPP
-            );
+            }));
 #else
-            ;
+            });
 #endif
             GameObject powerIcon = new("PowerIcon");
             powerIcon.transform.SetParent(powerRect, false);
@@ -466,11 +466,13 @@ public static class UICore {
             // Button
             var btn = close.AddComponent<Button>();
             btn.transition = Selectable.Transition.None;
+            btn.onClick.AddListener(
 #if ML && IL2CPP
-            btn.onClick.AddListener(new System.Action(() => Close()));
+                new Action(() => Close())
 #else
-            btn.onClick.AddListener(() => Close());
+                () => Close()
 #endif
+            );
 
             // Background circle (hover layer)
             GameObject bg = new("Bg");
@@ -506,30 +508,32 @@ public static class UICore {
             };
             enter.callback.AddListener(
 #if ML && IL2CPP
-                DelegateSupport.ConvertDelegate<UnityEngine.Events.UnityAction<BaseEventData>>(new Action<BaseEventData>((_) =>
+                new Action<BaseEventData>((_) =>
 #else
                 (_) =>
 #endif
                 CloseImage.color = new Color(CloseImage.color.r, CloseImage.color.g, CloseImage.color.b, 1f)
 #if ML && IL2CPP
-                ))
-#endif
+            ));
+#else
             );
+#endif
 
             var exit = new EventTrigger.Entry {
                 eventID = EventTriggerType.PointerExit
             };
             exit.callback.AddListener(
 #if ML && IL2CPP
-                DelegateSupport.ConvertDelegate<UnityEngine.Events.UnityAction<BaseEventData>>(new Action<BaseEventData>((_) =>
+                new Action<BaseEventData>((_) =>
 #else
                 (_) =>
 #endif
                 CloseImage.color = new Color(CloseImage.color.r, CloseImage.color.g, CloseImage.color.b, 0f)
 #if ML && IL2CPP
-                ))
-#endif
+            ));
+#else
             );
+#endif
 
             trigger.triggers.Add(enter);
             trigger.triggers.Add(exit);
@@ -539,7 +543,7 @@ public static class UICore {
             // Outline
             GameObject outlineObj = new("Outline");
             outlineObj.transform.SetParent(Panel, false);
-            outlineObj.transform.SetAsLastSibling();
+            outlineObj.transform.SetSiblingIndex(outlineObj.transform.parent.childCount - 1);
 
             var outline = outlineObj.AddComponent<Image>();
             outline.color = Color.white;
@@ -653,12 +657,7 @@ public static class UICore {
     public static Vector2 LastPanelSize;
 
     private static void HandleTopBarPointerClick(BaseEventData eventData) {
-        PointerEventData pointer =
-#if ML && IL2CPP
-            eventData.TryCast<PointerEventData>();
-#else
-            eventData as PointerEventData;
-#endif
+        PointerEventData pointer = eventData as PointerEventData;
         if (pointer == null || pointer.button != PointerEventData.InputButton.Left) {
             return;
         }

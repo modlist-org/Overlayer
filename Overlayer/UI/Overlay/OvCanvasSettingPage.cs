@@ -487,7 +487,7 @@ public partial class OvCanvasSettingPage : IDisposable {
 
         // Inspector Scroll View
         inspectorContent = O5Factory.ScrollView(O5KitAdapters.Ctx, inspectorCol.transform, 12f, expandLayout: true).content;
-        headerGo.transform.SetAsLastSibling();
+        headerGo.transform.SetSiblingIndex(headerGo.transform.parent.childCount - 1);
     }
 
     private void MoveSelectedOrder(int direction) {
@@ -665,11 +665,7 @@ public partial class OvCanvasSettingPage : IDisposable {
                 (EventTriggerType.PointerDown, _ => suppressCanvasTabClick = false),
                 (EventTriggerType.PointerClick, e => {
                     PointerEventData pointer =
-#if ML && IL2CPP
-                        e.TryCast<PointerEventData>();
-#else
-                        e as PointerEventData;
-#endif
+e as PointerEventData;
                     if (suppressCanvasTabClick) {
                         suppressCanvasTabClick = false;
                         return;
@@ -681,11 +677,7 @@ public partial class OvCanvasSettingPage : IDisposable {
             ),
                 (EventTriggerType.BeginDrag, e => {
                     PointerEventData pointer =
-#if ML && IL2CPP
-                        e.TryCast<PointerEventData>();
-#else
-                        e as PointerEventData;
-#endif
+e as PointerEventData;
                     if (pointer == null || pointer.button != InputButton.Left) {
                         return;
                     }
@@ -699,11 +691,7 @@ public partial class OvCanvasSettingPage : IDisposable {
                     }
 
                     PointerEventData pointer =
-#if ML && IL2CPP
-                        e.TryCast<PointerEventData>();
-#else
-                        e as PointerEventData;
-#endif
+e as PointerEventData;
                     if (pointer != null && MoveCanvasTab(tab, pointer)) {
                         canvasTabDragReordered = true;
                     }
@@ -754,11 +742,7 @@ public partial class OvCanvasSettingPage : IDisposable {
             UnityUtils.AddEvents(closeTrigger,
                 (EventTriggerType.PointerClick, e => {
                     PointerEventData pointer =
-#if ML && IL2CPP
-                        e.TryCast<PointerEventData>();
-#else
-                        e as PointerEventData;
-#endif
+e as PointerEventData;
                     if (pointer != null && pointer.button == InputButton.Left) {
                         CloseCanvasTab(tab);
                     }
@@ -845,7 +829,7 @@ public partial class OvCanvasSettingPage : IDisposable {
         tabRect.pivot = new Vector2(0.5f, 0.5f);
         tabRect.sizeDelta = new Vector2(width, height);
         tabRect.anchoredPosition = new Vector2(tabCenter.x, tabCenter.y);
-        tabRect.SetAsLastSibling();
+        tabRect.SetSiblingIndex(tabRect.parent.childCount - 1);
         LayoutRebuilder.ForceRebuildLayoutImmediate(tabsContent);
     }
 
@@ -898,7 +882,7 @@ public partial class OvCanvasSettingPage : IDisposable {
         for (int i = 0; i < canvasTabs.Count; i++) {
             GetCanvasTabSlotRect(canvasTabs[i]).SetSiblingIndex(i);
         }
-        tab.TabRect.SetAsLastSibling();
+        tab.TabRect.SetSiblingIndex(tab.TabRect.parent.childCount - 1);
 
         LayoutRebuilder.ForceRebuildLayoutImmediate(tabsContent);
         canvasTabDragReordered = true;
@@ -1070,11 +1054,7 @@ public partial class OvCanvasSettingPage : IDisposable {
 #pragma warning disable IDE0019
                 var pointer =
 #pragma warning restore IDE0019
-#if ML && IL2CPP
-                    eventData.TryCast<PointerEventData>();
-#else
-                    eventData as PointerEventData;
-#endif
+eventData as PointerEventData;
                 if (pointer == null || pointer.button != InputButton.Left) {
                     return;
                 }
@@ -1178,11 +1158,7 @@ public partial class OvCanvasSettingPage : IDisposable {
 #pragma warning disable IDE0019
                 var ped =
 #pragma warning restore IDE0019
-#if ML && IL2CPP
-                    e.TryCast<PointerEventData>();
-#else
-                    e as PointerEventData;
-#endif
+e as PointerEventData;
                 if (ped == null || ped.button != InputButton.Left) {
                     return;
                 }
@@ -1214,11 +1190,7 @@ public partial class OvCanvasSettingPage : IDisposable {
 #pragma warning disable IDE0019
                 var ped =
 #pragma warning restore IDE0019
-#if ML && IL2CPP
-                    e.TryCast<PointerEventData>();
-#else
-                    e as PointerEventData;
-#endif
+e as PointerEventData;
 
                 if (ped == null || ped.button != InputButton.Left) {
                     return;

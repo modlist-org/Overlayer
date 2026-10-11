@@ -45,8 +45,13 @@ public static class Effects {
 
         Color color = Color.LerpUnclamped(from, to, progress);
         string result = fromAlpha || toAlpha
+#if ML && IL2CPP
+            ? Overlayer.Compat.HtmlColor.ToHtmlStringRGBA(color)
+            : Overlayer.Compat.HtmlColor.ToHtmlStringRGB(color);
+#else
             ? ColorUtility.ToHtmlStringRGBA(color)
             : ColorUtility.ToHtmlStringRGB(color);
+#endif
         return maxLength < 0 || result.Length <= maxLength ? result : result[..maxLength];
     }
 
@@ -111,9 +116,9 @@ public static class Effects {
 
     private static float EaseValue(float progress, O5Ease ease) => ease switch {
         O5Ease.Linear => progress,
-        O5Ease.InSine => 1f - Mathf.Cos(progress * Mathf.PI * 0.5f),
-        O5Ease.OutSine => Mathf.Sin(progress * Mathf.PI * 0.5f),
-        O5Ease.InOutSine => -(Mathf.Cos(Mathf.PI * progress) - 1f) * 0.5f,
+        O5Ease.InSine => 1f - Mathf.Cos(progress * (float)Math.PI * 0.5f),
+        O5Ease.OutSine => Mathf.Sin(progress * (float)Math.PI * 0.5f),
+        O5Ease.InOutSine => -(Mathf.Cos((float)Math.PI * progress) - 1f) * 0.5f,
         O5Ease.InQuad => progress * progress,
         O5Ease.OutQuad => 1f - ((1f - progress) * (1f - progress)),
         O5Ease.InOutQuad => progress < 0.5f ? 2f * progress * progress : 1f - (Mathf.Pow((-2f * progress) + 2f, 2f) / 2f),
@@ -189,6 +194,10 @@ public static class Effects {
         hex = hex?.TrimStart(['#']);
         hasAlpha = hex?.Length is 4 or 8;
         return hex?.Length is 3 or 4 or 6 or 8
+#if ML && IL2CPP
+            && Overlayer.Compat.HtmlColor.TryParseHtmlString("#" + hex, out color);
+#else
             && ColorUtility.TryParseHtmlString("#" + hex, out color);
+#endif
     }
 }

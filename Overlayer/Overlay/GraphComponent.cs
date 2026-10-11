@@ -7,7 +7,15 @@ using UnityEngine.UI;
 
 namespace Overlayer.Overlay;
 
+#if ML && IL2CPP
+using MelonLoader;
+#endif
+
 public sealed class OvGraphComponent : MaskableGraphic {
+#if ML && IL2CPP
+    public OvGraphComponent(System.IntPtr ptr) : base(ptr) {
+    }
+#endif
     public string JsCode = "50 + 40 * Math.sin(t * 2)";
     public float Window = 10f;
     public int Samples = 120;
@@ -26,7 +34,12 @@ public sealed class OvGraphComponent : MaskableGraphic {
     private string funcCode;
     private float lastPushTime = float.NegativeInfinity;
 
-    protected override void OnEnable() {
+    #if ML && IL2CPP
+    public
+#else
+    protected
+#endif
+    override void OnEnable() {
         base.OnEnable();
         history.Clear();
         lastPushTime = float.NegativeInfinity;
@@ -103,11 +116,21 @@ public sealed class OvGraphComponent : MaskableGraphic {
         func = null;
     }
 
-    protected override void OnDisable() {
+    #if ML && IL2CPP
+    public
+#else
+    protected
+#endif
+    override void OnDisable() {
         DisposeFunc();
     }
 
-    protected override void OnDestroy() {
+    #if ML && IL2CPP
+    public
+#else
+    protected
+#endif
+    override void OnDestroy() {
         DisposeFunc();
     }
 
@@ -121,7 +144,12 @@ public sealed class OvGraphComponent : MaskableGraphic {
         }
     }
 
-    protected override void OnPopulateMesh(VertexHelper vh) {
+    #if ML && IL2CPP
+    public
+#else
+    protected
+#endif
+    override void OnPopulateMesh(VertexHelper vh) {
         vh.Clear();
         Rect rect = rectTransform.rect;
         if (rect.width <= 0f || rect.height <= 0f) {
@@ -266,7 +294,7 @@ public sealed class OvGraphComponent : MaskableGraphic {
             const int capSegs = 6;
             vert.position = p; vh.AddVert(vert);
             for (int i = 0; i <= capSegs; i++) {
-                float a = i / (float)capSegs * Mathf.PI * 2f;
+                float a = i / (float)capSegs * (float)Math.PI * 2f;
                 vert.position = p + new Vector2(Mathf.Cos(a) * half, Mathf.Sin(a) * half);
                 vh.AddVert(vert);
             }

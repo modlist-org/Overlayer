@@ -105,25 +105,45 @@ public sealed class MovingManComponent
 
     private void SetPosition(int axis, float value) {
         Vector2 position = Rect.anchoredPosition;
-        position[axis] = value;
+        if (axis == 0) {
+            position.x = value;
+        } else {
+            position.y = value;
+        }
         Rect.anchoredPosition = position;
     }
 
     private void SetRotation(int axis, float value) {
         Vector3 rotation = Rect.localEulerAngles;
-        rotation[axis] = value;
+        if (axis == 0) {
+            rotation.x = value;
+        } else if (axis == 1) {
+            rotation.y = value;
+        } else {
+            rotation.z = value;
+        }
         Rect.localEulerAngles = rotation;
     }
 
     private void SetScale(int axis, float value) {
         Vector3 scale = Rect.localScale;
-        scale[axis] = value;
+        if (axis == 0) {
+            scale.x = value;
+        } else if (axis == 1) {
+            scale.y = value;
+        } else {
+            scale.z = value;
+        }
         Rect.localScale = scale;
     }
 
     private void SetSizeDelta(int axis, float value) {
         Vector2 sizeDelta = Rect.sizeDelta;
-        sizeDelta[axis] = value;
+        if (axis == 0) {
+            sizeDelta.x = value;
+        } else {
+            sizeDelta.y = value;
+        }
         Rect.sizeDelta = sizeDelta;
     }
 }

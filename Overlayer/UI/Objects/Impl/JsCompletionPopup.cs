@@ -94,7 +94,7 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
 
         GameObject popup = new("JsCompletion");
         popup.transform.SetParent(canvasRect, false);
-        popup.transform.SetAsLastSibling();
+        popup.transform.SetSiblingIndex(popup.transform.parent.childCount - 1);
 
         popupRect = popup.AddComponent<RectTransform>();
         popupRect.anchorMin = new(0.5f, 0.5f);
@@ -184,7 +184,7 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
         // Refresh runs every frame; only re-collect/re-score when the inputs change.
         // ponytail: tags registered while the popup stays open show up on the next keystroke.
         if (visible && query == matchedQuery && qualifier == matchedQualifier && text == matchedText) {
-            popupRect.SetAsLastSibling();
+            popupRect.SetSiblingIndex(popupRect.parent.childCount - 1);
             PositionPopup(caret);
             return;
         }
@@ -200,7 +200,7 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
 
         visible = true;
         popupRect.gameObject.SetActive(true);
-        popupRect.SetAsLastSibling();
+        popupRect.SetSiblingIndex(popupRect.parent.childCount - 1);
         PositionPopup(caret);
         UpdateRows();
     }

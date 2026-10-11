@@ -15,6 +15,23 @@ namespace Overlayer.IO.User.Impl;
 public class UserFont : UserResourceBase<TMP_FontAsset>, ISettingsFile {
     public static readonly HashSet<string> Ext = new(StringComparer.OrdinalIgnoreCase) { ".ttf", ".otf" };
 
+#if ML && IL2CPP
+    private static readonly HashSet<TMP_FontAsset> StolenFonts = new();
+
+    private static bool IsStolen(TMP_FontAsset font) {
+        if (font == null) {
+            return false;
+        }
+        lock (StolenFonts) {
+            try {
+                return StolenFonts.Contains(font);
+            } catch {
+                return false;
+            }
+        }
+    }
+#endif
+
     public enum Result {
         Success,
         KeyAlreadyExists,
@@ -42,11 +59,28 @@ public class UserFont : UserResourceBase<TMP_FontAsset>, ISettingsFile {
                 return Result.InvalidArgument;
             }
 
+#if ML && IL2CPP
+            // Stripped runtimes expose no Font(path) ctor: fall back to a
+            // game font so text stays readable. Stolen assets are tracked and
+            // never destroyed (see Remove/Dispose).
+            var stolen = Overlayer.Resource.ResourceManager.StealGameFont();
+            if (stolen == null) {
+                return Result.Failed;
+            }
+
+            Cache[key] = (path, stolen);
+            lock (StolenFonts) {
+                StolenFonts.Add(stolen);
+            }
+
+            return Result.Success;
+#else
             var font = TMP_FontAsset.CreateFontAsset(new Font(path));
 
             Cache[key] = (path, font);
 
             return Result.Success;
+#endif
         } catch (Exception e) {
             MainCore.Log.Err($"{nameof(UserResourceManager)} Font load failed: {e}");
             return Result.Failed;
@@ -58,6 +92,11 @@ public class UserFont : UserResourceBase<TMP_FontAsset>, ISettingsFile {
             return false;
         }
 
+#if ML && IL2CPP
+        if (IsStolen(entry.value)) {
+            return true;
+        }
+#endif
         if (entry.value) {
             UnityEngine.Object.Destroy(entry.value);
         }
@@ -103,6 +142,11 @@ public class UserFont : UserResourceBase<TMP_FontAsset>, ISettingsFile {
 
     public override void Dispose() {
         foreach (var (_, value) in Cache.Values) {
+#if ML && IL2CPP
+            if (IsStolen(value)) {
+                continue;
+            }
+#endif
             UnityEngine.Object.Destroy(value);
         }
 

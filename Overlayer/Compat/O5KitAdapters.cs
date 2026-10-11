@@ -164,7 +164,15 @@ public sealed class OverlayerFontProvider : IFontProvider {
         }
         composite = UnityEngine.Object.Instantiate(chain[0]);
         composite.name = chain[0].name + "_WithFallbacks";
+#if ML && IL2CPP
+        var fallbackList = new Il2CppSystem.Collections.Generic.List<TMP_FontAsset>();
+        foreach (var fb in chain.Skip(1)) {
+            fallbackList.Add(fb);
+        }
+        composite.fallbackFontAssetTable = fallbackList;
+#else
         composite.fallbackFontAssetTable = [.. chain.Skip(1)];
+#endif
         compositeCache[sig] = composite;
         return composite;
     }
@@ -190,6 +198,9 @@ public static class O5KitAdapters {
     public static O5Context Ctx { get; private set; } = null!;
 
     public static void Setup() {
+#if ML && IL2CPP
+        RegisterO5KitBehaviours();
+#endif
         _fonts = new OverlayerFontProvider();
         Ctx = new O5Context(
             config: new O5Config(),
@@ -210,6 +221,31 @@ public static class O5KitAdapters {
     }
 
     public static void RefreshFonts() => _fonts?.RefreshExistingText();
+
+#if ML && IL2CPP
+    private static bool _behavioursRegistered;
+
+    /// <summary>
+    /// UserLibs assemblies are not scanned for <c>[RegisterTypeInIl2Cpp]</c>,
+    /// so O5Kit behaviours are registered explicitly before any AddComponent
+    /// call. Runs once per process.
+    /// </summary>
+    private static void RegisterO5KitBehaviours() {
+        if (_behavioursRegistered) {
+            return;
+        }
+        _behavioursRegistered = true;
+        try {
+            Il2CppInterop.Runtime.Injection.ClassInjector.RegisterTypeInIl2Cpp<O5Kit.Behaviour.EmptyGraphic>();
+            Il2CppInterop.Runtime.Injection.ClassInjector.RegisterTypeInIl2Cpp<O5Kit.Behaviour.DragHandler>();
+            Il2CppInterop.Runtime.Injection.ClassInjector.RegisterTypeInIl2Cpp<O5Kit.Behaviour.NonRaycastButton>();
+            Il2CppInterop.Runtime.Injection.ClassInjector.RegisterTypeInIl2Cpp<O5Kit.Behaviour.OventHandler>();
+            Il2CppInterop.Runtime.Injection.ClassInjector.RegisterTypeInIl2Cpp<O5Kit.Behaviour.ResizeHandle>();
+            Il2CppInterop.Runtime.Injection.ClassInjector.RegisterTypeInIl2Cpp<O5Kit.Behaviour.UIScrollController>();
+        } catch {
+        }
+    }
+#endif
 
     /// <summary>Copies live settings into the O5Kit runtime config. Call after any related setting changes (O5Kit reads <see cref="O5Context.Config"/> live).</summary>
     public static void SyncConfig() {

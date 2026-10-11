@@ -23,7 +23,12 @@ internal sealed class DiagonalTileGraphic
     public bool RightHalf;
     public int RightSection;
 
-    protected override void OnPopulateMesh(VertexHelper vh) {
+    #if ML && IL2CPP
+    public
+#else
+    protected
+#endif
+    override void OnPopulateMesh(VertexHelper vh) {
         vh.Clear();
         Rect r = GetPixelAdjustedRect();
         if (r.width <= 0f || r.height <= 0f) {
@@ -114,7 +119,7 @@ internal sealed class DiagonalTileGraphic
 
     private static void AddArc(List<Vector2> points, Vector2 center, float radius, float start, float end, int segments) {
         for (int i = 1; i <= segments; i++) {
-            float angle = Mathf.Lerp(start, end, i / (float)segments) * Mathf.Deg2Rad;
+            float angle = Mathf.Lerp(start, end, i / (float)segments) * (float)(Math.PI / 180d);
             points.Add(center + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * radius);
         }
     }

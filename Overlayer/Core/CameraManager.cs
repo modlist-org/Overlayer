@@ -12,7 +12,12 @@ public class CameraManager {
     public event Action<Camera> OnCameraChanged;
 
     public CameraManager() {
-        SceneManager.sceneLoaded += OnSceneLoaded;
+        SceneManager.sceneLoaded +=
+#if ML && IL2CPP
+            new Action<Scene, LoadSceneMode>(OnSceneLoaded);
+#else
+            OnSceneLoaded;
+#endif
     }
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode) {
@@ -41,7 +46,12 @@ public class CameraManager {
     }
 
     public void Reset() {
-        SceneManager.sceneLoaded -= OnSceneLoaded;
+        SceneManager.sceneLoaded -=
+#if ML && IL2CPP
+            new Action<Scene, LoadSceneMode>(OnSceneLoaded);
+#else
+            OnSceneLoaded;
+#endif
         cachedCamera = null;
         CustomCameraProvider = null;
         OnCameraChanged = null;

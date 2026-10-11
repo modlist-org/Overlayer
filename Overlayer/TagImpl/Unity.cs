@@ -11,16 +11,11 @@ namespace Overlayer.TagImpl;
 public static class Unity {
     static Unity() {
         SceneManager.sceneLoaded +=
-#if IL2CPP
-            DelegateSupport.ConvertDelegate<UnityEngine.Events.UnityAction<Scene, LoadSceneMode>>(
-                new Action<Scene, LoadSceneMode>(
+#if ML && IL2CPP
+            new Action<Scene, LoadSceneMode>((scene, mode) => SceneName = scene.name);
+#else
+            (scene, mode) => SceneName = scene.name;
 #endif
-                    (scene, mode) => SceneName = scene.name
-#if IL2CPP
-                )
-            )
-#endif
-            ;
 
         SceneName = SceneManager.GetActiveScene().name;
     }
@@ -61,7 +56,7 @@ public static class Unity {
     public static float FixedDeltaTime => UnityEngine.Time.fixedDeltaTime;
 
     [Tag(Desc = "[Unity] Time in seconds since the last fixed update\n(affected by timeScale)")]
-    public static float FixedTime => UnityEngine.Time.fixedTime;
+    public static float FixedTime => (float)Overlayer.Compat.UnityTimeCompat.FixedTimeAsDouble;
 
     [Tag(Desc = "[Unity] Total number of frames that have passed since game start")]
     public static int FrameCount => UnityEngine.Time.frameCount;

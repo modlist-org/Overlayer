@@ -6,6 +6,12 @@ using Overlayer.Resource;
 using UnityEngine;
 using UnityEngine.UI;
 
+#if ML && IL2CPP
+using Il2CppTMPro;
+#else
+using TMPro;
+#endif
+
 namespace Overlayer.UI.Overlay;
 
 internal static class O5cpDialogs {
@@ -60,14 +66,14 @@ internal static class O5cpDialogs {
         titleRect.pivot = new Vector2(0.5f, 1f);
         titleRect.offsetMin = new Vector2(16f, -52f);
         titleRect.offsetMax = new Vector2(-16f, -16f);
-        var titleText = titleGo.AddComponent<TMPro.TextMeshProUGUI>();
+        var titleText = titleGo.AddComponent<TextMeshProUGUI>();
         titleText.text = title;
-        titleText.font = MainCore.Res.Get<TMPro.TMP_FontAsset>(Asset.SUIT_Medium);
+        titleText.font = MainCore.Res.Get<TMP_FontAsset>(Asset.SUIT_Medium);
         titleText.fontSize = 24;
-        titleText.alignment = TMPro.TextAlignmentOptions.Center;
+        titleText.alignment = TextAlignmentOptions.Center;
         titleText.color = Color.white;
 
-        root.transform.SetAsLastSibling();
+        root.transform.SetSiblingIndex(root.transform.parent.childCount - 1);
         return new Modal { Root = root };
     }
 

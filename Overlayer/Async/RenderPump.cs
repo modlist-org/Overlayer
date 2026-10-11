@@ -27,12 +27,16 @@ public static class RenderPump {
             _installed = true;
         }
         try {
+            #if ML && IL2CPP
+            Camera.onPreRender += new Action<Camera>(OnPreRender);
+#else
             Camera.onPreRender += OnPreRender;
+#endif
         } catch (Exception ex) {
             log.Err($"[RenderPump] onPreRender subscribe failed: {ex.GetType().Name}: {ex.Message}");
         }
         try {
-            MethodInfo render = typeof(Camera).GetMethod(nameof(Camera.Render), Type.EmptyTypes);
+            MethodInfo render = typeof(Camera).GetMethod("Render", Type.EmptyTypes);
             if (render == null) {
                 log.Err("[RenderPump] Camera.Render() not found.");
                 return;

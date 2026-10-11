@@ -102,6 +102,15 @@ public abstract class FxValue {
             Convert.ChangeType(value, targetType, CultureInfo.InvariantCulture);
             return true;
         } catch {
+        }
+        try {
+            if (!FxMathFallback.TryEvaluate(rendered, out double fallback)) {
+                return false;
+            }
+
+            Convert.ChangeType(fallback, targetType, CultureInfo.InvariantCulture);
+            return true;
+        } catch {
             return false;
         }
     }
@@ -143,15 +152,25 @@ public abstract class FxValue {
             return direct;
         }
 
-        var expression = new Expression(text, ExpressionOptions.IgnoreCaseAtBuiltInFunctions);
-        expression.Parameters["PI"] = Math.PI;
-        expression.Parameters["E"] = Math.E;
-        var value = expression.Evaluate();
-        if (value == null) {
+        try {
+            var expression = new Expression(text, ExpressionOptions.IgnoreCaseAtBuiltInFunctions);
+            expression.Parameters["PI"] = Math.PI;
+            expression.Parameters["E"] = Math.E;
+            var value = expression.Evaluate();
+            if (value == null) {
+                throw new FormatException($"Cannot evaluate '{expr}'.");
+            }
+
+            return Convert.ToSingle(value, CultureInfo.InvariantCulture);
+        } catch (FormatException) {
+            throw;
+        } catch {
+            if (FxMathFallback.TryEvaluate(text, out double fallback)) {
+                return (float)fallback;
+            }
+
             throw new FormatException($"Cannot evaluate '{expr}'.");
         }
-
-        return Convert.ToSingle(value, CultureInfo.InvariantCulture);
     }
 }
 
@@ -344,6 +363,13 @@ public sealed class FxValue<T> : FxValue, IFxValue, ISettingsFile, ICopyable<FxV
                 var value = expression.Evaluate();
                 if (value == null) return staticValue;
                 return (T)Convert.ChangeType(value, targetType, CultureInfo.InvariantCulture);
+            } catch {
+            }
+            try {
+                if (!FxMathFallback.TryEvaluate(rendered, out double fallback)) {
+                    return staticValue;
+                }
+                return (T)Convert.ChangeType(fallback, targetType, CultureInfo.InvariantCulture);
             } catch {
                 return staticValue;
             }

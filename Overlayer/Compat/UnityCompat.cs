@@ -127,18 +127,15 @@ public static class ColliderCompat {
         "Flip"
     ];
 
-#if !IL2CPP
+    // Stripped IL2CPP metadata may lack compositeOperation entirely: resolve
+    // by name so sets are ignored and reads return CompositeNone instead of
+    // referencing a missing member statically.
     private static readonly PropertyInfo CompositeProp =
         typeof(Collider2D).GetProperty("compositeOperation");
-#endif
 
     public static bool HasCompositeOperation {
         get {
-#if IL2CPP
-            return true;
-#else
             return CompositeProp != null;
-#endif
         }
     }
 
@@ -146,9 +143,6 @@ public static class ColliderCompat {
         if (collider == null) {
             return;
         }
-#if IL2CPP
-        collider.compositeOperation = (Collider2D.CompositeOperation)mode;
-#else
         if (CompositeProp == null) {
             return;
         }
@@ -156,16 +150,12 @@ public static class ColliderCompat {
             CompositeProp.SetValue(collider, Enum.ToObject(CompositeProp.PropertyType, mode), null);
         } catch {
         }
-#endif
     }
 
     public static int GetCompositeOperation(Collider2D collider) {
         if (collider == null) {
             return CompositeNone;
         }
-#if IL2CPP
-        return (int)collider.compositeOperation;
-#else
         if (CompositeProp == null) {
             return CompositeNone;
         }
@@ -174,7 +164,6 @@ public static class ColliderCompat {
         } catch {
             return CompositeNone;
         }
-#endif
     }
 
     public static int CompositeFromName(string name, int fallback) {

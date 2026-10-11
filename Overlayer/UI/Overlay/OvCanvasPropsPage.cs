@@ -10,6 +10,12 @@ using Overlayer.Resource;
 using UnityEngine;
 using UnityEngine.UI;
 
+#if ML && IL2CPP
+using Il2CppTMPro;
+#else
+using TMPro;
+#endif
+
 namespace Overlayer.UI.Overlay;
 
 public sealed class OvCanvasPropsPage : IDisposable {
@@ -27,7 +33,7 @@ public sealed class OvCanvasPropsPage : IDisposable {
     private O5InputField versionInput;
     private O5InputField licenseInput;
     private RectTransform scriptList;
-    private TMPro.TextMeshProUGUI titleText;
+    private TextMeshProUGUI titleText;
 
     private static string T(string key, string fallback) => MainCore.Tr.Get(key, fallback);
 
@@ -79,10 +85,10 @@ public sealed class OvCanvasPropsPage : IDisposable {
         titleRect.anchorMax = new Vector2(1f, 1f);
         titleRect.offsetMin = new Vector2(150f, 0f);
         titleRect.offsetMax = new Vector2(-150f, 0f);
-        titleText = titleGo.AddComponent<TMPro.TextMeshProUGUI>();
-        titleText.font = MainCore.Res.Get<TMPro.TMP_FontAsset>(Asset.SUIT_Medium);
+        titleText = titleGo.AddComponent<TextMeshProUGUI>();
+        titleText.font = MainCore.Res.Get<TMP_FontAsset>(Asset.SUIT_Medium);
         titleText.fontSize = 24;
-        titleText.alignment = TMPro.TextAlignmentOptions.Center;
+        titleText.alignment = TextAlignmentOptions.Center;
         titleText.color = Color.white;
 
         var bodyGo = new GameObject("Body");
@@ -230,7 +236,7 @@ public sealed class OvCanvasPropsPage : IDisposable {
             layout.childForceExpandHeight = true;
             var label = O5Factory.ControlText(O5KitAdapters.Ctx, row, 22f, true);
             label.text = Path.GetFileName(UserResourceManager.FromUser(local));
-            label.alignment = TMPro.TextAlignmentOptions.Left;
+            label.alignment = TextAlignmentOptions.Left;
             var labelLe = label.gameObject.AddComponent<LayoutElement>();
             labelLe.flexibleWidth = 1f;
             var del = O5Factory.Button(O5KitAdapters.Ctx, row, () => {
@@ -265,7 +271,7 @@ public sealed class OvCanvasPropsPage : IDisposable {
             try {
                 byte[] bytes = File.ReadAllBytes(diskPath);
                 var tex = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-                if (tex.LoadImage(bytes)) {
+                if (UnityEngine.ImageConversion.LoadImage(tex, bytes)) {
                     tex.filterMode = FilterMode.Bilinear;
                     previewTexture = tex;
                     previewImage.sprite = Sprite.Create(

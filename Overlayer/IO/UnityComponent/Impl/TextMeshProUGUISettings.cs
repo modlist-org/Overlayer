@@ -168,8 +168,13 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
         if (mat.HasProperty(ShaderUtilities.ID_OutlineTex)) {
             mat.SetTexture(ShaderUtilities.ID_OutlineTex, outlineGradient ? OutlineGradientTexture() : Texture2D.whiteTexture);
             // Map per-character UV 0..1 onto the 2x2 texel centers so it matches the face vertex gradient.
-            mat.SetTextureScale(ShaderUtilities.ID_OutlineTex, outlineGradient ? new Vector2(0.5f, 0.5f) : Vector2.one);
-            mat.SetTextureOffset(ShaderUtilities.ID_OutlineTex, outlineGradient ? new Vector2(0.25f, 0.25f) : Vector2.zero);
+            try {
+                mat.SetTextureScale(ShaderUtilities.ID_OutlineTex, outlineGradient ? new Vector2(0.5f, 0.5f) : Vector2.one);
+                mat.SetTextureOffset(ShaderUtilities.ID_OutlineTex, outlineGradient ? new Vector2(0.25f, 0.25f) : Vector2.zero);
+            } catch {
+                // Stripped runtimes lack these Material methods; the outline
+                // gradient falls back to unscaled UVs.
+            }
         }
         mat.SetFloat(ShaderUtilities.ID_OutlineWidth, outlineWidth);
         mat.SetFloat(ShaderUtilities.ID_FaceDilate, _lastFaceDilate);
@@ -206,10 +211,17 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
             };
         }
         // Row 0 is the bottom of the texture.
+#if ML && IL2CPP
+        _outlineGradientTex.SetPixels(new Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppStructArray<Color>([
+            _lastOutlineColor.BL, _lastOutlineColor.BR,
+            _lastOutlineColor.TL, _lastOutlineColor.TR
+        ]));
+#else
         _outlineGradientTex.SetPixels([
             _lastOutlineColor.BL, _lastOutlineColor.BR,
             _lastOutlineColor.TL, _lastOutlineColor.TR
         ]);
+#endif
         _outlineGradientTex.Apply();
         return _outlineGradientTex;
     }

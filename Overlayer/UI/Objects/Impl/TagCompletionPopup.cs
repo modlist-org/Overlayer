@@ -61,7 +61,7 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
 
         GameObject popup = new("TagCompletion");
         popup.transform.SetParent(canvasRect, false);
-        popup.transform.SetAsLastSibling();
+        popup.transform.SetSiblingIndex(popup.transform.parent.childCount - 1);
 
         popupRect = popup.AddComponent<RectTransform>();
         popupRect.anchorMin = new(0.5f, 0.5f);
@@ -168,7 +168,7 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
         // Refresh runs every frame; only re-filter when the query changes.
         // ponytail: tags registered while the popup stays open show up on the next keystroke.
         if (visible && query == matchedQuery) {
-            popupRect.SetAsLastSibling();
+            popupRect.SetSiblingIndex(popupRect.parent.childCount - 1);
             PositionPopup(caret);
             return;
         }
@@ -182,7 +182,7 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
 
         visible = true;
         popupRect.gameObject.SetActive(true);
-        popupRect.SetAsLastSibling();
+        popupRect.SetSiblingIndex(popupRect.parent.childCount - 1);
         PositionPopup(caret);
         UpdateRows();
     }

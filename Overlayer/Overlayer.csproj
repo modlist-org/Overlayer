@@ -280,13 +280,13 @@
 				Condition="'%(RuntimeTargetsCopyLocalItems.NuGetPackageId)' != '' And '%(RuntimeTargetsCopyLocalItems.AssetType)' == 'native' And !Exists('$(TargetGamePath)/$(TargetGameData)/Managed/%(RuntimeTargetsCopyLocalItems.Filename)%(RuntimeTargetsCopyLocalItems.Extension)')" />
 
 			<NuGetUserLibs Remove="@(NuGetUserLibs)"
-				Condition="'%(Filename)' == 'NCalc' Or '%(Filename)' == 'NCalc.Core' Or '%(Filename)' == 'NCalc.Domain' Or '%(Filename)' == 'NCalc.Parser' Or '%(Filename)' == 'Parlot' Or '%(Filename)' == 'System.Collections.Immutable' Or '%(Filename)' == 'System.Runtime.InteropServices.RuntimeInformation' Or (!$(Configuration.Contains('IL2CPP')) And ('%(Filename)' == 'ClearScript.Core' Or '%(Filename)' == 'ClearScript.V8'))" />
+				Condition="'%(Filename)' == 'NCalc' Or '%(Filename)' == 'NCalc.Core' Or '%(Filename)' == 'NCalc.Domain' Or '%(Filename)' == 'NCalc.Parser' Or '%(Filename)' == 'Parlot' Or '%(Filename)' == 'System.Collections.Immutable' Or '%(Filename)' == 'System.Runtime.InteropServices.RuntimeInformation' Or (!$(Configuration.Contains('IL2CPP')) And ('%(Filename)' == 'ClearScript.Core' Or '%(Filename)' == 'ClearScript.V8')) Or ($(Configuration.Contains('IL2CPP')) And ('%(Filename)' == 'Microsoft.Extensions.Logging.Abstractions' Or '%(Filename)' == 'System.Diagnostics.DiagnosticSource' Or '%(Filename)' == 'System.Text.Encodings.Web' Or '%(Filename)' == 'System.Text.Json'))" />
 			<NuGetUserLibs Include="$(NuGetPackageRoot)ncalc/$(NCalcVersion)/lib/netstandard2.0/NCalc.dll" />
 			<NuGetUserLibs Include="$(NuGetPackageRoot)ncalc.core/$(NCalcVersion)/lib/netstandard2.0/NCalc.Core.dll" />
 			<NuGetUserLibs Include="$(NuGetPackageRoot)ncalc.domain/$(NCalcVersion)/lib/netstandard2.0/NCalc.Domain.dll" />
 			<NuGetUserLibs Include="$(NuGetPackageRoot)ncalc.parser/$(NCalcVersion)/lib/netstandard2.0/NCalc.Parser.dll" />
 			<NuGetUserLibs Include="$(NuGetPackageRoot)parlot/$(ParlotVersion)/lib/netstandard2.0/Parlot.dll" />
-			<NuGetUserLibs Include="$(NuGetPackageRoot)system.collections.immutable/$(SystemCollectionsImmutableVersion)/lib/netstandard2.0/System.Collections.Immutable.dll" />
+			<NuGetUserLibs Include="$(NuGetPackageRoot)system.collections.immutable/$(SystemCollectionsImmutableVersion)/lib/netstandard2.0/System.Collections.Immutable.dll" Condition="!$(Configuration.Contains('IL2CPP'))" />
 			<NuGetUserLibs Include="$(NuGetPackageRoot)microsoft.clearscript.core/$(ClearScriptVersion)/lib/net471/ClearScript.Core.dll" Condition="!$(Configuration.Contains('IL2CPP'))" />
 			<NuGetUserLibs Include="$(NuGetPackageRoot)microsoft.clearscript.v8/$(ClearScriptVersion)/lib/net471/ClearScript.V8.dll" Condition="!$(Configuration.Contains('IL2CPP'))" />
 			<NuGetUserLibs Include="@(NativeFileDialogNative)" />

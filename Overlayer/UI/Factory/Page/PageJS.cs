@@ -235,7 +235,7 @@ internal static class PageJS {
             int errors = MainCore.V8.LoaderDiagnostics.Count(d => !O5cpFormat.IsPackageScript(d.FilePath));
             diagText.text = errors == 0
                 ? T("JS_NO_ERRORS", "No script errors.")
-                : string.Format(T("JS_ERROR_COUNT", "{0} script errors (see log)."), errors);
+                : T("JS_ERROR_COUNT", "{0} script errors (see log).", errors);
         }
         LayoutRebuilder.ForceRebuildLayoutImmediate(listContent);
     }

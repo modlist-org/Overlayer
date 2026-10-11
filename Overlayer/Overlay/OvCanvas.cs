@@ -46,11 +46,13 @@ public class OvCanvas : ISettingsFile {
 
         var mainCam = MainCore.Cam.Camera;
         if (mainCam != null) {
-            Canvas.worldCamera = mainCam;
+            Overlayer.Compat.CanvasCompat.SetWorldCamera(Canvas, mainCam);
         }
 
         onCameraChangedHandler = camera => {
-            Canvas?.worldCamera = camera;
+            if (Canvas != null) {
+                Overlayer.Compat.CanvasCompat.SetWorldCamera(Canvas, camera);
+            }
         };
         MainCore.Cam.OnCameraChanged += onCameraChangedHandler;
 

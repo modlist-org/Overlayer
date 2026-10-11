@@ -92,7 +92,9 @@ public sealed class OvObject : ISettingsFile {
         Config.HorizontalLayoutGroupConfig?.ToUnity(GameObject);
         Config.VerticalLayoutGroupConfig?.ToUnity(GameObject);
         Config.GridLayoutGroupConfig?.ToUnity(GameObject);
+#if !IL2CPP
         Config.GraphConfig?.ToUnity(GameObject);
+#endif
         Config.RainConfig?.ToUnity(GameObject);
         Config.ImageConfig?.ToUnity(GameObject);
         Config.MaskConfig?.ToUnity(GameObject);
@@ -128,7 +130,9 @@ public sealed class OvObject : ISettingsFile {
             Config.HorizontalLayoutGroupConfig?.RefreshFx(GameObject);
             Config.VerticalLayoutGroupConfig?.RefreshFx(GameObject);
             Config.GridLayoutGroupConfig?.RefreshFx(GameObject);
-            Config.GraphConfig?.RefreshFx(GameObject);
+    #if !IL2CPP
+        Config.GraphConfig?.RefreshFx(GameObject);
+#endif
             Config.RainConfig?.RefreshFx(GameObject);
             Config.ImageConfig?.RefreshFx(GameObject);
             Config.MaskConfig?.RefreshFx(GameObject);
@@ -197,7 +201,9 @@ public sealed class OvObject : ISettingsFile {
         EnsureComponent<HorizontalLayoutGroup>(Config.HorizontalLayoutGroupConfig != null);
         EnsureComponent<VerticalLayoutGroup>(Config.VerticalLayoutGroupConfig != null);
         EnsureComponent<GridLayoutGroup>(Config.GridLayoutGroupConfig != null);
+#if !IL2CPP
         EnsureComponent<OvGraphComponent>(Config.GraphConfig != null);
+#endif
         EnsureComponent<OvRainComponent>(Config.RainConfig != null);
         var text = GameObject.GetComponent<TextMeshProUGUI>();
         movingMan?.Init(text, RectTransform);
@@ -218,10 +224,33 @@ public sealed class OvObject : ISettingsFile {
 #endif
     }
 
+#if ML && IL2CPP
+    private static readonly HashSet<Type> _injectedComponents = [];
+#endif
+
     private T EnsureComponent<T>(bool enabled) where T : Component {
         if (GameObject == null) {
             return null;
         }
+
+#if ML && IL2CPP
+        // Mod-defined components are never in Il2CppAssemblies: inject the
+        // type before the first generic Get/AddComponent call touches it,
+        // otherwise the generic method store faults (NRE) on the missing
+        // native class pointer.
+        lock (_injectedComponents) {
+            if (_injectedComponents.Add(typeof(T))) {
+                try {
+                    Il2CppInterop.Runtime.Injection.ClassInjector.RegisterTypeInIl2Cpp<T>();
+                } catch (Exception e) {
+                    try {
+                        Overlayer.Core.MainCore.Log.Err($"[OvObject] RegisterTypeInIl2Cpp<{typeof(T).Name}> failed: {e.GetType().Name}: {e.Message}");
+                    } catch {
+                    }
+                }
+            }
+        }
+#endif
 
         T comp = GameObject.GetComponent<T>();
 
@@ -234,7 +263,23 @@ public sealed class OvObject : ISettingsFile {
         }
 
         if (comp == null) {
+#if ML && IL2CPP
+            try {
+                Il2CppInterop.Runtime.Injection.ClassInjector.RegisterTypeInIl2Cpp<T>();
+            } catch {
+            }
+            try {
+                comp = GameObject.AddComponent<T>();
+            } catch (Exception e) {
+                try {
+                    Overlayer.Core.MainCore.Log.Err($"[OvObject] AddComponent<{typeof(T).Name}> failed: {e.GetType().Name}: {e.Message}");
+                } catch {
+                }
+                return null;
+            }
+#else
             comp = GameObject.AddComponent<T>();
+#endif
         }
 
         return comp;

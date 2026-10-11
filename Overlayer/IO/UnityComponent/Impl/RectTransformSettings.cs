@@ -40,27 +40,37 @@ public class RectTransformSettings : UnityComponentSettingsBase, ICopyable<RectT
         || FxUtil.HasFx(AnchorMin)
         || FxUtil.HasFx(AnchorMax);
 
-    public float GetOffsetMin(int axis) => AnchoredPosition.Value[axis] - (SizeDelta.Value[axis] * Pivot.Value[axis]);
+    public float GetOffsetMin(int axis) => Axis(AnchoredPosition.Value, axis) - (Axis(SizeDelta.Value, axis) * Axis(Pivot.Value, axis));
 
-    public float GetOffsetMax(int axis) => AnchoredPosition.Value[axis] + (SizeDelta.Value[axis] * (1f - Pivot.Value[axis]));
+    public float GetOffsetMax(int axis) => Axis(AnchoredPosition.Value, axis) + (Axis(SizeDelta.Value, axis) * (1f - Axis(Pivot.Value, axis)));
+
+    private static float Axis(Vector2 v, int axis) => axis == 0 ? v.x : v.y;
+
+    private static void SetAxis(ref Vector2 v, int axis, float value) {
+        if (axis == 0) {
+            v.x = value;
+        } else {
+            v.y = value;
+        }
+    }
 
     public void SetOffsetMin(int axis, float value) {
         float max = GetOffsetMax(axis);
         var size = SizeDelta.Value;
-        size[axis] = max - value;
+        SetAxis(ref size, axis, max - value);
         SizeDelta.Value = size;
         var pos = AnchoredPosition.Value;
-        pos[axis] = value + (size[axis] * Pivot.Value[axis]);
+        SetAxis(ref pos, axis, value + (Axis(size, axis) * Axis(Pivot.Value, axis)));
         AnchoredPosition.Value = pos;
     }
 
     public void SetOffsetMax(int axis, float value) {
         float min = GetOffsetMin(axis);
         var size = SizeDelta.Value;
-        size[axis] = value - min;
+        SetAxis(ref size, axis, value - min);
         SizeDelta.Value = size;
         var pos = AnchoredPosition.Value;
-        pos[axis] = min + (size[axis] * Pivot.Value[axis]);
+        SetAxis(ref pos, axis, min + (Axis(size, axis) * Axis(Pivot.Value, axis)));
         AnchoredPosition.Value = pos;
     }
 

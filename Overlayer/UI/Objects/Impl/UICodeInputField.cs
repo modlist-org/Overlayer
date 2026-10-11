@@ -58,7 +58,7 @@ public sealed class UICodeInputField
         if (historyCallback == null) {
             historyCallback =
 #if ML && IL2CPP
-                DelegateSupport.ConvertDelegate<UnityEngine.Events.UnityAction<string>>(new Action<string>(OnHistoryValueChanged));
+                new Action<string>(OnHistoryValueChanged);
 #else
                 OnHistoryValueChanged;
 #endif

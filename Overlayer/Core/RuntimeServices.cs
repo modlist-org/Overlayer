@@ -17,6 +17,7 @@ public sealed class RuntimeServices {
                 service.Initialize();
             } catch (Exception ex) {
                 Report($"[RuntimeServices] {service.GetType().Name} init failed: {ex.GetType().Name}: {ex.Message}");
+                Report(ex.ToString());
             }
         }
     }

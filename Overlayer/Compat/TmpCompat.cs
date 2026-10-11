@@ -32,7 +32,9 @@ public static class TmpCompat {
         "PreserveWhitespaceNoWrap"
     ];
 
-#if !IL2CPP
+    // Stripped IL2CPP metadata may lack textWrappingMode entirely: resolve by
+    // name like the Mono path so sets degrade to the bool fallback instead
+    // of referencing a missing member statically.
     private static readonly PropertyInfo WrappingProp =
         typeof(TMP_Text).GetProperty("textWrappingMode");
 
@@ -40,16 +42,11 @@ public static class TmpCompat {
 
     private static readonly PropertyInfo WordWrapProp =
         typeof(TMP_Text).GetProperty("enableWordWrapping");
-#endif
 
     /// <summary>True when the runtime TMP has <c>textWrappingMode</c> (modern TMP).</summary>
     public static bool HasWrappingMode {
         get {
-#if IL2CPP
-            return true;
-#else
             return WrappingProp != null;
-#endif
         }
     }
 
@@ -59,9 +56,6 @@ public static class TmpCompat {
         if (tmp == null) {
             return;
         }
-#if IL2CPP
-        tmp.textWrappingMode = (TextWrappingModes)mode;
-#else
         if (WrappingProp != null && WrappingType != null) {
             try {
                 WrappingProp.SetValue(tmp, Enum.ToObject(WrappingType, mode), null);
@@ -73,16 +67,12 @@ public static class TmpCompat {
             WordWrapProp?.SetValue(tmp, mode != NoWrap && mode != PreserveWhitespaceNoWrap, null);
         } catch {
         }
-#endif
     }
 
     public static int GetWrappingMode(TMP_Text tmp) {
         if (tmp == null) {
             return Normal;
         }
-#if IL2CPP
-        return (int)tmp.textWrappingMode;
-#else
         if (WrappingProp != null) {
             try {
                 return Convert.ToInt32(WrappingProp.GetValue(tmp, null));
@@ -97,7 +87,6 @@ public static class TmpCompat {
         } catch {
         }
         return Normal;
-#endif
     }
 
     public static int FromName(string name, int fallback) {

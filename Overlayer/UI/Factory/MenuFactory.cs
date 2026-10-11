@@ -125,11 +125,9 @@ public static class MenuFactory {
 
             e.callback.AddListener(
 #if ML && IL2CPP
-                DelegateSupport.ConvertDelegate<UnityEngine.Events.UnityAction<BaseEventData>>(new Action<BaseEventData>(
-#endif
+                new Action<BaseEventData>((_) => cb())
+#else
                 (_) => cb()
-#if ML && IL2CPP
-                ))
 #endif
             );
 
