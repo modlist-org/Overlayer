@@ -49,6 +49,7 @@ you obviously need the .NET SDK. copy `Directory.Build.example.props` to `Direct
 ./zip.sh     # zips
 ./bump.sh patch   # or 5.0.4 / minor / major. --force if u sure (do u really need it tho)
 ```
+numeric fx needs the native lib: `zig` 0.17+ then `../O5Kit/native/build.sh` (drops `O5KitNative.<os>.<ext>` into `zig-out/lib`, auto-copied to UserLibs on build)
 ps1 twins exist for windows. ts: `impl.d.ts` spawns next to `impl.js`, tsc your stuff and throw the js into `Script/`. release: bump -> commit `"X.Y.Z"` -> tag -> publish
 
 # ⚖️ Licenses
