@@ -32,6 +32,7 @@
     <Compile Include="..\Overlayer\Tag\Compile\SignatureResolver.cs" />
     <Compile Include="..\Overlayer\Tag\Core\Placeholder.cs" />
     <Compile Include="..\Overlayer\Tag\Core\TagCore.cs" />
+    <Compile Include="..\Overlayer\Tag\Core\TagArgParser.cs" />
     <Compile Include="..\Overlayer\Tag\Diagnostic\CompileDiagnostic.cs" />
     <Compile Include="..\Overlayer\Tag\Diagnostic\CompileSeverity.cs" />
     <Compile Include="..\Overlayer\Tag\Diagnostic\DiagnosticContext.cs" />
