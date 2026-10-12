@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using System.Globalization;
 using System.Text;
-using NCalc;
 using Newtonsoft.Json.Linq;
 using Overlayer.Core;
 using Overlayer.IO.Interface;
@@ -91,25 +90,7 @@ public abstract class FxValue {
 
     internal static bool TryConvertScalar(Type targetType, string rendered) {
         try {
-            var expression = new Expression(rendered, ExpressionOptions.IgnoreCaseAtBuiltInFunctions);
-            expression.Parameters["PI"] = Math.PI;
-            expression.Parameters["E"] = Math.E;
-            var value = expression.Evaluate();
-            if (value == null) {
-                return false;
-            }
-
-            Convert.ChangeType(value, targetType, CultureInfo.InvariantCulture);
-            return true;
-        } catch {
-        }
-        try {
-            if (!FxMathFallback.TryEvaluate(rendered, out double fallback)) {
-                return false;
-            }
-
-            Convert.ChangeType(fallback, targetType, CultureInfo.InvariantCulture);
-            return true;
+            return FxNumeric.TryEvaluate(rendered, targetType, out _);
         } catch {
             return false;
         }
@@ -152,25 +133,11 @@ public abstract class FxValue {
             return direct;
         }
 
-        try {
-            var expression = new Expression(text, ExpressionOptions.IgnoreCaseAtBuiltInFunctions);
-            expression.Parameters["PI"] = Math.PI;
-            expression.Parameters["E"] = Math.E;
-            var value = expression.Evaluate();
-            if (value == null) {
-                throw new FormatException($"Cannot evaluate '{expr}'.");
-            }
-
-            return Convert.ToSingle(value, CultureInfo.InvariantCulture);
-        } catch (FormatException) {
-            throw;
-        } catch {
-            if (FxMathFallback.TryEvaluate(text, out double fallback)) {
-                return (float)fallback;
-            }
-
-            throw new FormatException($"Cannot evaluate '{expr}'.");
+        if (FxNumeric.TryEvaluate(text, typeof(float), out var numeric) && numeric is float f) {
+            return f;
         }
+
+        throw new FormatException($"Cannot evaluate '{expr}'.");
     }
 }
 
@@ -357,19 +324,10 @@ public sealed class FxValue<T> : FxValue, IFxValue, ISettingsFile, ICopyable<FxV
                 }
             }
             try {
-                var expression = new Expression(rendered, ExpressionOptions.IgnoreCaseAtBuiltInFunctions);
-                expression.Parameters["PI"] = Math.PI;
-                expression.Parameters["E"] = Math.E;
-                var value = expression.Evaluate();
-                if (value == null) return staticValue;
-                return (T)Convert.ChangeType(value, targetType, CultureInfo.InvariantCulture);
-            } catch {
-            }
-            try {
-                if (!FxMathFallback.TryEvaluate(rendered, out double fallback)) {
-                    return staticValue;
+                if (FxNumeric.TryEvaluate(rendered, targetType, out var numeric) && numeric != null) {
+                    return (T)numeric;
                 }
-                return (T)Convert.ChangeType(fallback, targetType, CultureInfo.InvariantCulture);
+                return staticValue;
             } catch {
                 return staticValue;
             }

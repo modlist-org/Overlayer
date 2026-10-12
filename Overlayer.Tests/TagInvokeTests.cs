@@ -17,6 +17,7 @@ public sealed class TagInvokeTests {
         }
         public static DayOfWeek EnumEcho(DayOfWeek d) => d;
         public static bool BoolEcho(bool b) => b;
+        public static double PiValue() => Math.PI;
     }
 
     private static TagCore TagOf(string method) => new(
@@ -24,6 +25,18 @@ public sealed class TagInvokeTests {
         typeof(FakeTags).GetMethod(method, BindingFlags.Public | BindingFlags.Static),
         TagType.None,
         null);
+
+    [Fact]
+    public void String_Args_Coerce_Positionly() {
+        Assert.Equal(8, TagOf(nameof(FakeTags.OptSecond)).Invoke("x", "8"));
+        Assert.Equal(7, TagOf(nameof(FakeTags.OptSecond)).Invoke("x"));
+    }
+
+    [Fact]
+    public void Zero_Arg_Invoke_Skips_Normalize() {
+        Assert.Equal(Math.PI, TagOf(nameof(FakeTags.PiValue)).Invoke(Array.Empty<object>()));
+        Assert.Equal(Math.PI, TagOf(nameof(FakeTags.PiValue)).Invoke());
+    }
 
     [Fact]
     public void Double_To_Int_Coerces_LikeTextEngine() {

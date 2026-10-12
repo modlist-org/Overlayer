@@ -1,5 +1,6 @@
 using Overlayer.Compat;
 using Overlayer.Core;
+using Overlayer.Async;
 using Overlayer.Tween;
 using O5Kit.Core;
 using Overlayer.Overlay;
@@ -487,7 +488,8 @@ public partial class OvCanvasSettingPage : IDisposable {
 
         // Inspector Scroll View
         inspectorContent = O5Factory.ScrollView(O5KitAdapters.Ctx, inspectorCol.transform, 12f, expandLayout: true).content;
-        headerGo.transform.SetSiblingIndex(headerGo.transform.parent.childCount - 1);
+        headerGo.transform.SetAsLastSibling();
+        OverlayCore.OnCanvasesChanged += () => MainThread.Enqueue(PruneDeletedCanvasTabs);
     }
 
     private void MoveSelectedOrder(int direction) {
@@ -536,6 +538,9 @@ public partial class OvCanvasSettingPage : IDisposable {
     }
 
     public void Open(OvCanvas canvas, bool noAnimate = false) {
+        if (canvas == null || !canvas.Config.Enabled.Value) {
+            return;
+        }
         CanvasTabState tab = null;
         foreach (var openTab in canvasTabs) {
             if (openTab.Canvas == canvas) {
@@ -563,6 +568,12 @@ public partial class OvCanvasSettingPage : IDisposable {
     }
 
     private void ActivateCanvasTab(CanvasTabState tab, bool noAnimate = false) {
+        if (tab == null || tab.Canvas == null || !tab.Canvas.Config.Enabled.Value) {
+            if (tab != null) {
+                CloseCanvasTab(tab);
+            }
+            return;
+        }
         if (activeTab == tab && GameObject.activeSelf) {
             return;
         }
@@ -590,6 +601,36 @@ public partial class OvCanvasSettingPage : IDisposable {
             canvasFadeTween?.Kill();
             canvasFadeTween = CanvasGroup.TFade(1f, 0.25f, O5Ease.OutCubic, () => CanvasGroup.blocksRaycasts = true);
         }
+    }
+
+    public void CloseTabsForCanvas(OvCanvas canvas) {
+        if (canvas == null) {
+            return;
+        }
+        for (int i = canvasTabs.Count - 1; i >= 0; i--) {
+            if (canvasTabs[i].Canvas == canvas) {
+                CloseCanvasTab(canvasTabs[i]);
+            }
+        }
+    }
+
+    public void PruneDeletedCanvasTabs() {
+        for (int i = canvasTabs.Count - 1; i >= 0; i--) {
+            if (!OverlayCore.Canvases.Contains(canvasTabs[i].Canvas)) {
+                CloseCanvasTab(canvasTabs[i]);
+            }
+        }
+    }
+
+    public void ClearTabs() {
+        canvasTabs.Clear();
+        activeTab = null;
+        currentCanvas = null;
+        selectedObject = null;
+        collapsedObjects.Clear();
+        multiSelected.Clear();
+        DisarmDeleteButton();
+        RebuildCanvasTabs();
     }
 
     private void CloseCanvasTab(CanvasTabState tab) {

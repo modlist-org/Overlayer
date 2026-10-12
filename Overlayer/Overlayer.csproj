@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
 		<TargetFramework Condition="$(Configuration.Contains('IL2CPP'))">net6.0</TargetFramework>
-		<TargetFramework Condition="!$(Configuration.Contains('IL2CPP'))">netstandard2.0</TargetFramework>
+		<TargetFramework Condition="!$(Configuration.Contains('IL2CPP'))">netstandard2.1</TargetFramework>
 		<PlatformTarget>AnyCPU</PlatformTarget>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>disable</Nullable>
@@ -25,7 +25,7 @@
 		<O5KitConfiguration Condition="!$(Configuration.Contains('IL2CPP')) and $(Configuration.Contains('Debug'))">Debug_Mono</O5KitConfiguration>
 		<O5KitConfiguration Condition="!$(Configuration.Contains('IL2CPP')) and !$(Configuration.Contains('Debug'))">Release_Mono</O5KitConfiguration>
 		<O5KitTargetFramework Condition="$(Configuration.Contains('IL2CPP'))">net6.0</O5KitTargetFramework>
-		<O5KitTargetFramework Condition="!$(Configuration.Contains('IL2CPP'))">netstandard2.0</O5KitTargetFramework>
+		<O5KitTargetFramework Condition="!$(Configuration.Contains('IL2CPP'))">netstandard2.1</O5KitTargetFramework>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -197,9 +197,6 @@
 		<EnableDefaultCompileItems>true</EnableDefaultCompileItems>
 		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
 		<ClearScriptVersion>7.5.1</ClearScriptVersion>
-		<NCalcVersion>7.0.2</NCalcVersion>
-		<ParlotVersion>1.5.8</ParlotVersion>
-		<SystemCollectionsImmutableVersion>10.0.10</SystemCollectionsImmutableVersion>
 		<NativeFileDialogVersion>1.2.0</NativeFileDialogVersion>
 	</PropertyGroup>
 
@@ -245,7 +242,6 @@
 	  <PackageReference Include="Microsoft.ClearScript.V8.Native.osx-x64" Version="$(ClearScriptVersion)" />
 	  <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
 	  <PackageReference Include="Esprima" Version="3.0.5" />
-	  <PackageReference Include="ncalc" Version="$(NCalcVersion)" />
 	  <PackageReference Include="NativeFileDialog.Extended" Version="$(NativeFileDialogVersion)" Condition="$(Configuration.Contains('IL2CPP'))" />
 	  <PackageReference Include="NativeFileDialog.Extended" Version="$(NativeFileDialogVersion)" Condition="!$(Configuration.Contains('IL2CPP'))">
 	    <ExcludeAssets>compile;runtime</ExcludeAssets>
@@ -280,13 +276,7 @@
 				Condition="'%(RuntimeTargetsCopyLocalItems.NuGetPackageId)' != '' And '%(RuntimeTargetsCopyLocalItems.AssetType)' == 'native' And !Exists('$(TargetGamePath)/$(TargetGameData)/Managed/%(RuntimeTargetsCopyLocalItems.Filename)%(RuntimeTargetsCopyLocalItems.Extension)')" />
 
 			<NuGetUserLibs Remove="@(NuGetUserLibs)"
-				Condition="'%(Filename)' == 'NCalc' Or '%(Filename)' == 'NCalc.Core' Or '%(Filename)' == 'NCalc.Domain' Or '%(Filename)' == 'NCalc.Parser' Or '%(Filename)' == 'Parlot' Or '%(Filename)' == 'System.Collections.Immutable' Or '%(Filename)' == 'System.Runtime.InteropServices.RuntimeInformation' Or (!$(Configuration.Contains('IL2CPP')) And ('%(Filename)' == 'ClearScript.Core' Or '%(Filename)' == 'ClearScript.V8')) Or ($(Configuration.Contains('IL2CPP')) And ('%(Filename)' == 'Microsoft.Extensions.Logging.Abstractions' Or '%(Filename)' == 'System.Diagnostics.DiagnosticSource' Or '%(Filename)' == 'System.Text.Encodings.Web' Or '%(Filename)' == 'System.Text.Json'))" />
-			<NuGetUserLibs Include="$(NuGetPackageRoot)ncalc/$(NCalcVersion)/lib/netstandard2.0/NCalc.dll" />
-			<NuGetUserLibs Include="$(NuGetPackageRoot)ncalc.core/$(NCalcVersion)/lib/netstandard2.0/NCalc.Core.dll" />
-			<NuGetUserLibs Include="$(NuGetPackageRoot)ncalc.domain/$(NCalcVersion)/lib/netstandard2.0/NCalc.Domain.dll" />
-			<NuGetUserLibs Include="$(NuGetPackageRoot)ncalc.parser/$(NCalcVersion)/lib/netstandard2.0/NCalc.Parser.dll" />
-			<NuGetUserLibs Include="$(NuGetPackageRoot)parlot/$(ParlotVersion)/lib/netstandard2.0/Parlot.dll" />
-			<NuGetUserLibs Include="$(NuGetPackageRoot)system.collections.immutable/$(SystemCollectionsImmutableVersion)/lib/netstandard2.0/System.Collections.Immutable.dll" Condition="!$(Configuration.Contains('IL2CPP'))" />
+				Condition="'%(Filename)' == 'System.Runtime.InteropServices.RuntimeInformation' Or (!$(Configuration.Contains('IL2CPP')) And ('%(Filename)' == 'ClearScript.Core' Or '%(Filename)' == 'ClearScript.V8'))" />
 			<NuGetUserLibs Include="$(NuGetPackageRoot)microsoft.clearscript.core/$(ClearScriptVersion)/lib/net471/ClearScript.Core.dll" Condition="!$(Configuration.Contains('IL2CPP'))" />
 			<NuGetUserLibs Include="$(NuGetPackageRoot)microsoft.clearscript.v8/$(ClearScriptVersion)/lib/net471/ClearScript.V8.dll" Condition="!$(Configuration.Contains('IL2CPP'))" />
 			<NuGetUserLibs Include="@(NativeFileDialogNative)" />
@@ -298,6 +288,10 @@
 
 		<MakeDir Directories="$(TargetGamePath)/UserLibs" />
 		<Copy SourceFiles="$(TargetDir)O5Kit.dll" DestinationFolder="$(TargetGamePath)/UserLibs" SkipUnchangedFiles="true" Condition="Exists('$(TargetDir)O5Kit.dll')" />
+		<ItemGroup>
+			<O5NativeLib Include="$(MSBuildProjectDirectory)/../../O5Kit/native/zig-out/lib/O5KitNative.*" />
+		</ItemGroup>
+		<Copy SourceFiles="@(O5NativeLib)" DestinationFolder="$(TargetGamePath)/UserLibs" SkipUnchangedFiles="true" Condition="'@(O5NativeLib)' != ''" />
 		<!-- netstandard facade for old Mono games that don't ship one (Unity .NET 4.x profile). Same-identity loads unify where the game already has it. -->
 		<Copy SourceFiles="$(GamePath)/$(GameData)/Managed/netstandard.dll" DestinationFolder="$(TargetGamePath)/UserLibs" SkipUnchangedFiles="true" Condition="!$(Configuration.Contains('IL2CPP')) And Exists('$(GamePath)/$(GameData)/Managed/netstandard.dll')" />
 		<Copy SourceFiles="$(MSBuildProjectDirectory)/../tool/lib/netstandard.dll" DestinationFolder="$(TargetGamePath)/UserLibs" SkipUnchangedFiles="true" Condition="!$(Configuration.Contains('IL2CPP')) And !Exists('$(GamePath)/$(GameData)/Managed/netstandard.dll') And Exists('$(MSBuildProjectDirectory)/../tool/lib/netstandard.dll')" />
@@ -335,6 +329,7 @@
 		<MakeDir Directories="$(BuildOutputDir)\UserLibs" Condition="'@(NuGetUserLibs)' != ''" />
 		<Copy SourceFiles="@(NuGetUserLibs)" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" />
 		<Copy SourceFiles="$(TargetDir)O5Kit.dll" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" Condition="Exists('$(TargetDir)O5Kit.dll')" />
+		<Copy SourceFiles="@(O5NativeLib)" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" Condition="'@(O5NativeLib)' != ''" />
 		<Copy SourceFiles="$(GamePath)/$(GameData)/Managed/netstandard.dll" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" Condition="!$(Configuration.Contains('IL2CPP')) And Exists('$(GamePath)/$(GameData)/Managed/netstandard.dll')" />
 		<Copy SourceFiles="$(MSBuildProjectDirectory)/../tool/lib/netstandard.dll" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" Condition="!$(Configuration.Contains('IL2CPP')) And !Exists('$(GamePath)/$(GameData)/Managed/netstandard.dll') And Exists('$(MSBuildProjectDirectory)/../tool/lib/netstandard.dll')" />
 		<Copy SourceFiles="$(GamePath)/$(GameData)/Managed/System.Runtime.Serialization.dll" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" Condition="!$(Configuration.Contains('IL2CPP')) And Exists('$(GamePath)/$(GameData)/Managed/System.Runtime.Serialization.dll')" />

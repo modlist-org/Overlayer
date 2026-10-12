@@ -172,17 +172,37 @@ public static class Effects {
 
     private static bool TryReadNumber(string tagName, out double value) {
         value = 0;
-        if (!TagManager.TryGet(tagName, out TagCore tag) || tag.RequiredParameterCount != 0) {
+        if (!TagArgParser.TrySplit(tagName, out string name, out string[] callArgs)
+            || !TagManager.TryGet(name, out TagCore tag)) {
             return false;
         }
 
         try {
-            object[] args = new object[tag.Parameters.Length];
-            for (int i = 0; i < args.Length; i++) {
-                args[i] = tag.Parameters[i].DefaultValue;
+            object[] args;
+            if (callArgs.Length == 0) {
+                if (tag.RequiredParameterCount != 0) {
+                    return false;
+                }
+                args = Array.Empty<object>();
+                if (tag.Parameters.Length > 0) {
+                    args = new object[tag.Parameters.Length];
+                    for (int i = 0; i < args.Length; i++) {
+                        args[i] = tag.Parameters[i].DefaultValue;
+                    }
+                }
+            } else {
+                if (callArgs.Length < tag.RequiredParameterCount) {
+                    return false;
+                }
+                args = callArgs;
             }
 
             object result = tag.Invoke(args);
+            // Hot path: value tags return double; skip ToString+parse entirely.
+            if (result is double d) {
+                value = d;
+                return true;
+            }
             return result != null && double.TryParse(result.ToString(), out value);
         } catch {
             return false;

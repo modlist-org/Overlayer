@@ -6,6 +6,7 @@
     <Nullable>disable</Nullable>
     <LangVersion>latest</LangVersion>
     <IsPackable>false</IsPackable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
@@ -31,6 +32,7 @@
     <Compile Include="..\Overlayer\Tag\Compile\SignatureResolver.cs" />
     <Compile Include="..\Overlayer\Tag\Core\Placeholder.cs" />
     <Compile Include="..\Overlayer\Tag\Core\TagCore.cs" />
+    <Compile Include="..\Overlayer\Tag\Core\TagArgParser.cs" />
     <Compile Include="..\Overlayer\Tag\Diagnostic\CompileDiagnostic.cs" />
     <Compile Include="..\Overlayer\Tag\Diagnostic\CompileSeverity.cs" />
     <Compile Include="..\Overlayer\Tag\Diagnostic\DiagnosticContext.cs" />
@@ -52,10 +54,12 @@
     <Compile Include="..\Overlayer\Package\O5cpTagScanner.cs" />
     <Compile Include="..\Overlayer\Package\O5cpPackage.cs" />
     <Compile Include="..\Overlayer\Utility\StringUtils.cs" />
-    <Compile Include="..\Overlayer\IO\Fx\FxMathFallback.cs" />
+    <Compile Include="..\Overlayer\IO\Fx\FxNumeric.cs" />
+    <Compile Include="..\Overlayer\Native\O5Native.cs" />
+    <Compile Include="..\Overlayer\Native\O5Expr.cs" />
+    <Compile Include="..\Overlayer\Native\O5Ring.cs" />
+    <Compile Include="..\Overlayer\Native\Polyfills.cs" />
   </ItemGroup>
-
-  <!-- Embedded GTweens engine sources (from O5Kit ThirdParty) for engine-level tests. -->
   <ItemGroup>
     <Compile Include="..\..\O5Kit\src\O5Kit\ThirdParty\GTweens\Source\**\*.cs" />
   </ItemGroup>

@@ -1,4 +1,5 @@
 using Overlayer.Compat.Interface;
+using Overlayer.Native;
 using Overlayer.Tag.Core;
 
 namespace Overlayer.TagImpl;
@@ -9,7 +10,7 @@ public sealed class FpsTracker : IRuntimeTick {
     private const int MaxWindowMs = 10000;
     private const int MaxSamples = 4096;
 
-    private readonly List<double> frameTimes = new();
+    private readonly long ring = O5Ring.Create(MaxSamples);
     private readonly Dictionary<int, (double value, double next)> fpsHeld = [];
     private readonly Dictionary<int, (double value, double next)> msHeld = [];
 
@@ -19,11 +20,8 @@ public sealed class FpsTracker : IRuntimeTick {
 
     public void Tick() {
         double now = UnityEngine.Time.realtimeSinceStartup;
-        if (frameTimes.Count >= MaxSamples) {
-            frameTimes.RemoveAt(0);
-        }
-        frameTimes.Add(now);
-        Prune(MaxWindowMs);
+        O5Ring.Push(ring, now);
+        O5Ring.Prune(ring, now, MaxWindowMs / 1000d);
     }
 
     public double Fps(int windowMs) {
@@ -62,12 +60,13 @@ public sealed class FpsTracker : IRuntimeTick {
     }
 
     private double WindowedFps(int windowMs) {
-        Prune(windowMs);
-        int n = frameTimes.Count;
+        double now = UnityEngine.Time.realtimeSinceStartup;
+        O5Ring.Prune(ring, now, windowMs / 1000d);
+        long n = O5Ring.Count(ring);
         if (n < 2) {
             return 0d;
         }
-        double span = frameTimes[n - 1] - frameTimes[0];
+        double span = O5Ring.Last(ring) - O5Ring.First(ring);
         if (span < 0.000001) {
             return 0d;
         }
@@ -75,24 +74,17 @@ public sealed class FpsTracker : IRuntimeTick {
     }
 
     private double WindowedMs(int windowMs) {
-        Prune(windowMs);
-        int n = frameTimes.Count;
+        double now = UnityEngine.Time.realtimeSinceStartup;
+        O5Ring.Prune(ring, now, windowMs / 1000d);
+        long n = O5Ring.Count(ring);
         if (n < 2) {
             return 0d;
         }
-        double span = frameTimes[n - 1] - frameTimes[0];
+        double span = O5Ring.Last(ring) - O5Ring.First(ring);
         if (span < 0.000001) {
             return 0d;
         }
         return span / (n - 1) * 1000d;
-    }
-
-    private void Prune(int windowMs) {
-        double now = UnityEngine.Time.realtimeSinceStartup;
-        double window = windowMs / 1000d;
-        while (frameTimes.Count > 0 && now - frameTimes[0] > window) {
-            frameTimes.RemoveAt(0);
-        }
     }
 }
 

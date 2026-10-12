@@ -1,5 +1,6 @@
 using O5Kit.Input;
 using Overlayer.Compat.Interface;
+using Overlayer.Native;
 using Overlayer.Tag.Core;
 using UnityEngine;
 
@@ -12,7 +13,7 @@ public sealed class KpsTracker : IRuntimeTick {
     private const int MaxSamples = 1024;
 
     private static readonly KeyCode[] KeyboardKeys = BuildKeyboardKeys();
-    private readonly List<double> keyTimes = new();
+    private readonly long ring = O5Ring.Create(MaxSamples);
     private readonly Dictionary<int, (double value, double next)> held = [];
     private readonly object gate = new();
 
@@ -24,7 +25,7 @@ public sealed class KpsTracker : IRuntimeTick {
 
     public void ReportKeyPress() {
         lock (gate) {
-            Enqueue(keyTimes, UnityEngine.Time.realtimeSinceStartup);
+            O5Ring.Push(ring, UnityEngine.Time.realtimeSinceStartup);
         }
     }
 
@@ -35,14 +36,14 @@ public sealed class KpsTracker : IRuntimeTick {
             if (keys > 0) {
                 lock (gate) {
                     for (int i = 0; i < keys; i++) {
-                        Enqueue(keyTimes, now);
+                        O5Ring.Push(ring, now);
                     }
                 }
             }
         }
 
         lock (gate) {
-            Prune(keyTimes, MaxWindowMs);
+            O5Ring.Prune(ring, UnityEngine.Time.realtimeSinceStartup, MaxWindowMs / 1000d);
         }
     }
 
@@ -65,31 +66,8 @@ public sealed class KpsTracker : IRuntimeTick {
 
     private double DecaySum(double now) {
         lock (gate) {
-            Prune(keyTimes, MaxWindowMs);
-            double value = 0d;
-            foreach (double pressed in keyTimes) {
-                double age = now - pressed;
-                if (age < 0d) {
-                    continue;
-                }
-                value += Math.Exp(-age);
-            }
-            return value;
-        }
-    }
-
-    private static void Enqueue(List<double> queue, double time) {
-        if (queue.Count >= MaxSamples) {
-            queue.RemoveAt(0);
-        }
-        queue.Add(time);
-    }
-
-    private static void Prune(List<double> queue, double windowMs) {
-        double now = UnityEngine.Time.realtimeSinceStartup;
-        double window = windowMs / 1000d;
-        while (queue.Count > 0 && now - queue[0] > window) {
-            queue.RemoveAt(0);
+            O5Ring.Prune(ring, now, MaxWindowMs / 1000d);
+            return O5Ring.DecaySum(ring, now);
         }
     }
 
