@@ -143,6 +143,7 @@ internal static class PageOverlayer {
         }
         if (!isEnabled) {
             settingPage?.Close(true);
+            settingPage?.ClearTabs();
             propsPage?.Close(true);
             FadeCanvasGroup(viewportCanvasGroup, 1f, true, true);
             if (disabledPanel != null) {
@@ -340,6 +341,9 @@ internal static class PageOverlayer {
             canvas.Config.Enabled.Value,
             toggle => {
                 canvas.Config.Enabled.Value = toggle;
+                if (!toggle) {
+                    settingPage?.CloseTabsForCanvas(canvas);
+                }
                 OverlayCore.SaveAllCanvases();
                 ApplyTileEnabledVisual(bgImg, txt, toggle);
             },
