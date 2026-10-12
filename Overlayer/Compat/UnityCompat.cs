@@ -14,7 +14,6 @@ namespace Overlayer.Compat;
 /// On IL2CPP (modern games only) the properties are called directly.
 /// </summary>
 public static class UnityTimeCompat {
-#if !IL2CPP
     private static readonly Func<double> TimeGetter =
         Resolve("timeAsDouble", static () => (double)Time.time);
 
@@ -53,55 +52,34 @@ public static class UnityTimeCompat {
             return fallback;
         }
     }
-#endif
 
     public static double TimeAsDouble {
         get {
-#if IL2CPP
-            return Time.timeAsDouble;
-#else
             return TimeGetter();
-#endif
         }
     }
 
     public static double UnscaledTimeAsDouble {
         get {
-#if IL2CPP
-            return Time.unscaledTimeAsDouble;
-#else
             return UnscaledTimeGetter();
-#endif
         }
     }
 
     public static double RealtimeSinceStartupAsDouble {
         get {
-#if IL2CPP
-            return Time.realtimeSinceStartupAsDouble;
-#else
             return RealtimeGetter();
-#endif
         }
     }
 
     public static double FixedTimeAsDouble {
         get {
-#if IL2CPP
-            return Time.fixedTimeAsDouble;
-#else
             return FixedTimeGetter();
-#endif
         }
     }
 
     public static double FixedUnscaledTimeAsDouble {
         get {
-#if IL2CPP
-            return Time.fixedUnscaledTimeAsDouble;
-#else
             return FixedUnscaledTimeGetter();
-#endif
         }
     }
 }
@@ -193,18 +171,13 @@ public static class ColliderCompat {
 /// which does not exist on old Unity UI (pre-2020.2, e.g. Superliminal on 2019.4).
 /// </summary>
 public static class LayoutGroupCompat {
-#if !IL2CPP
     private static readonly PropertyInfo ReverseArrangementProp =
         typeof(HorizontalOrVerticalLayoutGroup).GetProperty("reverseArrangement", BindingFlags.Public | BindingFlags.Instance);
-#endif
 
     public static bool GetReverseArrangement(HorizontalOrVerticalLayoutGroup group) {
         if (group == null) {
             return false;
         }
-#if IL2CPP
-        return group.reverseArrangement;
-#else
         if (ReverseArrangementProp == null) {
             return false;
         }
@@ -213,16 +186,12 @@ public static class LayoutGroupCompat {
         } catch {
             return false;
         }
-#endif
     }
 
     public static void SetReverseArrangement(HorizontalOrVerticalLayoutGroup group, bool value) {
         if (group == null) {
             return;
         }
-#if IL2CPP
-        group.reverseArrangement = value;
-#else
         if (ReverseArrangementProp == null) {
             return;
         }
@@ -230,6 +199,5 @@ public static class LayoutGroupCompat {
             ReverseArrangementProp.SetValue(group, value, null);
         } catch {
         }
-#endif
     }
 }

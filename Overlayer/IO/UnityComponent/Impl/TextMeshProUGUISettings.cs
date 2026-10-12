@@ -18,6 +18,7 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
     public FxValue<string> Text = FxValue<string>.FromValue("Text");
     public FxValue<GradientColor> Color = new(new GradientColor(UnityEngine.Color.white, true));
     public FxValue<string> FontKey = FxValue<string>.FromValue((string)null);
+    public FxValue<string> SpriteKey = FxValue<string>.FromValue((string)null);
     public FxValue<float> FontSize = new(48f);
     public FxValue<bool> RichText = new(true);
     public FxValue<TextAlignmentOptions> Alignment = new(TextAlignmentOptions.Center);
@@ -42,6 +43,7 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
     private string _lastText = "Text";
     private GradientColor _lastColor = new(UnityEngine.Color.white, true);
     private string _lastFontKey;
+    private string _lastSpriteKey;
     private float _lastFontSize = 48f;
     private bool _lastRichText = true;
     private TextAlignmentOptions _lastAlignment = TextAlignmentOptions.Center;
@@ -68,6 +70,7 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
         || FxUtil.HasFx(Text)
         || FxUtil.HasFx(Color)
         || FxUtil.HasFx(FontKey)
+        || FxUtil.HasFx(SpriteKey)
         || FxUtil.HasFx(FontSize)
         || FxUtil.HasFx(RichText)
         || FxUtil.HasFx(Alignment)
@@ -98,6 +101,7 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
         _lastText = Text.Value;
         _lastColor = Color.Value;
         _lastFontKey = FontKey.Value;
+        _lastSpriteKey = SpriteKey.Value;
         _lastFontSize = FontSize.Value;
         _lastRichText = RichText.Value;
         _lastAlignment = Alignment.Value;
@@ -139,6 +143,17 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
         }
         com.fontSize = _lastFontSize;
         com.richText = _lastRichText;
+        // Named sprite asset first; otherwise fall back to the project's default.
+        TMP_SpriteAsset keyed = Overlayer.Resource.ResourceManager.FindSpriteAsset(_lastSpriteKey);
+        if (keyed != null) {
+            com.spriteAsset = keyed;
+        } else if (com.spriteAsset == null) {
+            try {
+                var defSprite = TMP_Settings.defaultSpriteAsset;
+                if (defSprite != null) com.spriteAsset = defSprite;
+            } catch {
+            }
+        }
         com.alignment = _lastAlignment;
         TmpCompat.SetWrappingMode(com, _lastTextWrappingMode);
         com.lineSpacing = _lastLineSpacing;
@@ -235,6 +250,7 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
         Text.Value = com.text;
         Color.Value = com.colorGradient;
         FontKey.Value = UserResourceManager.Fnt.Keys.FirstOrDefault(key => !O5cpFormat.IsPackageKey(key) && UserResourceManager.Fnt.TryGet(key, out var font) && font == com.font);
+        SpriteKey.Value = com.spriteAsset != null ? com.spriteAsset.name : null;
         FontSize.Value = com.fontSize;
         RichText.Value = com.richText;
         Alignment.Value = com.alignment;
@@ -264,6 +280,7 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
         _lastText = Text.Value;
         _lastColor = Color.Value;
         _lastFontKey = FontKey.Value;
+        _lastSpriteKey = SpriteKey.Value;
         _lastFontSize = FontSize.Value;
         _lastRichText = RichText.Value;
         _lastAlignment = Alignment.Value;
@@ -304,6 +321,7 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
         _lastText = Text.Value;
         changed |= FxUtil.ApplyIfChanged(ref _lastColor, Color.Value, _ => { });
         changed |= FxUtil.ApplyIfChanged(ref _lastFontKey, FontKey.Value, _ => { });
+        changed |= FxUtil.ApplyIfChanged(ref _lastSpriteKey, SpriteKey.Value, _ => { });
         changed |= FxUtil.ApplyIfChanged(ref _lastFontSize, FontSize.Value, _ => { });
         changed |= FxUtil.ApplyIfChanged(ref _lastRichText, RichText.Value, _ => { });
         changed |= FxUtil.ApplyIfChanged(ref _lastAlignment, Alignment.Value, _ => { });
@@ -339,6 +357,7 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
             [nameof(Text)] = IOUtils.WriteFx(Text),
             [nameof(Color)] = IOUtils.WriteFx(Color),
             [nameof(FontKey)] = IOUtils.WriteFx(FontKey),
+            [nameof(SpriteKey)] = IOUtils.WriteFx(SpriteKey),
             [nameof(FontSize)] = IOUtils.WriteFx(FontSize),
             [nameof(RichText)] = IOUtils.WriteFx(RichText),
             [nameof(Alignment)] = IOUtils.WriteFx(Alignment),
@@ -399,6 +418,7 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
         OutlineSoftness = IOUtils.ReadFx(token, nameof(OutlineSoftness), OutlineSoftness);
         AutoSize = IOUtils.ReadFx(token, nameof(AutoSize), AutoSize);
         FontKey = IOUtils.ReadFx(token, nameof(FontKey), FontKey);
+        SpriteKey = IOUtils.ReadFx(token, nameof(SpriteKey), SpriteKey);
         FontSizeRange = IOUtils.ReadFx(token, nameof(FontSizeRange), FontSizeRange);
     }
 
@@ -428,6 +448,7 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
             Text = Text?.Copy(),
             Color = Color?.Copy(),
             FontKey = FontKey?.Copy(),
+            SpriteKey = SpriteKey?.Copy(),
             FontSize = FontSize?.Copy(),
             RichText = RichText?.Copy(),
             Alignment = Alignment?.Copy(),

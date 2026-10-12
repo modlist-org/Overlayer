@@ -310,6 +310,7 @@ internal sealed class OvInspectorBuilder(
             apply();
         }, () => obj.TextUpdater?.Engine);
         FontDropDown(card, cfg);
+        SpriteAssetDropDown(card, cfg);
         FxSlider(card, "Font Size", cfg.FontSize, 48f, 1f, 512f, "text_size", "F1");
         FxToggle(card, "Rich Text", cfg.RichText, true, "text_rich");
         FxToggle(card, "Auto Size", cfg.AutoSize, false, "text_auto_size");
@@ -3307,6 +3308,31 @@ internal sealed class OvInspectorBuilder(
             }, id);
             Track(dropdown);
         }, id, dropdown: true);
+    }
+
+    private void SpriteAssetDropDown(Transform parent, TextMeshProUGUISettings cfg) {
+        const string none = "Default";
+        List<string> options = Overlayer.Resource.ResourceManager.SpriteAssetNames();
+        try {
+            if (Overlayer.IO.User.Impl.UserSpriteAsset.HasSprites() && !options.Contains(Overlayer.IO.User.Impl.UserSpriteAsset.AssetKey)) {
+                options.Insert(0, Overlayer.IO.User.Impl.UserSpriteAsset.AssetKey);
+            }
+        } catch {
+        }
+        if (!string.IsNullOrEmpty(cfg.SpriteKey.Value) && !options.Contains(cfg.SpriteKey.Value)) {
+            options.Insert(0, cfg.SpriteKey.Value);
+        }
+        options.Insert(0, none);
+
+        string current = string.IsNullOrEmpty(cfg.SpriteKey.Value) ? none : cfg.SpriteKey.Value;
+        FxBlock(parent, "Sprite Asset", cfg.SpriteKey, group => {
+            var row = O5Factory.Row(O5KitAdapters.Ctx, group, 50f);
+            var dropdown = O5Factory.DropDown(O5KitAdapters.Ctx, row, none, current, options, option => $"{InspectorLabel("Sprite Asset")}: {(option == none ? InspectorLabel(option) : option)}", selected => {
+                cfg.SpriteKey.Value = selected == none ? null : selected;
+                ApplyAndSave();
+            }, "text_sprite_asset");
+            Track(dropdown);
+        }, "text_sprite_asset", dropdown: true);
     }
 
     private void FontDropDown(Transform parent, TextMeshProUGUISettings cfg) {

@@ -1,4 +1,5 @@
 using Overlayer.Core;
+using Overlayer.IO.User.Impl;
 using System.Reflection;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -106,8 +107,73 @@ public sealed class ResourceManager(Assembly assembly, string resourcePath) : ID
     /// first asset found. Never cached here: the caller decides, and a miss
     /// retries later (game fonts may still be streaming in).
     /// </summary>
-    internal static TMP_FontAsset StealGameFont() {
+    /// <summary>
+    /// Finds a game-shipped sprite asset by name (case-insensitive).
+    /// Used for the per-text SpriteKey setting; null when absent.
+    /// </summary>
+    internal static TMP_SpriteAsset FindSpriteAsset(string name) {
+        if (string.IsNullOrEmpty(name)) {
+            return null;
+        }
         try {
+            TMP_SpriteAsset[] all = Resources.FindObjectsOfTypeAll<TMP_SpriteAsset>();
+            if (all == null) {
+                return null;
+            }
+            foreach (var asset in all) {
+                if (asset == null) {
+                    continue;
+                }
+                string assetName;
+                try {
+                    assetName = asset.name;
+                } catch {
+                    continue;
+                }
+                if (string.Equals(assetName, name, StringComparison.OrdinalIgnoreCase)) {
+                    return asset;
+                }
+            }
+        } catch {
+        }
+        // Runtime asset built from user sprites (named AssetKey at build time).
+        if (string.Equals(name, UserSpriteAsset.AssetKey, StringComparison.OrdinalIgnoreCase)) {
+            try {
+                return UserSpriteAsset.GetOrBuild();
+            } catch {
+            }
+        }
+        return null;
+    }
+
+    internal static List<string> SpriteAssetNames() {
+        var names = new List<string>();
+        try {
+            TMP_SpriteAsset[] all = Resources.FindObjectsOfTypeAll<TMP_SpriteAsset>();
+            if (all == null) {
+                return names;
+            }
+            foreach (var asset in all) {
+                if (asset == null) {
+                    continue;
+                }
+                string assetName;
+                try {
+                    assetName = asset.name;
+                } catch {
+                    continue;
+                }
+                if (!string.IsNullOrEmpty(assetName) && !names.Contains(assetName)) {
+                    names.Add(assetName);
+                }
+            }
+        } catch {
+        }
+        names.Sort(StringComparer.OrdinalIgnoreCase);
+        return names;
+    }
+
+    internal static TMP_FontAsset StealGameFont() {        try {
             // Project default first: guaranteed fully baked (TMP itself falls back to it).
             try {
                 var def = TMP_Settings.defaultFontAsset;

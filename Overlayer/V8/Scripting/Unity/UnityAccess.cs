@@ -163,7 +163,7 @@ public sealed class UnityAccess {
             if (ilType == null) {
                 return null;
             }
-            return UnityEngine.Object.FindObjectOfType(ilType, false);
+            return FindObjectOfTypeCompat(ilType);
 #else
             return UnityEngine.Object.FindObjectOfType(type);
 #endif
@@ -172,6 +172,22 @@ public sealed class UnityAccess {
             return null;
         }
     }
+
+#if ML && IL2CPP
+    // 2-arg FindObjectOfType(Type, bool) needs Unity 2020.1+; old IL2CPP games fall back to active-only.
+    private static object FindObjectOfTypeCompat(Il2CppSystem.Type ilType) {
+        try {
+            var m = typeof(UnityEngine.Object).GetMethod("FindObjectOfType", [typeof(Il2CppSystem.Type), typeof(bool)]);
+            if (m != null) {
+                return m.Invoke(null, [ilType, false]);
+            }
+        } catch {
+        }
+#pragma warning disable CS0618
+        return UnityEngine.Object.FindObjectOfType(ilType);
+#pragma warning restore CS0618
+    }
+#endif
 
     // Same names as GameObject, for types JS can't name directly.
     public object AddComponent(object obj, string typeName) {
