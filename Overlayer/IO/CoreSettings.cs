@@ -13,6 +13,7 @@ public sealed class CoreSettings : ISettingsFile {
     public FxValue<bool> Tooltip = new(true);
     public FxValue<bool> AdvancedTooltip = new(false);
     public FxValue<bool> MiddleClickToDefault = new(true);
+    public FxValue<bool> Enable3DFeatures = new(false);
     public FxValue<float> UIScale = new(1.0f);
     public FxValue<float> SliderSensitivity = new(1.0f);
     public FxValue<float> AnimationSpeed = new(1.0f);
@@ -33,6 +34,7 @@ public sealed class CoreSettings : ISettingsFile {
             [nameof(Tooltip)] = IOUtils.WriteFx(Tooltip),
             [nameof(AdvancedTooltip)] = IOUtils.WriteFx(AdvancedTooltip),
             [nameof(MiddleClickToDefault)] = IOUtils.WriteFx(MiddleClickToDefault),
+            [nameof(Enable3DFeatures)] = IOUtils.WriteFx(Enable3DFeatures),
             [nameof(UIScale)] = IOUtils.WriteFx(UIScale),
             [nameof(SliderSensitivity)] = IOUtils.WriteFx(SliderSensitivity),
             [nameof(AnimationSpeed)] = IOUtils.WriteFx(AnimationSpeed),
@@ -54,6 +56,7 @@ public sealed class CoreSettings : ISettingsFile {
         Tooltip = IOUtils.ReadFx(token, nameof(Tooltip), Tooltip);
         AdvancedTooltip = IOUtils.ReadFx(token, nameof(AdvancedTooltip), AdvancedTooltip);
         MiddleClickToDefault = IOUtils.ReadFx(token, nameof(MiddleClickToDefault), MiddleClickToDefault);
+        Enable3DFeatures = IOUtils.ReadFx(token, nameof(Enable3DFeatures), Enable3DFeatures);
         UIScale = IOUtils.ReadFx(token, nameof(UIScale), UIScale);
         SliderSensitivity = IOUtils.ReadFx(token, nameof(SliderSensitivity), SliderSensitivity);
         AnimationSpeed = IOUtils.ReadFx(token, nameof(AnimationSpeed), AnimationSpeed);

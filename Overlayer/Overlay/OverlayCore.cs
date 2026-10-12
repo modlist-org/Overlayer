@@ -12,22 +12,36 @@ public static class OverlayCore {
     public static Transform Transform => Core.transform;
 
     public static readonly List<OvCanvas> Canvases = [];
+    // Top-level 3D objects (no canvas). Saved under Objects/*.json.
+    // shortcut: excluded from .o5cp export; extend O5cpExporter to include them.
+    public static readonly List<OvObject> Objects = [];
 
     private static string SaveDir => Path.Combine(MainCore.Paths?.RootPath ?? Path.Combine(Environment.CurrentDirectory, "UserData", "Overlayer"), "Canvases");
+    private static string ObjectSaveDir => Path.Combine(SaveDir, "Objects");
     public static string ExportDir => Path.Combine(SaveDir, "Export");
     private static int pendingLayoutRefreshes;
     private static readonly HashSet<string> knownFiles = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly HashSet<string> knownObjectFiles = new(StringComparer.OrdinalIgnoreCase);
 
     // Fired whenever the canvas list changes (create/import/clone/delete),
     // including changes made programmatically outside the canvas UI
     // (e.g. module importers), so tile lists can refresh themselves.
     public static event Action OnCanvasesChanged;
+    public static event Action OnObjectsChanged;
 
     private static void NotifyChanged() {
         try {
             OnCanvasesChanged?.Invoke();
         } catch (Exception e) {
             MainCore.Log.Err($"[{nameof(OverlayCore)}] Canvas change notification failed: {e.Message}");
+        }
+    }
+
+    private static void NotifyObjects() {
+        try {
+            OnObjectsChanged?.Invoke();
+        } catch (Exception e) {
+            MainCore.Log.Err($"[{nameof(OverlayCore)}] Object change notification failed: {e.Message}");
         }
     }
 
@@ -45,6 +59,7 @@ public static class OverlayCore {
         Core.transform.SetParent(parent.transform, false);
 
         LoadAllCanvases();
+        LoadAllObjects();
         PackageStore.Initialize();
         PresetStore.Initialize();
     }
@@ -71,6 +86,23 @@ public static class OverlayCore {
                 }
             }
         }
+        for (int i = Objects.Count - 1; i >= 0; i--) {
+            try {
+                var o = Objects[i];
+                if (o == null || o.GameObject == null) {
+                    try {
+                        o?.Dispose();
+                    } catch {
+                    }
+                    Objects.RemoveAt(i);
+                }
+            } catch {
+                try {
+                    Objects.RemoveAt(i);
+                } catch {
+                }
+            }
+        }
         try {
             Core = null;
         } catch {
@@ -85,6 +117,56 @@ public static class OverlayCore {
         Canvases.Add(canvas);
         NotifyChanged();
         return canvas;
+    }
+
+    public static OvObject CreateEmptyObject() {
+        var obj = new OvObject(bare: true);
+        obj.GameObject.transform.SetParent(Transform, false);
+        obj.Config.Name.Value = "EmptyObject";
+        obj.ApplyComponent();
+        obj.ApplyConfig();
+        Objects.Add(obj);
+        NotifyObjects();
+        return obj;
+    }
+
+    public static OvObject CloneObject(OvObject source) {
+        if (source == null) {
+            return null;
+        }
+        try {
+            var token = Newtonsoft.Json.Linq.JToken.Parse(source.Serialize().ToString());
+            var obj = new OvObject(bare: token["Config"]?["RectTransformConfig"] == null);
+            obj.Deserialize(token);
+            if (!obj.Config.Name.Value.EndsWith(" Copy")) {
+                obj.Config.Name.Value = $"{obj.Config.Name.Value} Copy";
+            }
+            obj.GameObject.transform.SetParent(Transform, false);
+            obj.ApplyComponent();
+            obj.ApplyConfig();
+            int index = Objects.IndexOf(source);
+            Objects.Insert(index >= 0 ? index + 1 : Objects.Count, obj);
+            for (int i = 0; i < Objects.Count; i++) {
+                Objects[i].GameObject.transform.SetSiblingIndex(i);
+            }
+            SaveAllObjects();
+            NotifyObjects();
+            return obj;
+        } catch (Exception e) {
+            MainCore.Log.Err($"[{nameof(OverlayCore)}] Failed to clone object: {e.Message}");
+            return null;
+        }
+    }
+
+    public static bool DeleteObject(OvObject obj) {
+        if (obj == null || !Objects.Remove(obj)) {
+            return false;
+        }
+
+        obj.Dispose();
+        SaveAllObjects();
+        NotifyObjects();
+        return true;
     }
 
     public static string ExportCanvas(OvCanvas canvas, string filePath) {
@@ -253,6 +335,9 @@ public static class OverlayCore {
         foreach (var canvas in Canvases) {
             canvas?.RefreshFx();
         }
+        foreach (var obj in Objects) {
+            obj?.RefreshFx();
+        }
         PackageStore.Tick();
 
         if (pendingLayoutRefreshes <= 0 || Core == null) {
@@ -308,12 +393,83 @@ public static class OverlayCore {
         }
     }
 
+    public static void SaveAllObjects() {
+        try {
+            if (Objects.Count == 0 && !Directory.Exists(ObjectSaveDir)) {
+                return;
+            }
+            if (!Directory.Exists(ObjectSaveDir)) {
+                Directory.CreateDirectory(ObjectSaveDir);
+            }
+
+            var usedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            int autoIndex = 0;
+            foreach (var obj in Objects) {
+                if (obj == null) {
+                    continue;
+                }
+                string fileName = null;
+                if (!string.IsNullOrEmpty(obj?.SourceFile)) {
+                    string sourceName = Path.GetFileName(obj.SourceFile);
+                    if (!string.IsNullOrEmpty(sourceName) && !usedNames.Contains(sourceName)) {
+                        fileName = sourceName;
+                    }
+                }
+                while (fileName == null) {
+                    string candidate = $"Object{autoIndex}.json";
+                    autoIndex++;
+                    if (!usedNames.Contains(candidate)) {
+                        fileName = candidate;
+                    }
+                }
+                usedNames.Add(fileName);
+                string filePath = Path.Combine(ObjectSaveDir, fileName);
+                File.WriteAllText(filePath, obj.Serialize().ToString());
+                obj.SourceFile = filePath;
+            }
+
+            foreach (string staleFile in Directory.GetFiles(ObjectSaveDir, "*.json")) {
+                string staleName = Path.GetFileName(staleFile);
+                if (!usedNames.Contains(staleName) && knownObjectFiles.Contains(staleName)) {
+                    File.Delete(staleFile);
+                }
+            }
+        } catch (Exception e) {
+            MainCore.Log.Err($"[{nameof(OverlayCore)}] Failed to save all objects: {e}");
+        }
+    }
+
+    private static void LoadAllObjects() {
+        if (!Directory.Exists(ObjectSaveDir)) {
+            return;
+        }
+
+        var files = Directory.GetFiles(ObjectSaveDir, "*.json").OrderBy(Path.GetFileName);
+
+        foreach (var file in files) {
+            knownObjectFiles.Add(Path.GetFileName(file));
+            var wrapper = new SettingsFile<OvObject>(file);
+
+            if (wrapper.Load()) {
+                var obj = wrapper.Data;
+                obj.SourceFile = file;
+                obj.GameObject.transform.SetParent(Transform, false);
+                obj.ApplyComponent();
+                obj.ApplyConfig();
+                Objects.Add(obj);
+            } else {
+                wrapper.Dispose();
+            }
+        }
+    }
+
     public static void Dispose() {
         if (Core == null) {
             return;
         }
 
         SaveAllCanvases();
+        SaveAllObjects();
         PackageStore.UnloadAll();
 
         for (int i = Canvases.Count - 1; i >= 0; i--) {
@@ -321,6 +477,12 @@ public static class OverlayCore {
         }
 
         Canvases.Clear();
+
+        for (int i = Objects.Count - 1; i >= 0; i--) {
+            Objects[i].Dispose();
+        }
+
+        Objects.Clear();
         pendingLayoutRefreshes = 0;
 
         GameObject core = Core;

@@ -33,6 +33,8 @@ public partial class OvCanvasSettingPage : IDisposable {
     private readonly Action onBackAction;
 
     private OvCanvas currentCanvas;
+    private OvObject rootObject;
+    private O5Button add3DButton;
     private OvObject selectedObject;
     private CanvasTabState activeTab;
     private readonly System.Collections.Generic.List<CanvasTabState> canvasTabs = [];
@@ -269,15 +271,17 @@ public partial class OvCanvasSettingPage : IDisposable {
         RectTransform emptyRow = CreateHierarchyControlRow(hierCreateToolbar.transform);
 
         var btnEmpty = O5Factory.Button(O5KitAdapters.Ctx, emptyRow, () => {
-            if (currentCanvas == null) {
+            OvObject newObj = CreateChildObject();
+            if (newObj == null) {
                 return;
             }
 
-            OvObject newObj = selectedObject != null
-                ? selectedObject.CreateOvObject()
-                : currentCanvas.CreateOvObject();
-
             newObj.Config.Name = "EmptyObject";
+            if (MainCore.Conf.Enable3DFeatures.Value && newObj.Config.RectTransformConfig != null) {
+                newObj.Config.RectTransformConfig = null;
+                newObj.Config.CanvasGroupConfig = null;
+                newObj.Config.TransformConfig ??= new TransformSettings();
+            }
             newObj.ApplyComponent();
             newObj.ApplyConfig();
 
@@ -288,20 +292,46 @@ public partial class OvCanvasSettingPage : IDisposable {
         btnEmpty.Rect.offsetMax = Vector2.zero;
         permanentUiObjects.Add(btnEmpty);
 
+        add3DButton = O5Factory.Button(O5KitAdapters.Ctx, emptyRow, () => {
+            var newObj = new OvObject(bare: true);
+            if (selectedObject != null) {
+                selectedObject.Attach(newObj);
+            } else if (currentCanvas != null) {
+                currentCanvas.Attach(newObj);
+            } else if (rootObject != null) {
+                rootObject.Attach(newObj);
+            } else {
+                newObj.Dispose();
+                return;
+            }
+
+            newObj.Config.Name = "CubeObject";
+            newObj.Config.MeshFilterConfig = new MeshFilterSettings();
+            newObj.Config.MeshRendererConfig = new MeshRendererSettings();
+            newObj.ApplyComponent();
+            newObj.ApplyConfig();
+
+            SelectObject(newObj);
+            SaveConfig();
+        }, MainCore.Spr.Get(UISprite.Box128), "btn_hier_add_3d", height: 36f);
+
+        add3DButton.Rect.offsetMax = Vector2.zero;
+        add3DButton.Rect.gameObject.SetActive(MainCore.Conf.Enable3DFeatures.Value);
+        permanentUiObjects.Add(add3DButton);
+
 
         // Text / Image Row
         RectTransform createRow = CreateHierarchyControlRow(hierCreateToolbar.transform);
 
         var btnText = O5Factory.Button(O5KitAdapters.Ctx, createRow, () => {
-            if (currentCanvas == null) {
+            OvObject newObj = CreateChildObject();
+            if (newObj == null) {
                 return;
             }
 
-            OvObject newObj = selectedObject != null
-                ? selectedObject.CreateOvObject()
-                : currentCanvas.CreateOvObject();
-
             newObj.Config.Name = "TextObject";
+            newObj.Config.RectTransformConfig ??= new RectTransformSettings();
+            newObj.Config.CanvasGroupConfig ??= new CanvasGroupSettings();
             newObj.Config.TextConfig = new TextMeshProUGUISettings();
             newObj.Config.TextEngineConfig = new OvTextSettings();
             newObj.Config.ContentSizeFitterConfig ??= new ContentSizeFitterSettings();
@@ -317,15 +347,14 @@ public partial class OvCanvasSettingPage : IDisposable {
         permanentUiObjects.Add(btnText);
 
         var btnImage = O5Factory.Button(O5KitAdapters.Ctx, createRow, () => {
-            if (currentCanvas == null) {
+            OvObject newObj = CreateChildObject();
+            if (newObj == null) {
                 return;
             }
 
-            OvObject newObj = selectedObject != null
-                ? selectedObject.CreateOvObject()
-                : currentCanvas.CreateOvObject();
-
             newObj.Config.Name = "ImageObject";
+            newObj.Config.RectTransformConfig ??= new RectTransformSettings();
+            newObj.Config.CanvasGroupConfig ??= new CanvasGroupSettings();
             newObj.Config.ImageConfig = new ImageSettings();
 
             newObj.ApplyComponent();
@@ -357,7 +386,15 @@ public partial class OvCanvasSettingPage : IDisposable {
 
         // Clone
         var btnClone = O5Factory.Button(O5KitAdapters.Ctx, hierCtrlToolbar.transform, () => {
-            if (selectedObject == null || currentCanvas == null) {
+            if (selectedObject == null) {
+                if (currentCanvas == null && rootObject != null) {
+                    if (OverlayCore.CloneObject(rootObject) != null) {
+                        SaveConfig();
+                    }
+                }
+                return;
+            }
+            if (currentCanvas == null && rootObject == null) {
                 return;
             }
 
@@ -442,6 +479,15 @@ public partial class OvCanvasSettingPage : IDisposable {
             }
             // ------------------------------------------
 
+            if (toDelete == rootObject && currentCanvas == null) {
+                OverlayCore.DeleteObject(toDelete);
+                rootObject = null;
+                selectedObject = null;
+                Close(true);
+                onBackAction?.Invoke();
+                return;
+            }
+
             if (toDelete.Parent == null) {
                 currentCanvas?.Detach(toDelete);
             }
@@ -499,6 +545,9 @@ public partial class OvCanvasSettingPage : IDisposable {
         }
 
         if (obj.Parent == null) {
+            if (currentCanvas == null) {
+                return;
+            }
             int index = currentCanvas.OvObjects.IndexOf(obj);
             if (index < 0) {
                 return;
@@ -557,6 +606,48 @@ public partial class OvCanvasSettingPage : IDisposable {
         ActivateCanvasTab(tab, noAnimate);
     }
 
+    public void OpenObject(OvObject obj, bool noAnimate = false) {
+        if (obj == null || obj.GameObject == null) {
+            return;
+        }
+
+        SaveActiveTabState();
+        activeTab = null;
+        currentCanvas = null;
+        rootObject = obj;
+        selectedObject = null;
+        collapsedObjects.Clear();
+        multiSelected.Clear();
+        DisarmDeleteButton();
+
+        RebuildHierarchy();
+        RebuildInspector();
+        RebuildCanvasTabs();
+
+        bool wasActive = GameObject.activeSelf;
+        GameObject.SetActive(true);
+        if (noAnimate) {
+            CanvasGroup.alpha = 1f;
+            CanvasGroup.blocksRaycasts = true;
+        } else if (!wasActive) {
+            canvasFadeTween?.Kill();
+            canvasFadeTween = CanvasGroup.TFade(1f, 0.25f, O5Ease.OutCubic, () => CanvasGroup.blocksRaycasts = true);
+        }
+    }
+
+    private OvObject CreateChildObject() {
+        if (selectedObject != null) {
+            return selectedObject.CreateOvObject();
+        }
+        if (currentCanvas != null) {
+            return currentCanvas.CreateOvObject();
+        }
+        if (rootObject != null) {
+            return rootObject.CreateOvObject();
+        }
+        return null;
+    }
+
     private void SaveActiveTabState() {
         if (activeTab == null) {
             return;
@@ -581,6 +672,7 @@ public partial class OvCanvasSettingPage : IDisposable {
         SaveActiveTabState();
         activeTab = tab;
         currentCanvas = tab.Canvas;
+        rootObject = null;
         selectedObject = tab.SelectedObject;
         collapsedObjects.Clear();
         collapsedObjects.UnionWith(tab.CollapsedObjects);
@@ -626,6 +718,7 @@ public partial class OvCanvasSettingPage : IDisposable {
         canvasTabs.Clear();
         activeTab = null;
         currentCanvas = null;
+        rootObject = null;
         selectedObject = null;
         collapsedObjects.Clear();
         multiSelected.Clear();
@@ -1024,7 +1117,10 @@ e as PointerEventData;
         return row;
     }
 
-    private void SaveConfig() => OverlayCore.SaveAllCanvases();
+    private void SaveConfig() {
+        OverlayCore.SaveAllCanvases();
+        OverlayCore.SaveAllObjects();
+    }
 
     private void RebuildHierarchy() {
         draggedObject = null;
@@ -1039,21 +1135,43 @@ e as PointerEventData;
             UnityEngine.Object.Destroy(hierarchyContent.GetChild(i).gameObject);
         }
 
-        if (currentCanvas == null) {
+        if (currentCanvas == null && rootObject == null) {
             return;
         }
 
-        // Render Canvas root first
-        RenderCanvasRootItem();
+        if (add3DButton != null) {
+            add3DButton.Rect.gameObject.SetActive(MainCore.Conf.Enable3DFeatures.Value);
+        }
 
-        for (int i = 0; i < currentCanvas.OvObjects.Count; i++) {
-            RenderHierarchyItem(currentCanvas.OvObjects[i], 0);
+        if (currentCanvas != null) {
+            // Render Canvas root first
+            RenderCanvasRootItem();
+
+            for (int i = 0; i < currentCanvas.OvObjects.Count; i++) {
+                RenderHierarchyItem(currentCanvas.OvObjects[i], 0);
+            }
+        } else {
+            RenderObjectRootItem();
+
+            foreach (var child in rootObject.Children) {
+                RenderHierarchyItem(child, 0);
+            }
         }
 
         LayoutRebuilder.ForceRebuildLayoutImmediate(hierarchyContent);
     }
 
-    private void RenderCanvasRootItem() {
+    private void RenderCanvasRootItem() => RenderRootItem(string.Format(
+        MainCore.Tr.Get("CANVAS_ROOT", "Canvas: {0}"),
+        currentCanvas.Config.Name
+    ));
+
+    private void RenderObjectRootItem() => RenderRootItem(string.Format(
+        MainCore.Tr.Get("OBJECT_ROOT", "Object: {0}"),
+        rootObject.Config.Name
+    ));
+
+    private void RenderRootItem(string title) {
         var row = O5Factory.Row(O5KitAdapters.Ctx, hierarchyContent, 50f);
 
         // Add Horizontal Layout to Row to organize indent & button
@@ -1078,10 +1196,7 @@ e as PointerEventData;
         btnImg.color = (selectedObject == null) ? UIColors.ObjectActive : UIColors.ObjectBG;
 
         var tmp = O5Factory.ControlText(O5KitAdapters.Ctx, itemBtn.transform, 24f);
-        tmp.text = string.Format(
-            MainCore.Tr.Get("CANVAS_ROOT", "Canvas: {0}"),
-            currentCanvas.Config.Name
-        );
+        tmp.text = title;
         tmp.fontSize = 20f;
         tmp.color = Color.white;
         tmp.alignment = TextAlignmentOptions.Left;
@@ -1377,12 +1492,21 @@ e as PointerEventData;
 
         if (moving.Parent != null) {
             moving.Detach();
-        } else {
+        } else if (currentCanvas != null) {
             currentCanvas.Detach(moving);
+        } else {
+            // A top-level edited object stays where it is.
+            RebuildHierarchy();
+            RebuildInspector();
+            return;
         }
 
         if (canvas) {
-            currentCanvas.Attach(moving);
+            if (currentCanvas != null) {
+                currentCanvas.Attach(moving);
+            } else if (rootObject != null) {
+                rootObject.Attach(moving);
+            }
         } else if (zone == HierarchyDropZone.Inside) {
             target.Attach(moving);
         } else if (target.Parent != null) {
@@ -1390,12 +1514,15 @@ e as PointerEventData;
             parent.Attach(moving);
             int index = parent.Children.IndexOf(target) + (zone == HierarchyDropZone.After ? 1 : 0);
             parent.SetChildIndex(moving, index);
-        } else {
+        } else if (currentCanvas != null) {
             currentCanvas.Attach(moving);
             currentCanvas.OvObjects.Remove(moving);
             int index = currentCanvas.OvObjects.IndexOf(target) + (zone == HierarchyDropZone.After ? 1 : 0);
             currentCanvas.OvObjects.Insert(MathCompat.Clamp(index, 0, currentCanvas.OvObjects.Count), moving);
             SyncRootSiblingOrder();
+        } else if (rootObject != null) {
+            rootObject.Attach(moving);
+            rootObject.SetChildIndex(moving, zone == HierarchyDropZone.Before ? 0 : rootObject.Children.Count - 1);
         }
 
         RebuildHierarchy();
@@ -1420,7 +1547,8 @@ e as PointerEventData;
         return false;
     }
 
-    // Places obj right after anchor (same parent), or at the end of the canvas root when anchor is null.
+    // Places obj right after anchor (same parent), at the end of the canvas root,
+    // or at the end of the edited top-level object's children when anchor is null.
     private void InsertAfter(OvObject anchor, OvObject obj) {
         if (anchor?.Parent != null) {
             OvObject parent = anchor.Parent;
@@ -1431,18 +1559,39 @@ e as PointerEventData;
             return;
         }
 
-        int rootIndex = anchor != null ? currentCanvas.OvObjects.IndexOf(anchor) : -1;
-        currentCanvas.Attach(obj);
-        if (rootIndex >= 0) {
-            currentCanvas.OvObjects.Remove(obj);
-            currentCanvas.OvObjects.Insert(rootIndex + 1, obj);
+        if (currentCanvas != null) {
+            int rootIndex = anchor != null ? currentCanvas.OvObjects.IndexOf(anchor) : -1;
+            currentCanvas.Attach(obj);
+            if (rootIndex >= 0) {
+                currentCanvas.OvObjects.Remove(obj);
+                currentCanvas.OvObjects.Insert(rootIndex + 1, obj);
+            }
+            SyncRootSiblingOrder();
+            return;
         }
-        SyncRootSiblingOrder();
+
+        if (rootObject != null) {
+            int childIndex = anchor != null ? rootObject.Children.IndexOf(anchor) : -1;
+            rootObject.Attach(obj);
+            if (childIndex >= 0) {
+                rootObject.Children.Remove(obj);
+                rootObject.Children.Insert(childIndex + 1, obj);
+            }
+            SyncRootSiblingOrder();
+        }
     }
 
     private void SyncRootSiblingOrder() {
-        for (int i = 0; i < currentCanvas.OvObjects.Count; i++) {
-            currentCanvas.OvObjects[i].GameObject.transform.SetSiblingIndex(i);
+        if (currentCanvas != null) {
+            for (int i = 0; i < currentCanvas.OvObjects.Count; i++) {
+                currentCanvas.OvObjects[i].GameObject.transform.SetSiblingIndex(i);
+            }
+            return;
+        }
+        if (rootObject != null) {
+            for (int i = 0; i < rootObject.Children.Count; i++) {
+                rootObject.Children[i].GameObject.transform.SetSiblingIndex(i);
+            }
         }
     }
 
@@ -1459,16 +1608,21 @@ e as PointerEventData;
             }
         }
 
-        if (currentCanvas == null) {
+        if (currentCanvas == null && rootObject == null) {
             return;
         }
 
-        Action apply = selectedObject != null
-            ? () => {
+        Action apply;
+        if (selectedObject != null) {
+            apply = () => {
                 selectedObject.ApplyConfig();
                 PropagateMultiSelect();
-            }
-        : currentCanvas.ApplyConfig;
+            };
+        } else if (currentCanvas != null) {
+            apply = currentCanvas.ApplyConfig;
+        } else {
+            apply = rootObject.ApplyConfig;
+        }
         SnapshotMultiSelect();
 
         var builder = new OvInspectorBuilder(
@@ -1486,7 +1640,11 @@ e as PointerEventData;
         componentCards.Clear();
 
         if (selectedObject == null) {
-            builder.BuildCanvas(currentCanvas, _ => RebuildCanvasTabs());
+            if (currentCanvas != null) {
+                builder.BuildCanvas(currentCanvas, _ => RebuildCanvasTabs());
+            } else {
+                builder.BuildObject(rootObject);
+            }
         } else {
             builder.BuildObject(selectedObject);
         }

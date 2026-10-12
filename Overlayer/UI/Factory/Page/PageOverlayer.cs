@@ -36,6 +36,7 @@ internal static class PageOverlayer {
     private static RectTransform contentRectRef;
     private static Transform gridRef;
     private static bool subscribedToCanvases;
+    private static bool subscribedToObjects;
 
     private static OvCanvasSettingPage settingPage;
     private static OvCanvasPropsPage propsPage;
@@ -75,6 +76,11 @@ internal static class PageOverlayer {
         if (!subscribedToCanvases) {
             subscribedToCanvases = true;
             OverlayCore.OnCanvasesChanged += RefreshTilesExternal;
+        }
+
+        if (!subscribedToObjects) {
+            subscribedToObjects = true;
+            OverlayCore.OnObjectsChanged += RefreshTilesExternal;
         }
 
         var pageScroll = parent.gameObject.AddComponent<UIScrollController>();
@@ -175,6 +181,17 @@ internal static class PageOverlayer {
 
         foreach (var pkg in PackageStore.Packages) {
             CreatePackageTile(transform, pkg, () => BuildAllTiles(transform));
+        }
+
+        foreach (var obj in OverlayCore.Objects) {
+            CreateObjectTile(transform, obj, () => BuildAllTiles(transform));
+        }
+
+        if (MainCore.Conf.Enable3DFeatures.Value) {
+            CreateObjectActionTile(transform, () => {
+                OverlayCore.CreateEmptyObject();
+                BuildAllTiles(transform);
+            });
         }
 
         CreateCanvasActionTile(transform, () => {
@@ -633,6 +650,123 @@ internal static class PageOverlayer {
         ApplyTileEnabledVisual(bgImg, txt, entry.Enabled);
 
         return bg;
+    }
+
+    static GameObject CreateObjectTile(Transform parent, OvObject obj, Action onChanged = null) {
+        var bg = new GameObject(obj.Config.Name);
+        bg.transform.SetParent(parent, false);
+
+        bg.AddComponent<RectTransform>();
+
+        var bgImg = bg.AddComponent<Image>();
+        bgImg.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P2048);
+        bgImg.type = Image.Type.Sliced;
+        bgImg.color = UIColors.ObjectBG;
+        bgImg.raycastTarget = true;
+
+        GameObject textGo = new("ObjectNameText");
+        textGo.transform.SetParent(bg.transform, false);
+
+        var textRect = textGo.AddComponent<RectTransform>();
+        textRect.anchorMin = Vector2.zero;
+        textRect.anchorMax = Vector2.one;
+        textRect.offsetMin = new Vector2(20, 20);
+        textRect.offsetMax = new Vector2(-20, -20);
+
+        var txt = textGo.AddComponent<TextMeshProUGUI>();
+        txt.text = string.IsNullOrEmpty(obj.Config.Name) ? "(Empty)" : obj.Config.Name;
+        txt.font = MainCore.Res.Get<TMP_FontAsset>(Asset.SUIT_Medium);
+        txt.fontSize = 22;
+        txt.alignment = TextAlignmentOptions.Center;
+        txt.color = Color.white;
+        txt.raycastTarget = false;
+
+        var tileTrigger = bg.AddComponent<EventTrigger>();
+        var hoverImg = O5Effects.HoverOutline(O5KitAdapters.Ctx, bg, tileTrigger);
+        hoverImg.transform.SetSiblingIndex(hoverImg.transform.parent.childCount - 1);
+        hoverImg.raycastTarget = false;
+        AddTileHoverScale(bg, tileTrigger);
+
+        var tileControls = new List<GameObject>();
+
+        var bgOvent = bg.AddComponent<OventHandler>();
+        bgOvent.OnClick += btn => {
+            if (btn != InputButton.Left) {
+                return;
+            }
+            if (!obj.Config.Enabled.Value) {
+                return;
+            }
+            if (PointerOnTileControl(bg, tileControls)) {
+                return;
+            }
+            FadeCanvasGroup(viewportCanvasGroup, 0f, false);
+            settingPage?.OpenObject(obj);
+        };
+
+        OvObject armedDeleteFor = null;
+        DateTime armedDeleteAt = default;
+        var delBtn = TileButton(bg.transform, BuiltinIcon(UISprite.X128), "X",
+            $"tile_objdel_{obj.GetHashCode()}", () => { });
+        delBtn.OnClick = () => {
+            if (ShiftSkipConfirm()) {
+                OverlayCore.DeleteObject(obj);
+                onChanged?.Invoke();
+                return;
+            }
+            if (!ReferenceEquals(armedDeleteFor, obj)
+                || (DateTime.Now - armedDeleteAt).TotalSeconds > 5) {
+                armedDeleteFor = obj;
+                armedDeleteAt = DateTime.Now;
+                delBtn.NormalColor = UIColors.SoftRed;
+                if (delBtn.Icon != null) {
+                    delBtn.Icon.color = UIColors.SoftRed;
+                }
+                if (delBtn.Label != null) {
+                    delBtn.Label.text = "!";
+                }
+                delBtn.UpdateVisual();
+                return;
+            }
+            OverlayCore.DeleteObject(obj);
+            onChanged?.Invoke();
+        };
+        var delRect = delBtn.Rect;
+        delRect.anchorMin = new Vector2(0f, 0f);
+        delRect.anchorMax = new Vector2(0f, 0f);
+        delRect.pivot = new Vector2(0f, 0f);
+        delRect.anchoredPosition = new Vector2(130f, 10f);
+        delRect.sizeDelta = new Vector2(34f, 34f);
+        tileControls.Add(delRect.gameObject);
+
+        ApplyTileEnabledVisual(bgImg, txt, obj.Config.Enabled.Value);
+
+        return bg;
+    }
+
+    static GameObject CreateObjectActionTile(Transform parent, Action create) {
+        var go = new GameObject("ObjectActionsTile");
+        go.transform.SetParent(parent, false);
+        go.AddComponent<RectTransform>();
+
+        var background = go.AddComponent<Image>();
+        background.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P2048);
+        background.type = Image.Type.Sliced;
+        background.color = UIColors.PanelBG;
+        background.raycastTarget = true;
+
+        CreateTileActionIcon(go.transform, BuiltinIcon(UISprite.Box128), 0.5f);
+        go.transform.AddToolTip(O5KitAdapters.Ctx, "New 3D Object");
+
+        var trigger = go.AddComponent<EventTrigger>();
+        AddTileHoverScale(go, trigger);
+        var handler = go.AddComponent<OventHandler>();
+        handler.OnClick += button => {
+            if (button == InputButton.Left) {
+                create?.Invoke();
+            }
+        };
+        return go;
     }
 
     private static string BuildPackageTooltip(PackageEntry entry) {

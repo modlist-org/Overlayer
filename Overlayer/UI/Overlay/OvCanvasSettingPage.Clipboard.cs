@@ -29,7 +29,17 @@ public partial class OvCanvasSettingPage {
     private readonly System.Collections.Generic.List<(RectTransform Card, UnityComponentSettingsBase Settings)> componentCards = [];
 
     internal void Tick() {
-        if (GameObject == null || !GameObject.activeInHierarchy || CanvasGroup == null || !CanvasGroup.blocksRaycasts || currentCanvas == null || IsTyping()) {
+        if (GameObject == null || !GameObject.activeInHierarchy || CanvasGroup == null || !CanvasGroup.blocksRaycasts || IsTyping()) {
+            return;
+        }
+        if (currentCanvas == null && rootObject == null) {
+            return;
+        }
+        if (rootObject != null && (rootObject.GameObject == null || !OverlayCore.Objects.Contains(rootObject))) {
+            rootObject = null;
+            selectedObject = null;
+            Close(true);
+            onBackAction?.Invoke();
             return;
         }
         if (!O5Input.GetKey(KeyCode.LeftControl) && !O5Input.GetKey(KeyCode.RightControl)
@@ -82,7 +92,7 @@ public partial class OvCanvasSettingPage {
 
     private void Paste() {
         if (copiedObject != null) {
-            var obj = new OvObject();
+            var obj = new OvObject(bare: copiedObject["Config"]?["RectTransformConfig"] == null);
             obj.Deserialize(copiedObject);
             InsertAfter(selectedObject, obj);
             obj.ApplyComponent();
@@ -111,6 +121,10 @@ public partial class OvCanvasSettingPage {
         var settings = (ISettingsFile)Activator.CreateInstance(copiedComponentType);
         settings.Deserialize(copiedComponent);
         field.SetValue(config, settings);
+        if (copiedComponentType == typeof(TextMeshProUGUISettings) || copiedComponentType == typeof(ImageSettings)) {
+            config.RectTransformConfig ??= new RectTransformSettings();
+            config.CanvasGroupConfig ??= new CanvasGroupSettings();
+        }
         if (copiedComponentType == typeof(TextMeshProUGUISettings)) {
             config.TextEngineConfig = new OvTextSettings();
             if (copiedTextEngine != null) {

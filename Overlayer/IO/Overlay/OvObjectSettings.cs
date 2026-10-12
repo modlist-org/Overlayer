@@ -8,8 +8,17 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
     public FxValue<string> Name = FxValue<string>.FromValue("OvObject");
     public FxValue<bool> Enabled = new(true);
 
-    public RectTransformSettings RectTransformConfig = new();
-    public CanvasGroupSettings CanvasGroupConfig = new();
+    public RectTransformSettings RectTransformConfig = null;
+    public CanvasGroupSettings CanvasGroupConfig = null;
+    public TransformSettings TransformConfig = null;
+    public MeshFilterSettings MeshFilterConfig = null;
+    public MeshRendererSettings MeshRendererConfig = null;
+    public BoxColliderSettings BoxColliderConfig = null;
+    public SphereColliderSettings SphereColliderConfig = null;
+    public CapsuleColliderSettings CapsuleColliderConfig = null;
+    public MeshColliderSettings MeshColliderConfig = null;
+    public RigidbodySettings RigidbodyConfig = null;
+    public LightSettings LightConfig = null;
     public ContentSizeFitterSettings ContentSizeFitterConfig = null;
 
     public TextMeshProUGUISettings TextConfig = null;
@@ -37,6 +46,7 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
         || FxUtil.HasFx(Enabled)
         || (RectTransformConfig?.HasAnyFx ?? false)
         || (CanvasGroupConfig?.HasAnyFx ?? false)
+        || (TransformConfig?.HasAnyFx ?? false)
         || (ContentSizeFitterConfig?.HasAnyFx ?? false)
         || (TextConfig?.HasAnyFx ?? false)
         || (CanvasConfig?.HasAnyFx ?? false)
@@ -52,6 +62,14 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
         || (MaskConfig?.HasAnyFx ?? false)
         || (ShadowConfig?.HasAnyFx ?? false)
         || (OutlineConfig?.HasAnyFx ?? false)
+        || (MeshFilterConfig?.HasAnyFx ?? false)
+        || (MeshRendererConfig?.HasAnyFx ?? false)
+        || (BoxColliderConfig?.HasAnyFx ?? false)
+        || (SphereColliderConfig?.HasAnyFx ?? false)
+        || (CapsuleColliderConfig?.HasAnyFx ?? false)
+        || (MeshColliderConfig?.HasAnyFx ?? false)
+        || (RigidbodyConfig?.HasAnyFx ?? false)
+        || (LightConfig?.HasAnyFx ?? false)
         || FxUtil.HasFx(HasRectMask2D)
         || FxUtil.HasFx(RectMask2DEnabled)
 #if !IL2CPP
@@ -63,9 +81,16 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
     public JToken Serialize() {
         var obj = new JObject {
             [nameof(Name)] = IOUtils.WriteFx(Name),
-            [nameof(RectTransformConfig)] = RectTransformConfig?.Serialize(),
-            [nameof(CanvasGroupConfig)] = CanvasGroupConfig?.Serialize(),
         };
+        if (RectTransformConfig != null) {
+            obj[nameof(RectTransformConfig)] = RectTransformConfig.Serialize();
+        }
+        if (CanvasGroupConfig != null) {
+            obj[nameof(CanvasGroupConfig)] = CanvasGroupConfig.Serialize();
+        }
+        if (TransformConfig != null) {
+            obj[nameof(TransformConfig)] = TransformConfig.Serialize();
+        }
         if (Enabled.UseFx || !Enabled.Value) {
             obj[nameof(Enabled)] = IOUtils.WriteFx(Enabled);
         }
@@ -119,6 +144,30 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
         }
         if (OutlineConfig != null) {
             obj[nameof(OutlineConfig)] = OutlineConfig.Serialize();
+        }
+        if (MeshFilterConfig != null) {
+            obj[nameof(MeshFilterConfig)] = MeshFilterConfig.Serialize();
+        }
+        if (MeshRendererConfig != null) {
+            obj[nameof(MeshRendererConfig)] = MeshRendererConfig.Serialize();
+        }
+        if (BoxColliderConfig != null) {
+            obj[nameof(BoxColliderConfig)] = BoxColliderConfig.Serialize();
+        }
+        if (SphereColliderConfig != null) {
+            obj[nameof(SphereColliderConfig)] = SphereColliderConfig.Serialize();
+        }
+        if (CapsuleColliderConfig != null) {
+            obj[nameof(CapsuleColliderConfig)] = CapsuleColliderConfig.Serialize();
+        }
+        if (MeshColliderConfig != null) {
+            obj[nameof(MeshColliderConfig)] = MeshColliderConfig.Serialize();
+        }
+        if (RigidbodyConfig != null) {
+            obj[nameof(RigidbodyConfig)] = RigidbodyConfig.Serialize();
+        }
+        if (LightConfig != null) {
+            obj[nameof(LightConfig)] = LightConfig.Serialize();
         }
         if (HasRectMask2D.UseFx || HasRectMask2D.Value) {
             obj[nameof(HasRectMask2D)] = IOUtils.WriteFx(HasRectMask2D);
@@ -177,6 +226,15 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
         MaskConfig = ReadConfig<MaskSettings>(obj, nameof(MaskConfig));
         ShadowConfig = ReadConfig<ShadowSettings>(obj, nameof(ShadowConfig));
         OutlineConfig = ReadConfig<OutlineSettings>(obj, nameof(OutlineConfig));
+        TransformConfig = ReadConfig<TransformSettings>(obj, nameof(TransformConfig));
+        MeshFilterConfig = ReadConfig<MeshFilterSettings>(obj, nameof(MeshFilterConfig));
+        MeshRendererConfig = ReadConfig<MeshRendererSettings>(obj, nameof(MeshRendererConfig));
+        BoxColliderConfig = ReadConfig<BoxColliderSettings>(obj, nameof(BoxColliderConfig));
+        SphereColliderConfig = ReadConfig<SphereColliderSettings>(obj, nameof(SphereColliderConfig));
+        CapsuleColliderConfig = ReadConfig<CapsuleColliderSettings>(obj, nameof(CapsuleColliderConfig));
+        MeshColliderConfig = ReadConfig<MeshColliderSettings>(obj, nameof(MeshColliderConfig));
+        RigidbodyConfig = ReadConfig<RigidbodySettings>(obj, nameof(RigidbodyConfig));
+        LightConfig = ReadConfig<LightSettings>(obj, nameof(LightConfig));
         HasRectMask2D = IOUtils.ReadFx(obj, nameof(HasRectMask2D), HasRectMask2D);
         RectMask2DEnabled = IOUtils.ReadFx(obj, nameof(RectMask2DEnabled), RectMask2DEnabled);
     }
@@ -187,6 +245,7 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
             Enabled = Enabled?.Copy(),
             RectTransformConfig = RectTransformConfig?.Copy(),
             CanvasGroupConfig = CanvasGroupConfig?.Copy(),
+            TransformConfig = TransformConfig?.Copy(),
             ContentSizeFitterConfig = ContentSizeFitterConfig?.Copy(),
             TextConfig = TextConfig?.Copy(),
             TextEngineConfig = TextEngineConfig?.Copy(),
@@ -206,6 +265,14 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
             MaskConfig = MaskConfig?.Copy(),
             ShadowConfig = ShadowConfig?.Copy(),
             OutlineConfig = OutlineConfig?.Copy(),
+            MeshFilterConfig = MeshFilterConfig?.Copy(),
+            MeshRendererConfig = MeshRendererConfig?.Copy(),
+            BoxColliderConfig = BoxColliderConfig?.Copy(),
+            SphereColliderConfig = SphereColliderConfig?.Copy(),
+            CapsuleColliderConfig = CapsuleColliderConfig?.Copy(),
+            MeshColliderConfig = MeshColliderConfig?.Copy(),
+            RigidbodyConfig = RigidbodyConfig?.Copy(),
+            LightConfig = LightConfig?.Copy(),
             HasRectMask2D = HasRectMask2D?.Copy(),
             RectMask2DEnabled = RectMask2DEnabled?.Copy()
         };

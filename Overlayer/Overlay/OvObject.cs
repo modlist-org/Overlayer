@@ -19,8 +19,10 @@ namespace Overlayer.Overlay;
 
 public sealed class OvObject : ISettingsFile {
     public readonly GameObject GameObject;
-    public readonly RectTransform RectTransform;
-    public readonly CanvasGroup CanvasGroup;
+    public RectTransform RectTransform { get; private set; }
+    public CanvasGroup CanvasGroup { get; private set; }
+
+    internal string SourceFile { get; set; }
 
     public TextEngineUpdater TextUpdater { get; private set; }
 
@@ -37,22 +39,33 @@ public sealed class OvObject : ISettingsFile {
     private bool _lastRectMask2DEnabled;
     private string _lastText;
 
-    public OvObject() {
+    public OvObject() : this(false) {
+    }
+
+    public OvObject(bool bare) {
         GameObject = new GameObject("OvObject");
-        RectTransform = GameObject.AddComponent<RectTransform>();
-        CanvasGroup = GameObject.AddComponent<CanvasGroup>();
+        if (bare) {
+            Config.RectTransformConfig = null;
+            Config.CanvasGroupConfig = null;
+            Config.TransformConfig = new();
+        } else {
+            RectTransform = GameObject.AddComponent<RectTransform>();
+            CanvasGroup = GameObject.AddComponent<CanvasGroup>();
+            Config.RectTransformConfig = new();
+            Config.CanvasGroupConfig = new();
+        }
 
         ApplyConfig();
     }
 
     public OvObject CreateOvObject() {
-        var obj = new OvObject();
+        var obj = new OvObject(bare: Config.RectTransformConfig == null);
         Attach(obj);
         return obj;
     }
 
     public OvObject Clone() {
-        var clone = new OvObject {
+        var clone = new OvObject(bare: Config.RectTransformConfig == null) {
             Config = Config.Copy()
         };
         clone.ApplyComponent();
@@ -70,8 +83,9 @@ public sealed class OvObject : ISettingsFile {
         _lastEnabled = Config.Enabled.Value;
         GameObject.name = _lastName;
         GameObject.SetActive(_lastEnabled);
-        Config.RectTransformConfig.ToUnity(GameObject);
-        Config.CanvasGroupConfig.ToUnity(GameObject);
+        Config.RectTransformConfig?.ToUnity(GameObject);
+        Config.CanvasGroupConfig?.ToUnity(GameObject);
+        Config.TransformConfig?.ToUnity(GameObject);
         if (Config.TextConfig != null) {
             var tmp = GameObject.GetComponent<TextMeshProUGUI>();
             if (tmp != null) {
@@ -106,6 +120,14 @@ public sealed class OvObject : ISettingsFile {
         Config.BoxCollider2DConfig?.ToUnity(GameObject);
         Config.Rigidbody2DConfig?.ToUnity(GameObject);
 #endif
+        Config.MeshFilterConfig?.ToUnity(GameObject);
+        Config.MeshRendererConfig?.ToUnity(GameObject);
+        Config.BoxColliderConfig?.ToUnity(GameObject);
+        Config.SphereColliderConfig?.ToUnity(GameObject);
+        Config.CapsuleColliderConfig?.ToUnity(GameObject);
+        Config.MeshColliderConfig?.ToUnity(GameObject);
+        Config.RigidbodyConfig?.ToUnity(GameObject);
+        Config.LightConfig?.ToUnity(GameObject);
         _lastHasRectMask2D = Config.HasRectMask2D.Value;
         _lastRectMask2DEnabled = Config.RectMask2DEnabled.Value;
     }
@@ -120,6 +142,7 @@ public sealed class OvObject : ISettingsFile {
             if (FxUtil.Changed(ref _lastEnabled, Config.Enabled.Value)) GameObject.SetActive(_lastEnabled);
             Config.RectTransformConfig?.RefreshFx(GameObject);
             Config.CanvasGroupConfig?.RefreshFx(GameObject);
+            Config.TransformConfig?.RefreshFx(GameObject);
             Config.TextConfig?.RefreshFx(GameObject);
             if (Config.TextEngineConfig != null && TextUpdater != null) {
                 if (FxUtil.Changed(ref _lastText, Config.TextEngineConfig.Text.Value)) TextUpdater.Engine.Text = _lastText;
@@ -143,6 +166,14 @@ public sealed class OvObject : ISettingsFile {
             Config.BoxCollider2DConfig?.RefreshFx(GameObject);
             Config.Rigidbody2DConfig?.RefreshFx(GameObject);
 #endif
+            Config.MeshFilterConfig?.RefreshFx(GameObject);
+            Config.MeshRendererConfig?.RefreshFx(GameObject);
+            Config.BoxColliderConfig?.RefreshFx(GameObject);
+            Config.SphereColliderConfig?.RefreshFx(GameObject);
+            Config.CapsuleColliderConfig?.RefreshFx(GameObject);
+            Config.MeshColliderConfig?.RefreshFx(GameObject);
+            Config.RigidbodyConfig?.RefreshFx(GameObject);
+            Config.LightConfig?.RefreshFx(GameObject);
             bool rectMaskChanged = FxUtil.ApplyIfChanged(ref _lastHasRectMask2D, Config.HasRectMask2D.Value, _ => { });
             if (rectMaskChanged) {
                 ApplyComponent();
@@ -166,6 +197,16 @@ public sealed class OvObject : ISettingsFile {
         if (GameObject == null) {
             return;
         }
+
+        // shortcut: dropping RectTransformConfig only stops managing it; the component
+        // itself stays dormant (Unity won't remove the Transform). Re-adding the
+        // config reuses or re-adds the component below.
+        if (Config.RectTransformConfig != null && GameObject.GetComponent<RectTransform>() == null) {
+            GameObject.AddComponent<RectTransform>();
+        }
+        RectTransform = GameObject.GetComponent<RectTransform>();
+        EnsureComponent<CanvasGroup>(Config.CanvasGroupConfig != null);
+        CanvasGroup = GameObject.GetComponent<CanvasGroup>();
 
         if (Config.TextConfig != null && Config.ImageConfig != null) {
             Config.ImageConfig = null;
@@ -222,6 +263,14 @@ public sealed class OvObject : ISettingsFile {
         EnsureComponent<BoxCollider2D>(Config.BoxCollider2DConfig != null);
         EnsureComponent<Rigidbody2D>(Config.Rigidbody2DConfig != null);
 #endif
+        EnsureComponent<MeshFilter>(Config.MeshFilterConfig != null);
+        EnsureComponent<MeshRenderer>(Config.MeshRendererConfig != null);
+        EnsureComponent<BoxCollider>(Config.BoxColliderConfig != null);
+        EnsureComponent<SphereCollider>(Config.SphereColliderConfig != null);
+        EnsureComponent<CapsuleCollider>(Config.CapsuleColliderConfig != null);
+        EnsureComponent<MeshCollider>(Config.MeshColliderConfig != null);
+        EnsureComponent<Rigidbody>(Config.RigidbodyConfig != null);
+        EnsureComponent<Light>(Config.LightConfig != null);
     }
 
 #if ML && IL2CPP
@@ -305,7 +354,7 @@ public sealed class OvObject : ISettingsFile {
             Children.Add(child);
         }
 
-        child.GameObject.transform.SetParent(RectTransform, false);
+        child.GameObject.transform.SetParent(GameObject.transform, false);
         child.GameObject.transform.SetSiblingIndex(Children.Count - 1);
     }
 
@@ -375,7 +424,7 @@ public sealed class OvObject : ISettingsFile {
             Children.Clear();
 
             foreach (var item in array) {
-                var obj = new OvObject();
+                var obj = new OvObject(bare: item[nameof(Config)]?[nameof(OvObjectSettings.RectTransformConfig)] == null);
                 obj.Deserialize(item);
 
                 Attach(obj);
@@ -401,7 +450,9 @@ public sealed class OvObject : ISettingsFile {
             child.RebuildLayout();
         }
 
-        LayoutRebuilder.ForceRebuildLayoutImmediate(RectTransform);
+        if (RectTransform != null) {
+            LayoutRebuilder.ForceRebuildLayoutImmediate(RectTransform);
+        }
     }
 
     public void Dispose() {

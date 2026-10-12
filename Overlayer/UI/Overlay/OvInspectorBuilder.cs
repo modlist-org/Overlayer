@@ -20,6 +20,7 @@ using Overlayer.UI.Objects.Impl;
 using O5Kit.Behaviour;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.Rendering;
 
 #if ML && IL2CPP
 using Il2CppTMPro;
@@ -89,9 +90,11 @@ internal sealed class OvInspectorBuilder(
         FxToggle(identity, "Visible", obj.Config.Enabled, true, "obj_visible");
 
         var group = obj.Config.CanvasGroupConfig;
-        FxSlider(identity, "Opacity", group.Alpha, 1f, 0f, 1f, "obj_alpha");
-        FxToggle(identity, "Interactable", group.Interactable, false, "obj_interactable");
-        FxToggle(identity, "Blocks Raycasts", group.BlocksRaycasts, false, "obj_raycast");
+        if (group != null) {
+            FxSlider(identity, "Opacity", group.Alpha, 1f, 0f, 1f, "obj_alpha");
+            FxToggle(identity, "Interactable", group.Interactable, false, "obj_interactable");
+            FxToggle(identity, "Blocks Raycasts", group.BlocksRaycasts, false, "obj_raycast");
+        }
 
         BuildTransform(obj);
 
@@ -160,13 +163,48 @@ internal sealed class OvInspectorBuilder(
             BuildRigidbody2D(obj, obj.Config.Rigidbody2DConfig);
         }
 #endif
+        if (obj.Config.MeshFilterConfig != null) {
+            BuildMeshFilter(obj, obj.Config.MeshFilterConfig);
+        }
+        if (obj.Config.MeshRendererConfig != null) {
+            BuildMeshRenderer(obj, obj.Config.MeshRendererConfig);
+        }
+        if (obj.Config.BoxColliderConfig != null) {
+            BuildBoxCollider(obj, obj.Config.BoxColliderConfig);
+        }
+        if (obj.Config.SphereColliderConfig != null) {
+            BuildSphereCollider(obj, obj.Config.SphereColliderConfig);
+        }
+        if (obj.Config.CapsuleColliderConfig != null) {
+            BuildCapsuleCollider(obj, obj.Config.CapsuleColliderConfig);
+        }
+        if (obj.Config.MeshColliderConfig != null) {
+            BuildMeshCollider(obj, obj.Config.MeshColliderConfig);
+        }
+        if (obj.Config.RigidbodyConfig != null) {
+            BuildRigidbody(obj, obj.Config.RigidbodyConfig);
+        }
+        if (obj.Config.LightConfig != null) {
+            BuildLight(obj, obj.Config.LightConfig);
+        }
 
         BuildAddComponent(obj);
     }
 
     private void BuildTransform(OvObject obj) {
         RectTransformSettings cfg = obj.Config.RectTransformConfig;
-        var (_, basic) = Card("Rect Transform", false);
+        if (cfg == null) {
+            BuildTransform3D(obj);
+            return;
+        }
+        bool threeD = MainCore.Conf.Enable3DFeatures.Value;
+        var (_, basic) = threeD
+            ? Card("Rect Transform", true, () => {
+                obj.Config.RectTransformConfig = null;
+                obj.Config.TransformConfig ??= new TransformSettings();
+                RefreshComponents(obj);
+            })
+            : Card("Rect Transform", false);
         Action refreshPositionFields = null;
         Action refreshPivotFields = null;
         RectTransform rectLayout = CompactRow(basic, 92f, 6f);
@@ -632,6 +670,138 @@ internal sealed class OvInspectorBuilder(
     }
 #endif
 
+    private void BuildTransform3D(OvObject obj) {
+        TransformSettings cfg = obj.Config.TransformConfig;
+        if (cfg == null) {
+            return;
+        }
+        var (_, basic) = Card("Transform", false);
+        var placeBtn = O5Factory.Button(O5KitAdapters.Ctx, basic, () => {
+            var cam = MainCore.Cam.Camera;
+            if (cam == null || obj.GameObject == null) {
+                return;
+            }
+            obj.GameObject.transform.position = cam.transform.position + cam.transform.forward * 2f;
+            obj.Config.TransformConfig.FromUnity(obj.GameObject);
+            ApplyAndSave();
+            rebuild();
+        }, InspectorLabel("Place In Front Of Camera"), "transform_place_in_front");
+        Track(placeBtn);
+        FxNumericRow3(basic, "Position", cfg.LocalPosition, [
+            ("X", 0f, () => cfg.LocalPosition.Value.x, value => { var v = cfg.LocalPosition.Value; v.x = value; cfg.LocalPosition.Value = v; }, "transform_position_x"),
+            ("Y", 0f, () => cfg.LocalPosition.Value.y, value => { var v = cfg.LocalPosition.Value; v.y = value; cfg.LocalPosition.Value = v; }, "transform_position_y"),
+            ("Z", 0f, () => cfg.LocalPosition.Value.z, value => { var v = cfg.LocalPosition.Value; v.z = value; cfg.LocalPosition.Value = v; }, "transform_position_z")
+        ], "F2", "transform_position");
+        FxNumericRow3(basic, "Rotation", cfg.LocalEulerAngles, [
+            ("X", 0f, () => cfg.LocalEulerAngles.Value.x, value => { var v = cfg.LocalEulerAngles.Value; v.x = value; cfg.LocalEulerAngles.Value = v; }, "transform_rotation_x"),
+            ("Y", 0f, () => cfg.LocalEulerAngles.Value.y, value => { var v = cfg.LocalEulerAngles.Value; v.y = value; cfg.LocalEulerAngles.Value = v; }, "transform_rotation_y"),
+            ("Z", 0f, () => cfg.LocalEulerAngles.Value.z, value => { var v = cfg.LocalEulerAngles.Value; v.z = value; cfg.LocalEulerAngles.Value = v; }, "transform_rotation_z")
+        ], "F1", "transform_rotation");
+        FxNumericRow3(basic, "Scale", cfg.LocalScale, [
+            ("X", 1f, () => cfg.LocalScale.Value.x, value => { var v = cfg.LocalScale.Value; v.x = value; cfg.LocalScale.Value = v; }, "transform_scale_x"),
+            ("Y", 1f, () => cfg.LocalScale.Value.y, value => { var v = cfg.LocalScale.Value; v.y = value; cfg.LocalScale.Value = v; }, "transform_scale_y"),
+            ("Z", 1f, () => cfg.LocalScale.Value.z, value => { var v = cfg.LocalScale.Value; v.z = value; cfg.LocalScale.Value = v; }, "transform_scale_z")
+        ], "F2", "transform_scale");
+    }
+
+    private void BuildMeshFilter(OvObject obj, MeshFilterSettings cfg) {
+        var (_, card) = Card("Mesh Filter", true, () => {
+            obj.Config.MeshFilterConfig = null;
+            RefreshComponents(obj);
+        });
+        FxEnum(card, "Mesh", cfg.MeshType, PrimitiveType.Cube, "mesh_filter_type");
+    }
+
+    private void BuildMeshRenderer(OvObject obj, MeshRendererSettings cfg) {
+        var (_, card) = ComponentCard("Mesh Renderer", cfg, () => {
+            obj.Config.MeshRendererConfig = null;
+            RefreshComponents(obj);
+        });
+        FxEnum(card, "Cast Shadows", cfg.CastShadows, ShadowCastingMode.On, "mesh_renderer_shadows");
+        FxToggle(card, "Receive Shadows", cfg.ReceiveShadows, true, "mesh_renderer_receive");
+    }
+
+    private void BuildBoxCollider(OvObject obj, BoxColliderSettings cfg) {
+        var (_, card) = ComponentCard("Box Collider", cfg, () => {
+            obj.Config.BoxColliderConfig = null;
+            RefreshComponents(obj);
+        });
+        FxNumericRow3(card, "Center", cfg.Center, [
+            ("X", 0f, () => cfg.Center.Value.x, value => { var v = cfg.Center.Value; v.x = value; cfg.Center.Value = v; }, "box_collider3d_center_x"),
+            ("Y", 0f, () => cfg.Center.Value.y, value => { var v = cfg.Center.Value; v.y = value; cfg.Center.Value = v; }, "box_collider3d_center_y"),
+            ("Z", 0f, () => cfg.Center.Value.z, value => { var v = cfg.Center.Value; v.z = value; cfg.Center.Value = v; }, "box_collider3d_center_z")
+        ], "F2", "box_collider3d_center");
+        FxNumericRow3(card, "Size", cfg.Size, [
+            ("X", 1f, () => cfg.Size.Value.x, value => { var v = cfg.Size.Value; v.x = value; cfg.Size.Value = v; }, "box_collider3d_size_x"),
+            ("Y", 1f, () => cfg.Size.Value.y, value => { var v = cfg.Size.Value; v.y = value; cfg.Size.Value = v; }, "box_collider3d_size_y"),
+            ("Z", 1f, () => cfg.Size.Value.z, value => { var v = cfg.Size.Value; v.z = value; cfg.Size.Value = v; }, "box_collider3d_size_z")
+        ], "F2", "box_collider3d_size");
+        FxToggle(card, "Is Trigger", cfg.IsTrigger, false, "box_collider3d_trigger");
+    }
+
+    private void BuildSphereCollider(OvObject obj, SphereColliderSettings cfg) {
+        var (_, card) = ComponentCard("Sphere Collider", cfg, () => {
+            obj.Config.SphereColliderConfig = null;
+            RefreshComponents(obj);
+        });
+        FxNumericRow3(card, "Center", cfg.Center, [
+            ("X", 0f, () => cfg.Center.Value.x, value => { var v = cfg.Center.Value; v.x = value; cfg.Center.Value = v; }, "sphere_collider_center_x"),
+            ("Y", 0f, () => cfg.Center.Value.y, value => { var v = cfg.Center.Value; v.y = value; cfg.Center.Value = v; }, "sphere_collider_center_y"),
+            ("Z", 0f, () => cfg.Center.Value.z, value => { var v = cfg.Center.Value; v.z = value; cfg.Center.Value = v; }, "sphere_collider_center_z")
+        ], "F2", "sphere_collider_center");
+        FxSlider(card, "Radius", cfg.Radius, 0.5f, 0f, 100f, "sphere_collider_radius", "F2");
+        FxToggle(card, "Is Trigger", cfg.IsTrigger, false, "sphere_collider_trigger");
+    }
+
+    private void BuildCapsuleCollider(OvObject obj, CapsuleColliderSettings cfg) {
+        var (_, card) = ComponentCard("Capsule Collider", cfg, () => {
+            obj.Config.CapsuleColliderConfig = null;
+            RefreshComponents(obj);
+        });
+        FxNumericRow3(card, "Center", cfg.Center, [
+            ("X", 0f, () => cfg.Center.Value.x, value => { var v = cfg.Center.Value; v.x = value; cfg.Center.Value = v; }, "capsule_collider_center_x"),
+            ("Y", 0f, () => cfg.Center.Value.y, value => { var v = cfg.Center.Value; v.y = value; cfg.Center.Value = v; }, "capsule_collider_center_y"),
+            ("Z", 0f, () => cfg.Center.Value.z, value => { var v = cfg.Center.Value; v.z = value; cfg.Center.Value = v; }, "capsule_collider_center_z")
+        ], "F2", "capsule_collider_center");
+        FxSlider(card, "Radius", cfg.Radius, 0.5f, 0f, 100f, "capsule_collider_radius", "F2");
+        FxSlider(card, "Height", cfg.Height, 2f, 0f, 100f, "capsule_collider_height", "F2");
+        FxIntSlider(card, "Direction", cfg.Direction, 1, 0, 2, "capsule_collider_direction", "F0");
+        FxToggle(card, "Is Trigger", cfg.IsTrigger, false, "capsule_collider_trigger");
+    }
+
+    private void BuildMeshCollider(OvObject obj, MeshColliderSettings cfg) {
+        var (_, card) = ComponentCard("Mesh Collider", cfg, () => {
+            obj.Config.MeshColliderConfig = null;
+            RefreshComponents(obj);
+        });
+        FxToggle(card, "Convex", cfg.Convex, false, "mesh_collider_convex");
+        FxToggle(card, "Is Trigger", cfg.IsTrigger, false, "mesh_collider_trigger");
+    }
+
+    private void BuildRigidbody(OvObject obj, RigidbodySettings cfg) {
+        var (_, card) = Card("Rigidbody", true, () => {
+            obj.Config.RigidbodyConfig = null;
+            RefreshComponents(obj);
+        });
+        FxSlider(card, "Mass", cfg.Mass, 1f, 0.01f, 1000f, "rigidbody_mass", "F2");
+        FxSlider(card, "Drag", cfg.Drag, 0f, 0f, 100f, "rigidbody_drag", "F2");
+        FxSlider(card, "Angular Drag", cfg.AngularDrag, 0.05f, 0f, 100f, "rigidbody_angular_drag", "F2");
+        FxToggle(card, "Use Gravity", cfg.UseGravity, true, "rigidbody_gravity");
+        FxToggle(card, "Is Kinematic", cfg.IsKinematic, false, "rigidbody_kinematic");
+    }
+
+    private void BuildLight(OvObject obj, LightSettings cfg) {
+        var (_, card) = ComponentCard("Light", cfg, () => {
+            obj.Config.LightConfig = null;
+            RefreshComponents(obj);
+        });
+        FxEnum(card, "Type", cfg.Type, LightType.Point, "light_type");
+        FxColor(card, "Color", cfg.Color, Color.white, "light_color");
+        FxSlider(card, "Intensity", cfg.Intensity, 1f, 0f, 10f, "light_intensity", "F2");
+        FxSlider(card, "Range", cfg.Range, 10f, 0f, 100f, "light_range", "F1");
+        FxSlider(card, "Spot Angle", cfg.SpotAngle, 30f, 1f, 179f, "light_spot_angle", "F1");
+    }
+
     private void BuildAddComponent(OvObject obj) {
         var options = new List<string> { "Add Component..." };
         if (obj.Config.TextConfig == null && obj.Config.ImageConfig == null) {
@@ -696,6 +866,35 @@ internal sealed class OvInspectorBuilder(
             options.Add("Rigidbody 2D");
         }
 #endif
+        if (MainCore.Conf.Enable3DFeatures.Value) {
+            if (obj.Config.MeshFilterConfig == null) {
+                options.Add("Mesh Filter");
+            }
+            if (obj.Config.MeshRendererConfig == null) {
+                options.Add("Mesh Renderer");
+            }
+            if (obj.Config.BoxColliderConfig == null) {
+                options.Add("Box Collider");
+            }
+            if (obj.Config.SphereColliderConfig == null) {
+                options.Add("Sphere Collider");
+            }
+            if (obj.Config.CapsuleColliderConfig == null) {
+                options.Add("Capsule Collider");
+            }
+            if (obj.Config.MeshColliderConfig == null) {
+                options.Add("Mesh Collider");
+            }
+            if (obj.Config.RigidbodyConfig == null) {
+                options.Add("Rigidbody");
+            }
+            if (obj.Config.LightConfig == null) {
+                options.Add("Light");
+            }
+            if (obj.Config.RectTransformConfig == null) {
+                options.Add("Rect Transform");
+            }
+        }
         if (options.Count == 1) {
             return;
         }
@@ -704,10 +903,14 @@ internal sealed class OvInspectorBuilder(
         var dropdown = O5Factory.DropDown(O5KitAdapters.Ctx, row, options[0], options[0], options, InspectorLabel, selected => {
             switch (selected) {
                 case "Text":
+                    obj.Config.RectTransformConfig ??= new RectTransformSettings();
+                    obj.Config.CanvasGroupConfig ??= new CanvasGroupSettings();
                     obj.Config.TextConfig = new TextMeshProUGUISettings();
                     obj.Config.TextEngineConfig = new OvTextSettings();
                     break;
                 case "Image":
+                    obj.Config.RectTransformConfig ??= new RectTransformSettings();
+                    obj.Config.CanvasGroupConfig ??= new CanvasGroupSettings();
                     obj.Config.ImageConfig = new ImageSettings();
                     break;
                 case "Moving Man":
@@ -758,6 +961,34 @@ internal sealed class OvInspectorBuilder(
                     obj.Config.Rigidbody2DConfig = new Rigidbody2DSettings();
                     break;
 #endif
+                case "Mesh Filter":
+                    obj.Config.MeshFilterConfig = new MeshFilterSettings();
+                    break;
+                case "Mesh Renderer":
+                    obj.Config.MeshRendererConfig = new MeshRendererSettings();
+                    break;
+                case "Box Collider":
+                    obj.Config.BoxColliderConfig = new BoxColliderSettings();
+                    break;
+                case "Sphere Collider":
+                    obj.Config.SphereColliderConfig = new SphereColliderSettings();
+                    break;
+                case "Capsule Collider":
+                    obj.Config.CapsuleColliderConfig = new CapsuleColliderSettings();
+                    break;
+                case "Mesh Collider":
+                    obj.Config.MeshColliderConfig = new MeshColliderSettings();
+                    break;
+                case "Rigidbody":
+                    obj.Config.RigidbodyConfig = new RigidbodySettings();
+                    break;
+                case "Light":
+                    obj.Config.LightConfig = new LightSettings();
+                    break;
+                case "Rect Transform":
+                    obj.Config.RectTransformConfig = new RectTransformSettings();
+                    obj.Config.TransformConfig = null;
+                    break;
                 default:
                     return;
             }

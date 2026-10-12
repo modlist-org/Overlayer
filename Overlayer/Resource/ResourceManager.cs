@@ -108,6 +108,14 @@ public sealed class ResourceManager(Assembly assembly, string resourcePath) : ID
     /// </summary>
     internal static TMP_FontAsset StealGameFont() {
         try {
+            // Project default first: guaranteed fully baked (TMP itself falls back to it).
+            try {
+                var def = TMP_Settings.defaultFontAsset;
+                if (IsUsableFont(def)) {
+                    return def;
+                }
+            } catch {
+            }
             TMP_FontAsset[] fonts = Resources.FindObjectsOfTypeAll<TMP_FontAsset>();
             if (fonts == null || fonts.Length == 0) {
                 return null;
@@ -130,12 +138,28 @@ public sealed class ResourceManager(Assembly assembly, string resourcePath) : ID
                 }
                 if (name.Contains("liberationsans") || name.Contains("arial")
                     || name.Contains("notosans") || name.Contains("default")) {
-                    return font;
+                    if (IsUsableFont(font)) {
+                        return font;
+                    }
+                    continue;
                 }
             }
-            return fallback;
+            return IsUsableFont(fallback) ? fallback : null;
         } catch {
             return null;
+        }
+    }
+
+    // Touching the lookup table runs the same reader set_font() will run:
+    // a broken asset throws here, inside our catch, instead of in the UI.
+    private static bool IsUsableFont(TMP_FontAsset font) {
+        if (font == null) {
+            return false;
+        }
+        try {
+            return font.characterLookupTable != null;
+        } catch {
+            return false;
         }
     }
 
@@ -163,7 +187,15 @@ public sealed class ResourceManager(Assembly assembly, string resourcePath) : ID
         File.WriteAllBytes(tempPath, data);
 
         Font font = new(tempPath);
-        TMP_FontAsset asset = TMP_FontAsset.CreateFontAsset(font);
+        TMP_FontAsset asset;
+        try {
+            asset = TMP_FontAsset.CreateFontAsset(font);
+        } catch {
+            // Old/stripped games may lack the TMP shader CreateFontAsset needs.
+            asset = StealGameFont();
+            if (asset != null) cache[path] = asset;
+            return asset;
+        }
 
         if (path.Contains("JetBrainsMonoNL")) {
             string fileName = Path.GetFileNameWithoutExtension(path);

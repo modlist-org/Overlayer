@@ -195,7 +195,7 @@ public class OvCanvas : ISettingsFile {
             OvObjects.Clear();
 
             foreach (var item in array) {
-                var obj = new OvObject();
+                var obj = new OvObject(bare: item[nameof(Config)]?["RectTransformConfig"] == null);
                 obj.Deserialize(item);
 
                 Attach(obj);

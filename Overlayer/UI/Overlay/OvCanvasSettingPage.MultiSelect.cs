@@ -117,6 +117,9 @@ public partial class OvCanvasSettingPage {
                 return false;
             }
         }
-        return currentCanvas != null && currentCanvas.OvObjects.Contains(current);
+        if (currentCanvas != null) {
+            return currentCanvas.OvObjects.Contains(current);
+        }
+        return rootObject != null && current == rootObject;
     }
 }

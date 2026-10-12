@@ -3,6 +3,11 @@
 namespace System.Runtime.CompilerServices {
     internal static class IsExternalInit { }
 
+    // Source-defined so the compiler never typerefs netstandard 2.1's copy:
+    // old Unity Mono (netstandard 2.0 facade) can't resolve it and dies in PatchAll.
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Method | AttributeTargets.Interface | AttributeTargets.Delegate | AttributeTargets.Field | AttributeTargets.Parameter | AttributeTargets.Property | AttributeTargets.ReturnValue | AttributeTargets.GenericParameter, AllowMultiple = false, Inherited = false)]
+    internal sealed class IsReadOnlyAttribute : Attribute { }
+
     [AttributeUsage(AttributeTargets.Parameter, AllowMultiple = false, Inherited = false)]
     internal sealed class CallerArgumentExpressionAttribute : Attribute {
         public CallerArgumentExpressionAttribute(string parameterName) {

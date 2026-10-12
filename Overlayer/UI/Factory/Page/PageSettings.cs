@@ -236,6 +236,25 @@ internal static class PageSettings {
         var middleClickToggleTr = middleClickToggle.Label.gameObject.AddComponent<TextLocalization>().Init("MIDDLE_CLICK_TO_SET_AS_DEFAULT", "Middle-click to set as default");
         objects[middleClickToggleTr] = (overlayerText.gameObject, middleClickRow.gameObject);
 
+        var threeDRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
+        O5Toggle threeDToggle = O5Factory.Toggle(O5KitAdapters.Ctx,
+            threeDRow,
+            defSet.Enable3DFeatures,
+            MainCore.Conf.Enable3DFeatures,
+            toggle => {
+                MainCore.Conf.Enable3DFeatures = toggle;
+                MainCore.ConfMgr.RequestSave();
+            },
+            "Enable 3D Features",
+            "enable_3d_features"
+        );
+        threeDToggle.Rect.AddToolTip(O5KitAdapters.Ctx, () => MainCore.Tr.Get(
+            "DESC_ENABLE_3D_FEATURES",
+            "Shows 3D object creation and 3D components (Mesh, Colliders, Rigidbody, Light).\nNew empty objects are created without RectTransform, and top-level objects can live outside any canvas."
+        ));
+        var threeDToggleTr = threeDToggle.Label.gameObject.AddComponent<TextLocalization>().Init("ENABLE_3D_FEATURES", "Enable 3D Features");
+        objects[threeDToggleTr] = (overlayerText.gameObject, threeDRow.gameObject);
+
         ITweenHandle scaleSeq = null;
 
         var uiScaleRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
