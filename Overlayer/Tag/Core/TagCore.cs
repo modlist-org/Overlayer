@@ -255,7 +255,9 @@ public class TagCore {
             _compiledDelegate = Expression.Lambda<Func<object[], object>>(castResult, argsParam).Compile();
         }
 
-        object[] normalized = NormalizeArgs(Parameters, _variadic, args);
+        object[] normalized = args != null && args.Length == 0 && Parameters.Length == 0
+            ? args
+            : NormalizeArgs(Parameters, _variadic, args);
         try {
             return _compiledDelegate(normalized);
         } catch (Exception e) {

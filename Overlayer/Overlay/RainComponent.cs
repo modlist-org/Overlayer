@@ -38,6 +38,10 @@ public sealed class OvRainComponent
     private OvRainGraphic graphic;
     private RainTrail current;
     private bool meshHasTrails;
+    private Vector2 lastLayoutSize = new(float.NaN, float.NaN);
+    private Vector4 lastLayoutParams;
+    private string lastSpriteKey;
+    private Sprite lastSprite;
 
     private void EnsureGraphic() {
         if (graphic != null) {
@@ -49,6 +53,7 @@ public sealed class OvRainComponent
         graphic = go.AddComponent<OvRainGraphic>();
         graphic.raycastTarget = false;
         graphic.Owner = this;
+        lastLayoutSize = new Vector2(float.NaN, float.NaN);
     }
 
     private void OnEnable() {
@@ -101,9 +106,13 @@ public sealed class OvRainComponent
             }
         }
 
-        var sprite = !string.IsNullOrEmpty(SpriteKey) && UserResourceManager.Spr.TryGet(SpriteKey, out var res) ? res.sprite : null;
-        if (sprite != graphic.Sprite) {
-            graphic.Sprite = sprite;
+        var sprite = SpriteKey;
+        if (sprite != lastSpriteKey) {
+            lastSpriteKey = sprite;
+            lastSprite = !string.IsNullOrEmpty(sprite) && UserResourceManager.Spr.TryGet(sprite, out var res) ? res.sprite : null;
+        }
+        if (lastSprite != graphic.Sprite) {
+            graphic.Sprite = lastSprite;
             graphic.SetMaterialDirty();
         }
         // Idle rain (no trails now or last frame) keeps an empty mesh; skip the rebuild.
@@ -120,6 +129,12 @@ public sealed class OvRainComponent
         Vector2 size = ((RectTransform)transform).rect.size;
         float length = Mathf.Max(0f, Length);
         float width = Width > 0f ? Width : size.x;
+        var layoutParams = new Vector4(length, width, Offset.x, Offset.y);
+        if (size == lastLayoutSize && layoutParams == lastLayoutParams) {
+            return;
+        }
+        lastLayoutSize = size;
+        lastLayoutParams = layoutParams;
         rt.anchorMin = new Vector2(0.5f, 1f);
         rt.anchorMax = new Vector2(0.5f, 1f);
         rt.pivot = new Vector2(0.5f, 0f);
