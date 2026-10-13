@@ -71,6 +71,7 @@
     <Compile Include="..\Overlayer\Native\OvVertexBuilder.cs" />
     <Compile Include="..\Overlayer\Native\OvRawInput.cs" />
     <Compile Include="..\Overlayer\Native\Polyfills.cs" />
+    <Compile Include="..\Overlayer\V8\ImplJsGenerator.cs" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="..\..\O5Kit\src\O5Kit\ThirdParty\GTweens\Source\**\*.cs" />
