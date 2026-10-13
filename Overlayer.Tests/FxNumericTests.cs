@@ -374,4 +374,19 @@ public sealed class FxNumericTests {
             }
         }
     }
+
+    [Fact]
+    public void VariableTEval() {
+        if (!O5Expr.IsSupported) return;
+        long h = O5Expr.Compile("50 + 40 * Math.sin(t * 2)");
+        Assert.NotEqual(0, h);
+        try {
+            Assert.True(O5Expr.TryEval(h, 0.0, out double v0));
+            Assert.Equal(50.0, v0);
+            Assert.True(O5Expr.TryEval(h, Math.PI / 4.0, out double v90));
+            Assert.True(Math.Abs(v90 - 90.0) < 1e-9);
+        } finally {
+            O5Expr.Free(h);
+        }
+    }
 }

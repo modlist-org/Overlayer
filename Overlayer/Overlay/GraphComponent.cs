@@ -1,5 +1,6 @@
 using Microsoft.ClearScript;
 using Overlayer.Core;
+using Overlayer.Native;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -12,6 +13,12 @@ using MelonLoader;
 #endif
 
 public sealed class OvGraphComponent : MaskableGraphic {
+    static OvGraphComponent() {
+        GraphExpressionEngine.DefaultTagLookup ??= Overlayer.Tag.Core.TagManager.TryGet;
+        GraphExpressionEngine.DefaultTagTouch ??= Overlayer.Patch.Lazy.LazyPatchController.Touch;
+        GraphExpressionEngine.DefaultV8Evaluator ??= code => MainCore.V8?.Engine?.Evaluate(code) as ScriptObject;
+    }
+
 #if ML && IL2CPP
     public OvGraphComponent(System.IntPtr ptr) : base(ptr) {
     }
@@ -29,10 +36,44 @@ public sealed class OvGraphComponent : MaskableGraphic {
     public bool ShowFill;
     public Color FillColor = new(1f, 1f, 1f, 0.25f);
 
-    private readonly List<Vector2> history = [];
-    private ScriptObject func;
+    private sealed class SampleRing {
+        private readonly Vector2[] buf = new Vector2[65536];
+        private int head;
+        private int count;
+
+        public int Count => count;
+
+        public void Clear() {
+            head = 0;
+            count = 0;
+        }
+
+        public Vector2 this[int index] => buf[(head + index) % buf.Length];
+
+        public void Push(Vector2 pt) {
+            if (count < buf.Length) {
+                buf[(head + count) % buf.Length] = pt;
+                count++;
+            } else {
+                buf[head] = pt;
+                head = (head + 1) % buf.Length;
+            }
+        }
+
+        public void TrimBefore(float cutoff) {
+            while (count > 0 && buf[head].x < cutoff) {
+                head = (head + 1) % buf.Length;
+                count--;
+            }
+        }
+    }
+
+    private readonly SampleRing history = new();
+    private readonly GraphExpressionEngine engine = new();
     private string funcCode;
     private float lastPushTime = float.NegativeInfinity;
+    private Native.OvPoint2D[] _pointBuffer = new Native.OvPoint2D[256];
+    private Native.OvQuad2D[] _quadBuffer = new Native.OvQuad2D[256];
 
     #if ML && IL2CPP
     public
@@ -53,67 +94,26 @@ public sealed class OvGraphComponent : MaskableGraphic {
         }
         lastPushTime = now;
         EnsureFunc();
-        if (func == null) {
+        if (!engine.Evaluate(now, out float value)) {
             return;
         }
-        float value;
-        try {
-            object raw = func.Invoke(false, now);
-            if (raw == null || raw == Undefined.Value || !TryToFloat(raw, out value)) {
-                return;
-            }
-        } catch {
-            try {
-                (func as IDisposable)?.Dispose();
-            } catch { }
-            func = null;
-            return;
-        }
-        history.Add(new Vector2(now, value));
+        history.Push(new Vector2(now, value));
         float keep = Math.Max(Math.Max(0.01f, Window), 60f);
-        float cutoff = now - keep;
-        int trim = 0;
-        while (trim < history.Count && history[trim].x < cutoff) {
-            trim++;
-        }
-        int over = history.Count - trim - 65536;
-        if (over > 0) {
-            trim += over;
-        }
-        if (trim > 0) {
-            history.RemoveRange(0, trim);
-        }
+        history.TrimBefore(now - keep);
         SetVerticesDirty();
     }
 
     private void EnsureFunc() {
-        if (func != null && funcCode == JsCode) {
+        if (funcCode == JsCode) {
             return;
         }
-        DisposeFunc();
         funcCode = JsCode;
-        if (string.IsNullOrWhiteSpace(JsCode)) {
-            return;
-        }
-        try {
-            var engine = MainCore.V8.Engine;
-            if (engine == null) {
-                return;
-            }
-            func = engine.Evaluate($"(function(t){{ return ({JsCode}); }})") as ScriptObject;
-        } catch {
-            func = null;
-        }
+        engine.Compile(JsCode);
     }
 
     private void DisposeFunc() {
-        if (func == null) {
-            return;
-        }
-        try {
-            (func as IDisposable)?.Dispose();
-        } catch { }
-        func = null;
+        engine.Dispose();
+        funcCode = null;
     }
 
     #if ML && IL2CPP
@@ -134,15 +134,6 @@ public sealed class OvGraphComponent : MaskableGraphic {
         DisposeFunc();
     }
 
-    private static bool TryToFloat(object raw, out float value) {
-        try {
-            value = Convert.ToSingle(raw);
-            return !float.IsNaN(value) && !float.IsInfinity(value);
-        } catch {
-            value = 0f;
-            return false;
-        }
-    }
 
     #if ML && IL2CPP
     public
@@ -263,29 +254,52 @@ public sealed class OvGraphComponent : MaskableGraphic {
 
         float half = Math.Max(0.5f, Thickness) * 0.5f;
         Vector2 drawStart = Map(history[first]);
-        for (int i = Math.Max(1, first); i < history.Count; i++) {
-            Vector2 a = Map(history[i - 1]), b = Map(history[i]);
-            if (b.x < rect.xMin) {
-                continue;
+
+        int startIdx = Math.Max(0, first);
+        int ptCount = history.Count - startIdx;
+        if (ptCount >= 2) {
+            if (_pointBuffer.Length < ptCount) {
+                _pointBuffer = new Native.OvPoint2D[Math.Max(_pointBuffer.Length * 2, ptCount)];
+                _quadBuffer = new Native.OvQuad2D[_pointBuffer.Length];
             }
-            a = ClipLeft(a, b, rect.xMin);
-            if (i == Math.Max(1, first)) {
-                drawStart = a;
+
+            for (int i = 0; i < ptCount; i++) {
+                var p = history[startIdx + i];
+                _pointBuffer[i] = new Native.OvPoint2D { X = p.x, Y = p.y };
             }
-            Vector2 dir = b - a;
-            float len = dir.magnitude;
-            if (len < 0.001f) {
-                continue;
+
+            float scaleX = rect.width / window;
+            float scaleY = rect.height / (hi - lo);
+            var xform = new Native.OvMapTransform {
+                ScaleX = scaleX,
+                OffsetX = rect.xMin - start * scaleX,
+                ScaleY = scaleY,
+                OffsetY = rect.yMin - lo * scaleY,
+                XMin = rect.xMin,
+            };
+
+            int quadCount = Native.OvVertexBuilder.BuildGraphQuads(
+                _pointBuffer.AsSpan(0, ptCount),
+                xform,
+                half,
+                _quadBuffer
+            );
+
+            if (quadCount > 0) {
+                drawStart = new Vector2((_quadBuffer[0].P0.X + _quadBuffer[0].P1.X) * 0.5f, (_quadBuffer[0].P0.Y + _quadBuffer[0].P1.Y) * 0.5f);
             }
-            Vector2 n = new(-dir.y / len * half, dir.x / len * half);
-            int baseIndex = vh.currentVertCount;
-            vert.color = LineColor;
-            vert.position = a - n; vh.AddVert(vert);
-            vert.position = a + n; vh.AddVert(vert);
-            vert.position = b + n; vh.AddVert(vert);
-            vert.position = b - n; vh.AddVert(vert);
-            vh.AddTriangle(baseIndex, baseIndex + 1, baseIndex + 2);
-            vh.AddTriangle(baseIndex, baseIndex + 2, baseIndex + 3);
+
+            for (int q = 0; q < quadCount; q++) {
+                ref readonly var quad = ref _quadBuffer[q];
+                int baseIndex = vh.currentVertCount;
+                vert.color = LineColor;
+                vert.position = new Vector3(quad.P0.X, quad.P0.Y); vh.AddVert(vert);
+                vert.position = new Vector3(quad.P1.X, quad.P1.Y); vh.AddVert(vert);
+                vert.position = new Vector3(quad.P2.X, quad.P2.Y); vh.AddVert(vert);
+                vert.position = new Vector3(quad.P3.X, quad.P3.Y); vh.AddVert(vert);
+                vh.AddTriangle(baseIndex, baseIndex + 1, baseIndex + 2);
+                vh.AddTriangle(baseIndex, baseIndex + 2, baseIndex + 3);
+            }
         }
 
         void Cap(Vector2 p) {

@@ -23,13 +23,45 @@ internal static unsafe class O5Expr {
         }
     }
 
-    public static bool TryEval(long handle, out double value) {
+    public static bool TryEval(long handle, out double value) => TryEval(handle, 0.0, out value);
+
+    public static bool TryEval(long handle, double t, out double value) {
         value = 0;
         if (handle == 0 || !IsSupported) {
             return false;
         }
         try {
-            value = o5_expr_eval(handle);
+            value = o5_expr_eval_t(handle, t);
+            return true;
+        } catch {
+            value = 0;
+            return false;
+        }
+    }
+
+    public static bool TryEval(long handle, double t, ReadOnlySpan<double> vars, out double value) {
+        value = 0;
+        if (handle == 0 || !IsSupported) {
+            return false;
+        }
+        try {
+            fixed (double* p = vars) {
+                value = o5_expr_eval_vars(handle, t, p, (nuint)vars.Length);
+            }
+            return true;
+        } catch {
+            value = 0;
+            return false;
+        }
+    }
+
+    public static bool TryEval(long handle, double t, double* vars, nuint varCount, out double value) {
+        value = 0;
+        if (handle == 0 || !IsSupported) {
+            return false;
+        }
+        try {
+            value = o5_expr_eval_vars(handle, t, vars, varCount);
             return true;
         } catch {
             value = 0;
@@ -53,6 +85,14 @@ internal static unsafe class O5Expr {
     [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]
     [SuppressGCTransition]
     private static extern double o5_expr_eval(long handle);
+
+    [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]
+    [SuppressGCTransition]
+    private static extern double o5_expr_eval_t(long handle, double t);
+
+    [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]
+    [SuppressGCTransition]
+    private static extern double o5_expr_eval_vars(long handle, double t, double* vars, nuint varCount);
 
     [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]
     private static extern void o5_expr_free(long handle);

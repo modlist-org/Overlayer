@@ -30,4 +30,17 @@ pub fn build(b: *std.Build) void {
     });
     const run_compose_tests = b.addRunArtifact(compose_tests);
     test_step.dependOn(&run_compose_tests.step);
+
+    const vertex_test_mod = b.createModule(.{
+        .root_source_file = b.path("src/vertex_test.zig"),
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
+    const vertex_tests = b.addTest(.{
+        .name = "vertex-test",
+        .root_module = vertex_test_mod,
+    });
+    const run_vertex_tests = b.addRunArtifact(vertex_tests);
+    test_step.dependOn(&run_vertex_tests.step);
 }
