@@ -12,8 +12,11 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.ClearScript" Version="7.5.1" />
     <PackageReference Include="Microsoft.ClearScript.V8.Native.linux-x64" Version="7.5.1" />
+    <PackageReference Include="Microsoft.ClearScript.V8.Native.osx-arm64" Version="7.5.1" Condition="$([MSBuild]::IsOSPlatform('OSX'))" />
+    <PackageReference Include="Microsoft.ClearScript.V8.Native.osx-x64" Version="7.5.1" Condition="$([MSBuild]::IsOSPlatform('OSX'))" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="Esprima" Version="3.0.5" />
+    <PackageReference Include="FuzzySharp" Version="2.0.2" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.0" />
     <PackageReference Include="xunit" Version="2.9.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">
@@ -26,6 +29,7 @@
   <ItemGroup>
     <Compile Include="..\Overlayer\Tag\Compile\ArgConverter.cs" />
     <Compile Include="..\Overlayer\Tag\Compile\Compiler.cs" />
+    <Compile Include="..\Overlayer\Tag\Compile\AdvancedCompiler.cs" />
     <Compile Include="..\Overlayer\Tag\Compile\CompileState.cs" />
     <Compile Include="..\Overlayer\Tag\Compile\ExpressionBuilder.cs" />
     <Compile Include="..\Overlayer\Tag\Compile\JsResultFormatter.cs" />
@@ -36,11 +40,16 @@
     <Compile Include="..\Overlayer\Tag\Core\TagCore.cs" />
     <Compile Include="..\Overlayer\Tag\Core\TagArgParser.cs" />
     <Compile Include="..\Overlayer\Tag\Core\ExprCore.cs" />
+    <Compile Include="..\Overlayer\Tag\Core\V8ExpressionDispatch.cs" />
     <Compile Include="..\Overlayer\Tag\Diagnostic\CompileDiagnostic.cs" />
+    <Compile Include="..\Overlayer\Tag\Diagnostic\CompileResultFactory.cs" />
     <Compile Include="..\Overlayer\Tag\Diagnostic\CompileSeverity.cs" />
     <Compile Include="..\Overlayer\Tag\Diagnostic\DiagnosticContext.cs" />
     <Compile Include="..\Overlayer\Tag\Diagnostic\DiagnosticId.cs" />
     <Compile Include="..\Overlayer\Tag\Runtime\CompiledPlaceholder.cs" />
+    <Compile Include="..\Overlayer\Tag\Runtime\TagCache.cs" />
+    <Compile Include="..\Overlayer\Tag\Runtime\JsBinding.cs" />
+    <Compile Include="..\Overlayer\Tag\Runtime\JsBatch.cs" />
     <Compile Include="..\Overlayer\Tag\Runtime\EmptyDelegates.cs" />
     <Compile Include="..\Overlayer\ModuleAPI\PlaybackState.cs" />
     <Compile Include="..\Overlayer\Patch\Lazy\NeedsPatchAttribute.cs" />
@@ -50,6 +59,10 @@
     <Compile Include="..\Overlayer\Utility\Access\Access.cs" />
     <Compile Include="..\Overlayer\TextEngine\Parse\ParsedTag.cs" />
     <Compile Include="..\Overlayer\TextEngine\Parse\Parser.cs" />
+    <Compile Include="..\Overlayer\TextEngine\Core\TextEngineCore.cs" />
+    <Compile Include="..\Overlayer\TextEngine\Runtime\CompiledSegment.cs" />
+    <Compile Include="..\Overlayer\TextEngine\Runtime\CompiledTextSnapshot.cs" />
+    <Compile Include="..\Overlayer\TextEngine\Runtime\TextRenderPlan.cs" />
     <Compile Include="..\Overlayer\TextEngine\Highlight\TagSyntaxHighlighter.cs" />
     <Compile Include="..\Overlayer\TextEngine\Highlight\JsSyntaxHighlighter.cs" />
     <Compile Include="..\Overlayer\Update\UpdatePackage.cs" />
@@ -63,10 +76,13 @@
     <Compile Include="..\Overlayer\Overlay\GraphExpressionEngine.cs" />
     <Compile Include="..\Overlayer\Native\O5Native.cs" />
     <Compile Include="..\Overlayer\Native\O5Expr.cs" />
+    <Compile Include="..\Overlayer\Native\NativeExpression.cs" />
+    <Compile Include="..\Overlayer\Native\OvJsExpr.cs" />
     <Compile Include="..\Overlayer\Native\O5Fmt.cs" />
     <Compile Include="..\Overlayer\Native\O5Ring.cs" />
     <Compile Include="..\Overlayer\Native\OvNative.cs" />
     <Compile Include="..\Overlayer\Native\OvTagScanner.cs" />
+    <Compile Include="..\Overlayer\Native\OvTextRenderer.cs" />
     <Compile Include="..\Overlayer\Native\OvCompositor.cs" />
     <Compile Include="..\Overlayer\Native\OvVertexBuilder.cs" />
     <Compile Include="..\Overlayer\Native\OvRawInput.cs" />
@@ -75,6 +91,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="..\..\O5Kit\src\O5Kit\ThirdParty\GTweens\Source\**\*.cs" />
+    <Compile Include="..\..\O5Kit\src\O5Kit\Core\MathCompat.cs" />
   </ItemGroup>
 
 </Project>

@@ -173,11 +173,14 @@ public class V8Manager : IRuntimeService {
         engine.AddHostObject("console", log);
         engine.Execute(JSTagRegistrationHost.TagTypeScript);
         engine.Execute(@"
-            globalThis.Tag = new Proxy({}, {
-                get: function(target, prop) {
-                    return function(...args) { return TagAccessHelper.Get(prop, ...args); };
-                }
-            });
+            globalThis.Tag = (() => {
+                const accessors = Object.create(null);
+                return new Proxy({}, {
+                    get: function(target, prop) {
+                        return accessors[prop] ??= function(...args) { return TagAccessHelper.Get(prop, ...args); };
+                    }
+                });
+            })();
         ");
     }
 

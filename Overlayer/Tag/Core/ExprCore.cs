@@ -1,9 +1,9 @@
-using System.Collections.Concurrent;
 using System.Globalization;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using Overlayer.Native;
+using Overlayer.Tag.Compile;
 using Overlayer.Tag.Diagnostics;
 using Overlayer.Tag.Runtime;
 using Overlayer.TextEngine.Parse;
@@ -15,30 +15,30 @@ namespace Overlayer.Tag.Core;
 /// Features compile-time constant folding, O5Expr stack machine with tag variables, and O5Fmt zero-allocation formatting.
 /// </summary>
 public static class ExprCore {
-    private static readonly ConcurrentDictionary<string, long> NativeHandleCache = new(StringComparer.Ordinal);
+    private static readonly object NativeCacheLock = new();
+    private static readonly Dictionary<string, NativeExpression> NativeHandleCache = new(StringComparer.Ordinal);
+    private static readonly Queue<string> NativeCacheOrder = new();
 
-    private static long GetOrCompileNative(string transformed) {
-        if (NativeHandleCache.TryGetValue(transformed, out long handle)) {
-            return handle;
-        }
-        EvictIfFull();
-        handle = O5Expr.Compile(transformed);
-        if (handle != 0) {
-            NativeHandleCache[transformed] = handle;
-        }
-        return handle;
-    }
-
-    private static void EvictIfFull() {
-        if (NativeHandleCache.Count < 800) {
-            return;
-        }
-        foreach (var kv in NativeHandleCache) {
-            if (kv.Value != 0) {
-                O5Expr.Free(kv.Value);
+    private static NativeExpression GetOrCompileNative(string transformed) {
+        lock (NativeCacheLock) {
+            if (NativeHandleCache.TryGetValue(transformed, out var expression)) return expression;
+            nint js = OvJsExpr.Compile(transformed);
+            if (js != 0) {
+                expression = new NativeExpression(js, js: true);
+            } else {
+                long handle = O5Expr.Compile(transformed);
+                if (handle == 0) return null;
+                expression = new NativeExpression(handle);
             }
+            // The shared O5 runtime has 1024 slots; leave room for numeric Fx,
+            // graphs and live delegates whose programs have left this cache.
+            if (NativeHandleCache.Count >= 128) {
+                NativeHandleCache.Remove(NativeCacheOrder.Dequeue());
+            }
+            NativeHandleCache.Add(transformed, expression);
+            NativeCacheOrder.Enqueue(transformed);
+            return expression;
         }
-        NativeHandleCache.Clear();
     }
 
     private static readonly HashSet<string> ReservedMathNames = new(StringComparer.OrdinalIgnoreCase) {
@@ -134,10 +134,17 @@ public static class ExprCore {
         // Strip empty parens for functions: v0() -> v0
         transformed = Regex.Replace(transformed, @"\b(?<v>v\d+)\s*\(\s*\)", "${v}");
 
-        // 2. Native O5Expr Path (with Constant Folding, Dynamic Vars, & O5Fmt)
-        if (O5Expr.IsSupported) {
+        // 2. Native Path: OvJsExpr (exact JS number semantics), then legacy O5Expr
+        if (OvJsExpr.IsSupported || O5Expr.IsSupported) {
             if (tags.Count == 0 && !HasDynamicVariable(transformed)) {
                 // Constant Folding
+                nint jsHandle = OvJsExpr.Compile(transformed);
+                if (jsHandle != 0) {
+                    double folded = OvJsExpr.Eval(jsHandle, []);
+                    OvJsExpr.Free(jsHandle);
+                    string foldedJs = FormatResult(folded, format);
+                    return () => foldedJs;
+                }
                 long tempHandle = O5Expr.Compile(transformed);
                 if (tempHandle != 0) {
                     if (O5Expr.TryEval(tempHandle, 0.0, out double constVal)) {
@@ -149,8 +156,9 @@ public static class ExprCore {
                 }
             }
 
-            long nativeHandle = GetOrCompileNative(transformed);
-            if (nativeHandle != 0) {
+            var nativeExpression = GetOrCompileNative(transformed);
+            if (nativeExpression != null) {
+                var resultMemo = new StringMemo<long>();
                 // Compile tag getters
                 var getters = new Func<double>[tags.Count];
                 for (int i = 0; i < tags.Count; i++) {
@@ -159,16 +167,16 @@ public static class ExprCore {
 
                 return () => {
                     if (getters.Length == 0) {
-                        if (O5Expr.TryEval(nativeHandle, out double val)) {
-                            return FormatResult(val, format);
+                        if (nativeExpression.Evaluate(out double val)) {
+                            return FormatMemoizedResult(val, format, resultMemo);
                         }
                     } else {
                         Span<double> varBuf = stackalloc double[getters.Length];
                         for (int i = 0; i < getters.Length; i++) {
                             varBuf[i] = getters[i]();
                         }
-                        if (O5Expr.TryEval(nativeHandle, 0.0, varBuf, out double val)) {
-                            return FormatResult(val, format);
+                        if (nativeExpression.Evaluate(varBuf, out double val)) {
+                            return FormatMemoizedResult(val, format, resultMemo);
                         }
                     }
                     return parsed.Raw ?? string.Empty;
@@ -177,19 +185,24 @@ public static class ExprCore {
         }
 
         // 3. Fallback: ClearScript V8 JavaScript Engine (via Reflection)
-        string wrappedJsCode = WrapJsBlock(rawCode);
+        string wrappedJsCode = isLegacyJs ? "{\n" + trimmed + "\n}" : WrapJsBlock(rawCode);
+        var jsResultMemo = new StringMemo<long>();
+        // Warn once per failure streak, not every frame (logging uses reflection and disk).
+        bool warned = false;
 
         return () => {
             try {
                 if (TryEvalV8(wrappedJsCode, out var result, out string err)) {
-                    if (result is double d) return FormatResult(d, format);
-                    if (result is float f) return FormatResult(f, format);
-                    if (result is int i) return FormatResult(i, format);
-                    if (result is long l) return FormatResult(l, format);
+                    warned = false;
+                    if (result is double d) return FormatMemoizedResult(d, format, jsResultMemo);
+                    if (result is float f) return FormatMemoizedResult(f, format, jsResultMemo);
+                    if (result is int i) return FormatMemoizedResult(i, format, jsResultMemo);
+                    if (result is long l) return FormatMemoizedResult(l, format, jsResultMemo);
                     return result?.ToString() ?? string.Empty;
                 }
 
-                if (err != null) {
+                if (err != null && !warned) {
+                    warned = true;
                     LogWarning($"[ExprCore] Runtime error, Tag '{parsed.Raw}': {err}");
                 }
 
@@ -249,25 +262,23 @@ public static class ExprCore {
         type == typeof(short) || type == typeof(ushort) ||
         type == typeof(byte) || type == typeof(sbyte);
 
+    private static V8ExpressionDispatch.Evaluator v8Evaluator;
+
     private static bool TryEvalV8(string code, out object result, out string err) {
         result = null;
         err = null;
         try {
-            var mainCoreType = Type.GetType("Overlayer.Core.MainCore, Overlayer");
-            var v8Prop = mainCoreType?.GetProperty("V8", BindingFlags.Public | BindingFlags.Static);
-            var v8 = v8Prop?.GetValue(null);
-            if (v8 == null) {
+            var evaluate = v8Evaluator;
+            if (evaluate == null) {
+                evaluate = V8ExpressionDispatch.Create(typeof(ExprCore).Assembly.GetType("Overlayer.Core.MainCore"));
+                if (evaluate != null) Interlocked.CompareExchange(ref v8Evaluator, evaluate, null);
+            }
+            if (evaluate == null) {
                 err = "Engine null";
                 return false;
             }
 
-            var tryEvalMethod = v8.GetType().GetMethod("TryEvaluateFx", [typeof(string), typeof(object).MakeByRefType()]);
-            if (tryEvalMethod != null) {
-                object[] args = [code, null];
-                bool ok = (bool)tryEvalMethod.Invoke(v8, args);
-                result = args[1];
-                return ok;
-            }
+            return evaluate(code, out result);
         } catch (Exception ex) {
             err = ex.Message;
         }
@@ -305,6 +316,12 @@ public static class ExprCore {
             return val.ToString(CultureInfo.InvariantCulture);
         }
         return O5Fmt.FormatString(val, format);
+    }
+
+    internal static string FormatMemoizedResult(double value, string format, StringMemo<long> memo) {
+        // Bit keys distinguish signed zero and do not repeatedly miss for NaN.
+        long key = BitConverter.DoubleToInt64Bits(value);
+        return memo.Matches(key) ? memo.Text : memo.Store(key, FormatResult(value, format));
     }
 
     private static void LogWarning(string msg) {

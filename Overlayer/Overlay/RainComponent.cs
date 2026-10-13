@@ -169,6 +169,12 @@ public sealed class OvRainGraphic
     public Sprite Sprite;
 
     private readonly List<float> cuts = [];
+    // Per-rebuild invariants for the two cross edges (0 = left, 1 = right).
+    private readonly float[] edgeX = new float[2];
+    private readonly float[] edgeU = new float[2];
+    private readonly Color[] edgeBottom = new Color[2];
+    private readonly Color[] edgeTop = new Color[2];
+    private Color tint;
 
     public override Texture mainTexture => Sprite != null ? Sprite.texture : s_WhiteTexture;
 
@@ -190,6 +196,16 @@ public sealed class OvRainGraphic
         float fadeIn = Mathf.Clamp(Owner.FadeIn, 0f, length);
         float fadeOut = Mathf.Clamp(Owner.FadeOut, 0f, length);
         Vector4 uv = Sprite != null ? UnityEngine.Sprites.DataUtility.GetOuterUV(Sprite) : new Vector4(0f, 0f, 1f, 1f);
+        var g = Owner.Color;
+        for (int e = 0; e < 2; e++) {
+            float c = e;
+            edgeX[e] = Mathf.Lerp(rect.xMin, rect.xMax, c);
+            float nx = (edgeX[e] - rect.xMin) / rect.width;
+            edgeBottom[e] = UnityEngine.Color.Lerp(g.BL, g.BR, nx);
+            edgeTop[e] = UnityEngine.Color.Lerp(g.TL, g.TR, nx);
+            edgeU[e] = Mathf.Lerp(uv.x, uv.z, c);
+        }
+        tint = color;
 
         foreach (var trail in Trails) {
             float a0 = Mathf.Max(0f, trail.Tail);
@@ -221,21 +237,16 @@ public sealed class OvRainGraphic
         for (int k = 0; k < 4; k++) {
             float s = k < 2 ? s0 : s1;
             float t = k < 2 ? t0 : t1;
-            float c = k is 0 or 3 ? 0f : 1f;
-            Vector2 pos = new(Mathf.Lerp(rect.xMin, rect.xMax, c), rect.yMin + s);
-            float nx = (pos.x - rect.xMin) / rect.width;
+            int e = k is 0 or 3 ? 0 : 1;
+            Vector2 pos = new(edgeX[e], rect.yMin + s);
             float ny = (pos.y - rect.yMin) / rect.height;
-            var g = Owner.Color;
-            Color col = UnityEngine.Color.Lerp(
-                UnityEngine.Color.Lerp(g.BL, g.BR, nx),
-                UnityEngine.Color.Lerp(g.TL, g.TR, nx),
-                ny) * color;
+            Color col = UnityEngine.Color.Lerp(edgeBottom[e], edgeTop[e], ny) * tint;
             float alpha = 1f;
             if (fadeIn > 0f) alpha = Mathf.Min(alpha, s / fadeIn);
             if (fadeOut > 0f) alpha = Mathf.Min(alpha, (length - s) / fadeOut);
             col.a *= Mathf.Clamp01(alpha);
             // Sprite stretches over the whole trail: along the trail = sprite height.
-            Vector2 tex = new(Mathf.Lerp(uv.x, uv.z, c), Mathf.Lerp(uv.y, uv.w, t));
+            Vector2 tex = new(edgeU[e], Mathf.Lerp(uv.y, uv.w, t));
             vh.AddVert(pos, col, tex);
         }
         vh.AddTriangle(start, start + 1, start + 2);

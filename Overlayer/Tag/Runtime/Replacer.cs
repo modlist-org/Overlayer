@@ -10,27 +10,18 @@ public sealed class Replacer : IDisposable {
     public ParsedTag Parsed {
         get;
         set {
-            if (field.Equals(value)) {
-                return;
-            }
-
             string newKey = TagCache.Instance.GetKey(value);
             if (newKey != null && newKey == cachedKey) {
                 field = value;
                 return;
             }
 
-            if (cachedKey != null) {
-                TagCache.Instance.DecrementRef(cachedKey);
-            }
-
+            string previousKey = cachedKey;
+            var compiled = TagCache.Instance.Acquire(value, out newKey);
             field = value;
-            Compiled = TagCache.Instance.GetOrCompile(field);
-
-            cachedKey = TagCache.Instance.GetKey(field);
-            if (cachedKey != null) {
-                TagCache.Instance.IncrementRef(cachedKey);
-            }
+            Compiled = compiled;
+            cachedKey = newKey;
+            if (previousKey != null) TagCache.Instance.DecrementRef(previousKey);
         }
     }
 

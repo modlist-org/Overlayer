@@ -1,4 +1,3 @@
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace Overlayer.Native;
@@ -14,9 +13,10 @@ internal struct OvTagSpan {
 }
 
 internal static unsafe class OvTagScanner {
-    private const string LibName = "o5native";
+    private const string LibName = "overlayernative";
+    private static bool scannerAvailable = true;
 
-    public static bool IsSupported => O5Native.IsAvailable;
+    public static bool IsSupported => OvNative.IsAvailable && scannerAvailable;
 
     public static int Scan(string input, Span<OvTagSpan> buffer) {
         if (string.IsNullOrEmpty(input)) {
@@ -27,10 +27,12 @@ internal static unsafe class OvTagScanner {
             try {
                 fixed (char* p = input)
                 fixed (OvTagSpan* outPtr = buffer) {
-                    return (int)o5_tag_scan(p, (nuint)input.Length, outPtr, (nuint)buffer.Length);
+                    return (int)ov_tag_scan(p, (nuint)input.Length, outPtr, (nuint)buffer.Length);
                 }
-            } catch {
-                // Fallback to managed scanner
+            } catch (EntryPointNotFoundException) {
+                scannerAvailable = false;
+            } catch (DllNotFoundException) {
+                scannerAvailable = false;
             }
         }
 
@@ -174,6 +176,5 @@ internal static unsafe class OvTagScanner {
     }
 
     [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]
-    [SuppressGCTransition]
-    private static extern nuint o5_tag_scan(char* src, nuint len, OvTagSpan* outTags, nuint maxTags);
+    private static extern nuint ov_tag_scan(char* src, nuint len, OvTagSpan* outTags, nuint maxTags);
 }

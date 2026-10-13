@@ -29,6 +29,12 @@ public interface IFxValue {
 public abstract class FxValue {
     private protected const string FxKey = "Fx";
 
+    // Bumped whenever any value's UseFx/Engine changes, so callers can cache
+    // "does this object have any Fx" instead of re-walking every value per frame.
+    private static int fxVersion;
+    internal static int FxVersion => Volatile.Read(ref fxVersion);
+    private protected static void BumpFxVersion() => Interlocked.Increment(ref fxVersion);
+
     protected static readonly ConcurrentDictionary<Type, Func<string, object>> Converters = new();
 
     protected static readonly ConcurrentDictionary<Type, Func<JToken, object>> RawReaders = new();
@@ -196,6 +202,38 @@ public sealed class FxValue<T> : FxValue, IFxValue, ISettingsFile, ICopyable<FxV
     // single immutable pair so a cross-thread read never sees a torn update.
     private Tuple<string, string> wrappedJs;
 
+    // Per source text (by reference): the sanitized text and, for numeric
+    // types, its native program. Pure numeric JS skips V8 entirely; anything
+    // else (Tag proxies, statements, strings) still runs in V8 as before.
+    private sealed class Prepared(string source, string sanitized, Native.NativeExpression native) {
+        public readonly string Source = source;
+        public readonly string Sanitized = sanitized;
+        public readonly Native.NativeExpression Native = native;
+    }
+
+    private Prepared prepared;
+
+    private Prepared Prepare(string source) {
+        var cached = prepared;
+        if (cached != null && ReferenceEquals(cached.Source, source)) {
+            return cached;
+        }
+
+        string sanitized = SanitizeJsExpression(source);
+        Native.NativeExpression native = null;
+        if (IsNumericType && !string.IsNullOrEmpty(sanitized)) {
+            nint handle = Native.OvJsExpr.Compile(sanitized.Trim());
+            if (handle != 0) {
+                native = new Native.NativeExpression(handle, js: true);
+            }
+        }
+        prepared = cached = new Prepared(source, sanitized, native);
+        return cached;
+    }
+
+    private static readonly bool IsNumericType = !typeof(T).IsEnum
+        && Type.GetTypeCode(typeof(T)) is >= TypeCode.SByte and <= TypeCode.Decimal;
+
     private string GetWrappedJs(string rendered) {
         var cached = wrappedJs;
         if (cached != null && ReferenceEquals(cached.Item1, rendered)) {
@@ -217,9 +255,21 @@ public sealed class FxValue<T> : FxValue, IFxValue, ISettingsFile, ICopyable<FxV
         set => staticValue = value;
     }
 
-    public TextEngineCore Engine { get; set; }
+    public TextEngineCore Engine {
+        get;
+        set {
+            field = value;
+            BumpFxVersion();
+        }
+    }
 
-    public bool UseFx { get; set; }
+    public bool UseFx {
+        get;
+        set {
+            field = value;
+            BumpFxVersion();
+        }
+    }
 
     public bool HasFx => UseFx && Engine != null;
 
@@ -295,8 +345,10 @@ public sealed class FxValue<T> : FxValue, IFxValue, ISettingsFile, ICopyable<FxV
             return staticValue;
         }
 
+        Prepared prep = null;
         if (typeof(T) != typeof(string)) {
-            rendered = SanitizeJsExpression(rendered);
+            prep = Prepare(rendered);
+            rendered = prep.Sanitized;
             if (string.IsNullOrEmpty(rendered)) {
                 return staticValue;
             }
@@ -317,7 +369,13 @@ public sealed class FxValue<T> : FxValue, IFxValue, ISettingsFile, ICopyable<FxV
             return (T)(object)(Engine.Get() ?? rendered);
         }
         if (!targetType.IsEnum && (typeCode == TypeCode.Boolean || (typeCode >= TypeCode.SByte && typeCode <= TypeCode.Decimal))) {
-            if (TryEvaluateJs(GetWrappedJs(rendered), out var jsResult)) {
+            // Same value V8 would return for `{ expr }`, narrowed like ClearScript.
+            if (prep?.Native != null && prep.Native.Evaluate(out double native)) {
+                try {
+                    return (T)Convert.ChangeType(Tag.Runtime.JsBatch.Narrow(native), targetType, CultureInfo.InvariantCulture);
+                } catch {
+                }
+            } else if (TryEvaluateJs(GetWrappedJs(rendered), out var jsResult)) {
                 try {
                     return (T)Convert.ChangeType(jsResult, targetType, CultureInfo.InvariantCulture);
                 } catch {

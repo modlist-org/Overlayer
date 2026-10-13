@@ -68,19 +68,35 @@ public static class Unity {
     public static bool IsFocused => UnityEngine.Application.isFocused;
 
     [Tag(Desc = "[Unity] Unity engine version")]
-    public static string UnityVersion => UnityEngine.Application.unityVersion;
+    public static string UnityVersion => unityVersion ??= UnityEngine.Application.unityVersion;
+
+    // Constant for the process lifetime; cached to avoid a new string per frame.
+    private static string unityVersion, operatingSystem, deviceModel, graphicsDeviceType;
+    private static string[] qualityNames;
 
     [Tag(Desc = "[Unity] Returns true if the mouse cursor is currently visible")]
     public static bool IsCursorVisible => UnityEngine.Cursor.visible;
 
     [Tag(Desc = "[Unity] Current cursor lock state (None, Locked, Confined)")]
-    public static string CursorLockState => UnityEngine.Cursor.lockState.ToString();
+    public static string CursorLockState => UnityEngine.Cursor.lockState switch {
+        UnityEngine.CursorLockMode.None => "None",
+        UnityEngine.CursorLockMode.Locked => "Locked",
+        UnityEngine.CursorLockMode.Confined => "Confined",
+        var mode => mode.ToString()
+    };
 
     [Tag(Desc = "[Unity] Currently applied Quality Level index")]
     public static int QualityLevel => UnityEngine.QualitySettings.GetQualityLevel();
 
     [Tag(Desc = "[Unity] Currently applied Quality Level name")]
-    public static string QualityName => UnityEngine.QualitySettings.names[UnityEngine.QualitySettings.GetQualityLevel()];
+    public static string QualityName {
+        get {
+            // QualitySettings.names allocates a new array per call.
+            var names = qualityNames ??= UnityEngine.QualitySettings.names;
+            int level = UnityEngine.QualitySettings.GetQualityLevel();
+            return level >= 0 && level < names.Length ? names[level] : (qualityNames = UnityEngine.QualitySettings.names)[level];
+        }
+    }
 
     [Tag(Desc = "[Unity] VSync count setting\n(0: Disabled, 1: Every VSync, 2: Every second VSync)")]
     public static int VSyncCount => UnityEngine.QualitySettings.vSyncCount;
@@ -98,13 +114,13 @@ public static class Unity {
     public static bool IsAudioMuted => UnityEngine.AudioListener.pause;
 
     [Tag(Desc = "[Unity] Operating system version and build info")]
-    public static string OperatingSystem => UnityEngine.SystemInfo.operatingSystem;
+    public static string OperatingSystem => operatingSystem ??= UnityEngine.SystemInfo.operatingSystem;
 
     [Tag(Desc = "[Unity] Device model name")]
-    public static string DeviceModel => UnityEngine.SystemInfo.deviceModel;
+    public static string DeviceModel => deviceModel ??= UnityEngine.SystemInfo.deviceModel;
 
     [Tag(Desc = "[Unity] Graphics API type (Direct3D11, Vulkan, Metal, etc.)")]
-    public static string GraphicsDeviceType => UnityEngine.SystemInfo.graphicsDeviceType.ToString();
+    public static string GraphicsDeviceType => graphicsDeviceType ??= UnityEngine.SystemInfo.graphicsDeviceType.ToString();
 
     [Tag(Desc = "[Unity] Max supported texture size in pixels")]
     public static int MaxTextureSize => UnityEngine.SystemInfo.maxTextureSize;

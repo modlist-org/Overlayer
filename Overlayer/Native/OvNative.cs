@@ -109,5 +109,5 @@ internal static class OvNative {
         return "OverlayerNative.linux.so";
     }
 
-    private static bool Preload(string fullPath) => O5Native.Preload(fullPath);
+    private static bool Preload(string fullPath) => O5Native.Preload(fullPath, "overlayernative");
 }

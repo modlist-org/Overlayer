@@ -49,6 +49,11 @@ public sealed class MovingManComponent
     public bool Invert;
     public O5Ease Ease;
 
+    private const MovingManTarget RotationTargets = MovingManTarget.RotationX | MovingManTarget.RotationY | MovingManTarget.RotationZ;
+    private float lastRotationValue = float.NaN;
+    private MovingManTarget lastRotationTargets;
+    private Quaternion lastRotation;
+
     public void Init(TMP_Text text, RectTransform rect) {
         Text = text;
         Rect = rect;
@@ -74,17 +79,28 @@ public sealed class MovingManComponent
         }
         if ((target & MovingManTarget.PositionZ) != 0) {
             Vector3 position = Rect.anchoredPosition3D;
-            position.z = floatValue;
-            Rect.anchoredPosition3D = position;
+            if (position.z != floatValue) {
+                position.z = floatValue;
+                Rect.anchoredPosition3D = position;
+            }
         }
-        if ((target & MovingManTarget.RotationX) != 0) {
-            SetRotation(0, floatValue);
-        }
-        if ((target & MovingManTarget.RotationY) != 0) {
-            SetRotation(1, floatValue);
-        }
-        if ((target & MovingManTarget.RotationZ) != 0) {
-            SetRotation(2, floatValue);
+        // Euler readback isn't exact, so detect "already applied" by the quaternion we last wrote;
+        // any external rotation write changes localRotation and forces a re-apply.
+        MovingManTarget rotationTargets = target & RotationTargets;
+        if (rotationTargets != 0
+            && (floatValue != lastRotationValue || rotationTargets != lastRotationTargets || !Rect.localRotation.Equals(lastRotation))) {
+            if ((target & MovingManTarget.RotationX) != 0) {
+                SetRotation(0, floatValue);
+            }
+            if ((target & MovingManTarget.RotationY) != 0) {
+                SetRotation(1, floatValue);
+            }
+            if ((target & MovingManTarget.RotationZ) != 0) {
+                SetRotation(2, floatValue);
+            }
+            lastRotationValue = floatValue;
+            lastRotationTargets = rotationTargets;
+            lastRotation = Rect.localRotation;
         }
         if ((target & MovingManTarget.ScaleX) != 0) {
             SetScale(0, floatValue);
@@ -105,6 +121,9 @@ public sealed class MovingManComponent
 
     private void SetPosition(int axis, float value) {
         Vector2 position = Rect.anchoredPosition;
+        if ((axis == 0 ? position.x : position.y) == value) {
+            return;
+        }
         if (axis == 0) {
             position.x = value;
         } else {
@@ -127,6 +146,9 @@ public sealed class MovingManComponent
 
     private void SetScale(int axis, float value) {
         Vector3 scale = Rect.localScale;
+        if ((axis == 0 ? scale.x : axis == 1 ? scale.y : scale.z) == value) {
+            return;
+        }
         if (axis == 0) {
             scale.x = value;
         } else if (axis == 1) {
@@ -139,6 +161,9 @@ public sealed class MovingManComponent
 
     private void SetSizeDelta(int axis, float value) {
         Vector2 sizeDelta = Rect.sizeDelta;
+        if ((axis == 0 ? sizeDelta.x : sizeDelta.y) == value) {
+            return;
+        }
         if (axis == 0) {
             sizeDelta.x = value;
         } else {

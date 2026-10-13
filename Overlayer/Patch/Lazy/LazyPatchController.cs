@@ -8,10 +8,19 @@ public static class LazyPatchController {
     private static readonly Dictionary<string, DateTime> touched = new(StringComparer.Ordinal);
     private static readonly TimeSpan TouchTtl = TimeSpan.FromSeconds(10);
 
+    // Per-call JS tag access touches every time; the full path (lock, patch
+    // scan) only needs to run about once a second per tag (TTL is 10 s).
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, int> recentTouch = new(StringComparer.Ordinal);
+
     public static void Touch(string tagName) {
         if (string.IsNullOrEmpty(tagName)) {
             return;
         }
+        int now = Environment.TickCount;
+        if (recentTouch.TryGetValue(tagName, out int last) && unchecked(now - last) is >= 0 and < 1000) {
+            return;
+        }
+        recentTouch[tagName] = now;
         if (!Tag.Core.TagManager.TryGet(tagName, out var tag) || tag == null) {
             return;
         }

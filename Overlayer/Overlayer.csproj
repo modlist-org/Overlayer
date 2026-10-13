@@ -206,7 +206,7 @@
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_ML|AnyCPU'">
-	  <Optimize>False</Optimize>
+	  <Optimize>True</Optimize>
 	  <DebugType>embedded</DebugType>
 	</PropertyGroup>
 
@@ -216,7 +216,7 @@
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_ML_IL2CPP|AnyCPU'">
-	  <Optimize>False</Optimize>
+	  <Optimize>True</Optimize>
 	  <DebugType>embedded</DebugType>
 	</PropertyGroup>
 
@@ -291,9 +291,22 @@
 		<ItemGroup>
 			<O5NativeLib Include="$(MSBuildProjectDirectory)/../../O5Kit/native/zig-out/lib/O5KitNative.*" />
 			<OvNativeLib Include="$(MSBuildProjectDirectory)/../native/zig-out/lib/OverlayerNative.*" />
+			<NativeAlias Include="@(O5NativeLib)">
+				<Alias Condition="'%(Extension)' == '.dll'">o5native.dll</Alias>
+				<Alias Condition="'%(Extension)' == '.dylib'">libo5native.dylib</Alias>
+				<Alias Condition="'%(Extension)' == '.so'">libo5native.so</Alias>
+			</NativeAlias>
+			<NativeAlias Include="@(OvNativeLib)">
+				<Alias Condition="'%(Extension)' == '.dll'">overlayernative.dll</Alias>
+				<Alias Condition="'%(Extension)' == '.dylib'">liboverlayernative.dylib</Alias>
+				<Alias Condition="'%(Extension)' == '.so'">liboverlayernative.so</Alias>
+			</NativeAlias>
+			<NativeAlias Remove="@(NativeAlias)" Condition="'%(NativeAlias.Alias)' == ''" />
 		</ItemGroup>
 		<Copy SourceFiles="@(O5NativeLib)" DestinationFolder="$(TargetGamePath)/UserLibs" SkipUnchangedFiles="true" Condition="'@(O5NativeLib)' != ''" />
 		<Copy SourceFiles="@(OvNativeLib)" DestinationFolder="$(TargetGamePath)/UserLibs" SkipUnchangedFiles="true" Condition="'@(OvNativeLib)' != ''" />
+		<Copy SourceFiles="@(NativeAlias)" DestinationFiles="@(NativeAlias->'$(TargetDir)%(Alias)')" SkipUnchangedFiles="true" />
+		<Copy SourceFiles="@(NativeAlias)" DestinationFiles="@(NativeAlias->'$(TargetGamePath)/UserLibs/%(Alias)')" SkipUnchangedFiles="true" />
 		<!-- netstandard facade for old Mono games that don't ship one (Unity .NET 4.x profile). Same-identity loads unify where the game already has it. -->
 		<Copy SourceFiles="$(GamePath)/$(GameData)/Managed/netstandard.dll" DestinationFolder="$(TargetGamePath)/UserLibs" SkipUnchangedFiles="true" Condition="!$(Configuration.Contains('IL2CPP')) And Exists('$(GamePath)/$(GameData)/Managed/netstandard.dll')" />
 		<Copy SourceFiles="$(MSBuildProjectDirectory)/../tool/lib/netstandard.dll" DestinationFolder="$(TargetGamePath)/UserLibs" SkipUnchangedFiles="true" Condition="!$(Configuration.Contains('IL2CPP')) And !Exists('$(GamePath)/$(GameData)/Managed/netstandard.dll') And Exists('$(MSBuildProjectDirectory)/../tool/lib/netstandard.dll')" />
@@ -333,6 +346,7 @@
 		<Copy SourceFiles="$(TargetDir)O5Kit.dll" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" Condition="Exists('$(TargetDir)O5Kit.dll')" />
 		<Copy SourceFiles="@(O5NativeLib)" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" Condition="'@(O5NativeLib)' != ''" />
 		<Copy SourceFiles="@(OvNativeLib)" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" Condition="'@(OvNativeLib)' != ''" />
+		<Copy SourceFiles="@(NativeAlias)" DestinationFiles="@(NativeAlias->'$(BuildOutputDir)/UserLibs/%(Alias)')" SkipUnchangedFiles="true" />
 		<Copy SourceFiles="$(GamePath)/$(GameData)/Managed/netstandard.dll" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" Condition="!$(Configuration.Contains('IL2CPP')) And Exists('$(GamePath)/$(GameData)/Managed/netstandard.dll')" />
 		<Copy SourceFiles="$(MSBuildProjectDirectory)/../tool/lib/netstandard.dll" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" Condition="!$(Configuration.Contains('IL2CPP')) And !Exists('$(GamePath)/$(GameData)/Managed/netstandard.dll') And Exists('$(MSBuildProjectDirectory)/../tool/lib/netstandard.dll')" />
 		<Copy SourceFiles="$(GamePath)/$(GameData)/Managed/System.Runtime.Serialization.dll" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" Condition="!$(Configuration.Contains('IL2CPP')) And Exists('$(GamePath)/$(GameData)/Managed/System.Runtime.Serialization.dll')" />

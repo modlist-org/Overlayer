@@ -1,5 +1,4 @@
 using Overlayer.Compat.Interface;
-using Overlayer.Native;
 using Overlayer.Tag.Core;
 
 namespace Overlayer.TagImpl;
@@ -10,7 +9,12 @@ public sealed class FpsTracker : IRuntimeTick {
     private const int MaxWindowMs = 10000;
     private const int MaxSamples = 4096;
 
-    private readonly long ring = O5Ring.Create(MaxSamples);
+    // Frame timestamps, oldest first from (head - count). Each window query
+    // binary-searches its own start instead of pruning a shared ring, so
+    // {Fps:500} no longer truncates {Fps:5000} in the same frame.
+    private readonly double[] samples = new double[MaxSamples];
+    private int head;
+    private int count;
     private readonly Dictionary<int, (double value, double next)> fpsHeld = [];
     private readonly Dictionary<int, (double value, double next)> msHeld = [];
 
@@ -19,9 +23,28 @@ public sealed class FpsTracker : IRuntimeTick {
     }
 
     public void Tick() {
+        samples[head] = UnityEngine.Time.realtimeSinceStartup;
+        head = (head + 1) & (MaxSamples - 1);
+        if (count < MaxSamples) {
+            count++;
+        }
+    }
+
+    private double Sample(int i) => samples[(head - count + i) & (MaxSamples - 1)];
+
+    // Samples with now - t <= window (same rule as the native ring prune).
+    private bool Window(int windowMs, out long n, out double span) {
         double now = UnityEngine.Time.realtimeSinceStartup;
-        O5Ring.Push(ring, now);
-        O5Ring.Prune(ring, now, MaxWindowMs / 1000d);
+        double window = windowMs / 1000d;
+        int lo = 0, hi = count;
+        while (lo < hi) {
+            int mid = (lo + hi) >> 1;
+            if (now - Sample(mid) > window) lo = mid + 1;
+            else hi = mid;
+        }
+        n = count - lo;
+        span = n < 2 ? 0d : Sample(count - 1) - Sample(lo);
+        return n >= 2 && span >= 0.000001;
     }
 
     public double Fps(int windowMs) {
@@ -59,33 +82,11 @@ public sealed class FpsTracker : IRuntimeTick {
         return e.value;
     }
 
-    private double WindowedFps(int windowMs) {
-        double now = UnityEngine.Time.realtimeSinceStartup;
-        O5Ring.Prune(ring, now, windowMs / 1000d);
-        long n = O5Ring.Count(ring);
-        if (n < 2) {
-            return 0d;
-        }
-        double span = O5Ring.Last(ring) - O5Ring.First(ring);
-        if (span < 0.000001) {
-            return 0d;
-        }
-        return (n - 1) / span;
-    }
+    private double WindowedFps(int windowMs) =>
+        Window(windowMs, out long n, out double span) ? (n - 1) / span : 0d;
 
-    private double WindowedMs(int windowMs) {
-        double now = UnityEngine.Time.realtimeSinceStartup;
-        O5Ring.Prune(ring, now, windowMs / 1000d);
-        long n = O5Ring.Count(ring);
-        if (n < 2) {
-            return 0d;
-        }
-        double span = O5Ring.Last(ring) - O5Ring.First(ring);
-        if (span < 0.000001) {
-            return 0d;
-        }
-        return span / (n - 1) * 1000d;
-    }
+    private double WindowedMs(int windowMs) =>
+        Window(windowMs, out long n, out double span) ? span / (n - 1) * 1000d : 0d;
 }
 
 public static class Performance {

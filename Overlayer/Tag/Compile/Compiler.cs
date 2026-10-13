@@ -26,6 +26,7 @@ public static class Compiler {
 
         var sig = SignatureResolver.Resolve(tag, placeholder, diagnostics, context);
         Func<string> compiledFunc;
+        JsBinding js = null;
 
         if (sig == null || !sig.IsExecutable) {
             compiledFunc = () => parsed.Raw;
@@ -51,8 +52,19 @@ public static class Compiler {
             // when play/pause state flips. While blocked (e.g. the frames of
             // a scene transition), keep the last good value instead of
             // flashing raw text; raw is only the never-evaluated fallback.
+            if (tag.IsJS && tag.JSFunction != null) {
+                string format = sig.HasFormat ? sig.Format : null;
+                js = new JsBinding(tag, ExpressionBuilder.ArgumentValues(tag, sig), format == null
+                    ? JsResultFormatter.ToDisplayString
+                    : value => JsResultFormatter.ToFormattedString(value, format));
+                // Same call and formatting as the expression tree, plus result memo.
+                inner = js.Invoke;
+            }
             if (!HasBlockFlag(tag)) {
                 compiledFunc = inner;
+            } else if (js != null) {
+                var binding = js;
+                compiledFunc = () => binding.IsBlocked ? binding.Last ?? parsed.Raw : binding.Last = inner();
             } else {
                 string last = null;
                 compiledFunc = () => {
@@ -66,7 +78,8 @@ public static class Compiler {
 
         return new CompiledPlaceholder(
             compiledFunc,
-            [.. diagnostics]
+            [.. diagnostics],
+            js
         );
     }
 

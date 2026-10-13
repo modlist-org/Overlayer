@@ -15,12 +15,21 @@ public sealed class TagCache {
     }
 
     private readonly Dictionary<string, CacheEntry> cache = [];
+    private readonly Dictionary<string, CacheEntry> retired = [];
     private readonly Dictionary<string, int> activeTagCounts = [];
     private readonly object lockObject = new();
+    private long generation;
+    internal long Generation { get { lock (lockObject) return generation; } }
 
     public CompiledPlaceholder GetOrCompile(ParsedTag parsed) {
-        string key = MakeKey(parsed);
+        return GetOrCompile(parsed, out _);
+    }
+
+    public CompiledPlaceholder GetOrCompile(ParsedTag parsed, out string key) {
+        long epoch;
         lock (lockObject) {
+            epoch = generation;
+            key = MakeKey(parsed, epoch);
             if (cache.TryGetValue(key, out var entry)) {
                 return WithContext(entry.Compiled, parsed);
             }
@@ -50,17 +59,34 @@ public sealed class TagCache {
         }
 
         lock (lockObject) {
+            // Never publish an old V8 binding into a new cache generation.
+            if (generation != epoch) return compiled;
             if (!cache.TryGetValue(key, out var entry)) {
                 cache[key] = new CacheEntry(compiled);
             }
-            return cache[key].Compiled;
+            return WithContext(cache[key].Compiled, parsed);
+        }
+    }
+
+    public CompiledPlaceholder Acquire(ParsedTag parsed, out string key) {
+        while (true) {
+            var compiled = GetOrCompile(parsed, out key);
+            string[] changed = null;
+            lock (lockObject) {
+                if (key != MakeKey(parsed, generation)) continue;
+                if (!cache.TryGetValue(key, out var entry)) cache[key] = entry = new CacheEntry(compiled);
+                entry.RefCount++;
+                if (entry.RefCount == 1) changed = TrackActive(KeyToTagName(key), 1);
+            }
+            NotifyLazy(changed);
+            return compiled;
         }
     }
 
     public void IncrementRef(string key) {
         string[] changed = null;
         lock (lockObject) {
-            if (cache.TryGetValue(key, out var entry)) {
+            if (cache.TryGetValue(key, out var entry) || retired.TryGetValue(key, out entry)) {
                 entry.RefCount++;
                 if (entry.RefCount == 1) {
                     changed = TrackActive(KeyToTagName(key), 1);
@@ -73,10 +99,11 @@ public sealed class TagCache {
     public void DecrementRef(string key) {
         string[] changed = null;
         lock (lockObject) {
-            if (cache.TryGetValue(key, out var entry)) {
+            if (cache.TryGetValue(key, out var entry) || retired.TryGetValue(key, out entry)) {
                 entry.RefCount--;
                 if (entry.RefCount <= 0) {
                     cache.Remove(key);
+                    retired.Remove(key);
                     changed = TrackActive(KeyToTagName(key), -1);
                 }
             }
@@ -85,15 +112,15 @@ public sealed class TagCache {
     }
 
     public void Clear() {
-        string[] changed = null;
         lock (lockObject) {
-            cache.Clear();
-            if (activeTagCounts.Count > 0) {
-                activeTagCounts.Clear();
-                changed = [];
+            // Invalidation prevents reuse, but live snapshots still own their
+            // bindings and lazy-patch dependencies until their leases finish.
+            foreach (var pair in cache) {
+                if (pair.Value.RefCount > 0) retired.Add(pair.Key, pair.Value);
             }
+            cache.Clear();
+            generation++;
         }
-        NotifyLazy(changed);
     }
 
     public IReadOnlyCollection<string> GetActiveTagNames() {
@@ -130,16 +157,17 @@ public sealed class TagCache {
         if (string.IsNullOrEmpty(key)) {
             return null;
         }
-        int sep = key.IndexOf(':');
-        return sep < 0 ? key : key[..sep];
+        int start = key.IndexOf('\0') + 1;
+        int end = key.IndexOf('\0', start);
+        string name = end < 0 ? key[start..] : key.Substring(start, end - start);
+        return name.EndsWith("()", StringComparison.Ordinal) ? name[..^2].Trim() : name;
     }
 
-    public string GetKey(ParsedTag parsed) => MakeKey(parsed);
+    public string GetKey(ParsedTag parsed) {
+        lock (lockObject) return MakeKey(parsed, generation);
+    }
 
-    private static string MakeKey(ParsedTag p) =>
-        string.IsNullOrEmpty(p.Format)
-        ? p.Expression
-        : string.Concat(p.Expression, ":", p.Format);
+    private static string MakeKey(ParsedTag p, long epoch) => string.Concat(epoch.ToString(), "\0", p.Expression, "\0", p.Format);
 
     private static string FindSuggestion(string name) {
         if (string.IsNullOrWhiteSpace(name)) {
@@ -162,6 +190,6 @@ public sealed class TagCache {
         var context = new DiagnosticContext(parsed.Name, parsed.Index, parsed.Length);
         return new CompiledPlaceholder(compiled.Delegate, [.. compiled.Diagnostics.Select(d =>
             new CompileDiagnostic(d.Id, d.Severity, context, d.Data)
-        )]);
+        )], compiled.Js);
     }
 }

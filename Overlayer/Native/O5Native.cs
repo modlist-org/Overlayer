@@ -3,6 +3,10 @@ using System.Runtime.InteropServices;
 namespace Overlayer.Native;
 
 internal static class O5Native {
+#if NET6_0_OR_GREATER
+    private static readonly Dictionary<string, IntPtr> loadedLibraries = new(StringComparer.Ordinal);
+    private static bool resolverInstalled;
+#endif
     private static readonly bool available = TryLoad();
 
     public static bool IsAvailable => available;
@@ -111,10 +115,46 @@ internal static class O5Native {
         return "O5KitNative.linux.so";
     }
 
-    internal static bool Preload(string fullPath) {
+    internal static bool Preload(string fullPath, string importName = "o5native") {
         try {
+#if NET6_0_OR_GREATER
+            // The packaged filenames differ from the DllImport names. Resolve
+            // to the exact handle instead of loading a second copy (or silently
+            // falling back after a successful availability probe).
+            lock (loadedLibraries) {
+                if (!resolverInstalled) {
+                    NativeLibrary.SetDllImportResolver(typeof(O5Native).Assembly, (name, _, _) => {
+                        lock (loadedLibraries) {
+                            return loadedLibraries.TryGetValue(name, out var handle) ? handle : IntPtr.Zero;
+                        }
+                    });
+                    resolverInstalled = true;
+                }
+                if (!NativeLibrary.TryLoad(fullPath, out var handle)) return false;
+                loadedLibraries[importName] = handle;
+                return true;
+            }
+#else
+            // Mono cannot install NativeLibrary's resolver. The build ships
+            // import-name aliases; preload that exact basename when available.
+            string alias = Path.Combine(Path.GetDirectoryName(fullPath),
+                Path.DirectorySeparatorChar == '\\' ? importName + ".dll" :
+                File.Exists("/System/Library/CoreServices/SystemVersion.plist") ? "lib" + importName + ".dylib" :
+                "lib" + importName + ".so");
+            string filename = Path.GetFileName(fullPath);
+            if ((filename.StartsWith("O5KitNative.", StringComparison.Ordinal) ||
+                filename.StartsWith("OverlayerNative.", StringComparison.Ordinal)) && File.Exists(alias)) {
+                var original = new FileInfo(fullPath);
+                var named = new FileInfo(alias);
+                if (original.Length == named.Length && original.LastWriteTimeUtc == named.LastWriteTimeUtc)
+                    fullPath = alias;
+            }
             if (Path.DirectorySeparatorChar == '\\') {
                 return LoadLibraryW(fullPath) != IntPtr.Zero;
+            }
+            if (File.Exists("/System/Library/CoreServices/SystemVersion.plist")) {
+                // Darwin's RTLD_GLOBAL differs from Linux's flag.
+                return DlopenMac(fullPath, 2 | 8) != IntPtr.Zero;
             }
             const int RTLD_NOW = 2;
             const int RTLD_GLOBAL = 0x100;
@@ -130,6 +170,7 @@ internal static class O5Native {
                 }
             } catch {
             }
+#endif
         } catch {
         }
         return false;
@@ -140,6 +181,9 @@ internal static class O5Native {
 
     [DllImport("libdl", EntryPoint = "dlopen", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
     private static extern IntPtr DlopenLibDl(string fileName, int flags);
+
+    [DllImport("/usr/lib/libSystem.B.dylib", EntryPoint = "dlopen", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+    private static extern IntPtr DlopenMac(string fileName, int flags);
 
     [DllImport("kernel32", EntryPoint = "LoadLibraryW", SetLastError = true, CharSet = CharSet.Unicode)]
     private static extern IntPtr LoadLibraryW(string lpFileName);

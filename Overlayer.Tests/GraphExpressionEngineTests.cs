@@ -55,6 +55,19 @@ public sealed class GraphExpressionEngineTests {
     }
 
     [Fact]
+    public void JsOnlySyntax_RunsNativeWithJsSemantics() {
+        Assert.True(OvJsExpr.IsSupported);
+        using var engine = new GraphExpressionEngine();
+        engine.Compile("(Math.max(t, Tag(\"MyKps\")) << 36) + Math.round(-2.5) + Math.hypot(3, 4)");
+        Assert.Equal(GraphExpressionEngine.EngineKind.ZigNative, engine.Kind);
+        Assert.True(engine.Evaluate(20f, out float val));
+        Assert.Equal((20 << 36) - 2 + 5, val);
+        engine.Compile("1 / (t - 1)");
+        Assert.False(engine.Evaluate(1f, out float inf));
+        Assert.Equal(0f, inf);
+    }
+
+    [Fact]
     public void TagFuncExpression_UsesZigNativeWithFastGetter() {
         if (!O5Expr.IsSupported) return;
         using var engine = new GraphExpressionEngine();

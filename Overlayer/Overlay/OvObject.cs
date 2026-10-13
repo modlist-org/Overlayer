@@ -31,7 +31,31 @@ public sealed class OvObject : ISettingsFile {
 
     public OvObjectSettings Config = new();
 
-    public bool HasAnyFx => Config?.HasAnyFx ?? false;
+    private bool _hasAnyFx;
+    private int _hasAnyFxVersion = -1;
+    private int _hasAnyFxFrame;
+    private OvObjectSettings _hasAnyFxConfig;
+
+    // Walking every settings value is ~300 calls; recompute only when an Fx
+    // flag changed, the config was swapped, or (safety net) once a second.
+    public bool HasAnyFx {
+        get {
+            var config = Config;
+            if (config == null) {
+                return false;
+            }
+            int version = FxValue.FxVersion;
+            int frame = Time.frameCount;
+            if (version != _hasAnyFxVersion || !ReferenceEquals(config, _hasAnyFxConfig)
+                || frame - _hasAnyFxFrame >= 60 || frame < _hasAnyFxFrame) {
+                _hasAnyFx = config.HasAnyFx;
+                _hasAnyFxVersion = version;
+                _hasAnyFxConfig = config;
+                _hasAnyFxFrame = frame;
+            }
+            return _hasAnyFx;
+        }
+    }
 
     private string _lastName;
     private bool _lastEnabled;
@@ -502,16 +526,63 @@ public sealed class OvObject : ISettingsFile {
             Engine.Text = text ?? string.Empty;
         }
 
+        private static int renderedFrame = -1;
+        private static readonly List<TextEngineUpdater> FrameUpdaters = [];
+        private static readonly List<TextEngineCore> FrameEngines = [];
+        private static string[] frameResults = new string[16];
+        private int lastRenderedFrame = -1;
+        private string lastText;
+
         public void Update() {
-            if (Tmp == null) {
+            if (Tmp == null || Engine == null) {
                 return;
             }
 
-            if (Engine == null) {
+            int frame = Time.frameCount;
+            if (renderedFrame != frame) {
+                renderedFrame = frame;
+                RenderAllActive(frame);
+            }
+            // Enabled after this frame's batch ran: render on its own.
+            if (lastRenderedFrame != frame) {
+                lastRenderedFrame = frame;
+                Apply(Engine.Get());
+            }
+        }
+
+        // All active overlays share one V8 transition for their JS tags per frame.
+        private static void RenderAllActive(int frame) {
+            FrameUpdaters.Clear();
+            FrameEngines.Clear();
+            foreach (var wr in AllUpdaters) {
+                if (wr.TryGetTarget(out var updater) && updater != null && updater.isActiveAndEnabled
+                    && updater.Tmp != null && updater.Engine != null) {
+                    FrameUpdaters.Add(updater);
+                    FrameEngines.Add(updater.Engine);
+                }
+            }
+            if (frameResults.Length < FrameEngines.Count) frameResults = new string[FrameEngines.Count * 2];
+            TextEngineCore.GetAll(FrameEngines, frameResults);
+            for (int i = 0; i < FrameUpdaters.Count; i++) {
+                FrameUpdaters[i].lastRenderedFrame = frame;
+                FrameUpdaters[i].Apply(frameResults[i]);
+                frameResults[i] = null;
+            }
+            FrameUpdaters.Clear();
+            FrameEngines.Clear();
+        }
+
+        // Unchanged text keeps its memoized instance, so skip TMP's O(n) setter
+        // compare. Settings may rewrite Tmp.text, hence the second check (on
+        // IL2CPP the getter allocates a new string, so always assign there).
+        private void Apply(string text) {
+#if !(ML && IL2CPP)
+            if (ReferenceEquals(text, lastText) && ReferenceEquals(Tmp.text, text)) {
                 return;
             }
-
-            Tmp.text = Engine.Get();
+#endif
+            lastText = text;
+            Tmp.text = text;
         }
 
         public void OnDestroy() {

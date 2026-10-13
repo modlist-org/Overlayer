@@ -42,6 +42,7 @@ public sealed class GraphExpressionEngine : IDisposable {
     public IReadOnlyList<TagCore> BoundTags => _tagList;
 
     private long _nativeHandle;
+    private bool _nativeJs;
     private readonly List<TagCore> _tagList = [];
     private Func<double>[] _tagGetters = [];
     private ScriptObject _v8Func;
@@ -81,7 +82,7 @@ public sealed class GraphExpressionEngine : IDisposable {
     }
 
     private bool TryCompileNativeWithTags(string code) {
-        if (!O5Expr.IsSupported) {
+        if (!O5Expr.IsSupported && !OvJsExpr.IsSupported) {
             return false;
         }
 
@@ -155,8 +156,12 @@ public sealed class GraphExpressionEngine : IDisposable {
         // Name() -> v0() 로 치환된 경우 괄호 제거 (v0() -> v0)
         transformed = Regex.Replace(transformed, @"\b(?<v>v\d+)\s*\(\s*\)", "${v}");
 
-        // Zig 바이트코드 컴파일
-        long handle = O5Expr.Compile(transformed);
+        // Zig 바이트코드 컴파일: JS 의미론 엔진 우선, 레거시 O5 폴백
+        long handle = OvJsExpr.Compile(transformed, allowT: true);
+        bool js = handle != 0;
+        if (!js) {
+            handle = O5Expr.Compile(transformed);
+        }
         if (handle == 0) {
             return false;
         }
@@ -172,10 +177,9 @@ public sealed class GraphExpressionEngine : IDisposable {
             getters[i] = CreateFastGetter(tag);
         }
 
-        if (_nativeHandle != 0) {
-            O5Expr.Free(_nativeHandle);
-        }
+        FreeNative();
         _nativeHandle = handle;
+        _nativeJs = js;
         _tagList.Clear();
         _tagList.AddRange(tags);
         _tagGetters = getters;
@@ -273,6 +277,18 @@ public sealed class GraphExpressionEngine : IDisposable {
         value = 0f;
         if (Kind == EngineKind.ZigNative) {
             int count = _tagGetters.Length;
+            if (_nativeJs) {
+                Span<double> args = stackalloc double[count];
+                for (int i = 0; i < count; i++) {
+                    args[i] = _tagGetters[i]();
+                }
+                double result = OvJsExpr.Eval((nint)_nativeHandle, args, now);
+                if (double.IsNaN(result) || double.IsInfinity(result)) {
+                    return false;
+                }
+                value = (float)result;
+                return true;
+            }
             if (count == 0) {
                 if (O5Expr.TryEval(_nativeHandle, now, out double res) && !double.IsNaN(res) && !double.IsInfinity(res)) {
                     value = (float)res;
@@ -322,11 +338,20 @@ public sealed class GraphExpressionEngine : IDisposable {
         }
     }
 
-    public void Dispose() {
-        if (_nativeHandle != 0) {
-            O5Expr.Free(_nativeHandle);
-            _nativeHandle = 0;
+    private void FreeNative() {
+        if (_nativeHandle == 0) {
+            return;
         }
+        if (_nativeJs) {
+            OvJsExpr.Free((nint)_nativeHandle);
+        } else {
+            O5Expr.Free(_nativeHandle);
+        }
+        _nativeHandle = 0;
+    }
+
+    public void Dispose() {
+        FreeNative();
         _tagList.Clear();
         _tagGetters = [];
         if (_v8Func != null) {

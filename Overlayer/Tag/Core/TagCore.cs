@@ -41,6 +41,8 @@ public class TagCore {
     public Type ReturnType { get; }
 
     private Func<object[], object> _compiledDelegate;
+    // All-defaults arguments, normalized once (DefaultValue reads are reflection).
+    private object[] _defaultArgs;
     private readonly bool _variadic;
 
     public bool IsMethod => MemberType == TagMemberType.Method;
@@ -211,6 +213,19 @@ public class TagCore {
         return normalized;
     }
 
+    // Normalize once, then InvokeNormalized each frame (no coercion or reflection).
+    internal object[] NormalizeForInvoke(object[] args) =>
+        IsJS || (args != null && args.Length == 0 && Parameters.Length == 0) ? args : NormalizeArgs(Parameters, _variadic, args);
+
+    internal object InvokeNormalized(object[] normalized) {
+        if (IsJS || _compiledDelegate == null) return Invoke(normalized);
+        try {
+            return _compiledDelegate(normalized);
+        } catch (Exception e) {
+            throw new TargetInvocationException(e);
+        }
+    }
+
     public object Invoke(params object[] args) {
         if (IsJS) {
             try {
@@ -257,7 +272,9 @@ public class TagCore {
 
         object[] normalized = args != null && args.Length == 0 && Parameters.Length == 0
             ? args
-            : NormalizeArgs(Parameters, _variadic, args);
+            : args == null || args.Length == 0
+                ? _defaultArgs ??= NormalizeArgs(Parameters, _variadic, args)
+                : NormalizeArgs(Parameters, _variadic, args);
         try {
             return _compiledDelegate(normalized);
         } catch (Exception e) {

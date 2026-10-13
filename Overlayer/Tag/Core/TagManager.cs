@@ -1,5 +1,6 @@
 using Overlayer.Async;
 using Overlayer.Core;
+using Overlayer.Tag.Runtime;
 using System.Reflection;
 using static Overlayer.Overlay.OvObject;
 
@@ -13,7 +14,7 @@ public static class TagManager {
     private static readonly object _lock = new();
 
     private static readonly HashSet<Assembly> _registeredAssemblies = [];
-    private static Dictionary<string, TagCore> _tags = [];
+    private static volatile Dictionary<string, TagCore> _tags = [];
 
     public static int Count => _tags.Count;
 
@@ -43,6 +44,8 @@ public static class TagManager {
                 }
                 _tags = newDict;
             }
+
+            TagCache.Instance.Clear();
 
             MainCore.Log.Msg($"[{nameof(TagManager)}] Registration completed for '{asm.GetName().Name}'. Total tags: {_tags.Count}");
             MainCore.V8.GenerateImplJs();
@@ -79,6 +82,8 @@ public static class TagManager {
             _tags = newDict;
         }
 
+        TagCache.Instance.Clear();
+
         MainCore.Log.Msg($"[{nameof(TagManager)}] {registeredCount} tags registered. Total tags: {_tags.Count}");
 
         MainCore.V8.GenerateImplJs();
@@ -110,6 +115,7 @@ public static class TagManager {
             MainCore.Log.Msg($"[{nameof(TagManager)}] {removedCount} tags unregistered. Total tags: {_tags.Count}");
         }
 
+        TagCache.Instance.Clear();
         if (recompile) {
             MainThread.Enqueue(TextEngineUpdater.RecompileAll);
         }
@@ -133,14 +139,16 @@ public static class TagManager {
             };
             _tags = newMap;
         }
+        TagCache.Instance.Clear();
         MainCore.Log.Msg($"[{nameof(TagManager)}] Tag updated: {tag.Name}");
     }
 
     public static void Dispose() {
         lock (_lock) {
-            _tags.Clear();
+            _tags = [];
             _registeredAssemblies.Clear();
         }
+        TagCache.Instance.Clear();
         MainCore.Log.Msg($"[{nameof(TagManager)}] Disposed");
     }
 }

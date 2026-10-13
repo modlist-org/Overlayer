@@ -14,6 +14,16 @@ public static class Effects {
     private static readonly Dictionary<string, AnimationState> easedValues = [];
     private static readonly Dictionary<string, AnimationState> movingValues = [];
 
+    private sealed class ColorRangeMemo {
+        internal int ProgressBits;
+        internal int MaxLength;
+        internal string Result;
+    }
+
+    private static readonly object colorCacheLock = new();
+    private static readonly Dictionary<string, (bool ok, Color color, bool hasAlpha)> parsedColors = [];
+    private static readonly Dictionary<(string, string), ColorRangeMemo> colorRangeMemos = [];
+
     [Tag(TagType = TagType.ProcessFormat, Desc = "Smoothly follows a tag value with easing\nEx) {EasedValue:Combo} / {EasedValue:Combo,0,500,OutExpo}\nargs are comma-separated: tag, digits, milliseconds, ease")]
     public static double EasedValue(string tagName, int digits = -1, double speed = 500,
         O5Ease ease = O5Ease.Linear) {
@@ -43,6 +53,16 @@ public static class Effects {
             return string.Empty;
         }
 
+        // Same hex pair + progress + maxLength always yields the same string; reuse it.
+        int progressBits = BitConverter.SingleToInt32Bits(progress);
+        var memoKey = (minimumHex, maximumHex);
+        lock (colorCacheLock) {
+            if (colorRangeMemos.TryGetValue(memoKey, out ColorRangeMemo memo)
+                && memo.ProgressBits == progressBits && memo.MaxLength == maxLength) {
+                return memo.Result;
+            }
+        }
+
         Color color = Color.LerpUnclamped(from, to, progress);
         string result = fromAlpha || toAlpha
 #if ML && IL2CPP
@@ -52,7 +72,19 @@ public static class Effects {
             ? ColorUtility.ToHtmlStringRGBA(color)
             : ColorUtility.ToHtmlStringRGB(color);
 #endif
-        return maxLength < 0 || result.Length <= maxLength ? result : result[..maxLength];
+        result = maxLength < 0 || result.Length <= maxLength ? result : result[..maxLength];
+        lock (colorCacheLock) {
+            if (!colorRangeMemos.TryGetValue(memoKey, out ColorRangeMemo memo)) {
+                if (colorRangeMemos.Count > 256) {
+                    colorRangeMemos.Clear();
+                }
+                colorRangeMemos[memoKey] = memo = new ColorRangeMemo();
+            }
+            memo.ProgressBits = progressBits;
+            memo.MaxLength = maxLength;
+            memo.Result = result;
+        }
+        return result;
     }
 
     internal static bool TryColorRangeProgress(string tagName, double minimum, double maximum, O5Ease ease, out float progress) {
@@ -170,34 +202,55 @@ public static class Effects {
         return n1 * t * t + 0.984375f;
     }
 
+    // Called every frame by effect tags and components: parse the tag
+    // reference and normalize its arguments once, not per call.
+    private sealed class NumberSource(bool valid, string name, string[] callArgs) {
+        public readonly bool Valid = valid;
+        public readonly string Name = name;
+        public readonly string[] CallArgs = callArgs;
+        public Binding Bound;
+    }
+
+    private sealed class Binding(TagCore tag, object[] args) {
+        public readonly TagCore Tag = tag;
+        public readonly object[] Args = args;
+    }
+
+    private static readonly Dictionary<string, NumberSource> numberSources = [];
+
     private static bool TryReadNumber(string tagName, out double value) {
         value = 0;
-        if (!TagArgParser.TrySplit(tagName, out string name, out string[] callArgs)
-            || !TagManager.TryGet(name, out TagCore tag)) {
+        if (tagName == null) {
+            return false;
+        }
+
+        NumberSource source;
+        lock (numberSources) {
+            if (!numberSources.TryGetValue(tagName, out source)) {
+                bool valid = TagArgParser.TrySplit(tagName, out string name, out string[] callArgs);
+                source = new NumberSource(valid, name, callArgs);
+                if (numberSources.Count >= 256) {
+                    numberSources.Clear();
+                }
+                numberSources[tagName] = source;
+            }
+        }
+
+        if (!source.Valid || !TagManager.TryGet(source.Name, out TagCore tag)) {
             return false;
         }
 
         try {
-            object[] args;
-            if (callArgs.Length == 0) {
-                if (tag.RequiredParameterCount != 0) {
+            var bound = source.Bound;
+            if (bound == null || bound.Tag != tag) {
+                object[] args = BuildArgs(tag, source.CallArgs);
+                if (args == null) {
                     return false;
                 }
-                args = Array.Empty<object>();
-                if (tag.Parameters.Length > 0) {
-                    args = new object[tag.Parameters.Length];
-                    for (int i = 0; i < args.Length; i++) {
-                        args[i] = tag.Parameters[i].DefaultValue;
-                    }
-                }
-            } else {
-                if (callArgs.Length < tag.RequiredParameterCount) {
-                    return false;
-                }
-                args = callArgs;
+                source.Bound = bound = new Binding(tag, tag.NormalizeForInvoke(args));
             }
 
-            object result = tag.Invoke(args);
+            object result = tag.InvokeNormalized(bound.Args);
             // Hot path: value tags return double; skip ToString+parse entirely.
             if (result is double d) {
                 value = d;
@@ -209,15 +262,49 @@ public static class Effects {
         }
     }
 
+    private static object[] BuildArgs(TagCore tag, string[] callArgs) {
+        if (callArgs.Length == 0) {
+            if (tag.RequiredParameterCount != 0) {
+                return null;
+            }
+            var args = Array.Empty<object>();
+            if (tag.Parameters.Length > 0) {
+                args = new object[tag.Parameters.Length];
+                for (int i = 0; i < args.Length; i++) {
+                    args[i] = tag.Parameters[i].DefaultValue;
+                }
+            }
+            return args;
+        }
+        return callArgs.Length < tag.RequiredParameterCount ? null : callArgs;
+    }
+
     private static bool TryColor(string hex, out Color color, out bool hasAlpha) {
         color = default;
-        hex = hex?.TrimStart(['#']);
-        hasAlpha = hex?.Length is 4 or 8;
-        return hex?.Length is 3 or 4 or 6 or 8
+        hasAlpha = false;
+        if (hex == null) {
+            return false;
+        }
+        lock (colorCacheLock) {
+            if (parsedColors.TryGetValue(hex, out var cached)) {
+                (color, hasAlpha) = (cached.color, cached.hasAlpha);
+                return cached.ok;
+            }
+        }
+        string trimmed = hex.TrimStart(['#']);
+        hasAlpha = trimmed.Length is 4 or 8;
+        bool ok = trimmed.Length is 3 or 4 or 6 or 8
 #if ML && IL2CPP
-            && Overlayer.Compat.HtmlColor.TryParseHtmlString("#" + hex, out color);
+            && Overlayer.Compat.HtmlColor.TryParseHtmlString("#" + trimmed, out color);
 #else
-            && ColorUtility.TryParseHtmlString("#" + hex, out color);
+            && ColorUtility.TryParseHtmlString("#" + trimmed, out color);
 #endif
+        lock (colorCacheLock) {
+            if (parsedColors.Count > 256) {
+                parsedColors.Clear();
+            }
+            parsedColors[hex] = (ok, color, hasAlpha);
+        }
+        return ok;
     }
 }

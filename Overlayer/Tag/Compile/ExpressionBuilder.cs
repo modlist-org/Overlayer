@@ -7,9 +7,15 @@ using System.Reflection;
 namespace Overlayer.Tag.Compile;
 
 public static class ExpressionBuilder {
-    public static Expression Build(TagCore tag, ResolvedSignature sig, List<CompileDiagnostic> diag) {
-        var parameters = tag.Parameters;
+    // Bound argument values as passed to the tag; JS batching reuses the same constants.
+    internal static object[] ArgumentValues(TagCore tag, ResolvedSignature sig) =>
+        [.. BuildValues(tag, sig).Cast<ConstantExpression>().Select(value => value.Value)];
 
+    public static Expression Build(TagCore tag, ResolvedSignature sig, List<CompileDiagnostic> diag) =>
+        BuildBody(tag, sig, BuildValues(tag, sig));
+
+    private static Expression[] BuildValues(TagCore tag, ResolvedSignature sig) {
+        var parameters = tag.Parameters;
         var values = new Expression[parameters.Length];
 
         for (int i = 0; i < parameters.Length; i++) {
@@ -36,7 +42,10 @@ public static class ExpressionBuilder {
 
             values[i] = value;
         }
+        return values;
+    }
 
+    private static Expression BuildBody(TagCore tag, ResolvedSignature sig, Expression[] values) {
         Expression call = tag.MemberType switch {
             TagMemberType.Method => Expression.Call(
                 (MethodInfo)tag.Member,
@@ -51,7 +60,8 @@ public static class ExpressionBuilder {
                 Expression.Property(Expression.Constant(tag), nameof(TagCore.JSFunction)),
                 typeof(ScriptObject).GetMethod(nameof(ScriptObject.Invoke), [typeof(bool), typeof(object[])])!,
                 Expression.Constant(false),
-                Expression.NewArrayInit(typeof(object), values)
+                // Bound arguments are immutable constants; no per-frame array.
+                Expression.Constant(values.Cast<ConstantExpression>().Select(value => value.Value).ToArray(), typeof(object[]))
             ),
 
             _ => throw new NotSupportedException($"Unsupported member type: {tag.MemberType}")

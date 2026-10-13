@@ -9,7 +9,11 @@ public sealed class CompiledPlaceholder {
     public bool IsValid => !field;
     public bool HasWarning { get; }
 
-    public CompiledPlaceholder(Func<string> del, CompileDiagnostic[] diagnostics) {
+    // Set for plain JS tag calls; lets the text engine batch them per frame.
+    public JsBinding Js { get; }
+
+    public CompiledPlaceholder(Func<string> del, CompileDiagnostic[] diagnostics, JsBinding js = null) {
+        Js = js;
         Delegate = del ?? EmptyDelegates.ReturnEmpty;
         Diagnostics = diagnostics ?? [];
 

@@ -22,10 +22,10 @@ public static class Time {
     public static int Hour => DateTime.Now.Hour;
 
     [Tag(Desc = "Current hour in 12-hour format (1-12).")]
-    public static int Hour12 => DateTime.Now.Hour % 12 == 0 ? 12 : DateTime.Now.Hour % 12;
+    public static int Hour12 => DateTime.Now.Hour % 12 is var h && h == 0 ? 12 : h;
 
     [Tag(Desc = "Returns 'AM' or 'PM' based on the current time.")]
-    public static string AmPm => DateTime.Now.ToString("tt", System.Globalization.CultureInfo.InvariantCulture);
+    public static string AmPm => DateTime.Now.Hour < 12 ? "AM" : "PM";
 
     [Tag(Desc = "Returns true if it is currently AM.")]
     public static bool IsAm => DateTime.Now.Hour < 12;
@@ -40,7 +40,9 @@ public static class Time {
     public static int DayOfYear => DateTime.Now.DayOfYear;
 
     [Tag(Desc = "Current day of the week (e.g., Sunday).")]
-    public static string DayOfWeek => DateTime.Now.DayOfWeek.ToString();
+    public static string DayOfWeek => DayNames[(int)DateTime.Now.DayOfWeek];
+
+    private static readonly string[] DayNames = Enum.GetNames(typeof(System.DayOfWeek));
 
     [Tag(Desc = "Current month (1-12).")]
     public static int Month => DateTime.Now.Month;

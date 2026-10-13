@@ -56,4 +56,17 @@ pub fn build(b: *std.Build) void {
     });
     const run_input_tests = b.addRunArtifact(input_tests);
     test_step.dependOn(&run_input_tests.step);
+
+    for ([_][]const u8{ "scanner", "text", "jsexpr" }) |name| {
+        const tests = b.addTest(.{
+            .name = name,
+            .root_module = b.createModule(.{
+                .root_source_file = b.path(b.fmt("src/{s}.zig", .{name})),
+                .target = target,
+                .optimize = optimize,
+                .link_libc = true,
+            }),
+        });
+        test_step.dependOn(&b.addRunArtifact(tests).step);
+    }
 }

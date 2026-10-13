@@ -67,10 +67,9 @@ internal static unsafe class OvVertexBuilder {
         Span<OvQuad2D> outQuads
     ) {
         if (points.Length < 2) return 0;
-        int maxQuads = Math.Min(points.Length - 1, outQuads.Length);
         int written = 0;
 
-        for (int i = 0; i < maxQuads; i++) {
+        for (int i = 0; i < points.Length - 1 && written < outQuads.Length; i++) {
             var rawA = points[i];
             var rawB = points[i + 1];
 
@@ -112,6 +111,63 @@ internal static unsafe class OvVertexBuilder {
 
         return written;
     }
+
+    // Older native libraries remain usable: probe a missing export only once.
+    private static bool fillAvailable = true;
+    internal static bool IsFillSupported => IsSupported && fillAvailable;
+
+    public static int BuildGraphFillQuads(ReadOnlySpan<OvPoint2D> points,
+        in OvMapTransform transform, float baseY, Span<OvQuad2D> outQuads) {
+        if (points.Length < 2 || outQuads.IsEmpty) return 0;
+        if (IsSupported && fillAvailable) {
+            try {
+                fixed (OvPoint2D* p = points)
+                fixed (OvQuad2D* q = outQuads) {
+                    return (int)ov_graph_build_fill_quads(p, (nuint)points.Length,
+                        transform, baseY, q, (nuint)outQuads.Length);
+                }
+            } catch (EntryPointNotFoundException) {
+                fillAvailable = false;
+            } catch (DllNotFoundException) {
+                fillAvailable = false;
+            }
+        }
+        return BuildGraphFillQuadsManaged(points, transform, baseY, outQuads);
+    }
+
+    public static int BuildGraphFillQuadsManaged(ReadOnlySpan<OvPoint2D> points,
+        in OvMapTransform transform, float baseY, Span<OvQuad2D> outQuads) {
+        int written = 0;
+        for (int i = 0; i < points.Length - 1 && written < outQuads.Length; i++) {
+            float ax = points[i].X * transform.ScaleX + transform.OffsetX;
+            float ay = points[i].Y * transform.ScaleY + transform.OffsetY;
+            float bx = points[i + 1].X * transform.ScaleX + transform.OffsetX;
+            float by = points[i + 1].Y * transform.ScaleY + transform.OffsetY;
+            if (bx < transform.XMin) continue;
+            if (ax < transform.XMin) {
+                float dx = bx - ax;
+                if (dx > 0.000001f) {
+                    ay += (by - ay) * ((transform.XMin - ax) / dx);
+                    ax = transform.XMin;
+                } else {
+                    ax = bx;
+                    ay = by;
+                }
+            }
+            outQuads[written++] = new OvQuad2D {
+                P0 = new OvPoint2D { X = ax, Y = baseY },
+                P1 = new OvPoint2D { X = bx, Y = baseY },
+                P2 = new OvPoint2D { X = bx, Y = by },
+                P3 = new OvPoint2D { X = ax, Y = ay },
+            };
+        }
+        return written;
+    }
+
+    [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]
+    [SuppressGCTransition]
+    private static extern nuint ov_graph_build_fill_quads(OvPoint2D* pointsPtr,
+        nuint count, OvMapTransform transform, float baseY, OvQuad2D* outQuadsPtr, nuint maxQuads);
 
     [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]
     [SuppressGCTransition]

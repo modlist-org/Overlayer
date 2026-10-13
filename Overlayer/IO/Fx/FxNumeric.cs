@@ -1,80 +1,49 @@
-using System.Collections.Concurrent;
 using System.Globalization;
 using Overlayer.Native;
 
 namespace Overlayer.IO.Fx;
 
 internal static class FxNumeric {
-    private const int MaxCache = 512;
-
-    private sealed class Entry {
-        public static readonly Entry Fail = new();
-        public readonly object Gate = new();
-        public long Zig;
-    }
-
-    private static readonly ConcurrentDictionary<string, Entry> cache = new();
-    private static readonly object evictGate = new();
+    private const int MaxCache = 256;
+    private static readonly Dictionary<string, long> cache = new(StringComparer.Ordinal);
+    private static readonly Queue<string> order = new();
+    private static readonly object gate = new();
 
     public static bool TryEvaluate(string rendered, Type targetType, out object value) {
         value = null;
-        if (string.IsNullOrEmpty(rendered)) {
-            return false;
-        }
-        if (double.TryParse(rendered, NumberStyles.Float, CultureInfo.InvariantCulture, out var direct)
+        if (string.IsNullOrEmpty(rendered)) return false;
+        if (double.TryParse(rendered, NumberStyles.Float, CultureInfo.InvariantCulture, out double direct)
             && !double.IsNaN(direct) && !double.IsInfinity(direct)) {
-            try {
-                value = Convert.ChangeType(direct, targetType, CultureInfo.InvariantCulture);
-                return true;
-            } catch {
-                return false;
-            }
+            return TryConvert(direct, targetType, out value);
         }
-        var entry = cache.GetOrAdd(rendered, Compile);
-        if (ReferenceEquals(entry, Entry.Fail)) {
+        if (!O5Expr.IsSupported) return false;
+
+        // Compilation, evaluation and eviction share ownership protection.
+        // Previously a caller could obtain an Entry just before another thread
+        // freed and zeroed its program during a whole-cache eviction.
+        lock (gate) {
+            if (!cache.TryGetValue(rendered, out long handle)) {
+                if (cache.Count >= MaxCache) {
+                    string oldest = order.Dequeue();
+                    O5Expr.Free(cache[oldest]);
+                    cache.Remove(oldest);
+                }
+                handle = O5Expr.Compile(rendered);
+                cache.Add(rendered, handle);
+                order.Enqueue(rendered);
+            }
+            if (handle == 0 || !O5Expr.TryEval(handle, out double number)) return false;
+            return TryConvert(number, targetType, out value);
+        }
+    }
+
+    private static bool TryConvert(double number, Type targetType, out object value) {
+        try {
+            value = Convert.ChangeType(number, targetType, CultureInfo.InvariantCulture);
+            return true;
+        } catch {
+            value = null;
             return false;
-        }
-        lock (entry.Gate) {
-            try {
-                if (entry.Zig == 0 || !O5Expr.TryEval(entry.Zig, out var d)) {
-                    return false;
-                }
-                value = Convert.ChangeType(d, targetType, CultureInfo.InvariantCulture);
-                return true;
-            } catch {
-                return false;
-            }
-        }
-    }
-
-    private static Entry Compile(string rendered) {
-        EvictIfFull();
-        if (O5Expr.IsSupported) {
-            long handle = O5Expr.Compile(rendered);
-            if (handle != 0) {
-                return new Entry { Zig = handle };
-            }
-        }
-        return Entry.Fail;
-    }
-
-    private static void EvictIfFull() {
-        if (cache.Count < MaxCache) {
-            return;
-        }
-        lock (evictGate) {
-            if (cache.Count < MaxCache) {
-                return;
-            }
-            foreach (var kv in cache) {
-                if (kv.Value != null && !ReferenceEquals(kv.Value, Entry.Fail) && kv.Value.Zig != 0) {
-                    lock (kv.Value.Gate) {
-                        O5Expr.Free(kv.Value.Zig);
-                        kv.Value.Zig = 0;
-                    }
-                }
-            }
-            cache.Clear();
         }
     }
 }

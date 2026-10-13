@@ -27,11 +27,10 @@ pub fn buildGraphQuads(
     out_quads: []Quad2D,
 ) usize {
     if (points.len < 2) return 0;
-    const max_quads = @min(points.len - 1, out_quads.len);
     var written: usize = 0;
 
     var i: usize = 0;
-    while (i < max_quads) : (i += 1) {
+    while (i < points.len - 1 and written < out_quads.len) : (i += 1) {
         const raw_a = points[i];
         const raw_b = points[i + 1];
 
@@ -72,5 +71,43 @@ pub fn buildGraphQuads(
         written += 1;
     }
 
+    return written;
+}
+
+// Build the area under the graph in one call, without any Unity objects or
+// managed callbacks. Keep the preceding off-screen point to clip at x_min.
+pub fn buildGraphFillQuads(
+    points: []const Point2D,
+    transform: MapTransform,
+    base_y: f32,
+    out_quads: []Quad2D,
+) usize {
+    if (points.len < 2) return 0;
+    var written: usize = 0;
+    var i: usize = 0;
+    while (i < points.len - 1 and written < out_quads.len) : (i += 1) {
+        var ax = points[i].x * transform.scale_x + transform.offset_x;
+        var ay = points[i].y * transform.scale_y + transform.offset_y;
+        const bx = points[i + 1].x * transform.scale_x + transform.offset_x;
+        const by = points[i + 1].y * transform.scale_y + transform.offset_y;
+        if (bx < transform.x_min) continue;
+        if (ax < transform.x_min) {
+            const dx = bx - ax;
+            if (dx > 0.000001) {
+                ay += (by - ay) * ((transform.x_min - ax) / dx);
+                ax = transform.x_min;
+            } else {
+                ax = bx;
+                ay = by;
+            }
+        }
+        out_quads[written] = .{
+            .p0 = .{ .x = ax, .y = base_y },
+            .p1 = .{ .x = bx, .y = base_y },
+            .p2 = .{ .x = bx, .y = by },
+            .p3 = .{ .x = ax, .y = ay },
+        };
+        written += 1;
+    }
     return written;
 }

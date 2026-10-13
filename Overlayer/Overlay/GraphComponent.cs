@@ -37,7 +37,9 @@ public sealed class OvGraphComponent : MaskableGraphic {
     public Color FillColor = new(1f, 1f, 1f, 0.25f);
 
     private sealed class SampleRing {
-        private readonly Vector2[] buf = new Vector2[65536];
+        private const int Capacity = 65536;
+        private const int Mask = Capacity - 1;
+        private readonly Vector2[] buf = new Vector2[Capacity];
         private int head;
         private int count;
 
@@ -48,21 +50,35 @@ public sealed class OvGraphComponent : MaskableGraphic {
             count = 0;
         }
 
-        public Vector2 this[int index] => buf[(head + index) % buf.Length];
+        public Vector2 this[int index] => buf[(head + index) & Mask];
+
+        // x is pushed in increasing time order, so the ring is sorted by x.
+        public int LowerBound(float x) {
+            int lo = 0, hi = count;
+            while (lo < hi) {
+                int mid = (lo + hi) >> 1;
+                if (buf[(head + mid) & Mask].x < x) {
+                    lo = mid + 1;
+                } else {
+                    hi = mid;
+                }
+            }
+            return lo;
+        }
 
         public void Push(Vector2 pt) {
-            if (count < buf.Length) {
-                buf[(head + count) % buf.Length] = pt;
+            if (count < Capacity) {
+                buf[(head + count) & Mask] = pt;
                 count++;
             } else {
                 buf[head] = pt;
-                head = (head + 1) % buf.Length;
+                head = (head + 1) & Mask;
             }
         }
 
         public void TrimBefore(float cutoff) {
             while (count > 0 && buf[head].x < cutoff) {
-                head = (head + 1) % buf.Length;
+                head = (head + 1) & Mask;
                 count--;
             }
         }
@@ -150,10 +166,7 @@ public sealed class OvGraphComponent : MaskableGraphic {
         float now = Time.realtimeSinceStartup;
         float window = Math.Max(0.01f, Window);
         float start = now - window;
-        int first = 0;
-        while (first < history.Count && history[first].x < start) {
-            first++;
-        }
+        int first = history.LowerBound(start);
         float lo = Min, hi = Max;
         if (AutoScale && first < history.Count) {
             float dlo = history[first].y, dhi = dlo;
@@ -176,18 +189,6 @@ public sealed class OvGraphComponent : MaskableGraphic {
             float x = rect.xMin + (p.x - start) / window * rect.width;
             float y = rect.yMin + (p.y - lo) / (hi - lo) * rect.height;
             return new Vector2(x, y);
-        }
-
-        Vector2 ClipLeft(Vector2 a, Vector2 b, float x0) {
-            if (a.x >= x0) {
-                return a;
-            }
-            float d = b.x - a.x;
-            if (d <= 0.000001f) {
-                return b;
-            }
-            float t = (x0 - a.x) / d;
-            return a + (b - a) * t;
         }
 
         UIVertex vert = UIVertex.simpleVert;
@@ -225,20 +226,39 @@ public sealed class OvGraphComponent : MaskableGraphic {
             return;
         }
 
-        if (ShowFill && history.Count > first) {
-            float baseY = rect.yMin;
-            for (int i = Math.Max(1, first); i < history.Count; i++) {
-                Vector2 a = Map(history[i - 1]), b = Map(history[i]);
-                if (b.x < rect.xMin) {
-                    continue;
-                }
-                Vector2 sa = ClipLeft(a, b, rect.xMin);
+        // Copy history once for both geometry passes, including the preceding
+        // sample needed to clip the fill at the left edge of the window.
+        int startIdx = Math.Max(0, first - 1);
+        int bufferCount = history.Count - startIdx;
+        if (_pointBuffer.Length < bufferCount) {
+            _pointBuffer = new Native.OvPoint2D[Math.Max(_pointBuffer.Length * 2, bufferCount)];
+            _quadBuffer = new Native.OvQuad2D[_pointBuffer.Length];
+        }
+        for (int i = 0; i < bufferCount; i++) {
+            var p = history[startIdx + i];
+            _pointBuffer[i] = new Native.OvPoint2D { X = p.x, Y = p.y };
+        }
+        float scaleX = rect.width / window;
+        float scaleY = rect.height / (hi - lo);
+        var xform = new Native.OvMapTransform {
+            ScaleX = scaleX,
+            OffsetX = rect.xMin - start * scaleX,
+            ScaleY = scaleY,
+            OffsetY = rect.yMin - lo * scaleY,
+            XMin = rect.xMin,
+        };
+
+        if (ShowFill) {
+            int fillCount = Native.OvVertexBuilder.BuildGraphFillQuads(
+                _pointBuffer.AsSpan(0, bufferCount), xform, rect.yMin, _quadBuffer);
+            for (int i = 0; i < fillCount; i++) {
+                ref readonly var quad = ref _quadBuffer[i];
                 int baseIndex = vh.currentVertCount;
                 vert.color = FillColor;
-                vert.position = new Vector2(sa.x, baseY); vh.AddVert(vert);
-                vert.position = new Vector2(b.x, baseY); vh.AddVert(vert);
-                vert.position = b; vh.AddVert(vert);
-                vert.position = sa; vh.AddVert(vert);
+                vert.position = new Vector3(quad.P0.X, quad.P0.Y); vh.AddVert(vert);
+                vert.position = new Vector3(quad.P1.X, quad.P1.Y); vh.AddVert(vert);
+                vert.position = new Vector3(quad.P2.X, quad.P2.Y); vh.AddVert(vert);
+                vert.position = new Vector3(quad.P3.X, quad.P3.Y); vh.AddVert(vert);
                 vh.AddTriangle(baseIndex, baseIndex + 1, baseIndex + 2);
                 vh.AddTriangle(baseIndex, baseIndex + 2, baseIndex + 3);
             }
@@ -255,31 +275,10 @@ public sealed class OvGraphComponent : MaskableGraphic {
         float half = Math.Max(0.5f, Thickness) * 0.5f;
         Vector2 drawStart = Map(history[first]);
 
-        int startIdx = Math.Max(0, first);
-        int ptCount = history.Count - startIdx;
+        int ptCount = history.Count - first;
         if (ptCount >= 2) {
-            if (_pointBuffer.Length < ptCount) {
-                _pointBuffer = new Native.OvPoint2D[Math.Max(_pointBuffer.Length * 2, ptCount)];
-                _quadBuffer = new Native.OvQuad2D[_pointBuffer.Length];
-            }
-
-            for (int i = 0; i < ptCount; i++) {
-                var p = history[startIdx + i];
-                _pointBuffer[i] = new Native.OvPoint2D { X = p.x, Y = p.y };
-            }
-
-            float scaleX = rect.width / window;
-            float scaleY = rect.height / (hi - lo);
-            var xform = new Native.OvMapTransform {
-                ScaleX = scaleX,
-                OffsetX = rect.xMin - start * scaleX,
-                ScaleY = scaleY,
-                OffsetY = rect.yMin - lo * scaleY,
-                XMin = rect.xMin,
-            };
-
             int quadCount = Native.OvVertexBuilder.BuildGraphQuads(
-                _pointBuffer.AsSpan(0, ptCount),
+                _pointBuffer.AsSpan(first - startIdx, ptCount),
                 xform,
                 half,
                 _quadBuffer

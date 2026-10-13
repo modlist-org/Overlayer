@@ -177,15 +177,85 @@ public static class FxConverters {
 
     private static float Eval(string expr) => FxValue.EvaluateNumericComponent(expr);
 
+    // `[e0, e1, ...]` whose elements are all numeric JS compiles to native
+    // programs once per text instance; V8 would return the same numbers.
+    private sealed class NativeArray(Overlayer.Native.NativeExpression[] parts) {
+        public readonly Overlayer.Native.NativeExpression[] Parts = parts;
+    }
+
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<string, NativeArray> NativeArrays = new();
+    private static readonly NativeArray NotNative = new(null);
+
+    private static NativeArray CompileNativeArray(string raw) {
+        var text = raw.Trim();
+        if (text.Length < 3 || text[0] != '[' || text[text.Length - 1] != ']') {
+            return NotNative;
+        }
+
+        var pieces = new List<string>();
+        int depth = 0;
+        int start = 1;
+        for (int i = 1; i < text.Length - 1; i++) {
+            char c = text[i];
+            if (c == '(' || c == '[') {
+                depth++;
+            } else if (c == ')' || c == ']') {
+                depth--;
+            } else if (c == ',' && depth == 0) {
+                pieces.Add(text[start..i]);
+                start = i + 1;
+            }
+        }
+        pieces.Add(text[start..^1]);
+        // JS allows one trailing comma; holes and anything else go to V8.
+        if (pieces.Count > 1 && string.IsNullOrWhiteSpace(pieces[pieces.Count - 1])) {
+            pieces.RemoveAt(pieces.Count - 1);
+        }
+        if (depth != 0 || pieces.Count > 64) {
+            return NotNative;
+        }
+
+        var parts = new Overlayer.Native.NativeExpression[pieces.Count];
+        for (int i = 0; i < parts.Length; i++) {
+            nint handle = Overlayer.Native.OvJsExpr.Compile(pieces[i].Trim());
+            if (handle == 0) {
+                return NotNative;
+            }
+            parts[i] = new Overlayer.Native.NativeExpression(handle, js: true);
+        }
+        return new NativeArray(parts);
+    }
+
     private static bool TryJsArray(string raw, out float[] values) {
         values = null;
-        var text = raw?.Trim();
-        if (string.IsNullOrEmpty(text)) {
+        if (string.IsNullOrEmpty(raw)) {
             return false;
         }
 
+        var native = NativeArrays.GetValue(raw, CompileNativeArray).Parts;
+        if (native != null) {
+            var arr = new float[native.Length];
+            for (int i = 0; i < native.Length; i++) {
+                if (!native[i].Evaluate(out double value)) {
+                    native = null;
+                    break;
+                }
+                arr[i] = (float)value;
+            }
+            if (native != null) {
+                values = arr;
+                return true;
+            }
+        }
+
+        var text = raw.Trim();
+        if (text.Length == 0) {
+            return false;
+        }
+
+        object result = null;
         try {
-            if (!FxValue.TryEvaluateJs(FxValue.WrapJsBlock(text), out var result) || result == null) {
+            if (!FxValue.TryEvaluateJs(FxValue.WrapJsBlock(text), out result) || result == null) {
                 return false;
             }
 
@@ -199,6 +269,9 @@ public static class FxConverters {
                 return true;
             }
         } catch {
+        } finally {
+            // Release the V8 array handle now instead of leaving it to the finalizer.
+            (result as IDisposable)?.Dispose();
         }
 
         return false;
