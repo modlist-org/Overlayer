@@ -172,6 +172,9 @@ public sealed class GraphExpressionEngine : IDisposable {
             getters[i] = CreateFastGetter(tag);
         }
 
+        if (_nativeHandle != 0) {
+            O5Expr.Free(_nativeHandle);
+        }
         _nativeHandle = handle;
         _tagList.Clear();
         _tagList.AddRange(tags);

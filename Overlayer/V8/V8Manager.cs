@@ -7,7 +7,9 @@ using Overlayer.Tag.Core;
 using Overlayer.Tag.Runtime;
 using Overlayer.V8.Scripting.Diagnostic;
 using Overlayer.V8.Scripting.Tag;
+using System.Diagnostics;
 using System.Text;
+using System.Threading;
 
 namespace Overlayer.V8;
 
@@ -17,6 +19,7 @@ public class V8Manager : IRuntimeService {
 
     private readonly object _engineLock = new();
     private V8ScriptEngine _engine;
+    private Scripting.Unity.UnityAccess _unityAccess;
     private readonly SemaphoreSlim _reloadGate = new(1, 1);
 
     private readonly JSScriptLoader _scriptLoader = new();
@@ -113,6 +116,7 @@ public class V8Manager : IRuntimeService {
                     MainCore.Log.Wrn($"[{nameof(V8Manager)}] Engine unavailable, skipping script load.");
                     return;
                 }
+                GenerateImplJs(force: true);
                 if (await _scriptLoader.LoadAllScriptsAsync(ScriptFolderPath, _engine, syncChanges: false).ConfigureAwait(false)) {
                     foreach (var diag in LoaderDiagnostics) {
                         MainCore.Log.Msg(diag.ToString());
@@ -121,7 +125,7 @@ public class V8Manager : IRuntimeService {
             } catch (Exception e) {
                 MainCore.Log.Err($"[{nameof(V8Manager)}] Script load failed: {e.Message}");
             }
-            await Task.Run(() => GenerateImplJs(force: true)).ConfigureAwait(false);
+            await Task.Run(() => GenerateImplJs(force: false)).ConfigureAwait(false);
             MainThread.Enqueue(TextEngineUpdater.RecompileAll);
         } finally {
             _reloadGate.Release();
@@ -130,11 +134,13 @@ public class V8Manager : IRuntimeService {
     }
 
     private void BindEngine(V8ScriptEngine engine) {
+        _unityAccess?.Clear();
+        _unityAccess = new Scripting.Unity.UnityAccess();
         engine.AddHostObject(nameof(TagAccessHelper), new TagAccessHelper());
         engine.AddHostObject(nameof(Store), Store);
         engine.AddHostObject("Prefs", _prefs ??= new PrefsStore(Path.Combine(ScriptFolderPath, PrefsFileName)));
         engine.AddHostObject("Clr", new Scripting.Clr.ClrAccess());
-        engine.AddHostObject("Unity", new Scripting.Unity.UnityAccess());
+        engine.AddHostObject("Unity", _unityAccess);
         engine.AddHostType("GameObject", typeof(UnityEngine.GameObject));
         engine.AddHostType("Transform", typeof(UnityEngine.Transform));
         engine.AddHostType("RectTransform", typeof(UnityEngine.RectTransform));
@@ -166,6 +172,13 @@ public class V8Manager : IRuntimeService {
         engine.AddHostObject("Log", log);
         engine.AddHostObject("console", log);
         engine.Execute(JSTagRegistrationHost.TagTypeScript);
+        engine.Execute(@"
+            globalThis.Tag = new Proxy({}, {
+                get: function(target, prop) {
+                    return function(...args) { return TagAccessHelper.Get(prop, ...args); };
+                }
+            });
+        ");
     }
 
     public FxStore Store { get; } = new();
@@ -180,6 +193,7 @@ public class V8Manager : IRuntimeService {
     }
 
     public void Reset() {
+        _unityAccess?.Clear();
         lock (_engineLock) {
             ClearFxScriptCache();
             try {
@@ -193,7 +207,7 @@ public class V8Manager : IRuntimeService {
         }
         Scripting.Patch.JSPatchManager.RemoveAll();
         Scripting.UI.JSUIHost.RemoveAll();
-        LoadImplJs();
+        GenerateImplJs(force: true);
     }
 
     public async Task ReloadScriptsAsync() {
@@ -213,6 +227,7 @@ public class V8Manager : IRuntimeService {
     private async Task RebuildScriptsUnderGateAsync() {
         await InitializationTask.ConfigureAwait(false);
         await Task.Run(() => {
+            _unityAccess?.Clear();
             Scripting.Patch.JSPatchManager.RemoveAll();
             Scripting.UI.JSUIHost.RemoveAll();
             TagCache.Instance.Clear();
@@ -238,6 +253,8 @@ public class V8Manager : IRuntimeService {
                 return;
             }
         }).ConfigureAwait(false);
+
+        GenerateImplJs(force: true);
 
         if (await _scriptLoader.LoadAllScriptsAsync(ScriptFolderPath, _engine, syncChanges: false).ConfigureAwait(false)) {
             foreach (var diag in LoaderDiagnostics) {
@@ -299,8 +316,15 @@ public class V8Manager : IRuntimeService {
     private readonly Dictionary<string, (V8ScriptEngine Engine, V8Script Script, string Error)> _fxScriptCache = [];
     private readonly Dictionary<string, string> _fxRuntimeErrors = [];
     private readonly Dictionary<string, long> _fxTimeoutBackoff = [];
+
+    private static readonly long FxTimeoutTicks = (long)(FxScriptTimeoutMilliseconds * 0.001 * Stopwatch.Frequency);
+    private Thread _watchdogThread;
+    private volatile bool _watchdogRunning;
+    private long _evalActiveStart;
+    private long _evalActiveSeq;
+    private V8ScriptEngine _evalActiveEngine;
+    private volatile bool _evalTimedOut;
     private long _evalSeq;
-    private long _evalActive = -1;
 
     private (V8Script Script, string Error) CompileFx(string code) {
         if (_engine == null) {
@@ -384,33 +408,52 @@ public class V8Manager : IRuntimeService {
         return false;
     }
 
-    private bool RunGuarded(string code, V8ScriptEngine engine, Func<object> run, out object result) {
-        result = null;
-        // Generation tag: the timeout may only interrupt the eval that
-        // actually timed out. Without this, a late timer from eval A fires
-        // engine-wide Interrupt() while an innocent eval B runs, B throws,
-        // and B's code eats a 5s backoff (e.g. a held key shows released).
-        long seq = Interlocked.Increment(ref _evalSeq);
-        Volatile.Write(ref _evalActive, seq);
-        int running = 1;
-        bool timedOut = false;
-        using var timeout = new CancellationTokenSource();
-        Task.Delay(FxScriptTimeoutMilliseconds, timeout.Token).ContinueWith(task => {
-            if (!task.IsCanceled && Interlocked.CompareExchange(ref running, 0, 1) == 1
-                && Volatile.Read(ref _evalActive) == seq) {
-                timedOut = true;
-                try {
-                    engine.Interrupt();
-                } catch {
+    private void EnsureWatchdogStarted() {
+        if (_watchdogThread != null && _watchdogThread.IsAlive) return;
+        _watchdogRunning = true;
+        _watchdogThread = new Thread(WatchdogLoop) {
+            IsBackground = true,
+            Name = "Overlayer_V8_Watchdog"
+        };
+        _watchdogThread.Start();
+    }
+
+    private void StopWatchdog() {
+        _watchdogRunning = false;
+    }
+
+    private void WatchdogLoop() {
+        while (_watchdogRunning) {
+            Thread.Sleep(50);
+            long start = Volatile.Read(ref _evalActiveStart);
+            if (start != 0) {
+                long elapsed = Stopwatch.GetTimestamp() - start;
+                if (elapsed > FxTimeoutTicks) {
+                    _evalTimedOut = true;
+                    try {
+                        Volatile.Read(ref _evalActiveEngine)?.Interrupt();
+                    } catch {
+                    }
                 }
             }
-        }, TaskScheduler.Default);
+        }
+    }
+
+    private bool RunGuarded(string code, V8ScriptEngine engine, Func<object> run, out object result) {
+        result = null;
+        EnsureWatchdogStarted();
+
+        long seq = Interlocked.Increment(ref _evalSeq);
+        Volatile.Write(ref _evalActiveSeq, seq);
+        Volatile.Write(ref _evalActiveEngine, engine);
+        _evalTimedOut = false;
+        Volatile.Write(ref _evalActiveStart, Stopwatch.GetTimestamp());
 
         try {
             result = run();
         } catch (Exception ex) {
             result = null;
-            if (timedOut) {
+            if (_evalTimedOut) {
                 RecordTimeout(code);
             } else {
                 RecordRuntimeError(code, ex.Message);
@@ -418,14 +461,11 @@ public class V8Manager : IRuntimeService {
 
             return false;
         } finally {
-            timeout.Cancel();
-            Interlocked.Exchange(ref running, 0);
-            if (Volatile.Read(ref _evalActive) == seq) {
-                Volatile.Write(ref _evalActive, -1);
-            }
+            Volatile.Write(ref _evalActiveStart, 0L);
+            Volatile.Write(ref _evalActiveEngine, null);
         }
 
-        if (timedOut) {
+        if (_evalTimedOut) {
             result = null;
             RecordTimeout(code);
             return false;
@@ -533,7 +573,7 @@ public class V8Manager : IRuntimeService {
         await InitializationTask.ConfigureAwait(false);
         await _reloadGate.WaitAsync().ConfigureAwait(false);
         try {
-            await Task.Run(() => _scriptLoader.UnloadScriptFile(filePath)).ConfigureAwait(false);
+            await RebuildScriptsUnderGateAsync().ConfigureAwait(false);
         } catch (Exception e) {
             MainCore.Log.Err($"[{nameof(V8Manager)}] Script unload failed: {e.Message}");
         } finally {
@@ -545,14 +585,7 @@ public class V8Manager : IRuntimeService {
         await InitializationTask.ConfigureAwait(false);
         await _reloadGate.WaitAsync().ConfigureAwait(false);
         try {
-            if (_engine == null) {
-                MainCore.Log.Wrn($"[{nameof(V8Manager)}] Engine unavailable, skipping script reload.");
-                return;
-            }
-            await Task.Run(() => _scriptLoader.ReloadFile(filePath, _engine)).ConfigureAwait(false);
-            foreach (var diag in LoaderDiagnostics) {
-                MainCore.Log.Msg(diag.ToString());
-            }
+            await RebuildScriptsUnderGateAsync().ConfigureAwait(false);
         } catch (Exception e) {
             MainCore.Log.Err($"[{nameof(V8Manager)}] Script reload failed: {e.Message}");
         } finally {
@@ -713,6 +746,8 @@ public class V8Manager : IRuntimeService {
     }
 
     public void Dispose() {
+        _unityAccess?.Clear();
+        StopWatchdog();
         lock (_engineLock) {
             ClearFxScriptCache();
             _watcher?.Dispose();

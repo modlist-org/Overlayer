@@ -49,15 +49,12 @@ public sealed class TagCache {
             }
         }
 
-        if (compiled.IsValid) {
-            lock (lockObject) {
-                if (!cache.TryGetValue(key, out var entry)) {
-                    cache[key] = new CacheEntry(compiled);
-                }
-                return cache[key].Compiled;
+        lock (lockObject) {
+            if (!cache.TryGetValue(key, out var entry)) {
+                cache[key] = new CacheEntry(compiled);
             }
+            return cache[key].Compiled;
         }
-        return compiled;
     }
 
     public void IncrementRef(string key) {

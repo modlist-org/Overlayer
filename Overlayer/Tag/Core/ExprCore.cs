@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Globalization;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -14,6 +15,32 @@ namespace Overlayer.Tag.Core;
 /// Features compile-time constant folding, O5Expr stack machine with tag variables, and O5Fmt zero-allocation formatting.
 /// </summary>
 public static class ExprCore {
+    private static readonly ConcurrentDictionary<string, long> NativeHandleCache = new(StringComparer.Ordinal);
+
+    private static long GetOrCompileNative(string transformed) {
+        if (NativeHandleCache.TryGetValue(transformed, out long handle)) {
+            return handle;
+        }
+        EvictIfFull();
+        handle = O5Expr.Compile(transformed);
+        if (handle != 0) {
+            NativeHandleCache[transformed] = handle;
+        }
+        return handle;
+    }
+
+    private static void EvictIfFull() {
+        if (NativeHandleCache.Count < 800) {
+            return;
+        }
+        foreach (var kv in NativeHandleCache) {
+            if (kv.Value != 0) {
+                O5Expr.Free(kv.Value);
+            }
+        }
+        NativeHandleCache.Clear();
+    }
+
     private static readonly HashSet<string> ReservedMathNames = new(StringComparer.OrdinalIgnoreCase) {
         "sin", "cos", "tan", "asin", "acos", "atan", "atan2",
         "sinh", "cosh", "tanh", "asinh", "acosh", "atanh",
@@ -109,17 +136,21 @@ public static class ExprCore {
 
         // 2. Native O5Expr Path (with Constant Folding, Dynamic Vars, & O5Fmt)
         if (O5Expr.IsSupported) {
-            long nativeHandle = O5Expr.Compile(transformed);
-            if (nativeHandle != 0) {
-                if (tags.Count == 0 && !HasDynamicVariable(transformed)) {
-                    // Constant Folding
-                    if (O5Expr.TryEval(nativeHandle, 0.0, out double constVal)) {
-                        O5Expr.Free(nativeHandle);
+            if (tags.Count == 0 && !HasDynamicVariable(transformed)) {
+                // Constant Folding
+                long tempHandle = O5Expr.Compile(transformed);
+                if (tempHandle != 0) {
+                    if (O5Expr.TryEval(tempHandle, 0.0, out double constVal)) {
+                        O5Expr.Free(tempHandle);
                         string foldedString = FormatResult(constVal, format);
                         return () => foldedString;
                     }
+                    O5Expr.Free(tempHandle);
                 }
+            }
 
+            long nativeHandle = GetOrCompileNative(transformed);
+            if (nativeHandle != 0) {
                 // Compile tag getters
                 var getters = new Func<double>[tags.Count];
                 for (int i = 0; i < tags.Count; i++) {

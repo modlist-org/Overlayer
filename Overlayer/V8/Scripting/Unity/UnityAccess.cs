@@ -349,6 +349,13 @@ public sealed class UnityAccess {
         }
     }
 
+    public void Clear() {
+        lock (repeatGate) {
+            repeats.Clear();
+            pumpQueued = false;
+        }
+    }
+
     private void Pump() {
         List<ScriptObject> due = null;
         lock (repeatGate) {

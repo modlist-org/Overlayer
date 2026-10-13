@@ -11,7 +11,7 @@ public sealed class CodeEditorColorTests {
         public static double Score => 155700.0;
         public static double Acc => 0.985;
         public static string Title => "Galaxy Collapse";
-        public static double GetCombo() => 350.0;
+        public static double GetCombo() => 100.0;
         public static double ComboMultiplier => 1.5;
     }
 

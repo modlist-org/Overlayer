@@ -72,4 +72,18 @@ public class ImplJsGeneratorTests {
         Assert.Contains("declare function Add(a: number, b: number): number;", dts);
         Assert.DoesNotContain("Invalid-Tag#Name", dts);
     }
+
+    [Fact]
+    public void ImplJs_AllowsDirectTagFunctionInvocation() {
+        var tags = CreateSampleTags();
+        string js = ImplJsGenerator.BuildJs(tags);
+
+        using var engine = new V8ScriptEngine();
+        engine.Execute("globalThis.TagAccessHelper = { Get: (prop) => prop === 'Score' ? 100 : 0 };");
+        engine.Execute(js);
+
+        // Calling Score() directly without Tag. prefix works
+        object result = engine.Evaluate("Score()");
+        Assert.Equal(100, Convert.ToInt32(result));
+    }
 }
