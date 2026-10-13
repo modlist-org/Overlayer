@@ -1638,19 +1638,8 @@ internal sealed class OvInspectorBuilder(
         }
     }
 
-    private static TagSyntaxKind?[] BuildSyntaxKinds(string source, TagSyntaxSpan[] spans) {
-        TagSyntaxKind?[] kinds = source == null ? [] : new TagSyntaxKind?[source.Length];
-        if (source != null) {
-            foreach (var span in spans) {
-                int start = MathCompat.Clamp(span.Index, 0, kinds.Length);
-                int end = MathCompat.Clamp(start + span.Length, start, kinds.Length);
-                for (int i = start; i < end; i++) {
-                    kinds[i] = span.Kind;
-                }
-            }
-        }
-        return kinds;
-    }
+    private static TagSyntaxKind?[] BuildSyntaxKinds(string source, TagSyntaxSpan[] spans)
+        => TagSyntaxHighlighter.BuildSyntaxKinds(source, spans);
 
     private static HighlightProbe ApplySyntaxHighlighting(TMP_Text text, TagSyntaxKind?[] kinds) {
         HighlightProbe probe = HighlightProbe.None;
@@ -1707,26 +1696,10 @@ internal sealed class OvInspectorBuilder(
         }
     }
 
-    private static Color32 SyntaxColor(TagSyntaxKind kind) => kind switch {
-        TagSyntaxKind.Delimiter => new Color32(166, 172, 205, 255),
-        TagSyntaxKind.Tag => new Color32(150, 255, 145, 255),
-        TagSyntaxKind.UnknownTag => new Color32(226, 103, 109, 255),
-        TagSyntaxKind.Argument => new Color32(255, 213, 128, 255),
-        TagSyntaxKind.Format => new Color32(130, 210, 206, 255),
-        TagSyntaxKind.Separator => new Color32(137, 144, 179, 255),
-        TagSyntaxKind.JsKeyword => new Color32(86, 156, 214, 255),
-        TagSyntaxKind.JsControl => new Color32(197, 134, 192, 255),
-        TagSyntaxKind.JsString => new Color32(206, 145, 120, 255),
-        TagSyntaxKind.JsNumber => new Color32(181, 206, 168, 255),
-        TagSyntaxKind.JsComment => new Color32(106, 153, 85, 255),
-        TagSyntaxKind.JsFunction => new Color32(220, 220, 170, 255),
-        TagSyntaxKind.JsProperty => new Color32(156, 220, 254, 255),
-        TagSyntaxKind.JsType => new Color32(78, 201, 176, 255),
-        TagSyntaxKind.JsConstant => new Color32(79, 193, 255, 255),
-        TagSyntaxKind.JsRegexp => new Color32(209, 105, 105, 255),
-        TagSyntaxKind.JsEscape => new Color32(215, 186, 125, 255),
-        _ => new Color32(255, 255, 255, 255)
-    };
+    private static Color32 SyntaxColor(TagSyntaxKind kind) {
+        uint c = TagSyntaxHighlighter.GetColorRgba(kind);
+        return new Color32((byte)(c >> 24), (byte)(c >> 16), (byte)(c >> 8), (byte)c);
+    }
 
     private static string SeverityColor(CompileSeverity severity) => severity switch {
         CompileSeverity.Error => "#E2676D",
@@ -1757,6 +1730,7 @@ internal sealed class OvInspectorBuilder(
             DiagnosticId.JsOnlyBlocked => string.Format(InspectorText("INSPECTOR_DIAG_JSONLY", "Tag '{0}' is only available in JavaScript"), Data(0)),
             DiagnosticId.AdvancedTagException => Data(0, InspectorText("INSPECTOR_DIAG_ADVANCED_TAG", "Advanced tag failed")),
             DiagnosticId.JsError => Data(0, "JavaScript error"),
+            DiagnosticId.LegacyJsExprDeprecated => InspectorText("INSPECTOR_DIAG_JSEXPR_DEPRECATED", "{JSExpr} tag is deprecated. Write expressions directly inside braces (e.g. {1 + 2})"),
             DiagnosticId.InternalError => InspectorText("INSPECTOR_DIAG_INTERNAL", "Internal compiler error"),
             _ => diagnostic.Id.ToString()
         };

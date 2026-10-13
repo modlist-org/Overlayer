@@ -106,6 +106,7 @@
     "INSPECTOR_DIAG_ARG_TOO_MANY": "最多只能使用 {0} 个参数，当前为 {1} 个",
     "INSPECTOR_DIAG_FORMAT": "格式无效：'{0}'",
     "INSPECTOR_DIAG_INTERNAL": "编译器内部错误",
+    "INSPECTOR_DIAG_JSEXPR_DEPRECATED": "{JSExpr} 标签已被弃用。请直接在大括号内编写表达式（例如 {1 + 2}）",
     "INSPECTOR_DIAG_TAG_NOT_FOUND": "找不到标签 '{0}'",
     "INSPECTOR_DIAG_TAG_SUGGESTION": "找不到标签 '{0}'。您是想使用 '{1}' 吗？",
     "INSPECTOR_DISTANCE": "距离",

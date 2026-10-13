@@ -42,60 +42,56 @@ public static class TagSyntaxHighlighter {
                 continue;
             }
 
-            bool known = TagManager.TryGet(parsed.Name, out var tag);
             spans.Add(new(parsed.Index, 1, TagSyntaxKind.Delimiter));
-            spans.Add(new(parsed.Index + 1, parsed.Name.Length, known ? TagSyntaxKind.Tag : TagSyntaxKind.UnknownTag));
             spans.Add(new(end - 1, 1, TagSyntaxKind.Delimiter));
 
-            int cursor = parsed.Index + parsed.Name.Length + 1;
-            if (cursor >= end - 1) {
-                continue;
+            int exprLen = parsed.Expression.Length;
+            int exprStart = parsed.Index + 1;
+            while (exprStart < end - 1 && char.IsWhiteSpace(source[exprStart])) {
+                exprStart++;
             }
 
-            char separator = source[cursor];
-            bool jsExpr = parsed.Name.Equals("JSExpr", StringComparison.OrdinalIgnoreCase);
-            if (separator == ':') {
-                spans.Add(new(cursor, 1, TagSyntaxKind.Separator));
-                if (!jsExpr) {
-                    AddArguments(spans, source, cursor + 1, end - 1, tag, parsed.Args.Length);
-                }
-            } else if (separator == '(') {
-                spans.Add(new(cursor, 1, TagSyntaxKind.Delimiter));
-                int argsEnd = source[end - 2] == ')' ? end - 2 : end - 1;
-                if (!jsExpr) {
-                    AddArguments(spans, source, cursor + 1, argsEnd, tag, parsed.Args.Length);
-                }
-                if (argsEnd == end - 2) {
-                    spans.Add(new(argsEnd, 1, TagSyntaxKind.Delimiter));
+            string lookupName = parsed.Expression.EndsWith("()") ? parsed.Expression[..^2].Trim() : parsed.Expression;
+            bool known = ExprCore.TagLookupProvider != null && ExprCore.TagLookupProvider(lookupName, out _);
+
+            bool isLegacyJs = parsed.Expression.Equals("JSExpr", StringComparison.OrdinalIgnoreCase)
+                || parsed.Expression.StartsWith("JSExpr(", StringComparison.OrdinalIgnoreCase);
+
+            if (isLegacyJs) {
+                spans.Add(new(exprStart, exprLen, TagSyntaxKind.UnknownTag));
+            } else if (known && IsSimpleIdentifier(parsed.Expression)) {
+                spans.Add(new(exprStart, exprLen, TagSyntaxKind.Tag));
+            } else if (IsSimpleIdentifier(parsed.Expression)) {
+                spans.Add(new(exprStart, exprLen, TagSyntaxKind.UnknownTag));
+            } else {
+                foreach (var jsSpan in JsSyntaxHighlighter.GetSpans(parsed.Expression)) {
+                    spans.Add(new(exprStart + jsSpan.Index, jsSpan.Length, jsSpan.Kind));
                 }
             }
 
-            if (jsExpr) {
-                AddJsInterior(spans, source, parsed.Index + 1 + parsed.Name.Length, end - 1);
+            if (!string.IsNullOrEmpty(parsed.Format)) {
+                int colonIdx = exprStart + exprLen;
+                while (colonIdx < end - 1 && source[colonIdx] != ':') {
+                    colonIdx++;
+                }
+                if (colonIdx < end - 1 && source[colonIdx] == ':') {
+                    spans.Add(new(colonIdx, 1, TagSyntaxKind.Separator));
+                    int fmtStart = colonIdx + 1;
+                    while (fmtStart < end - 1 && char.IsWhiteSpace(source[fmtStart])) {
+                        fmtStart++;
+                    }
+                    int fmtEnd = end - 1;
+                    while (fmtEnd > fmtStart && char.IsWhiteSpace(source[fmtEnd - 1])) {
+                        fmtEnd--;
+                    }
+                    if (fmtEnd > fmtStart) {
+                        spans.Add(new(fmtStart, fmtEnd - fmtStart, TagSyntaxKind.Format));
+                    }
+                }
             }
         }
         AddIncompleteTag(spans, source);
         return [.. spans];
-    }
-
-    private static void AddJsInterior(List<TagSyntaxSpan> spans, string source, int cursor, int end) {
-        if (cursor >= end - 1 || (source[cursor] != ':' && source[cursor] != '(')) {
-            return;
-        }
-
-        int innerStart = cursor + 1;
-        int innerEnd = end;
-        if (source[cursor] == '(' && innerEnd - 1 >= innerStart && source[innerEnd - 1] == ')') {
-            innerEnd--;
-        }
-
-        if (innerEnd <= innerStart) {
-            return;
-        }
-
-        foreach (var span in JsSyntaxHighlighter.GetSpans(source[innerStart..innerEnd])) {
-            spans.Add(new(span.Index + innerStart, span.Length, span.Kind));
-        }
     }
 
     private static void AddIncompleteTag(List<TagSyntaxSpan> spans, string source) {
@@ -113,55 +109,57 @@ public static class TagSyntaxHighlighter {
 
         spans.Add(new(opening, 1, TagSyntaxKind.Delimiter));
         if (nameEnd > nameStart) {
-            bool known = TagManager.TryGet(source[nameStart..nameEnd], out _);
+            string name = source[nameStart..nameEnd];
+            bool isLegacy = name.Equals("JSExpr", StringComparison.OrdinalIgnoreCase);
+            bool known = !isLegacy && ExprCore.TagLookupProvider != null && ExprCore.TagLookupProvider(name, out _);
             spans.Add(new(nameStart, nameEnd - nameStart, known ? TagSyntaxKind.Tag : TagSyntaxKind.UnknownTag));
         }
     }
 
-    private static void AddArguments(
-        List<TagSyntaxSpan> spans,
-        string source,
-        int start,
-        int end,
-        TagCore tag,
-        int argumentCount
-    ) {
-        int argumentIndex = 0;
-        int segmentStart = start;
-        for (int i = start; i <= end; i++) {
-            if (i < end && source[i] != ',') {
-                continue;
-            }
-
-            int left = segmentStart;
-            int right = i;
-            while (left < right && char.IsWhiteSpace(source[left])) {
-                left++;
-            }
-
-            while (right > left && char.IsWhiteSpace(source[right - 1])) {
-                right--;
-            }
-
-            if (right > left) {
-                spans.Add(new(left, right - left, GetArgumentKind(tag, argumentIndex, argumentCount)));
-            }
-
-            if (i < end) {
-                spans.Add(new(i, 1, TagSyntaxKind.Separator));
-            }
-            segmentStart = i + 1;
-            argumentIndex++;
+    private static bool IsSimpleIdentifier(string s) {
+        if (string.IsNullOrEmpty(s)) return false;
+        string t = s.EndsWith("()") ? s[..^2].Trim() : s;
+        if (t.Length == 0) return false;
+        if (!char.IsLetter(t[0]) && t[0] != '_') return false;
+        for (int i = 1; i < t.Length; i++) {
+            if (!char.IsLetterOrDigit(t[i]) && t[i] != '_') return false;
         }
+        return true;
     }
 
-    private static TagSyntaxKind GetArgumentKind(TagCore tag, int index, int count) {
-        if (tag == null) {
-            return TagSyntaxKind.Argument;
+    public static TagSyntaxKind?[] BuildSyntaxKinds(string source, TagSyntaxSpan[] spans) {
+        if (source == null) return [];
+        var kinds = new TagSyntaxKind?[source.Length];
+        if (spans != null) {
+            foreach (var span in spans) {
+                int start = Math.Max(0, Math.Min(span.Index, kinds.Length));
+                int end = Math.Max(start, Math.Min(start + span.Length, kinds.Length));
+                for (int i = start; i < end; i++) {
+                    kinds[i] = span.Kind;
+                }
+            }
         }
-
-        bool format = tag.Parameters.Length == 0 ||
-            ((tag.TagType & TagType.ProcessFormat) != 0 && (count <= 1 || index == count - 1 && count > tag.Parameters.Length));
-        return format ? TagSyntaxKind.Format : TagSyntaxKind.Argument;
+        return kinds;
     }
+
+    public static uint GetColorRgba(TagSyntaxKind kind) => kind switch {
+        TagSyntaxKind.Delimiter => 0xA6ACCDFF,
+        TagSyntaxKind.Tag => 0x96FF91FF,
+        TagSyntaxKind.UnknownTag => 0xE2676DFF,
+        TagSyntaxKind.Argument => 0xFFD580FF,
+        TagSyntaxKind.Format => 0x82D2CEFF,
+        TagSyntaxKind.Separator => 0x8990B3FF,
+        TagSyntaxKind.JsKeyword => 0x569CD6FF,
+        TagSyntaxKind.JsControl => 0xC586C0FF,
+        TagSyntaxKind.JsString => 0xCE9178FF,
+        TagSyntaxKind.JsNumber => 0xB5CEA8FF,
+        TagSyntaxKind.JsComment => 0x6A9955FF,
+        TagSyntaxKind.JsFunction => 0xDCDCAAFF,
+        TagSyntaxKind.JsProperty => 0x9CDCFEFF,
+        TagSyntaxKind.JsType => 0x4EC9B0FF,
+        TagSyntaxKind.JsConstant => 0x4FC1FFFF,
+        TagSyntaxKind.JsRegexp => 0xD16969FF,
+        TagSyntaxKind.JsEscape => 0xD7BA7DFF,
+        _ => 0xFFFFFFFF
+    };
 }

@@ -10,11 +10,19 @@ public sealed class ExprCoreTests {
     private static class DummyExprTags {
         public static double GetCombo() => 100.0;
         public static double Score => 500.0;
+        public static double Combo => 100.0;
+        public static double Acc => 0.985;
+        public static string Title => "Galaxy Collapse";
+        public static double ComboMultiplier => 1.5;
     }
 
     private static readonly Dictionary<string, TagCore> Tags = new(StringComparer.OrdinalIgnoreCase) {
         ["GetCombo"] = new TagCore("GetCombo", typeof(DummyExprTags).GetMethod(nameof(DummyExprTags.GetCombo), BindingFlags.Public | BindingFlags.Static)!, TagType.None),
-        ["Score"] = new TagCore("Score", typeof(DummyExprTags).GetProperty(nameof(DummyExprTags.Score), BindingFlags.Public | BindingFlags.Static)!, TagType.None)
+        ["Score"] = new TagCore("Score", typeof(DummyExprTags).GetProperty(nameof(DummyExprTags.Score), BindingFlags.Public | BindingFlags.Static)!, TagType.None),
+        ["Combo"] = new TagCore("Combo", typeof(DummyExprTags).GetProperty(nameof(DummyExprTags.Combo), BindingFlags.Public | BindingFlags.Static)!, TagType.None),
+        ["Acc"] = new TagCore("Acc", typeof(DummyExprTags).GetProperty(nameof(DummyExprTags.Acc), BindingFlags.Public | BindingFlags.Static)!, TagType.None),
+        ["Title"] = new TagCore("Title", typeof(DummyExprTags).GetProperty(nameof(DummyExprTags.Title), BindingFlags.Public | BindingFlags.Static)!, TagType.None),
+        ["ComboMultiplier"] = new TagCore("ComboMultiplier", typeof(DummyExprTags).GetProperty(nameof(DummyExprTags.ComboMultiplier), BindingFlags.Public | BindingFlags.Static)!, TagType.None)
     };
 
     public ExprCoreTests() {

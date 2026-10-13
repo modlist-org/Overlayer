@@ -109,6 +109,7 @@
     "INSPECTOR_DIAG_ARG_TOO_MANY": "Expected at most {0} arguments; got {1}",
     "INSPECTOR_DIAG_FORMAT": "Invalid format '{0}'",
     "INSPECTOR_DIAG_INTERNAL": "Internal compiler error",
+    "INSPECTOR_DIAG_JSEXPR_DEPRECATED": "{JSExpr} tag is deprecated. Write expressions directly inside braces (e.g. {1 + 2})",
     "INSPECTOR_DIAG_TAG_NOT_FOUND": "Tag '{0}' not found",
     "INSPECTOR_DIAG_TAG_SUGGESTION": "Tag '{0}' not found. Did you mean '{1}'?",
     "INSPECTOR_DISTANCE": "Distance",

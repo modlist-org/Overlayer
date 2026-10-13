@@ -1,4 +1,5 @@
 using Esprima;
+using Overlayer.Tag.Core;
 
 namespace Overlayer.TextEngine.Highlight;
 
@@ -105,12 +106,20 @@ public static class JsSyntaxHighlighter {
         string source, List<(TokenType Type, int Start, int End)> tokens, int index) {
         var (_, start, end) = tokens[index];
         string word = source[start..end];
+        if (word.Equals("JSExpr", StringComparison.OrdinalIgnoreCase)) {
+            return TagSyntaxKind.UnknownTag;
+        }
+
         if (TypeNames.Contains(word)) {
             return TagSyntaxKind.JsType;
         }
 
         if (ConstantNames.Contains(word)) {
             return TagSyntaxKind.JsConstant;
+        }
+
+        if (ExprCore.TagLookupProvider != null && ExprCore.TagLookupProvider(word, out _)) {
+            return TagSyntaxKind.Tag;
         }
 
         if (index > 0) {
@@ -446,6 +455,11 @@ public static class JsSyntaxHighlighter {
             }
 
             string word = source[start..i];
+            if (word.Equals("JSExpr", StringComparison.OrdinalIgnoreCase)) {
+                spans.Add(new(start, i - start, TagSyntaxKind.UnknownTag));
+                return i;
+            }
+
             if (Keywords.Contains(word)) {
                 spans.Add(new(start, i - start,
                     ControlKeywords.Contains(word) ? TagSyntaxKind.JsControl : TagSyntaxKind.JsKeyword));
@@ -459,6 +473,11 @@ public static class JsSyntaxHighlighter {
 
             if (ConstantNames.Contains(word)) {
                 spans.Add(new(start, i - start, TagSyntaxKind.JsConstant));
+                return i;
+            }
+
+            if (ExprCore.TagLookupProvider != null && ExprCore.TagLookupProvider(word, out _)) {
+                spans.Add(new(start, i - start, TagSyntaxKind.Tag));
                 return i;
             }
 

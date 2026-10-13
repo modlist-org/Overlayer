@@ -13,6 +13,7 @@
     <PackageReference Include="Microsoft.ClearScript" Version="7.5.1" />
     <PackageReference Include="Microsoft.ClearScript.V8.Native.linux-x64" Version="7.5.1" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="Esprima" Version="3.0.5" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.0" />
     <PackageReference Include="xunit" Version="2.9.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">
@@ -49,6 +50,8 @@
     <Compile Include="..\Overlayer\Utility\Access\Access.cs" />
     <Compile Include="..\Overlayer\TextEngine\Parse\ParsedTag.cs" />
     <Compile Include="..\Overlayer\TextEngine\Parse\Parser.cs" />
+    <Compile Include="..\Overlayer\TextEngine\Highlight\TagSyntaxHighlighter.cs" />
+    <Compile Include="..\Overlayer\TextEngine\Highlight\JsSyntaxHighlighter.cs" />
     <Compile Include="..\Overlayer\Update\UpdatePackage.cs" />
     <Compile Include="..\Overlayer\Package\O5cpManifest.cs" />
     <Compile Include="..\Overlayer\Package\O5cpProps.cs" />
