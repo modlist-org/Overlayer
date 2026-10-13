@@ -15,4 +15,8 @@ if [[ ! -f "$ROOT/Directory.Build.props" && ! -f "$ROOT/Overlayer/Directory.Buil
     exit 1
 fi
 
+if [[ -f "$ROOT/native/build.sh" ]] && command -v zig >/dev/null 2>&1; then
+    (cd "$ROOT/native" && ./build.sh)
+fi
+
 dotnet build "$ROOT/Overlayer/Overlayer.csproj" -c "$CONFIG" "$@"

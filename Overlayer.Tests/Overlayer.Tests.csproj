@@ -59,7 +59,9 @@
     <Compile Include="..\Overlayer\Native\O5Native.cs" />
     <Compile Include="..\Overlayer\Native\O5Expr.cs" />
     <Compile Include="..\Overlayer\Native\O5Ring.cs" />
+    <Compile Include="..\Overlayer\Native\OvNative.cs" />
     <Compile Include="..\Overlayer\Native\OvTagScanner.cs" />
+    <Compile Include="..\Overlayer\Native\OvCompositor.cs" />
     <Compile Include="..\Overlayer\Native\Polyfills.cs" />
   </ItemGroup>
   <ItemGroup>

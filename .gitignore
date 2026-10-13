@@ -445,3 +445,8 @@ dist/
 tool/build-refs.zip
 
 .claude
+
+
+# Zig build outputs
+zig-out/
+.zig-cache/

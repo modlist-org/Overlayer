@@ -290,8 +290,10 @@
 		<Copy SourceFiles="$(TargetDir)O5Kit.dll" DestinationFolder="$(TargetGamePath)/UserLibs" SkipUnchangedFiles="true" Condition="Exists('$(TargetDir)O5Kit.dll')" />
 		<ItemGroup>
 			<O5NativeLib Include="$(MSBuildProjectDirectory)/../../O5Kit/native/zig-out/lib/O5KitNative.*" />
+			<OvNativeLib Include="$(MSBuildProjectDirectory)/../native/zig-out/lib/OverlayerNative.*" />
 		</ItemGroup>
 		<Copy SourceFiles="@(O5NativeLib)" DestinationFolder="$(TargetGamePath)/UserLibs" SkipUnchangedFiles="true" Condition="'@(O5NativeLib)' != ''" />
+		<Copy SourceFiles="@(OvNativeLib)" DestinationFolder="$(TargetGamePath)/UserLibs" SkipUnchangedFiles="true" Condition="'@(OvNativeLib)' != ''" />
 		<!-- netstandard facade for old Mono games that don't ship one (Unity .NET 4.x profile). Same-identity loads unify where the game already has it. -->
 		<Copy SourceFiles="$(GamePath)/$(GameData)/Managed/netstandard.dll" DestinationFolder="$(TargetGamePath)/UserLibs" SkipUnchangedFiles="true" Condition="!$(Configuration.Contains('IL2CPP')) And Exists('$(GamePath)/$(GameData)/Managed/netstandard.dll')" />
 		<Copy SourceFiles="$(MSBuildProjectDirectory)/../tool/lib/netstandard.dll" DestinationFolder="$(TargetGamePath)/UserLibs" SkipUnchangedFiles="true" Condition="!$(Configuration.Contains('IL2CPP')) And !Exists('$(GamePath)/$(GameData)/Managed/netstandard.dll') And Exists('$(MSBuildProjectDirectory)/../tool/lib/netstandard.dll')" />
@@ -330,6 +332,7 @@
 		<Copy SourceFiles="@(NuGetUserLibs)" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" />
 		<Copy SourceFiles="$(TargetDir)O5Kit.dll" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" Condition="Exists('$(TargetDir)O5Kit.dll')" />
 		<Copy SourceFiles="@(O5NativeLib)" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" Condition="'@(O5NativeLib)' != ''" />
+		<Copy SourceFiles="@(OvNativeLib)" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" Condition="'@(OvNativeLib)' != ''" />
 		<Copy SourceFiles="$(GamePath)/$(GameData)/Managed/netstandard.dll" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" Condition="!$(Configuration.Contains('IL2CPP')) And Exists('$(GamePath)/$(GameData)/Managed/netstandard.dll')" />
 		<Copy SourceFiles="$(MSBuildProjectDirectory)/../tool/lib/netstandard.dll" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" Condition="!$(Configuration.Contains('IL2CPP')) And !Exists('$(GamePath)/$(GameData)/Managed/netstandard.dll') And Exists('$(MSBuildProjectDirectory)/../tool/lib/netstandard.dll')" />
 		<Copy SourceFiles="$(GamePath)/$(GameData)/Managed/System.Runtime.Serialization.dll" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" Condition="!$(Configuration.Contains('IL2CPP')) And Exists('$(GamePath)/$(GameData)/Managed/System.Runtime.Serialization.dll')" />

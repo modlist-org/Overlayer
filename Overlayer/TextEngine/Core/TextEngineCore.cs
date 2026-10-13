@@ -142,40 +142,90 @@ public sealed class TextEngineCore {
             return memoResult;
         }
 
-        var sb = new StringBuilder(text.Length);
-        int last = 0;
-
-        for (int i = 0; i < segs.Length; i++) {
-            var s = segs[i];
-            int from = O5Kit.Core.MathCompat.Clamp(s.Index, 0, text.Length);
-            if (from > last) {
-                sb.Append(text, last, from - last);
-            }
-            string replacement = reps[i];
-            if (replacement == null) {
-                int end = O5Kit.Core.MathCompat.Clamp(s.Index + s.Length, 0, text.Length);
-                if (end > from) {
-                    sb.Append(text, from, end - from);
-                }
-                last = Math.Max(last, end);
-            } else {
-                sb.Append(replacement);
-                last = Math.Max(last, O5Kit.Core.MathCompat.Clamp(s.Index + s.Length, 0, text.Length));
+        int needed = text.Length;
+        for (int i = 0; i < reps.Length; i++) {
+            if (reps[i] != null) {
+                needed += reps[i].Length;
             }
         }
 
-        if (last < text.Length) {
-            sb.Append(text, last, text.Length - last);
+        if (_charBuffer.Length < needed) {
+            _charBuffer = new char[Math.Max(_charBuffer.Length * 2, needed + 64)];
         }
 
-        // Swap buffers: reps becomes the memo, old memo becomes next scratch.
+        int written = ComposeInternal(text, segs, reps, _charBuffer);
+
         scratchReps = memoSegs == segs ? memoReps : null;
         memoReps = reps;
         memoSegs = segs;
         memoText = text;
-        return memoResult = sb.ToString();
+        return memoResult = new string(_charBuffer, 0, written);
     }
 
+    public int RenderTo(Span<char> destination) {
+        string text = Text ?? string.Empty;
+        var segs = segments;
+        if (segs == null || segs.Length == 0) {
+            int len = Math.Min(text.Length, destination.Length);
+            text.AsSpan(0, len).CopyTo(destination);
+            return len;
+        }
+
+        var reps = new string[segs.Length];
+        for (int i = 0; i < segs.Length; i++) {
+            try {
+                reps[i] = segs[i].Replacer.Get();
+            } catch {
+                reps[i] = null;
+            }
+        }
+
+        return ComposeInternal(text, segs, reps, destination);
+    }
+
+    private static int ComposeInternal(string template, CompiledSegment[] segs, string[] reps, Span<char> outBuf) {
+        int outIdx = 0;
+        int last = 0;
+        int tplLen = template.Length;
+
+        for (int i = 0; i < segs.Length; i++) {
+            var s = segs[i];
+            int from = O5Kit.Core.MathCompat.Clamp(s.Index, 0, tplLen);
+            if (from > last) {
+                int staticLen = from - last;
+                int copyLen = Math.Min(staticLen, outBuf.Length - outIdx);
+                template.AsSpan(last, copyLen).CopyTo(outBuf[outIdx..]);
+                outIdx += copyLen;
+            }
+            string replacement = reps[i];
+            if (replacement == null) {
+                int end = O5Kit.Core.MathCompat.Clamp(s.Index + s.Length, 0, tplLen);
+                if (end > from) {
+                    int staticLen = end - from;
+                    int copyLen = Math.Min(staticLen, outBuf.Length - outIdx);
+                    template.AsSpan(from, copyLen).CopyTo(outBuf[outIdx..]);
+                    outIdx += copyLen;
+                }
+                last = Math.Max(last, end);
+            } else {
+                int copyLen = Math.Min(replacement.Length, outBuf.Length - outIdx);
+                replacement.AsSpan(0, copyLen).CopyTo(outBuf[outIdx..]);
+                outIdx += copyLen;
+                last = Math.Max(last, O5Kit.Core.MathCompat.Clamp(s.Index + s.Length, 0, tplLen));
+            }
+        }
+
+        if (last < tplLen && outIdx < outBuf.Length) {
+            int staticLen = tplLen - last;
+            int copyLen = Math.Min(staticLen, outBuf.Length - outIdx);
+            template.AsSpan(last, copyLen).CopyTo(outBuf[outIdx..]);
+            outIdx += copyLen;
+        }
+
+        return outIdx;
+    }
+
+    private char[] _charBuffer = new char[512];
     private CompiledSegment[] memoSegs;
     private string[] memoReps;
     private string[] scratchReps;
