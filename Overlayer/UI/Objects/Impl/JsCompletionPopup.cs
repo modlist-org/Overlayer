@@ -627,14 +627,19 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
             return false;
         }
 
-        const string tag = "JSExpr";
         int p = open + 1;
-        if (p + tag.Length + 1 > caret
-            || !text.Substring(p, tag.Length).Equals(tag, StringComparison.OrdinalIgnoreCase)) {
+        int tagLen;
+        if (p + 4 <= text.Length && text.Substring(p, 4).Equals("Expr", StringComparison.OrdinalIgnoreCase)) {
+            tagLen = 4;
+        } else if (p + 6 <= text.Length && text.Substring(p, 6).Equals("JSExpr", StringComparison.OrdinalIgnoreCase)) {
+            tagLen = 6;
+        } else {
             return false;
         }
-
-        p += tag.Length;
+        if (p + tagLen + 1 > caret) {
+            return false;
+        }
+        p += tagLen;
         if (text[p] != ':' && text[p] != '(') {
             return false;
         }

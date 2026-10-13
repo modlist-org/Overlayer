@@ -1,4 +1,4 @@
-﻿namespace Overlayer.Tag.Diagnostics;
+namespace Overlayer.Tag.Diagnostics;
 
 /// <summary>
 /// Specifies the type of diagnostic message produced during tag parsing and compilation.
@@ -69,5 +69,11 @@ public enum DiagnosticId {
     /// JavaScript expression compilation or evaluation failure in an Fx field.
     /// Data: [0] (string) : The underlying engine error message.
     /// </summary>
-    JsError
+    JsError,
+
+    /// <summary>
+    /// Triggered when the legacy {JSExpr} tag is used.
+    /// Informs the user that expressions should now be written directly inside braces, e.g. {1 + 2}.
+    /// </summary>
+    LegacyJsExprDeprecated
 }

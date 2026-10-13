@@ -10,6 +10,7 @@ public sealed class CompilerTests {
     private static class DummyTags {
         public static double FullComboValue => 1557.0;
         public static string MissValue => "FullCombo";
+        public static double GetCombo() => 1557.0;
     }
 
     private static TagCore PropertyTag(string name, string property, TagType type)
@@ -50,5 +51,26 @@ public sealed class CompilerTests {
 
         Assert.False(compiled.IsValid);
         Assert.Equal("{Miss:N0}", compiled.Get());
+    }
+
+    private static TagCore MethodTag(string name, string method, TagType type)
+        => new(name, typeof(DummyTags).GetMethod(method, BindingFlags.Public | BindingFlags.Static)!, type);
+
+    [Fact]
+    public void MethodTag_WithoutParens_InvokesLikeVariable() {
+        var tag = MethodTag("GetCombo", nameof(DummyTags.GetCombo), TagType.None);
+        var compiled = Compiler.Compile(tag, new ParsedTag("{GetCombo}", "GetCombo", (string)null, 0, 10));
+
+        Assert.True(compiled.IsValid);
+        Assert.Equal("1557", compiled.Get());
+    }
+
+    [Fact]
+    public void MethodTag_WithParens_InvokesNormally() {
+        var tag = MethodTag("GetCombo", nameof(DummyTags.GetCombo), TagType.None);
+        var compiled = Compiler.Compile(tag, new ParsedTag("{GetCombo()}", "GetCombo()", (string)null, 0, 12));
+
+        Assert.True(compiled.IsValid);
+        Assert.Equal("1557", compiled.Get());
     }
 }

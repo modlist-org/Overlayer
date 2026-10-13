@@ -1,4 +1,4 @@
-﻿using Overlayer.Async;
+using Overlayer.Async;
 using Overlayer.Core;
 using System.Reflection;
 using static Overlayer.Overlay.OvObject;
@@ -6,6 +6,10 @@ using static Overlayer.Overlay.OvObject;
 namespace Overlayer.Tag.Core;
 
 public static class TagManager {
+    static TagManager() {
+        ExprCore.TagLookupProvider = TryGet;
+    }
+
     private static readonly object _lock = new();
 
     private static readonly HashSet<Assembly> _registeredAssemblies = [];

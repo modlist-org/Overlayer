@@ -1,4 +1,4 @@
-﻿using Overlayer.ModuleAPI;
+using Overlayer.ModuleAPI;
 using Overlayer.Tag.Core;
 using Overlayer.Tag.Diagnostics;
 using Overlayer.Tag.Runtime;
@@ -14,10 +14,12 @@ public static class Compiler {
     ) {
         var diagnostics = new List<CompileDiagnostic>();
 
-        var placeholder = new Placeholder(parsed.Name, parsed.Args);
+        string exprStr = parsed.Expression;
+        string lookupName = exprStr.EndsWith("()") ? exprStr[..^2].Trim() : exprStr;
+        var placeholder = new Placeholder(lookupName, parsed.Args);
 
         var context = new DiagnosticContext(
-            parsed.Name,
+            lookupName,
             parsed.Index,
             parsed.Length
         );

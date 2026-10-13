@@ -3,22 +3,14 @@ using System.Runtime.InteropServices;
 
 namespace Overlayer.Native;
 
-internal enum OvTagType : uint {
-    Simple = 0,
-    Colon = 1,
-    Func = 2,
-    JsExpr = 3,
-}
-
 [StructLayout(LayoutKind.Sequential)]
 internal struct OvTagSpan {
     public uint RawStart;
     public uint RawLen;
-    public uint NameStart;
-    public uint NameLen;
-    public uint ArgsStart;
-    public uint ArgsLen;
-    public OvTagType Type;
+    public uint ExprStart;
+    public uint ExprLen;
+    public uint FmtStart;
+    public uint FmtLen;
 }
 
 internal static unsafe class OvTagScanner {
@@ -38,7 +30,7 @@ internal static unsafe class OvTagScanner {
                     return (int)o5_tag_scan(p, (nuint)input.Length, outPtr, (nuint)buffer.Length);
                 }
             } catch {
-                // Fallback to managed scanner on any native invocation failure.
+                // Fallback to managed scanner
             }
         }
 
@@ -60,148 +52,108 @@ internal static unsafe class OvTagScanner {
                 continue;
             }
 
-            int tagStart = i;
-            int nameStart = i + 1;
-            int nameEnd = nameStart;
-            while (nameEnd < len && (char.IsLetterOrDigit(input[nameEnd]) || input[nameEnd] == '_')) {
-                nameEnd++;
-            }
-
-            if (nameEnd == nameStart || nameEnd >= len) {
-                i++;
+            // Escape {{
+            if (i + 1 < len && input[i + 1] == '{') {
+                i += 2;
                 continue;
             }
 
-            int nameLen = nameEnd - nameStart;
-            char delimiter = input[nameEnd];
-            bool isJs = (delimiter == ':' || delimiter == '(') &&
-                        input.AsSpan(nameStart, nameLen).Equals("JSExpr", StringComparison.OrdinalIgnoreCase);
+            int tagStart = i;
+            int depth = 1;
+            int parenDepth = 0;
+            int bracketDepth = 0;
+            int colonPos = -1;
+            int idx = i + 1;
+            bool matched = false;
 
-            if (isJs) {
-                int close = FindBalancedClose(input, nameEnd + 1);
-                if (close >= 0) {
-                    if (count < buffer.Length) {
-                        buffer[count] = new OvTagSpan {
-                            RawStart = (uint)tagStart,
-                            RawLen = (uint)(close - tagStart + 1),
-                            NameStart = (uint)nameStart,
-                            NameLen = (uint)nameLen,
-                            ArgsStart = (uint)(nameEnd + 1),
-                            ArgsLen = (uint)(close - nameEnd - 1),
-                            Type = OvTagType.JsExpr,
-                        };
+            while (idx < len) {
+                char c = input[idx];
+
+                if (c == '/' && idx + 1 < len && input[idx + 1] == '/') {
+                    idx += 2;
+                    while (idx < len && input[idx] != '\n') {
+                        idx++;
                     }
-                    count++;
-                    i = close + 1;
                     continue;
                 }
+
+                if (c == '/' && idx + 1 < len && input[idx + 1] == '*') {
+                    idx += 2;
+                    while (idx + 1 < len && !(input[idx] == '*' && input[idx + 1] == '/')) {
+                        idx++;
+                    }
+                    idx = Math.Min(len, idx + 2);
+                    continue;
+                }
+
+                if (c == '\'' || c == '"' || c == '`') {
+                    idx = SkipString(input, idx);
+                    continue;
+                }
+
+                if (c == '(') {
+                    parenDepth++;
+                } else if (c == ')') {
+                    if (parenDepth > 0) parenDepth--;
+                } else if (c == '[') {
+                    bracketDepth++;
+                } else if (c == ']') {
+                    if (bracketDepth > 0) bracketDepth--;
+                } else if (c == '{') {
+                    depth++;
+                } else if (c == '}') {
+                    depth--;
+                    if (depth == 0) {
+                        matched = true;
+                        break;
+                    }
+                } else if (c == ':') {
+                    if (depth == 1 && parenDepth == 0 && bracketDepth == 0 && colonPos < 0) {
+                        colonPos = idx;
+                    }
+                }
+
+                idx++;
             }
 
-            if (delimiter == '}') {
+            if (matched) {
+                int tagEnd = idx;
+                int rawLen = tagEnd - tagStart + 1;
+
+                int exprStart = tagStart + 1;
+                int exprLen;
+                int fmtStart = 0;
+                int fmtLen = 0;
+
+                if (colonPos >= 0) {
+                    exprLen = colonPos - exprStart;
+                    fmtStart = colonPos + 1;
+                    fmtLen = tagEnd - fmtStart;
+                } else {
+                    exprLen = tagEnd - exprStart;
+                }
+
                 if (count < buffer.Length) {
                     buffer[count] = new OvTagSpan {
                         RawStart = (uint)tagStart,
-                        RawLen = (uint)(nameEnd - tagStart + 1),
-                        NameStart = (uint)nameStart,
-                        NameLen = (uint)nameLen,
-                        ArgsStart = 0,
-                        ArgsLen = 0,
-                        Type = OvTagType.Simple,
+                        RawLen = (uint)rawLen,
+                        ExprStart = (uint)exprStart,
+                        ExprLen = (uint)exprLen,
+                        FmtStart = (uint)fmtStart,
+                        FmtLen = (uint)fmtLen,
                     };
                 }
                 count++;
-                i = nameEnd + 1;
-                continue;
+                i = tagEnd + 1;
+            } else {
+                i++;
             }
-
-            if (delimiter == ':') {
-                int close = nameEnd + 1;
-                while (close < len && input[close] != '}') {
-                    close++;
-                }
-                if (close < len && input[close] == '}') {
-                    if (count < buffer.Length) {
-                        buffer[count] = new OvTagSpan {
-                            RawStart = (uint)tagStart,
-                            RawLen = (uint)(close - tagStart + 1),
-                            NameStart = (uint)nameStart,
-                            NameLen = (uint)nameLen,
-                            ArgsStart = (uint)(nameEnd + 1),
-                            ArgsLen = (uint)(close - nameEnd - 1),
-                            Type = OvTagType.Colon,
-                        };
-                    }
-                    count++;
-                    i = close + 1;
-                    continue;
-                }
-            }
-
-            if (delimiter == '(') {
-                int close = nameEnd + 1;
-                while (close < len && input[close] != '}') {
-                    close++;
-                }
-                if (close < len && input[close] == '}' && close > nameEnd + 1 && input[close - 1] == ')') {
-                    if (count < buffer.Length) {
-                        buffer[count] = new OvTagSpan {
-                            RawStart = (uint)tagStart,
-                            RawLen = (uint)(close - tagStart + 1),
-                            NameStart = (uint)nameStart,
-                            NameLen = (uint)nameLen,
-                            ArgsStart = (uint)(nameEnd + 1),
-                            ArgsLen = (uint)(close - 1 - (nameEnd + 1)),
-                            Type = OvTagType.Func,
-                        };
-                    }
-                    count++;
-                    i = close + 1;
-                    continue;
-                }
-            }
-
-            i++;
         }
 
         return count;
     }
 
-    private static int FindBalancedClose(string input, int start) {
-        int depth = 1;
-        int i = start;
-        int len = input.Length;
-        while (i < len) {
-            char c = input[i];
-            if (c == '/' && i + 1 < len && input[i + 1] == '/') {
-                while (i < len && input[i] != '\n') {
-                    i++;
-                }
-                continue;
-            }
-            if (c == '/' && i + 1 < len && input[i + 1] == '*') {
-                i += 2;
-                while (i + 1 < len && !(input[i] == '*' && input[i + 1] == '/')) {
-                    i++;
-                }
-                i = Math.Min(len, i + 2);
-                continue;
-            }
-            if (c == '\'' || c == '"' || c == '`') {
-                i = SkipJsString(input, i);
-                continue;
-            }
-            if (c == '{') {
-                depth++;
-            } else if (c == '}') {
-                depth--;
-                if (depth == 0) return i;
-            }
-            i++;
-        }
-        return -1;
-    }
-
-    private static int SkipJsString(string input, int start) {
+    private static int SkipString(string input, int start) {
         char quote = input[start];
         int i = start + 1;
         int len = input.Length;

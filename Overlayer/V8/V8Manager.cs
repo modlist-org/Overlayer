@@ -406,8 +406,12 @@ public class V8Manager : IRuntimeService {
                 sb.AppendLine($" * @param {{ {p.Name}: {MapToJsType(p.ParameterType)} }}");
             }
 
-            sb.AppendLine($" * @returns {{{returnType}}} */");
-            sb.AppendLine($"function {tag.Name}({paramList}) {{ return Tag.{tag.Name}({paramList}); }}\n");
+            sb.AppendLine($"function {tag.Name}({paramList}) {{ return Tag.{tag.Name}({paramList}); }}");
+            if (tag.RequiredParameterCount == 0) {
+                sb.AppendLine($"{tag.Name}.valueOf = function() {{ return Tag.{tag.Name}(); }};");
+                sb.AppendLine($"{tag.Name}.toString = function() {{ return Tag.{tag.Name}(); }};");
+            }
+            sb.AppendLine();
         }
         return sb.ToString();
     }

@@ -1,4 +1,4 @@
-﻿using Microsoft.ClearScript;
+using Microsoft.ClearScript;
 using Overlayer.Tag.Core;
 using Overlayer.Tag.Diagnostics;
 using System.Linq.Expressions;
@@ -110,6 +110,17 @@ public static class ExpressionBuilder {
     }
 
     private static Expression FormatValue(Type type, Expression value, ResolvedSignature sig) {
+        if (sig.HasFormat && IsNumeric(type) && Overlayer.Native.O5Fmt.IsSupported) {
+            var toDouble = Expression.Convert(value, typeof(double));
+            return Expression.Call(
+                typeof(Overlayer.Native.O5Fmt),
+                nameof(Overlayer.Native.O5Fmt.FormatString),
+                Type.EmptyTypes,
+                toDouble,
+                Expression.Constant(sig.Format)
+            );
+        }
+
         if (sig.HasFormat && typeof(IFormattable).IsAssignableFrom(type)) {
             var direct = type.GetMethod(
                 nameof(IFormattable.ToString),
@@ -137,6 +148,13 @@ public static class ExpressionBuilder {
             typeof(object).GetMethod(nameof(ToString))!
         );
     }
+
+    private static bool IsNumeric(Type type) =>
+        type == typeof(double) || type == typeof(float) ||
+        type == typeof(int) || type == typeof(long) ||
+        type == typeof(uint) || type == typeof(ulong) ||
+        type == typeof(short) || type == typeof(ushort) ||
+        type == typeof(byte) || type == typeof(sbyte);
 
     private static Type MemoKeyType(Type type) {
         if (type == typeof(double) || type == typeof(float)) {

@@ -1,4 +1,4 @@
-﻿using FuzzySharp;
+using FuzzySharp;
 using Overlayer.Tag.Compile;
 using Overlayer.Tag.Core;
 using Overlayer.Tag.Diagnostics;
@@ -19,18 +19,6 @@ public sealed class TagCache {
     private readonly object lockObject = new();
 
     public CompiledPlaceholder GetOrCompile(ParsedTag parsed) {
-        if (!TagManager.TryGet(parsed.Name, out var tag)) {
-            string suggestion = FindSuggestion(parsed.Name);
-            return new CompiledPlaceholder(() => parsed.Raw, [
-                new CompileDiagnostic(
-                    DiagnosticId.TagNotFound,
-                    CompileSeverity.Error,
-                    new(parsed.Name, parsed.Index, parsed.Length),
-                    suggestion == null ? [parsed.Name] : [parsed.Name, suggestion]
-                )
-            ]);
-        }
-
         string key = MakeKey(parsed);
         lock (lockObject) {
             if (cache.TryGetValue(key, out var entry)) {
@@ -38,9 +26,28 @@ public sealed class TagCache {
             }
         }
 
-        CompiledPlaceholder compiled = (tag.TagType & TagType.Advanced) != 0
-            ? AdvancedCompiler.Compile(tag, parsed)
-            : Compiler.Compile(tag, parsed);
+        CompiledPlaceholder compiled;
+        string expr = parsed.Expression;
+        string lookupName = expr.EndsWith("()") ? expr[..^2].Trim() : expr;
+
+        if (TagManager.TryGet(lookupName, out var tag) && (tag.RequiredParameterCount == 0 || expr.EndsWith("()"))) {
+            compiled = (tag.TagType & TagType.Advanced) != 0
+                ? AdvancedCompiler.Compile(tag, parsed)
+                : Compiler.Compile(tag, parsed);
+        } else {
+            compiled = ExprCore.CompilePlaceholder(parsed);
+            if (!compiled.IsValid) {
+                string suggestion = FindSuggestion(parsed.Expression);
+                compiled = new CompiledPlaceholder(() => parsed.Raw, [
+                    new CompileDiagnostic(
+                        DiagnosticId.TagNotFound,
+                        CompileSeverity.Error,
+                        new(parsed.Expression, parsed.Index, parsed.Length),
+                        suggestion == null ? [parsed.Expression] : [parsed.Expression, suggestion]
+                    )
+                ]);
+            }
+        }
 
         if (compiled.IsValid) {
             lock (lockObject) {
@@ -133,9 +140,9 @@ public sealed class TagCache {
     public string GetKey(ParsedTag parsed) => MakeKey(parsed);
 
     private static string MakeKey(ParsedTag p) =>
-        (p.Args == null || p.Args.Length == 0)
-        ? p.Name
-        : string.Concat(p.Name, ":", string.Join(",", p.Args));
+        string.IsNullOrEmpty(p.Format)
+        ? p.Expression
+        : string.Concat(p.Expression, ":", p.Format);
 
     private static string FindSuggestion(string name) {
         if (string.IsNullOrWhiteSpace(name)) {
