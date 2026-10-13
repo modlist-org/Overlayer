@@ -41,14 +41,16 @@ rm -f "$WORK"/win/UserLibs/*.so* "$WORK"/win/UserLibs/*.dylib
 # and need the win build (same reason all NFD natives are kept).
 rm -rf "$WORK/linux" && cp -r "$SRC" "$WORK/linux"
 rm -f "$WORK"/linux/UserLibs/Microsoft.Win32.Registry.dll \
-      "$WORK"/linux/UserLibs/ClearScriptV8.osx-*.dylib
+      "$WORK"/linux/UserLibs/ClearScriptV8.osx-*.dylib \
+      "$WORK"/linux/UserLibs/*Native.mac.dylib
 (cd "$WORK/linux" && zip -qr "$DIST/Overlayer_ML_linux.zip" Mods UserData UserLibs)
 
 # --- mac ---
 # Keep ClearScriptV8.win-x64.dll for Wine/Crossover titles; NFD natives all kept.
 rm -rf "$WORK/mac" && cp -r "$SRC" "$WORK/mac"
 rm -f "$WORK"/mac/UserLibs/Microsoft.Win32.Registry.dll \
-      "$WORK"/mac/UserLibs/ClearScriptV8.linux-x64.so*
+      "$WORK"/mac/UserLibs/ClearScriptV8.linux-x64.so* \
+      "$WORK"/mac/UserLibs/*Native.linux.so*
 (cd "$WORK/mac" && zip -qr "$DIST/Overlayer_ML_mac.zip" Mods UserData UserLibs)
 
 ls -la "$DIST"/Overlayer_ML_win.zip "$DIST"/Overlayer_ML_linux.zip "$DIST"/Overlayer_ML_mac.zip
