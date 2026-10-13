@@ -313,10 +313,12 @@ public static class OverlayCore {
         var files = Directory.GetFiles(SaveDir, "*.json").OrderBy(Path.GetFileName);
 
         foreach (var file in files) {
-            knownFiles.Add(Path.GetFileName(file));
             var wrapper = new SettingsFile<OvCanvas>(file);
 
             if (wrapper.Load()) {
+                // Only files we actually loaded count as ours; a file that failed to load
+                // must never be treated as stale and deleted on the next save.
+                knownFiles.Add(Path.GetFileName(file));
                 var canvas = wrapper.Data;
                 canvas.SourceFile = file;
                 canvas.RectTransform.SetParent(Transform, false);

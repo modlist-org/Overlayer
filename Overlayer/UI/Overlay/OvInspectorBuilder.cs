@@ -1057,9 +1057,10 @@ internal sealed class OvInspectorBuilder(
         public Func<string, (CompileDiagnostic[] Diagnostics, TextEngineState State)?> Diagnose;
         public bool TagCompletion = true;
         public string LabelSuffix = "tag expression";
+        public bool InlineFillButton = true;
     }
 
-    private void CodeEditor(
+    private Action CodeEditor(
         Transform parent,
         string label,
         string id,
@@ -1079,6 +1080,8 @@ internal sealed class OvInspectorBuilder(
         bool? hoverComposing = null;
         CompileDiagnostic[] displayedDiagnostics = [];
         bool diagnosticsCompiling = false;
+        bool lineNumbersDirty = true;
+        int lineNumbersGeometryKey = 0;
         language ??= new CodeEditorLanguage {
             Highlight = TagSyntaxHighlighter.GetSpans,
             Diagnose = null,
@@ -1091,7 +1094,7 @@ internal sealed class OvInspectorBuilder(
             displayedText = text ?? string.Empty;
             syntaxSpans = language.Highlight(displayedText);
             diagnosticsKey = null;
-            UpdateLineNumbers(lineNumbers, displayedText);
+            lineNumbersDirty = true;
             changed(text);
         }
 
@@ -1115,11 +1118,11 @@ internal sealed class OvInspectorBuilder(
         text.fontSize = 16f;
         text.characterSpacing = 0f;
         text.lineSpacing = 4f;
-        TmpCompat.SetNoWrap(text);
+        TmpCompat.SetWrappingMode(text, TmpCompat.Normal);
 
         input.Placeholder.fontSize = 16f;
         input.Placeholder.characterSpacing = 0f;
-        TmpCompat.SetNoWrap(input.Placeholder);
+        TmpCompat.SetWrappingMode(input.Placeholder, TmpCompat.Normal);
 
         RectTransform viewport = input.InputField.textViewport;
         Vector2 viewportMin = viewport.offsetMin;
@@ -1283,6 +1286,11 @@ internal sealed class OvInspectorBuilder(
         codeInput.AfterLabelUpdate = (sourceText, composing) => {
             textComposing = composing;
             int geometryKey = BuildTextGeometryKey(sourceText, ref meshLayoutKey);
+            if (!composing && (lineNumbersDirty || geometryKey != lineNumbersGeometryKey)) {
+                lineNumbersDirty = false;
+                lineNumbersGeometryKey = geometryKey;
+                UpdateLineNumbers(lineNumbers, displayedText, displayedDiagnostics, sourceText);
+            }
             bool hoverRebuilt = false;
             if (hoverGeometryKey != geometryKey || hoverComposing != composing) {
                 hoverGeometryKey = geometryKey;
@@ -1364,7 +1372,7 @@ internal sealed class OvInspectorBuilder(
                 syntaxSpans = language.Highlight(displayedText);
                 hoverGeometryKey = null;
                 SetDiagnosticsHeight(diagnostics.Length);
-                UpdateLineNumbers(lineNumbers, displayedText, diagnostics);
+                lineNumbersDirty = true;
                 UpdateDiagnosticsBar(diagnosticsText, state, diagnostics, displayedText);
             }
         }
@@ -1440,7 +1448,91 @@ internal sealed class OvInspectorBuilder(
 
         RefreshDiagnostics();
         controls.Add(new O5Watcher(O5KitAdapters.Ctx, id + "_diagnostics", diagnosticsRect, RefreshDiagnostics));
+
+        // Fill-window mode moves the row onto the mod panel and leaves a same-height slot
+        // behind so the inspector layout doesn't jump; exiting puts it back into the slot.
+        RectTransform fillOverlay = null;
+        RectTransform rowSlot = null;
+
+        void SetFillWindow(bool on) {
+            if (on == (fillOverlay != null)) {
+                return;
+            }
+
+            if (on) {
+                fillOverlay = new GameObject("CodeEditorFill").AddComponent<RectTransform>();
+                fillOverlay.SetParent(UICore.Panel, false);
+                fillOverlay.SetAsLastSibling();
+                fillOverlay.anchorMin = Vector2.zero;
+                fillOverlay.anchorMax = Vector2.one;
+                fillOverlay.offsetMin = Vector2.zero;
+                fillOverlay.offsetMax = Vector2.zero;
+                var overlayBg = fillOverlay.gameObject.AddComponent<Image>();
+                overlayBg.color = UIColors.PanelBG;
+                overlayBg.raycastTarget = true;
+
+                rowSlot = new GameObject("CodeEditorSlot").AddComponent<RectTransform>();
+                rowSlot.SetParent(row.parent, false);
+                rowSlot.SetSiblingIndex(row.GetSiblingIndex());
+                var slotLayout = rowSlot.gameObject.AddComponent<LayoutElement>();
+                slotLayout.minHeight = rowLayout.minHeight;
+                slotLayout.preferredHeight = rowLayout.preferredHeight;
+
+                row.SetParent(fillOverlay, false);
+                row.anchorMin = Vector2.zero;
+                row.anchorMax = Vector2.one;
+                row.offsetMin = new Vector2(16f, 16f);
+                row.offsetMax = new Vector2(-16f, -60f);
+
+                var exit = FillWindowButton(fillOverlay, () => SetFillWindow(false), id + "_fill_exit", true);
+                exit.Rect.anchorMin = exit.Rect.anchorMax = exit.Rect.pivot = Vector2.one;
+                exit.Rect.anchoredPosition = new Vector2(-16f, -12f);
+                exit.Rect.sizeDelta = new Vector2(36f, 36f);
+            } else {
+                if (rowSlot != null) {
+                    row.SetParent(rowSlot.parent, false);
+                    row.SetSiblingIndex(rowSlot.GetSiblingIndex());
+                    rowSlot.gameObject.SetActive(false);
+                    UnityEngine.Object.Destroy(rowSlot.gameObject);
+                }
+                // If the slot is gone the inspector was torn down, so the row goes with the overlay.
+                UnityEngine.Object.Destroy(fillOverlay.gameObject);
+                fillOverlay = null;
+                rowSlot = null;
+            }
+        }
+
+        var fillWatcher = new O5Watcher(O5KitAdapters.Ctx, id + "_fill_watch", diagnosticsRect, () => {
+            if (fillOverlay != null
+                && (rowSlot == null || !rowSlot.gameObject.activeInHierarchy || O5Input.GetKeyDown(KeyCode.Escape))) {
+                SetFillWindow(false);
+            }
+        });
+        fillWatcher.OnDisposed += () => SetFillWindow(false);
+        controls.Add(fillWatcher);
+
+        if (language.InlineFillButton) {
+            diagnosticsText.rectTransform.offsetMax = new Vector2(-34f, 0f);
+            var fill = FillWindowButton(diagnosticsObj.transform, () => SetFillWindow(fillOverlay == null), id + "_fill", false);
+            fill.Rect.anchorMin = fill.Rect.anchorMax = fill.Rect.pivot = new Vector2(1f, 1f);
+            fill.Rect.anchoredPosition = new Vector2(-2f, -2f);
+            fill.Rect.sizeDelta = new Vector2(24f, 24f);
+            fill.Icon.rectTransform.offsetMin = new Vector2(5f, 5f);
+            fill.Icon.rectTransform.offsetMax = new Vector2(-5f, -5f);
+        }
         Track(input);
+        return () => SetFillWindow(fillOverlay == null);
+    }
+
+    private O5Button FillWindowButton(Transform parent, Action onClick, string id, bool active) {
+        var button = O5Factory.Button(O5KitAdapters.Ctx, parent, onClick, MainCore.Spr.Get(UISprite.Expand128), id, 4f);
+        button.NormalColor = active ? UIColors.FxOn : UIColors.FxOff;
+        button.Icon.color = Color.white;
+        button.Icon.rectTransform.offsetMin = new Vector2(9f, 9f);
+        button.Icon.rectTransform.offsetMax = new Vector2(-9f, -9f);
+        button.UpdateVisual(true);
+        controls.Add(button);
+        return button;
     }
 
     // Finds a hex color (3/4/6/8 digits) around position. Without a leading '#', only 6/8 digit
@@ -1477,7 +1569,8 @@ internal sealed class OvInspectorBuilder(
     private static void UpdateLineNumbers(
         TextMeshProUGUI lineNumbers,
         string value,
-        CompileDiagnostic[] diagnostics = null
+        CompileDiagnostic[] diagnostics = null,
+        TMP_Text layout = null
     ) {
         if (lineNumbers == null) {
             return;
@@ -1503,14 +1596,30 @@ internal sealed class OvInspectorBuilder(
             }
         }
 
-        lineNumbers.text = string.Join("\n", Enumerable.Range(0, count).Select(i =>
-            severities[i] switch {
-                CompileSeverity.Error => $"<color=#E2676D>{i + 1}</color>",
-                CompileSeverity.Warning => $"<color=#FFE591>{i + 1}</color>",
-                CompileSeverity.Info => $"<color=#96B7FF>{i + 1}</color>",
-                _ => (i + 1).ToString()
+        string Number(int i) => severities[i] switch {
+            CompileSeverity.Error => $"<color=#E2676D>{i + 1}</color>",
+            CompileSeverity.Warning => $"<color=#FFE591>{i + 1}</color>",
+            CompileSeverity.Info => $"<color=#96B7FF>{i + 1}</color>",
+            _ => (i + 1).ToString()
+        };
+
+        // Wrapped continuation lines get a blank gutter entry so numbers stay on their source line.
+        var labels = new List<string>(count);
+        int logical = 0;
+        if (layout != null) {
+            var info = layout.textInfo;
+            for (int i = 0; i < info.lineCount && logical < count; i++) {
+                int ci = info.lineInfo[i].firstCharacterIndex;
+                int start = ci >= 0 && ci < info.characterCount ? info.characterInfo[ci].index : -1;
+                bool startsLine = i == 0 || (start > 0 && start <= value.Length && value[start - 1] == '\n');
+                labels.Add(startsLine ? Number(logical++) : string.Empty);
             }
-        ));
+        }
+        while (logical < count) {
+            labels.Add(Number(logical++));
+        }
+
+        lineNumbers.text = string.Join("\n", labels);
     }
 
     private static void UpdateDiagnosticsBar(
@@ -1817,8 +1926,9 @@ internal sealed class OvInspectorBuilder(
         group.GetComponent<LayoutElement>().preferredHeight = -1f;
         var editor = VerticalGroup(group, 0f);
         editor.GetComponent<LayoutElement>().minWidth = 0f;
+        Action toggleFillWindow = null;
         if (fx.UseFx) {
-            JsCodeEditor(editor, label, id + "_fx", fx);
+            toggleFillWindow = JsCodeEditor(editor, label, id + "_fx", fx);
         } else {
             staticUI(editor);
         }
@@ -1875,6 +1985,15 @@ internal sealed class OvInspectorBuilder(
         button.Icon.rectTransform.offsetMin = new Vector2(8f, 10f);
         button.Icon.rectTransform.offsetMax = new Vector2(-8f, -10f);
         button.UpdateVisual(true);
+        if (toggleFillWindow != null) {
+            slotLayout.minHeight = slotLayout.preferredHeight = 50f + 6f + 36f;
+            var fill = FillWindowButton(buttonSlot, toggleFillWindow, id + "_fill", false);
+            fill.Rect.anchorMin = new Vector2(0f, 1f);
+            fill.Rect.anchorMax = new Vector2(1f, 1f);
+            fill.Rect.pivot = new Vector2(0.5f, 1f);
+            fill.Rect.anchoredPosition = new Vector2(0f, -56f);
+            fill.Rect.sizeDelta = new Vector2(0f, 36f);
+        }
         if (transitioningFx is { } pending && ReferenceEquals(pending.Value, fx)) {
             transitioningFx = null;
             LayoutRebuilder.ForceRebuildLayoutImmediate(group);
@@ -2028,14 +2147,15 @@ internal sealed class OvInspectorBuilder(
         }, idPrefix);
     }
 
-    private void JsCodeEditor<T>(Transform parent, string label, string id, FxValue<T> fx) {
+    private Action JsCodeEditor<T>(Transform parent, string label, string id, FxValue<T> fx) {
         var language = new CodeEditorLanguage {
             Highlight = JsSyntaxHighlighter.GetSpans,
             Diagnose = source => (GetFxDiagnostics(fx, source), TextEngineState.Ready),
             TagCompletion = false,
-            LabelSuffix = "js expression"
+            LabelSuffix = "js expression",
+            InlineFillButton = false
         };
-        CodeEditor(parent, label, id, fx.Expression, value => {
+        return CodeEditor(parent, label, id, fx.Expression, value => {
             fx.Expression = value;
             apply();
         }, null, language);

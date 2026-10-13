@@ -25,6 +25,7 @@ public enum UISprite {
     Ping128,
     CodeBlock128,
     F128,
+    Expand128,
     Upload128,
     Download128,
 }
@@ -222,6 +223,7 @@ public sealed class SpriteManager(ResourceManager resource) : IDisposable {
         [UISprite.Ping128] = Asset.Ping128,
         [UISprite.CodeBlock128] = Asset.CodeBlock128,
         [UISprite.F128] = Asset.F128,
+        [UISprite.Expand128] = Asset.Expand128,
         [UISprite.Upload128] = Asset.Upload128,
         [UISprite.Download128] = Asset.Download128,
     };
