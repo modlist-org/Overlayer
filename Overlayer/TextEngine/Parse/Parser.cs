@@ -1,146 +1,75 @@
-using System.Text.RegularExpressions;
+using Overlayer.Native;
 
 namespace Overlayer.TextEngine.Parse;
 
 public static class Parser {
-    private static readonly Regex Pattern =
-        new(@"\{(?<name>[A-Za-z0-9_]+)\}", RegexOptions.Compiled);
-    private static readonly Regex ColonPattern =
-        new(@"\{(?<name>[A-Za-z0-9_]+):(?<arg>[^}]*)\}", RegexOptions.Compiled);
-    private static readonly Regex FuncPattern =
-        new(@"\{(?<name>[A-Za-z0-9_]+)\((?<args>[^}]*)\)\}", RegexOptions.Compiled);
-
     public static List<ParsedTag> Parse(string input) {
-        var jsRanges = FindJsExprRanges(input);
-        var matches = ColonPattern.Matches(input)
-            .Cast<Match>()
-            .Concat(FuncPattern.Matches(input).Cast<Match>())
-            .Concat(Pattern.Matches(input).Cast<Match>())
-            .Where(m => !jsRanges.Any(r => m.Index >= r.Index && m.Index + m.Length <= r.Index + r.Length))
-            .OrderBy(m => m.Index);
+        if (string.IsNullOrEmpty(input)) {
+            return [];
+        }
 
-        List<ParsedTag> tags = [.. from m in matches
-                    let name = m.Groups["name"].Value
-                    let argsRaw = m.Groups["arg"].Success
-                        ? m.Groups["arg"].Value
-                        : m.Groups["args"].Success ? m.Groups["args"].Value : ""
-                    let args = (string[])(string.IsNullOrWhiteSpace(argsRaw)
-                        ? []
-                        : [.. argsRaw.Split([',']).Select(s => s.Trim())])
-                    select new ParsedTag(m.Value, name, args, m.Index, m.Length)];
+        Span<OvTagSpan> stackBuf = stackalloc OvTagSpan[32];
+        int count = OvTagScanner.Scan(input, stackBuf);
+        if (count == 0) {
+            return [];
+        }
 
-        tags.AddRange(jsRanges.Select(r =>
-            new ParsedTag(
-                input.Substring(r.Index, r.Length),
-                r.Name,
-                string.IsNullOrWhiteSpace(r.ArgsRaw) ? [] : [r.ArgsRaw],
-                r.Index,
-                r.Length)));
+        if (count <= stackBuf.Length) {
+            return BuildTags(input, stackBuf[..count]);
+        }
 
-        tags.Sort((left, right) => left.Index.CompareTo(right.Index));
+        var heapBuf = new OvTagSpan[count];
+        OvTagScanner.Scan(input, heapBuf);
+        return BuildTags(input, heapBuf);
+    }
+
+    private static List<ParsedTag> BuildTags(string input, ReadOnlySpan<OvTagSpan> spans) {
+        var tags = new List<ParsedTag>(spans.Length);
+        for (int i = 0; i < spans.Length; i++) {
+            ref readonly var s = ref spans[i];
+            string raw = input.Substring((int)s.RawStart, (int)s.RawLen);
+            string name = input.Substring((int)s.NameStart, (int)s.NameLen);
+            string[] args;
+
+            switch (s.Type) {
+                case OvTagType.Simple:
+                    args = [];
+                    break;
+                case OvTagType.JsExpr:
+                    var jsSpan = input.AsSpan((int)s.ArgsStart, (int)s.ArgsLen);
+                    args = jsSpan.IsWhiteSpace() ? [] : [jsSpan.ToString()];
+                    break;
+                default:
+                    args = SplitArgs(input.AsSpan((int)s.ArgsStart, (int)s.ArgsLen));
+                    break;
+            }
+
+            tags.Add(new ParsedTag(raw, name, args, (int)s.RawStart, (int)s.RawLen));
+        }
+
         return tags;
     }
 
-    private static List<(int Index, int Length, string Name, string ArgsRaw)> FindJsExprRanges(string input) {
-        var ranges = new List<(int, int, string, string)>();
-        int i = 0;
-        while (i < input.Length) {
-            if (input[i] != '{') {
-                i++;
-                continue;
-            }
-
-            int nameStart = i + 1;
-            int nameEnd = nameStart;
-            while (nameEnd < input.Length && (char.IsLetterOrDigit(input[nameEnd]) || input[nameEnd] == '_')) {
-                nameEnd++;
-            }
-
-            if (nameEnd == nameStart
-                || nameEnd >= input.Length
-                || (input[nameEnd] != ':' && input[nameEnd] != '(')
-                || !input[nameStart..nameEnd].Equals("JSExpr", StringComparison.OrdinalIgnoreCase)) {
-                i++;
-                continue;
-            }
-
-            int close = FindBalancedClose(input, nameEnd + 1);
-            if (close < 0) {
-                i++;
-                continue;
-            }
-
-            string argsRaw = input.Substring(nameEnd + 1, close - nameEnd - 1);
-            ranges.Add((i, close - i + 1, input[nameStart..nameEnd], argsRaw));
-            i = close + 1;
+    private static string[] SplitArgs(ReadOnlySpan<char> span) {
+        if (span.IsWhiteSpace()) {
+            return [];
         }
 
-        return ranges;
-    }
-
-    private static int FindBalancedClose(string input, int start) {
-        int depth = 1;
-        int i = start;
-        while (i < input.Length) {
-            char c = input[i];
-            if (c == '/' && i + 1 < input.Length && input[i + 1] == '/') {
-                while (i < input.Length && input[i] != '\n') {
-                    i++;
-                }
-
-                continue;
-            }
-
-            if (c == '/' && i + 1 < input.Length && input[i + 1] == '*') {
-                i += 2;
-                while (i + 1 < input.Length && !(input[i] == '*' && input[i + 1] == '/')) {
-                    i++;
-                }
-
-                i = Math.Min(input.Length, i + 2);
-                continue;
-            }
-
-            if (c == '\'' || c == '"' || c == '`') {
-                i = SkipJsString(input, i);
-                continue;
-            }
-
-            if (c == '{') {
-                depth++;
-            } else if (c == '}') {
-                depth--;
-                if (depth == 0) {
-                    return i;
-                }
-            }
-
-            i++;
+        int count = 1;
+        for (int i = 0; i < span.Length; i++) {
+            if (span[i] == ',') count++;
         }
 
-        return -1;
-    }
-
-    private static int SkipJsString(string input, int start) {
-        char quote = input[start];
-        int i = start + 1;
-        while (i < input.Length) {
-            if (input[i] == '\\') {
-                i += 2;
-                continue;
+        var result = new string[count];
+        int start = 0;
+        int idx = 0;
+        for (int i = 0; i < span.Length; i++) {
+            if (span[i] == ',') {
+                result[idx++] = span[start..i].Trim().ToString();
+                start = i + 1;
             }
-
-            if (input[i] == quote) {
-                return i + 1;
-            }
-
-            if (quote != '`' && input[i] == '\n') {
-                return i;
-            }
-
-            i++;
         }
-
-        return input.Length;
+        result[idx] = span[start..].Trim().ToString();
+        return result;
     }
 }

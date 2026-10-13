@@ -48,4 +48,14 @@ public sealed class ParserTests {
         Assert.Equal("Miss", tags[1].Name);
         Assert.Equal(["fail"], tags[1].Args);
     }
+
+    [Fact]
+    public void NativeScanner_DirectSpanScan_ReturnsExpectedSpans() {
+        Assert.True(Overlayer.Native.O5Native.IsAvailable);
+        Span<Overlayer.Native.OvTagSpan> spans = stackalloc Overlayer.Native.OvTagSpan[16];
+        int count = Overlayer.Native.OvTagScanner.Scan("{Tag:1,2} text {Func(a)}", spans);
+        Assert.Equal(2, count);
+        Assert.Equal(Overlayer.Native.OvTagType.Colon, spans[0].Type);
+        Assert.Equal(Overlayer.Native.OvTagType.Func, spans[1].Type);
+    }
 }

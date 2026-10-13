@@ -89,6 +89,8 @@ internal static class O5Native {
             string baseDir = AppDomain.CurrentDomain.BaseDirectory;
             if (!string.IsNullOrEmpty(baseDir)) {
                 Add(Path.Combine(baseDir, "UserLibs", FileName()));
+                Add(Path.Combine(baseDir, "..", "..", "..", "..", "..", "O5Kit", "native", "zig-out", "lib", FileName()));
+                Add(Path.Combine(baseDir, "..", "..", "..", "O5Kit", "native", "zig-out", "lib", FileName()));
             }
         } catch {
         }
@@ -109,7 +111,7 @@ internal static class O5Native {
         return "O5KitNative.linux.so";
     }
 
-    private static bool Preload(string fullPath) {
+    internal static bool Preload(string fullPath) {
         try {
             if (Path.DirectorySeparatorChar == '\\') {
                 return LoadLibraryW(fullPath) != IntPtr.Zero;
