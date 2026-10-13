@@ -24,6 +24,7 @@ public sealed class CoreSettings : ISettingsFile {
     public FxValue<string> CodeFontKey = FxValue<string>.FromValue(null);
     public FxValue<List<string>> SystemFontFallbacks = new([]);
     public FxValue<List<string>> CodeFontFallbacks = new([]);
+    public FxValue<bool> UseRawInput = new(true);
 
     public JToken Serialize() {
         return new JObject {
@@ -44,7 +45,8 @@ public sealed class CoreSettings : ISettingsFile {
             [nameof(SystemFontKey)] = IOUtils.WriteFx(SystemFontKey),
             [nameof(CodeFontKey)] = IOUtils.WriteFx(CodeFontKey),
             [nameof(SystemFontFallbacks)] = IOUtils.WriteFx(SystemFontFallbacks),
-            [nameof(CodeFontFallbacks)] = IOUtils.WriteFx(CodeFontFallbacks)
+            [nameof(CodeFontFallbacks)] = IOUtils.WriteFx(CodeFontFallbacks),
+            [nameof(UseRawInput)] = IOUtils.WriteFx(UseRawInput)
         };
     }
 
@@ -67,5 +69,6 @@ public sealed class CoreSettings : ISettingsFile {
         CodeFontKey = IOUtils.ReadFx(token, nameof(CodeFontKey), CodeFontKey);
         SystemFontFallbacks = IOUtils.ReadFx(token, nameof(SystemFontFallbacks), SystemFontFallbacks);
         CodeFontFallbacks = IOUtils.ReadFx(token, nameof(CodeFontFallbacks), CodeFontFallbacks);
+        UseRawInput = IOUtils.ReadFx(token, nameof(UseRawInput), UseRawInput);
     }
 }

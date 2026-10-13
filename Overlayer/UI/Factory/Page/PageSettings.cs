@@ -14,6 +14,7 @@ using Overlayer.IO.Fx;
 using Overlayer.IO.User;
 using Overlayer.Package;
 using Overlayer.Update;
+using Overlayer.Native;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -254,6 +255,30 @@ internal static class PageSettings {
         ));
         var threeDToggleTr = threeDToggle.Label.gameObject.AddComponent<TextLocalization>().Init("ENABLE_3D_FEATURES", "Enable 3D Features");
         objects[threeDToggleTr] = (overlayerText.gameObject, threeDRow.gameObject);
+
+        var rawInputRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
+        O5Toggle rawInputToggle = O5Factory.Toggle(O5KitAdapters.Ctx,
+            rawInputRow,
+            defSet.UseRawInput,
+            MainCore.Conf.UseRawInput,
+            toggle => {
+                MainCore.Conf.UseRawInput = toggle;
+                MainCore.ConfMgr.RequestSave();
+                if (toggle) {
+                    OvRawInput.Start();
+                } else {
+                    OvRawInput.Stop();
+                }
+            },
+            "Use OS Raw Input",
+            "use_raw_input"
+        );
+        rawInputToggle.Rect.AddToolTip(O5KitAdapters.Ctx, () => MainCore.Tr.Get(
+            "DESC_USE_RAW_INPUT",
+            "Collects keyboard input at OS level in the background with lower latency and higher accuracy (Windows/Linux only).\nDisable to fall back to standard Unity input polling."
+        ));
+        var rawInputToggleTr = rawInputToggle.Label.gameObject.AddComponent<TextLocalization>().Init("USE_RAW_INPUT", "Use OS Raw Input");
+        objects[rawInputToggleTr] = (overlayerText.gameObject, rawInputRow.gameObject);
 
         ITweenHandle scaleSeq = null;
 

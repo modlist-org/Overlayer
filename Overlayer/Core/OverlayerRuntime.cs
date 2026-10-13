@@ -124,6 +124,7 @@ public sealed class OverlayerRuntime {
 
     public void Dispose() {
         _disposed = true;
+        Native.OvRawInput.Stop();
         Compat.O5KitAdapters.Teardown();
         SetModEnabledLate(false, true);
         SetModEnabled(false, true);

@@ -64,6 +64,7 @@
     <Compile Include="..\Overlayer\Native\OvTagScanner.cs" />
     <Compile Include="..\Overlayer\Native\OvCompositor.cs" />
     <Compile Include="..\Overlayer\Native\OvVertexBuilder.cs" />
+    <Compile Include="..\Overlayer\Native\OvRawInput.cs" />
     <Compile Include="..\Overlayer\Native\Polyfills.cs" />
   </ItemGroup>
   <ItemGroup>

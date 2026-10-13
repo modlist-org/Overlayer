@@ -30,7 +30,35 @@ public sealed class KpsTracker : IRuntimeTick {
     }
 
     public void Tick() {
-        if (!SuppressUnityKeys && O5Input.AnyKeyboardKeyDown) {
+        bool useRaw = false;
+        try {
+            useRaw = Overlayer.Core.MainCore.Conf?.UseRawInput?.Value ?? true;
+        } catch {
+            useRaw = true;
+        }
+
+        bool rawActive = false;
+        if (useRaw && OvRawInput.IsSupported) {
+            if (!OvRawInput.IsRunning) {
+                OvRawInput.Start();
+            }
+            if (OvRawInput.IsRunning) {
+                rawActive = true;
+                uint count = OvRawInput.PollCount();
+                if (count > 0) {
+                    double now = UnityEngine.Time.realtimeSinceStartup;
+                    lock (gate) {
+                        for (uint i = 0; i < count; i++) {
+                            O5Ring.Push(ring, now);
+                        }
+                    }
+                }
+            }
+        } else if (OvRawInput.IsRunning) {
+            OvRawInput.Stop();
+        }
+
+        if (!rawActive && !SuppressUnityKeys && O5Input.AnyKeyboardKeyDown) {
             double now = UnityEngine.Time.realtimeSinceStartup;
             int keys = O5Input.GetDownKeyCount(KeyboardKeys);
             if (keys > 0) {

@@ -43,4 +43,17 @@ pub fn build(b: *std.Build) void {
     });
     const run_vertex_tests = b.addRunArtifact(vertex_tests);
     test_step.dependOn(&run_vertex_tests.step);
+
+    const input_test_mod = b.createModule(.{
+        .root_source_file = b.path("src/input_test.zig"),
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
+    const input_tests = b.addTest(.{
+        .name = "input-test",
+        .root_module = input_test_mod,
+    });
+    const run_input_tests = b.addRunArtifact(input_tests);
+    test_step.dependOn(&run_input_tests.step);
 }

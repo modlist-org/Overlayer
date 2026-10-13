@@ -1,6 +1,7 @@
 const compose = @import("compose.zig");
 const dtoa = @import("dtoa.zig");
 const vertex = @import("vertex.zig");
+const input = @import("input.zig");
 
 export fn ov_compose_text(
     template_ptr: [*]const u16,
@@ -39,4 +40,24 @@ export fn ov_graph_build_quads(
         half_thickness,
         out_quads_ptr[0..max_quads],
     );
+}
+
+export fn ov_raw_input_start() bool {
+    return input.start();
+}
+
+export fn ov_raw_input_stop() void {
+    input.stop();
+}
+
+export fn ov_raw_input_poll_count() u32 {
+    return input.pollCount();
+}
+
+export fn ov_raw_input_is_running() bool {
+    return input.isRunning();
+}
+
+export fn ov_raw_input_simulate_press() void {
+    input.simulateKeyPress();
 }
