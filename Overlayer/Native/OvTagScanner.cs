@@ -65,6 +65,8 @@ internal static unsafe class OvTagScanner {
             int parenDepth = 0;
             int bracketDepth = 0;
             int colonPos = -1;
+            // `?` of an open ternary: its `:` is not the format separator.
+            int ternaries = 0;
             int idx = i + 1;
             bool matched = false;
 
@@ -109,9 +111,19 @@ internal static unsafe class OvTagScanner {
                         matched = true;
                         break;
                     }
+                } else if (c == '?') {
+                    if (depth == 1 && parenDepth == 0 && bracketDepth == 0 && colonPos < 0) {
+                        char next = idx + 1 < len ? input[idx + 1] : '\0';
+                        if (next == '?') {
+                            idx++; // `??`
+                        } else if (next != '.') { // `?.` is optional chaining
+                            ternaries++;
+                        }
+                    }
                 } else if (c == ':') {
                     if (depth == 1 && parenDepth == 0 && bracketDepth == 0 && colonPos < 0) {
-                        colonPos = idx;
+                        if (ternaries > 0) ternaries--;
+                        else colonPos = idx;
                     }
                 }
 

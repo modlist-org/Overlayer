@@ -193,4 +193,37 @@ public sealed class HybridEngineTests {
         Assert.True(OvTagScanner.IsSupported);
         Assert.True(OvTextRenderer.IsSupported);
     }
+
+    [Fact]
+    public void UnprefixedJsBlocksAndTernariesMatchLegacyJsExpr() {
+        using var v8 = new TestV8Host();
+        v8.Engine.Execute("""
+            globalThis.CurTile = () => 40; globalThis.StartTile = () => 0; globalThis.LeftTile = () => 60;
+            globalThis.XAccuracy = () => 0.5; globalThis.StartActualProgressPercent = () => 12.345;
+            """);
+        MainCore.V8 = v8;
+        try {
+            const string maxXAcc = """
+                {
+                  let done = CurTile() - StartTile();
+                  let left = LeftTile();
+                  let max = done + left > 0 ? (XAccuracy() * done + left) / (done + left) : 1;
+                  let t = Math.min(Math.max(max, 0), 1);
+                  let g = Math.round(178 * (1 - t)).toString(16).padStart(2, "0");
+                  "<color=#FF" + g + g + ">" + (max * 100).toFixed(2) + "%</color>"
+                }
+                """;
+            var block = Parser.Parse(maxXAcc)[0];
+            Assert.Null(block.Format);
+            Assert.Equal("<color=#FF2424>80.00%</color>", ExprCore.CompilePlaceholder(block).Get());
+
+            var ternary = Parser.Parse("{StartTile() > 0 ? StartActualProgressPercent().toFixed(2) + '%<color=#FFFFFF> - ' : ''}")[0];
+            Assert.Null(ternary.Format);
+            Assert.Equal("", ExprCore.CompilePlaceholder(ternary).Get());
+            v8.Engine.Execute("globalThis.StartTile = () => 3;");
+            Assert.Equal("12.35%<color=#FFFFFF> - ", ExprCore.CompilePlaceholder(ternary).Get());
+
+            Assert.Equal("7", ExprCore.CompilePlaceholder(Parser.Parse("{ let x = 3; return x + 4; }")[0]).Get());
+        } finally { MainCore.V8 = null; }
+    }
 }

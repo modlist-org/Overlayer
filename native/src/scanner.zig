@@ -43,6 +43,8 @@ pub fn scan(input: []const u16, output: []TagSpan) usize {
         var parens: usize = 0;
         var brackets: usize = 0;
         var colon: ?usize = null;
+        // `?` of an open ternary: its `:` is not the format separator.
+        var ternaries: usize = 0;
         var cursor = i + 1;
         var matched = false;
         while (cursor < input.len) {
@@ -75,8 +77,16 @@ pub fn scan(input: []const u16, output: []TagSpan) usize {
                         break;
                     }
                 },
+                '?' => if (depth == 1 and parens == 0 and brackets == 0 and colon == null) {
+                    const next: u16 = if (cursor + 1 < input.len) input[cursor + 1] else 0;
+                    if (next == '?') {
+                        cursor += 1; // `??`
+                    } else if (next != '.') { // `?.` is optional chaining
+                        ternaries += 1;
+                    }
+                },
                 ':' => if (depth == 1 and parens == 0 and brackets == 0 and colon == null) {
-                    colon = cursor;
+                    if (ternaries > 0) ternaries -= 1 else colon = cursor;
                 },
                 else => {},
             }
@@ -107,6 +117,17 @@ test "nested JS strings comments and formatting" {
     try std.testing.expectEqual(@as(u32, 6), spans[0].expr_len);
     try std.testing.expectEqual(@as(u32, 5), spans[1].expr_len);
     try std.testing.expectEqual(@as(u32, 2), spans[1].fmt_len);
+}
+
+test "ternary colons are not format separators" {
+    const text = std.unicode.utf8ToUtf16LeStringLiteral("{a ? b : c} {a ? b : c:F2} {a?.b ?? c:F1} {JSExpr: x ? 1 : 2}");
+    var spans: [4]TagSpan = undefined;
+    try std.testing.expectEqual(@as(usize, 4), scan(text, &spans));
+    try std.testing.expectEqual(@as(u32, 0), spans[0].fmt_len);
+    try std.testing.expectEqual(@as(u32, 9), spans[1].expr_len);
+    try std.testing.expectEqual(@as(u32, 2), spans[1].fmt_len);
+    try std.testing.expectEqual(@as(u32, 9), spans[2].expr_len);
+    try std.testing.expectEqual(@as(u32, 6), spans[3].expr_len);
 }
 
 test "capacity and UTF16 offsets" {

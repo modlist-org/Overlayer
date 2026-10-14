@@ -285,11 +285,17 @@ public static class ExprCore {
         return false;
     }
 
+    private static readonly Regex ReturnKeyword = new(@"\breturn\b", RegexOptions.Compiled);
+
     private static string WrapJsBlock(string code) {
         if (string.IsNullOrEmpty(code)) return "()";
         string trimmed = code.Trim();
         if (trimmed.EndsWith(";") || trimmed.Contains("\n") || trimmed.StartsWith("{")) {
-            return $"(function(){{ {trimmed} }})()";
+            // Statements yield their last expression (like legacy JSExpr);
+            // code that uses `return` runs as a function body instead.
+            return ReturnKeyword.IsMatch(trimmed)
+                ? $"(function(){{ {trimmed} }})()"
+                : "{\n" + trimmed + "\n}";
         }
         return $"({trimmed})";
     }
