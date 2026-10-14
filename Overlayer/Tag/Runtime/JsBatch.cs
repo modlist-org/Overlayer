@@ -7,13 +7,16 @@ namespace Overlayer.Tag.Runtime;
 // Every queued call still runs exactly once and in queue order; results are
 // marshalled to the same .NET values ClearScript would have produced.
 internal sealed class JsBatch {
-    private enum State : byte { Direct, Value, Error }
+    private enum State : byte { Direct, Value, Number, String, Error }
 
     private readonly List<JsBinding> bindings = [];
     private object[] values = new object[16];
+    private double[] numbers = new double[16];
+    private int[] starts = new int[16], lengths = new int[16];
     private State[] states = new State[16];
     private readonly List<int> group = [];
     private readonly List<ScriptEngine> engines = [];
+    private ScriptEngine[] owners = new ScriptEngine[16];
 
     internal int Count => bindings.Count;
 
@@ -25,6 +28,7 @@ internal sealed class JsBatch {
     internal void Clear() {
         bindings.Clear();
         Array.Clear(values, 0, values.Length);
+        Array.Clear(owners, 0, owners.Length);
     }
 
     internal void Run() {
@@ -32,18 +36,22 @@ internal sealed class JsBatch {
         if (values.Length < count) {
             values = new object[Math.Max(count, values.Length * 2)];
             states = new State[values.Length];
+            numbers = new double[values.Length];
+            starts = new int[values.Length];
+            lengths = new int[values.Length];
         }
         Array.Clear(states, 0, count);
+        if (owners.Length < count) owners = new ScriptEngine[values.Length];
         // Blocked tags never call JS; they keep their last text via the delegate.
         engines.Clear();
         for (int i = 0; i < count; i++) {
-            var owner = Owner(bindings[i]);
+            var owner = owners[i] = Owner(bindings[i]);
             if (owner != null && !engines.Contains(owner)) engines.Add(owner);
         }
         foreach (var engine in engines) {
             group.Clear();
             for (int i = 0; i < count; i++) {
-                if (Owner(bindings[i]) == engine) group.Add(i);
+                if (owners[i] == engine) group.Add(i);
             }
             // A lone call gains nothing from batching.
             if (group.Count >= 2) RunnerFor(engine)?.Run(this, group);
@@ -80,6 +88,15 @@ internal sealed class JsBatch {
                 values[index] = null;
                 text = bindings[index].Complete(value);
                 return true;
+            case State.Number:
+                states[index] = State.Direct;
+                text = bindings[index].CompleteNumber(numbers[index]);
+                return true;
+            case State.String:
+                states[index] = State.Direct;
+                text = bindings[index].CompleteString((string)values[index], starts[index], lengths[index]);
+                values[index] = null;
+                return true;
             case State.Error:
                 states[index] = State.Direct;
                 failed = true;
@@ -92,6 +109,18 @@ internal sealed class JsBatch {
     private void Set(int index, object value) {
         values[index] = value;
         states[index] = State.Value;
+    }
+
+    private void SetNumber(int index, double value) {
+        numbers[index] = value;
+        states[index] = State.Number;
+    }
+
+    private void SetString(int index, string source, int start, int length) {
+        values[index] = source;
+        starts[index] = start;
+        lengths[index] = length;
+        states[index] = State.String;
     }
 
     private void Fail(int index) => states[index] = State.Error;
@@ -110,34 +139,38 @@ internal sealed class JsBatch {
         return value;
     }
 
-    private sealed class Runner {
+    private sealed unsafe class Runner {
         private static readonly object True = true, False = false;
 
-        // Int32 results travel in the string; other numbers go through a shared
-        // Float64Array read at most once per run (bit exact, no parsing).
+        private const int KindNumber = 1, KindString = 2, KindTrue = 3, KindFalse = 4,
+            KindUndefined = 5, KindNull = 6, KindObject = 7, KindError = 8, KindSameString = 9;
+
+        // Each call writes [kind, value] into a shared Float64Array that C# reads
+        // in place; the returned string carries only string results. No number
+        // is ever formatted or parsed, and there is no second V8 transition.
         private const string Source = """
             (() => {
-                const calls = [], stash = [];
-                let nums = new Float64Array(64);
+                const calls = [], stash = [], prev = [];
+                let slots = new Float64Array(0);
                 const api = {
-                    reset: () => { calls.length = 0; stash.length = 0; },
+                    reset: () => { calls.length = 0; stash.length = 0; prev.length = 0; },
                     add: (fn, ...args) => { calls.push(args.length ? () => fn(...args) : () => fn()); },
-                    nums: () => nums,
+                    // Allocated only on layout changes, never during run.
+                    slots: (n) => { if (slots.length < n) slots = new Float64Array(n); return slots; },
                     run: () => {
                         let out = '';
-                        if (nums.length < calls.length) { nums = new Float64Array(calls.length * 2); out = '!'; }
-                        for (let i = 0; i < calls.length; i++) {
+                        for (let i = 0, k = 0; i < calls.length; i++, k += 2) {
                             let v;
-                            try { v = calls[i](); } catch { out += 'e'; continue; }
+                            try { v = calls[i](); } catch { slots[k] = 8; continue; }
                             switch (typeof v) {
-                                case 'number':
-                                    if ((v | 0) === v) out += 'i' + v + ';';
-                                    else { nums[i] = v; out += 'd'; }
-                                    break;
-                                case 'string': out += 's' + v.length + ':' + v; break;
-                                case 'boolean': out += v ? 't' : 'f'; break;
-                                case 'undefined': case 'symbol': out += 'u'; break;
-                                default: if (v === null) out += 'z'; else { stash[i] = v; out += 'o'; }
+                                case 'number': slots[k] = 1; slots[k + 1] = v; break;
+                                case 'string':
+                                    // Unchanged strings are not marshalled again.
+                                    if (v === prev[i]) { slots[k] = 9; break; }
+                                    prev[i] = v; slots[k] = 2; slots[k + 1] = v.length; out += v; break;
+                                case 'boolean': slots[k] = v ? 3 : 4; break;
+                                case 'undefined': case 'symbol': slots[k] = 5; break;
+                                default: if (v === null) slots[k] = 6; else { stash[i] = v; slots[k] = 7; }
                             }
                         }
                         return out;
@@ -148,10 +181,22 @@ internal sealed class JsBatch {
             })()
             """;
 
-        private readonly ScriptObject reset, add, run, take, getNums;
-        private ITypedArray<double> nums;
-        private double[] numbers = [];
+        private readonly ScriptObject reset, add, run, take, getSlots;
+        // Keeps the Float64Array (and so its backing store) alive. V8 never moves
+        // an ArrayBuffer's backing store and this one is closure-private (never
+        // detached or resized), so the address stays valid after the
+        // InvokeWithDirectAccess callback; it is re-read whenever the array is
+        // replaced. Only this runner's run() writes it, under the batch's lock.
+        private ITypedArray<double> slotArray;
+        private double* slots;
         private JsBinding[] layout = [];
+        // Last string each slot returned (or its range in that frame's result
+        // string, copied out only once it is repeated); JS sends KindSameString
+        // while a slot's string is unchanged.
+        private string[] lastStrings = [];
+        private string[] lastSources = [];
+        private int[] lastStarts = [];
+        private int[] lastLengths = [];
         private int layoutCount = -1;
 
         // Functions fetched with ScriptObject.GetProperty cost ~50 us per call in
@@ -162,15 +207,14 @@ internal sealed class JsBatch {
             add = (ScriptObject)api.Invoke(false, "add");
             run = (ScriptObject)api.Invoke(false, "run");
             take = (ScriptObject)api.Invoke(false, "take");
-            getNums = (ScriptObject)api.Invoke(false, "nums");
-            nums = (ITypedArray<double>)getNums.Invoke(false);
+            getSlots = (ScriptObject)api.Invoke(false, "slots");
         }
 
         internal void Run(JsBatch batch, List<int> group) {
-            string encoded;
+            string strings;
             try {
                 EnsureLayout(batch, group);
-                encoded = (string)run.Invoke(false);
+                strings = (string)run.Invoke(false);
             } catch {
                 // Calls may have partly run; never repeat them.
                 layoutCount = -1;
@@ -179,44 +223,35 @@ internal sealed class JsBatch {
             }
 
             int pos = 0;
-            if (encoded.Length > 0 && encoded[0] == '!') {
-                pos = 1;
-                nums = (ITypedArray<double>)getNums.Invoke(false);
-            }
-            bool numbersRead = false;
             for (int k = 0; k < group.Count; k++) {
                 int slot = group[k];
-                switch (encoded[pos++]) {
-                    case 'i': {
-                        bool negative = encoded[pos] == '-';
-                        if (negative) pos++;
-                        long n = 0;
-                        while (encoded[pos] != ';') n = n * 10 + (encoded[pos++] - '0');
-                        pos++;
-                        batch.Set(slot, (int)(negative ? -n : n));
+                double value = slots[2 * k + 1];
+                switch ((int)slots[2 * k]) {
+                    case KindNumber: batch.SetNumber(slot, value); break;
+                    case KindString: {
+                        int length = (int)value;
+                        batch.SetString(slot, strings, pos, length);
+                        lastStrings[k] = null;
+                        lastSources[k] = strings;
+                        lastStarts[k] = pos;
+                        lastLengths[k] = length;
+                        pos += length;
                         break;
                     }
-                    case 'd':
-                        if (!numbersRead) {
-                            if (numbers.Length < group.Count) numbers = new double[(int)nums.Length];
-                            nums.Read(0, (ulong)group.Count, numbers, 0);
-                            numbersRead = true;
+                    case KindSameString: {
+                        string same = lastStrings[k];
+                        if (same == null) {
+                            same = lastStrings[k] = lastSources[k].Substring(lastStarts[k], lastLengths[k]);
+                            lastSources[k] = null;
                         }
-                        batch.Set(slot, Narrow(numbers[k]));
-                        break;
-                    case 's': {
-                        int colon = encoded.IndexOf(':', pos);
-                        int length = 0;
-                        for (int i = pos; i < colon; i++) length = length * 10 + (encoded[i] - '0');
-                        batch.Set(slot, encoded.Substring(colon + 1, length));
-                        pos = colon + 1 + length;
+                        batch.SetString(slot, same, 0, same.Length);
                         break;
                     }
-                    case 't': batch.Set(slot, True); break;
-                    case 'f': batch.Set(slot, False); break;
-                    case 'u': batch.Set(slot, Undefined.Value); break;
-                    case 'z': batch.Set(slot, null); break;
-                    case 'o':
+                    case KindTrue: batch.Set(slot, True); break;
+                    case KindFalse: batch.Set(slot, False); break;
+                    case KindUndefined: batch.Set(slot, Undefined.Value); break;
+                    case KindNull: batch.Set(slot, null); break;
+                    case KindObject:
                         try { batch.Set(slot, take.Invoke(false, k)); } catch { batch.Fail(slot); }
                         break;
                     default: batch.Fail(slot); break;
@@ -232,7 +267,16 @@ internal sealed class JsBatch {
             if (same) return;
             layoutCount = -1;
             reset.Invoke(false);
-            if (layout.Length < count) layout = new JsBinding[Math.Max(count, layout.Length * 2)];
+            if (layout.Length < count) {
+                int size = Math.Max(count, layout.Length * 2);
+                layout = new JsBinding[size];
+                lastStrings = new string[size];
+                lastSources = new string[size];
+                lastStarts = new int[size];
+                lastLengths = new int[size];
+            }
+            Array.Clear(lastStrings, 0, lastStrings.Length);
+            Array.Clear(lastSources, 0, lastSources.Length);
             for (int k = 0; k < count; k++) {
                 var binding = batch.bindings[group[k]];
                 var args = new object[binding.Args.Length + 1];
@@ -240,6 +284,11 @@ internal sealed class JsBatch {
                 Array.Copy(binding.Args, 0, args, 1, binding.Args.Length);
                 add.Invoke(false, args);
                 layout[k] = binding;
+            }
+            var array = (ITypedArray<double>)getSlots.Invoke(false, Math.Max(2 * count, 64));
+            if (!ReferenceEquals(array, slotArray) || slots == null) {
+                slotArray = array;
+                slots = (double*)array.ArrayBuffer.InvokeWithDirectAccess(pointer => pointer) + (long)array.Offset / sizeof(double);
             }
             layoutCount = count;
         }

@@ -8,6 +8,11 @@ using Xunit;
 
 namespace Overlayer.Tests;
 
+// Registers a global PlaybackState provider; other tests rely on the default.
+[CollectionDefinition(nameof(JsBatchTests), DisableParallelization = true)]
+public sealed class JsBatchTestsCollection;
+
+[Collection(nameof(JsBatchTests))]
 public sealed class JsBatchTests {
     private static string Register(TestV8Host v8, string name, string js, string[] parameters = null, TagType type = TagType.None) {
         TagManager.Set(new TagCore(name, (ScriptObject)v8.Engine.Evaluate(js), parameters ?? [], type));
