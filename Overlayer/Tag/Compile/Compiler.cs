@@ -12,11 +12,19 @@ public static class Compiler {
         TagCore tag,
         ParsedTag parsed
     ) {
-        var diagnostics = new List<CompileDiagnostic>();
-
         string exprStr = parsed.Expression;
-        string lookupName = exprStr.EndsWith("()") ? exprStr[..^2].Trim() : exprStr;
-        var placeholder = new Placeholder(lookupName, parsed.Args);
+        return Compile(tag, parsed, exprStr.EndsWith("()") ? exprStr[..^2].Trim() : exprStr, parsed.Args);
+    }
+
+    // Call syntax {Name(a, b)} supplies its own name and arguments.
+    public static CompiledPlaceholder Compile(
+        TagCore tag,
+        ParsedTag parsed,
+        string lookupName,
+        string[] args
+    ) {
+        var diagnostics = new List<CompileDiagnostic>();
+        var placeholder = new Placeholder(lookupName, args);
 
         var context = new DiagnosticContext(
             lookupName,

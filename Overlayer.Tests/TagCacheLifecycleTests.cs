@@ -62,4 +62,19 @@ public sealed class TagCacheLifecycleTests {
         cache.DecrementRef(key);
         Assert.Empty(cache.GetActiveTagNames());
     }
+
+    public static double CallSyntaxSource() => 97.5;
+    public static string CallSyntaxRange(string tagName, double minimum, double maximum, string minimumHex, string maximumHex, int maxLength = -1)
+        => $"{tagName}|{minimum}|{maximum}|{minimumHex}|{maximumHex}|{maxLength}";
+
+    [Fact]
+    public void CallSyntaxPassesRawArgumentsToCSharpTags() {
+        TagManager.Set(new TagCore("CallSyntaxSource", typeof(TagCacheLifecycleTests).GetMethod(nameof(CallSyntaxSource)), TagType.None));
+        TagManager.Set(new TagCore("CallSyntaxRange", typeof(TagCacheLifecycleTests).GetMethod(nameof(CallSyntaxRange)), TagType.None));
+        var cache = new TagCache();
+        Assert.Equal("CallSyntaxSource|0|100|FFB2B2|FF0000|-1",
+            cache.GetOrCompile(Parser.Parse("{CallSyntaxRange(CallSyntaxSource,0,100,FFB2B2,FF0000)}")[0]).Get());
+        Assert.Equal("Combo|0.5|2|#fff|x|7",
+            cache.GetOrCompile(Parser.Parse("{CallSyntaxRange('Combo', 0.5, 2, \"#fff\", 'x', 7)}")[0]).Get());
+    }
 }

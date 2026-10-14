@@ -43,6 +43,8 @@ public sealed class TagCache {
             compiled = (tag.TagType & TagType.Advanced) != 0
                 ? AdvancedCompiler.Compile(tag, parsed)
                 : Compiler.Compile(tag, parsed);
+        } else if (TryCallSyntax(expr, parsed.Format, out var callTag, out string callName, out string[] callArgs)) {
+            compiled = Compiler.Compile(callTag, parsed, callName, callArgs);
         } else {
             compiled = ExprCore.CompilePlaceholder(parsed);
             if (!compiled.IsValid) {
@@ -168,6 +170,27 @@ public sealed class TagCache {
     }
 
     private static string MakeKey(ParsedTag p, long epoch) => string.Concat(epoch.ToString(), "\0", p.Expression, "\0", p.Format);
+
+    // {ColorRange(Combo, 0, 100, FFB2B2, FF0000)}: C# tag calls take raw text
+    // arguments (tag names, hex, enum names), which are not valid JavaScript.
+    // JS tags keep going through V8 so their arguments stay JS values.
+    private static bool TryCallSyntax(string expr, string format, out TagCore tag, out string name, out string[] args) {
+        tag = null;
+        if (!TagArgParser.TrySplit(expr, out name, out args) || args.Length == 0
+            || !TagManager.TryGet(name, out tag) || tag.IsJS || (tag.TagType & TagType.Advanced) != 0) {
+            return false;
+        }
+        for (int i = 0; i < args.Length; i++) {
+            string arg = args[i];
+            if (arg.Length >= 2 && (arg[0] == '\'' || arg[0] == '"') && arg[arg.Length - 1] == arg[0]) {
+                args[i] = arg[1..^1];
+            }
+        }
+        if (!string.IsNullOrEmpty(format)) {
+            args = [.. args, format];
+        }
+        return true;
+    }
 
     private static string FindSuggestion(string name) {
         if (string.IsNullOrWhiteSpace(name)) {
