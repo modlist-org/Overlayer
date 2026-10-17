@@ -409,12 +409,12 @@ const Parser = struct {
                 return .num;
             }
         }
-        inline for (@typeInfo(Fn).@"enum".fields) |field| {
-            if (eql(name, field.name)) {
-                const f: Fn = @enumFromInt(field.value);
+        inline for (@typeInfo(Fn).@"enum".field_names, @typeInfo(Fn).@"enum".field_values) |fname, fvalue| {
+            if (eql(name, fname)) {
+                const f: Fn = @enumFromInt(fvalue);
                 const arity: u32 = if (@intFromEnum(f) >= @intFromEnum(Fn.atan2)) 2 else 1;
                 if (argc != arity) return error.Reject;
-                try p.emit(.{ .code = if (arity == 1) .call1 else .call2, .n = field.value }, arity, 1);
+                try p.emit(.{ .code = if (arity == 1) .call1 else .call2, .n = fvalue }, arity, 1);
                 return .num;
             }
         }

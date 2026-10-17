@@ -1,12 +1,12 @@
-﻿using System.Reflection;
+using Overlayer.Utility.Access;
+using System.Reflection;
 
 namespace Overlayer.Patch.Safe;
 
 public static class SafePatch {
     public static MethodBase GetMethodSafe(string typeName, string methodName, Type[] args = null, bool allowStatic = false) {
-        var type = AppDomain.CurrentDomain.GetAssemblies()
-            .SelectMany(a => a.GetTypes())
-            .FirstOrDefault(t => t.Name == typeName) ?? throw new Exception($"[{nameof(SafePatch)}] Type not found: {typeName}");
+        var type = SafeAccess.FindType(typeName)
+            ?? throw new Exception($"[{nameof(SafePatch)}] Type not found: {typeName}");
 
         BindingFlags bf = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
         if (allowStatic) {
