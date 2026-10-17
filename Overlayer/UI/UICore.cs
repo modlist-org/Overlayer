@@ -955,7 +955,6 @@ public static class UICore {
     }
 
     public static void Toggle(bool noAnimate = false) {
-        MainCore.Log?.Msg($"[UICore] Toggle panel requested. (isOpen: {isOpen} -> {!isOpen})");
         if (isOpen) {
             Close(noAnimate);
         } else {
