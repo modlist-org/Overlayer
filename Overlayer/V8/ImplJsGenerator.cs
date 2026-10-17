@@ -41,7 +41,7 @@ public static class ImplJsGenerator {
         sb.AppendLine(" * Only numeric types allow a format argument; otherwise it is a compile error.");
         sb.AppendLine(" * @param {string} [options.Desc] - Description of the tag.");
         sb.AppendLine(" */");
-        sb.AppendLine("globalThis.RegisterTag = function(name, func, options) {};\n");
+        sb.AppendLine("globalThis.RegisterTag ??= function(name, func, options) {};\n");
 
         sb.AppendLine("/* Global Store: share values between Fx expressions. */");
         sb.AppendLine("/* Store.Set(key, value): save a value, returns it. */");
@@ -91,8 +91,8 @@ public static class ImplJsGenerator {
         sb.AppendLine(" * Unity API calls are safe only when the patched method runs on Unity's main thread.");
         sb.AppendLine(" * @returns {number} Patch handle for RemovePatch, or -1 on error. Unpatched automatically on script reload.");
         sb.AppendLine(" */");
-        sb.AppendLine("globalThis.AddPatch = function(target, options) {};");
-        sb.AppendLine("globalThis.RemovePatch = function(handle) {};\n");
+        sb.AppendLine("globalThis.AddPatch ??= function(target, options) {};");
+        sb.AppendLine("globalThis.RemovePatch ??= function(handle) {};\n");
 
         sb.AppendLine("/**");
         sb.AppendLine(" * Adds a menu tab, like a module does. build(tab) runs on the main thread.");
@@ -105,10 +105,10 @@ public static class ImplJsGenerator {
         sb.AppendLine(" * @param {Object} [options] - { icon: \"Gear128\" } (UISprite name).");
         sb.AppendLine(" * @returns {number} Tab handle for RemoveTab, or -1. Removed automatically on script reload.");
         sb.AppendLine(" */");
-        sb.AppendLine("globalThis.AddTab = function(name, build, options) {};");
+        sb.AppendLine("globalThis.AddTab ??= function(name, build, options) {};");
         sb.AppendLine("/** RebuildTab(handle, build?): clear the tab and run build (or the original) again next frame. */");
-        sb.AppendLine("globalThis.RebuildTab = function(handle, build) {};");
-        sb.AppendLine("globalThis.RemoveTab = function(handle) {};\n");
+        sb.AppendLine("globalThis.RebuildTab ??= function(handle, build) {};");
+        sb.AppendLine("globalThis.RemoveTab ??= function(handle) {};\n");
 
         sb.AppendLine("/* Tags */\n");
 

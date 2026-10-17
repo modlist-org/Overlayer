@@ -124,7 +124,7 @@ public static class TagManager {
     }
 
     public static bool TryGet(string name, out TagCore tag)
-        => _tags.TryGetValue(name, out tag);
+        => (LocalTagSet.Current != null && LocalTagSet.Current.TryGet(name, out tag)) || _tags.TryGetValue(name, out tag);
 
     public static List<TagCore> GetAllTags() {
         lock (_lock) {

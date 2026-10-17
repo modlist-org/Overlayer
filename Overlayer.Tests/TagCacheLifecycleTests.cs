@@ -77,4 +77,80 @@ public sealed class TagCacheLifecycleTests {
         Assert.Equal("Combo|0.5|2|#fff|x|7",
             cache.GetOrCompile(Parser.Parse("{CallSyntaxRange('Combo', 0.5, 2, \"#fff\", 'x', 7)}")[0]).Get());
     }
+    [Fact]
+    public void LocalTagsShadowGlobalsOnlyWhileCompilingTheirText() {
+        using var v8 = new TestV8Host();
+        const string name = "LocalScopeTag";
+        TagManager.Set(new TagCore(name, (ScriptObject)v8.Engine.Evaluate("(() => 'global')"), [], TagType.None));
+        var cache = new TagCache();
+        var parsed = Parser.Parse("{" + name + "}")[0];
+
+        var scope = new LocalTagScope();
+        scope.Begin();
+        const string src = "() => 'local'";
+        Assert.False(scope.IsUnchanged(name, src));
+        scope.Set(name, src, new TagCore(name, (ScriptObject)v8.Engine.Evaluate("(" + src + ")"), [], TagType.None));
+        scope.End(true);
+        var set = scope.Tags;
+        Assert.NotNull(set);
+
+        // Same registration next frame keeps the same set (no recompile).
+        scope.Begin();
+        Assert.True(scope.IsUnchanged(name, src));
+        scope.End(true);
+        Assert.Same(set, scope.Tags);
+
+        TagCache.Locals = set;
+        try {
+            Assert.Equal("local", cache.GetOrCompile(parsed, out var localKey).Get());
+            TagCache.Locals = null;
+            Assert.Equal("global", cache.GetOrCompile(parsed, out var globalKey).Get());
+            Assert.NotEqual(localKey, globalKey);
+        } finally {
+            TagCache.Locals = null;
+        }
+
+        // Removing the RegisterTag call drops the local tag.
+        scope.Begin();
+        scope.End(true);
+        Assert.Null(scope.Tags);
+    }
+    public static string ReadTagByName(string tagName)
+        => TagManager.TryGet(tagName, out var tag) ? tag.Invoke()?.ToString() : "missing";
+
+    [Fact]
+    public void TagReadingTagsSeeLocalTagsWhileTheirTextRenders() {
+        using var v8 = new TestV8Host();
+        TagManager.Set(new TagCore("ReadTagByName", typeof(TagCacheLifecycleTests).GetMethod(nameof(ReadTagByName)), TagType.None));
+        var local = new LocalTagSet(new() {
+            ["OnlyHere"] = new TagCore("OnlyHere", (ScriptObject)v8.Engine.Evaluate("(() => 42)"), [], TagType.None)
+        });
+        var cache = new TagCache();
+        var parsed = Parser.Parse("{ReadTagByName(OnlyHere)}")[0];
+
+        CompiledPlaceholder compiled;
+        TagCache.Locals = local;
+        try {
+            compiled = cache.GetOrCompile(parsed);
+        } finally {
+            TagCache.Locals = null;
+        }
+        // Rendered later, outside the compile scope, like a real frame.
+        Assert.Equal("42", compiled.Get());
+        Assert.Null(TagCache.Locals);
+        Assert.Equal("missing", cache.GetOrCompile(parsed).Get());
+    }
+
+    [Fact]
+    public void TemplateRegisterTagParsesWholeAndRendersEmpty() {
+        const string code = "RegisterTag(\"MaxXAcc\", () => {\n  let done = CurTile() - StartTile();\n  let left = LeftTile();\n"
+            + "  let max = done + left > 0 ? (XAccuracy() * done + left) / (done + left) : 1;\n  return max * 100;\n"
+            + "}, { Type: TagType.ProcessFormat, ReturnType: \"number\" })";
+        var tags = Parser.Parse("{" + code + "}\nMax X-Acc: {MaxXAcc:0.00}%");
+        Assert.Equal(2, tags.Count);
+        Assert.Equal(code, tags[0].Expression);
+        Assert.True(string.IsNullOrEmpty(tags[0].Format));
+        Assert.True(LocalTagScope.IsRegistration(tags[0].Expression));
+        Assert.Equal("", new TagCache().GetOrCompile(tags[0]).Get());
+    }
 }

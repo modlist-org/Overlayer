@@ -172,6 +172,10 @@ public class V8Manager : IRuntimeService {
         engine.AddHostObject("Log", log);
         engine.AddHostObject("console", log);
         engine.Execute(JSTagRegistrationHost.TagTypeScript);
+        // RegisterTag must exist for Fx code even when no script file is loaded.
+        engine.AddHostObject(JSTagRegistrationHost.HostBindingName,
+            (Action<string, object, object, string>)new JSTagRegistrationHost(_scriptLoader, "Fx").RegisterTag);
+        engine.Execute(JSTagRegistrationHost.BindingScript);
         engine.Execute(@"
             globalThis.Tag = (() => {
                 const accessors = Object.create(null);

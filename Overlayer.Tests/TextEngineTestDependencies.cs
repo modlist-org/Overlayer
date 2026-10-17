@@ -41,7 +41,8 @@ namespace Overlayer.Tag.Core {
     // cache are real production sources, with a controllable test registry.
     public static class TagManager {
         private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, TagCore> tags = new();
-        public static bool TryGet(string name, out TagCore tag) => tags.TryGetValue(name, out tag);
+        public static bool TryGet(string name, out TagCore tag)
+            => (LocalTagSet.Current != null && LocalTagSet.Current.TryGet(name, out tag)) || tags.TryGetValue(name, out tag);
         public static List<TagCore> GetAllTags() => [.. tags.Values];
         public static void Set(TagCore tag) => tags[tag.Name] = tag;
     }

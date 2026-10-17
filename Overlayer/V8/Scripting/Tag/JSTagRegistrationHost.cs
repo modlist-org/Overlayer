@@ -45,6 +45,12 @@ public class JSTagRegistrationHost(JSScriptLoader loader, string filePath) {
             return;
         }
 
+        // Called from a text's Fx code: the tag belongs to that text only.
+        var localScope = LocalTagScope.Current;
+        if (localScope != null && localScope.IsUnchanged(name, functionSource)) {
+            return;
+        }
+
         string desc = null;
         TagType type = TagType.None;
         Type returnType = typeof(object);
@@ -81,6 +87,10 @@ public class JSTagRegistrationHost(JSScriptLoader loader, string filePath) {
 
         try {
             var tag = new TagCore(name, scriptFunc, paramNames, type, desc, returnType);
+            if (localScope != null) {
+                localScope.Set(name, functionSource, tag);
+                return;
+            }
 
             JSTagManager.Add(name, scriptFunc, type, desc, returnType);
             TagManager.Set(tag);

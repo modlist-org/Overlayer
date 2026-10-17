@@ -20,8 +20,12 @@ public static class OverlayCore {
     private static string ObjectSaveDir => Path.Combine(SaveDir, "Objects");
     public static string ExportDir => Path.Combine(SaveDir, "Export");
     private static int pendingLayoutRefreshes;
-    private static readonly HashSet<string> knownFiles = new(StringComparer.OrdinalIgnoreCase);
-    private static readonly HashSet<string> knownObjectFiles = new(StringComparer.OrdinalIgnoreCase);
+    // Files of canvases/objects the user deleted. Saving removes only these:
+    // a file is never deleted just because its canvas is missing from the
+    // list (failed load, scene-wipe reload, partial init), which used to wipe
+    // every saved canvas on the next save.
+    private static readonly HashSet<string> deletedFiles = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly HashSet<string> deletedObjectFiles = new(StringComparer.OrdinalIgnoreCase);
 
     // Fired whenever the canvas list changes (create/import/clone/delete),
     // including changes made programmatically outside the canvas UI
@@ -162,6 +166,9 @@ public static class OverlayCore {
         if (obj == null || !Objects.Remove(obj)) {
             return false;
         }
+        if (!string.IsNullOrEmpty(obj.SourceFile)) {
+            deletedObjectFiles.Add(Path.GetFileName(obj.SourceFile));
+        }
 
         obj.Dispose();
         SaveAllObjects();
@@ -298,6 +305,9 @@ public static class OverlayCore {
         if (canvas == null || !Canvases.Remove(canvas)) {
             return false;
         }
+        if (!string.IsNullOrEmpty(canvas.SourceFile)) {
+            deletedFiles.Add(Path.GetFileName(canvas.SourceFile));
+        }
 
         canvas.Dispose();
         SaveAllCanvases();
@@ -316,9 +326,6 @@ public static class OverlayCore {
             var wrapper = new SettingsFile<OvCanvas>(file);
 
             if (wrapper.Load()) {
-                // Only files we actually loaded count as ours; a file that failed to load
-                // must never be treated as stale and deleted on the next save.
-                knownFiles.Add(Path.GetFileName(file));
                 var canvas = wrapper.Data;
                 canvas.SourceFile = file;
                 canvas.RectTransform.SetParent(Transform, false);
@@ -384,12 +391,7 @@ public static class OverlayCore {
                 canvas.SourceFile = filePath;
             }
 
-            foreach (string staleFile in Directory.GetFiles(SaveDir, "*.json")) {
-                string staleName = Path.GetFileName(staleFile);
-                if (!usedNames.Contains(staleName) && knownFiles.Contains(staleName)) {
-                    File.Delete(staleFile);
-                }
-            }
+            DeleteRemoved(SaveDir, deletedFiles, usedNames);
         } catch (Exception e) {
             MainCore.Log.Err($"[{nameof(OverlayCore)}] Failed to save all canvases: {e}");
         }
@@ -430,15 +432,22 @@ public static class OverlayCore {
                 obj.SourceFile = filePath;
             }
 
-            foreach (string staleFile in Directory.GetFiles(ObjectSaveDir, "*.json")) {
-                string staleName = Path.GetFileName(staleFile);
-                if (!usedNames.Contains(staleName) && knownObjectFiles.Contains(staleName)) {
-                    File.Delete(staleFile);
-                }
-            }
+            DeleteRemoved(ObjectSaveDir, deletedObjectFiles, usedNames);
         } catch (Exception e) {
             MainCore.Log.Err($"[{nameof(OverlayCore)}] Failed to save all objects: {e}");
         }
+    }
+
+    private static void DeleteRemoved(string dir, HashSet<string> deleted, HashSet<string> usedNames) {
+        foreach (string name in deleted) {
+            if (!usedNames.Contains(name)) {
+                string path = Path.Combine(dir, name);
+                if (File.Exists(path)) {
+                    File.Delete(path);
+                }
+            }
+        }
+        deleted.Clear();
     }
 
     private static void LoadAllObjects() {
@@ -449,7 +458,6 @@ public static class OverlayCore {
         var files = Directory.GetFiles(ObjectSaveDir, "*.json").OrderBy(Path.GetFileName);
 
         foreach (var file in files) {
-            knownObjectFiles.Add(Path.GetFileName(file));
             var wrapper = new SettingsFile<OvObject>(file);
 
             if (wrapper.Load()) {

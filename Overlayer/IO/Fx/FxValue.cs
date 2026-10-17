@@ -213,6 +213,11 @@ public sealed class FxValue<T> : FxValue, IFxValue, ISettingsFile, ICopyable<FxV
 
     private Prepared prepared;
 
+    private Tag.Core.LocalTagScope localTagScope;
+
+    /// <summary>Tags registered by this value's Fx code (<c>RegisterTag</c>); null when none.</summary>
+    public Tag.Core.LocalTagSet LocalTags => UseFx ? localTagScope?.Tags : null;
+
     private Prepared Prepare(string source) {
         var cached = prepared;
         if (cached != null && ReferenceEquals(cached.Source, source)) {
@@ -358,7 +363,16 @@ public sealed class FxValue<T> : FxValue, IFxValue, ISettingsFile, ICopyable<FxV
         var typeCode = Type.GetTypeCode(targetType);
         if (targetType == typeof(string)) {
             try {
-                if (TryEvaluateJs(GetWrappedJs(rendered), out var jsResult) && jsResult != null) {
+                var scope = localTagScope ??= new Tag.Core.LocalTagScope();
+                bool ok = false;
+                object jsResult = null;
+                scope.Begin();
+                try {
+                    ok = TryEvaluateJs(GetWrappedJs(rendered), out jsResult);
+                } finally {
+                    scope.End(ok);
+                }
+                if (ok && jsResult != null) {
                     var text = Convert.ToString(jsResult, CultureInfo.InvariantCulture);
                     if (!string.IsNullOrEmpty(text)) {
                         return (T)(object)text;

@@ -123,6 +123,7 @@ public sealed class OvObject : ISettingsFile {
             Config.TextEngineConfig ??= OvTextSettings.FromLegacy(Config.TextConfig.Text.Value);
             _lastText = Config.TextEngineConfig.Text.Value;
             TextUpdater?.SetText(_lastText);
+            if (TextUpdater?.Engine != null) TextUpdater.Engine.LocalTags = Config.TextEngineConfig.Text.LocalTags;
         }
         Config.MovingManConfig?.ToUnity(GameObject);
         Config.ColorRangeConfig?.ToUnity(GameObject);
@@ -170,6 +171,7 @@ public sealed class OvObject : ISettingsFile {
             Config.TextConfig?.RefreshFx(GameObject);
             if (Config.TextEngineConfig != null && TextUpdater != null) {
                 if (FxUtil.Changed(ref _lastText, Config.TextEngineConfig.Text.Value)) TextUpdater.Engine.Text = _lastText;
+                TextUpdater.Engine.LocalTags = Config.TextEngineConfig.Text.LocalTags;
             }
             Config.MovingManConfig?.RefreshFx(GameObject);
             Config.ColorRangeConfig?.RefreshFx(GameObject);

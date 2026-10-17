@@ -1,5 +1,6 @@
 using System.Buffers;
 using Overlayer.Core;
+using Overlayer.Tag.Core;
 using Overlayer.Tag.Diagnostics;
 using Overlayer.Tag.Runtime;
 using Overlayer.TextEngine.Parse;
@@ -29,6 +30,19 @@ public sealed class TextEngineCore : IDisposable {
         }
     }
 
+    /// <summary>Tags only this text can use (registered from its Fx code). Recompiles on change.</summary>
+    public LocalTagSet LocalTags {
+        get => localTags;
+        set {
+            lock (_lock) {
+                if (localTags == value || disposed) return;
+                localTags = value;
+                StartCompileLocked();
+            }
+        }
+    }
+    private volatile LocalTagSet localTags;
+
     public void ForceRecompile() {
         lock (_lock) {
             if (!disposed) StartCompileLocked();
@@ -55,10 +69,11 @@ public sealed class TextEngineCore : IDisposable {
         engineDiagnostic = null;
         long generation = ++compileGeneration;
         string source = text;
-        _ = Task.Run(() => CompileInternal(source, generation));
+        var locals = localTags;
+        _ = Task.Run(() => CompileInternal(source, locals, generation));
     }
 
-    private void CompileInternal(string source, long generation) {
+    private void CompileInternal(string source, LocalTagSet locals, long generation) {
         CompiledSegment[] built = null;
         int initialized = 0;
         bool snapshotOwnsBindings = false;
@@ -70,7 +85,9 @@ public sealed class TextEngineCore : IDisposable {
             var tags = Parser.Parse(source);
             var plan = new TextRenderPlan(source, tags);
             long bindingGeneration = TagCache.Instance.Generation;
+            locals = RunTemplateRegistrations(tags, locals);
             built = new CompiledSegment[tags.Count];
+            TagCache.Locals = locals;
             for (int i = 0; i < tags.Count; i++) {
                 var tag = tags[i];
                 var replacer = new Replacer();
@@ -106,11 +123,41 @@ public sealed class TextEngineCore : IDisposable {
             }
             previous?.Release();
         } finally {
+            TagCache.Locals = null;
             if (candidate != null) candidate.Release();
             else if (!snapshotOwnsBindings && built != null) {
                 for (int i = 0; i < initialized; i++) built[i].Replacer.Dispose();
             }
         }
+    }
+
+    private readonly LocalTagScope templateScope = new();
+
+    // {RegisterTag(...)} placeholders in the template run once per compile (not
+    // per frame) and add tags only this text can use; they render as nothing.
+    // Template tags win over Fx-registered ones on a name clash.
+    private LocalTagSet RunTemplateRegistrations(List<ParsedTag> tags, LocalTagSet fxLocals) {
+        LocalTagSet mine;
+        lock (templateScope) {
+            bool ok = true;
+            templateScope.Begin();
+            try {
+                foreach (var tag in tags) {
+                    if (LocalTagScope.IsRegistration(tag.Expression)) {
+                        object result = null;
+                        ok &= MainCore.V8?.TryEvaluateFx(tag.Expression, out result) == true;
+                    }
+                }
+            } finally {
+                templateScope.End(ok);
+            }
+            mine = templateScope.Tags;
+        }
+        if (mine == null) return fxLocals;
+        if (fxLocals == null) return mine;
+        var merged = new Dictionary<string, TagCore>(fxLocals.Tags, StringComparer.Ordinal);
+        foreach (var pair in mine.Tags) merged[pair.Key] = pair.Value;
+        return new LocalTagSet(merged);
     }
 
     private CompiledTextSnapshot Acquire(out TextEngineState status, out string source) {

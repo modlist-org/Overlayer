@@ -37,9 +37,14 @@ public sealed class TagCache {
 
         CompiledPlaceholder compiled;
         string expr = parsed.Expression;
-        string lookupName = expr.EndsWith("()") ? expr[..^2].Trim() : expr;
+        string lookupName = LookupName(expr);
 
-        if (TagManager.TryGet(lookupName, out var tag) && (tag.RequiredParameterCount == 0 || expr.EndsWith("()"))) {
+        if (LocalTagScope.IsRegistration(expr)) {
+            // Already run by the text engine at compile time; renders as nothing.
+            compiled = new CompiledPlaceholder(EmptyDelegates.ReturnEmpty, []);
+        } else if (Locals != null && Locals.TryGet(lookupName, out var local)) {
+            compiled = Compiler.Compile(local, parsed);
+        } else if (TagManager.TryGet(lookupName, out var tag) && (tag.RequiredParameterCount == 0 || expr.EndsWith("()"))) {
             compiled = (tag.TagType & TagType.Advanced) != 0
                 ? AdvancedCompiler.Compile(tag, parsed)
                 : Compiler.Compile(tag, parsed);
@@ -58,6 +63,22 @@ public sealed class TagCache {
                     )
                 ]);
             }
+        }
+
+        // C# tags that read other tags by name (ColorRange, EasedValue, ...) do it while
+        // rendering, so keep this text's local tags visible then too. Batched JS calls skip this.
+        if (Locals != null && compiled.Js == null) {
+            var set = Locals;
+            var inner = compiled.Delegate;
+            compiled = new CompiledPlaceholder(() => {
+                var previous = LocalTagSet.Current;
+                LocalTagSet.Current = set;
+                try {
+                    return inner();
+                } finally {
+                    LocalTagSet.Current = previous;
+                }
+            }, compiled.Diagnostics);
         }
 
         lock (lockObject) {
@@ -169,7 +190,19 @@ public sealed class TagCache {
         lock (lockObject) return MakeKey(parsed, generation);
     }
 
-    private static string MakeKey(ParsedTag p, long epoch) => string.Concat(epoch.ToString(), "\0", p.Expression, "\0", p.Format);
+    internal static LocalTagSet Locals {
+        get => LocalTagSet.Current;
+        set => LocalTagSet.Current = value;
+    }
+
+    private static string LookupName(string expr) => expr.EndsWith("()") ? expr[..^2].Trim() : expr;
+
+    private static string MakeKey(ParsedTag p, long epoch) {
+        string key = string.Concat(epoch.ToString(), "\0", p.Expression, "\0", p.Format);
+        // ponytail: a text with local tags gets its own entry for every placeholder (no sharing), since
+        // tag-reading tags like {ColorRange(MyLocal, ...)} resolve names at runtime.
+        return Locals != null ? string.Concat(key, "\0L", Locals.Id.ToString()) : key;
+    }
 
     // {ColorRange(Combo, 0, 100, FFB2B2, FF0000)}: C# tag calls take raw text
     // arguments (tag names, hex, enum names), which are not valid JavaScript.

@@ -48,6 +48,7 @@
     <Compile Include="..\Overlayer\Tag\Diagnostic\DiagnosticId.cs" />
     <Compile Include="..\Overlayer\Tag\Runtime\CompiledPlaceholder.cs" />
     <Compile Include="..\Overlayer\Tag\Runtime\TagCache.cs" />
+    <Compile Include="..\Overlayer\Tag\Core\LocalTagScope.cs" />
     <Compile Include="..\Overlayer\Tag\Runtime\JsBinding.cs" />
     <Compile Include="..\Overlayer\Tag\Runtime\JsBatch.cs" />
     <Compile Include="..\Overlayer\Tag\Runtime\EmptyDelegates.cs" />
