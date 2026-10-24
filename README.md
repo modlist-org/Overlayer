@@ -35,10 +35,17 @@ Custom Unity Overlay UI mode for users!
 > Linux shortcuts are different. You must use <kbd>Ctrl</kbd> + <kbd>`</kbd> This is because they conflict with KDE Plasma shortcuts!
 * **Toggle Menu:** Click the **logo in the top-left corner** of the settings window to open and close the navigation menu.
 
-# 🧩 [Modules](https://github.com/modlist-org/Overlayer.Module)
-Overlayer v5 utilizes runtime-loaded modules to support specific game features and tag functionalities tailored for each title. To access these game-specific enhancements and tags, you need to install the appropriate module from the repository.
+# 🧩 Modules
+Overlayer v5 loads game-specific features and tags from modules at runtime.
+To get them for a game, install that game's module alongside Overlayer.
+
 > [!NOTE]
-> Modules require this base mod environment to function and cannot run standalone.
+> Modules require Overlayer and cannot run on their own.
+
+## Available modules
+| Game | Module |
+|------|--------|
+| A Dance of Fire and Ice | [Overlayer.Module.ADOFAI](https://github.com/modlist-org/Overlayer.Module.ADOFAI) |
 
 # 🛠️ Development
 you obviously need the .NET SDK. copy `Directory.Build.example.props` to `Directory.Build.props` and set `GamePath` + `GameData` or nothing builds
