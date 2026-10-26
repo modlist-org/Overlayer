@@ -270,7 +270,7 @@ public partial class OvCanvasSettingPage : IDisposable {
         // Empty Row
         RectTransform emptyRow = CreateHierarchyControlRow(hierCreateToolbar.transform);
 
-        var btnEmpty = O5Factory.Button(O5KitAdapters.Ctx, emptyRow, () => {
+        var btnEmpty = O5Factory.Button(O5KitAdapters.Ctx, emptyRow, "btn_hier_add_empty", new O5ButtonOptions { Icon = MainCore.Spr.Get(UISprite.Cube128), OnClick = () => {
             OvObject newObj = CreateChildObject();
             if (newObj == null) {
                 return;
@@ -287,12 +287,12 @@ public partial class OvCanvasSettingPage : IDisposable {
 
             SelectObject(newObj);
             SaveConfig();
-        }, MainCore.Spr.Get(UISprite.Cube128), "btn_hier_add_empty", height: 36f);
+        }, Height = 36f });
 
         btnEmpty.Rect.offsetMax = Vector2.zero;
         permanentUiObjects.Add(btnEmpty);
 
-        add3DButton = O5Factory.Button(O5KitAdapters.Ctx, emptyRow, () => {
+        add3DButton = O5Factory.Button(O5KitAdapters.Ctx, emptyRow, "btn_hier_add_3d", new O5ButtonOptions { Icon = MainCore.Spr.Get(UISprite.Box128), OnClick = () => {
             var newObj = new OvObject(bare: true);
             if (selectedObject != null) {
                 selectedObject.Attach(newObj);
@@ -313,7 +313,7 @@ public partial class OvCanvasSettingPage : IDisposable {
 
             SelectObject(newObj);
             SaveConfig();
-        }, MainCore.Spr.Get(UISprite.Box128), "btn_hier_add_3d", height: 36f);
+        }, Height = 36f });
 
         add3DButton.Rect.offsetMax = Vector2.zero;
         add3DButton.Rect.gameObject.SetActive(MainCore.Conf.Enable3DFeatures.Value);
@@ -323,7 +323,7 @@ public partial class OvCanvasSettingPage : IDisposable {
         // Text / Image Row
         RectTransform createRow = CreateHierarchyControlRow(hierCreateToolbar.transform);
 
-        var btnText = O5Factory.Button(O5KitAdapters.Ctx, createRow, () => {
+        var btnText = O5Factory.Button(O5KitAdapters.Ctx, createRow, "btn_hier_add_text", new O5ButtonOptions { Icon = MainCore.Spr.Get(UISprite.Text128), OnClick = () => {
             OvObject newObj = CreateChildObject();
             if (newObj == null) {
                 return;
@@ -341,12 +341,12 @@ public partial class OvCanvasSettingPage : IDisposable {
 
             SelectObject(newObj);
             SaveConfig();
-        }, MainCore.Spr.Get(UISprite.Text128), "btn_hier_add_text", height: 36f);
+        }, Height = 36f });
 
         btnText.Rect.offsetMax = Vector2.zero;
         permanentUiObjects.Add(btnText);
 
-        var btnImage = O5Factory.Button(O5KitAdapters.Ctx, createRow, () => {
+        var btnImage = O5Factory.Button(O5KitAdapters.Ctx, createRow, "btn_hier_add_image", new O5ButtonOptions { Icon = MainCore.Spr.Get(UISprite.Image128), OnClick = () => {
             OvObject newObj = CreateChildObject();
             if (newObj == null) {
                 return;
@@ -362,7 +362,7 @@ public partial class OvCanvasSettingPage : IDisposable {
 
             SelectObject(newObj);
             SaveConfig();
-        }, MainCore.Spr.Get(UISprite.Image128), "btn_hier_add_image", height: 36f);
+        }, Height = 36f });
 
         btnImage.Rect.offsetMax = Vector2.zero;
         permanentUiObjects.Add(btnImage);
@@ -385,7 +385,7 @@ public partial class OvCanvasSettingPage : IDisposable {
         ctrlHLayout.childForceExpandHeight = true;
 
         // Clone
-        var btnClone = O5Factory.Button(O5KitAdapters.Ctx, hierCtrlToolbar.transform, () => {
+        var btnClone = O5Factory.Button(O5KitAdapters.Ctx, hierCtrlToolbar.transform, "btn_hier_clone", new O5ButtonOptions { Icon = MainCore.Spr.Get(UISprite.Clone128), OnClick = () => {
             if (selectedObject == null) {
                 if (currentCanvas == null && rootObject != null) {
                     if (OverlayCore.CloneObject(rootObject) != null) {
@@ -409,13 +409,13 @@ public partial class OvCanvasSettingPage : IDisposable {
             InsertAfter(source, clone);
             SelectObject(clone);
             SaveConfig();
-        }, MainCore.Spr.Get(UISprite.Clone128), "btn_hier_clone", height: 36f);
+        }, Height = 36f });
 
         btnClone.Rect.offsetMax = Vector2.zero;
         permanentUiObjects.Add(btnClone);
 
         // Delete
-        var btnDel = O5Factory.Button(O5KitAdapters.Ctx, hierCtrlToolbar.transform, () => {
+        var btnDel = O5Factory.Button(O5KitAdapters.Ctx, hierCtrlToolbar.transform, "btn_hier_del", new O5ButtonOptions { Icon = MainCore.Spr.Get(UISprite.X128), OnClick = () => {
             if (selectedObject == null) {
                 if (currentCanvas == null) {
                     return;
@@ -501,7 +501,7 @@ public partial class OvCanvasSettingPage : IDisposable {
             RebuildHierarchy();
             RebuildInspector();
             SaveConfig();
-        }, MainCore.Spr.Get(UISprite.X128), "btn_hier_del", height: 36f);
+        }, Height = 36f });
 
         btnDel.Rect.offsetMax = Vector2.zero;
         deleteButton = btnDel;

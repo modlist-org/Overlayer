@@ -107,7 +107,7 @@ internal static class O5cpDialogs {
     }
 
     private static O5Button BarButtonLeft(RectTransform bar, string text, float offsetX, float y, float width, Action onClick, string id) {
-        var btn = O5Factory.Button(O5KitAdapters.Ctx, bar, onClick, text, id, 40f);
+        var btn = O5Factory.Button(O5KitAdapters.Ctx, bar, id, new O5ButtonOptions { Text = text, OnClick = onClick, Height = 40f });
         var rect = btn.Rect;
         rect.anchorMin = rect.anchorMax = new Vector2(0f, 0.5f);
         rect.pivot = new Vector2(0f, 0.5f);
@@ -117,7 +117,7 @@ internal static class O5cpDialogs {
     }
 
     private static O5Button BarButtonRight(RectTransform bar, string text, float offsetXFromRight, float y, float width, Action onClick, string id) {
-        var btn = O5Factory.Button(O5KitAdapters.Ctx, bar, onClick, text, id, 40f);
+        var btn = O5Factory.Button(O5KitAdapters.Ctx, bar, id, new O5ButtonOptions { Text = text, OnClick = onClick, Height = 40f });
         var rect = btn.Rect;
         rect.anchorMin = rect.anchorMax = new Vector2(1f, 0.5f);
         rect.pivot = new Vector2(1f, 0.5f);
@@ -135,17 +135,11 @@ internal static class O5cpDialogs {
         var bar = ButtonBar(panel, 40f);
 
         var imgRow = O5Factory.Row(O5KitAdapters.Ctx, body);
-        O5Factory.Toggle(O5KitAdapters.Ctx, imgRow, true, options.IncludeImages,
-            toggle => options.IncludeImages = toggle,
-            T("O5CP_INCLUDE_IMAGES", "Include images"), "o5cp_include_images");
+        O5Factory.Toggle(O5KitAdapters.Ctx, imgRow, "o5cp_include_images", new O5ToggleOptions { DefaultValue = true, Value = options.IncludeImages, OnChanged = toggle => options.IncludeImages = toggle, Text = T("O5CP_INCLUDE_IMAGES", "Include images") });
         var fontRow = O5Factory.Row(O5KitAdapters.Ctx, body);
-        O5Factory.Toggle(O5KitAdapters.Ctx, fontRow, true, options.IncludeFonts,
-            toggle => options.IncludeFonts = toggle,
-            T("O5CP_INCLUDE_FONTS", "Include fonts"), "o5cp_include_fonts");
+        O5Factory.Toggle(O5KitAdapters.Ctx, fontRow, "o5cp_include_fonts", new O5ToggleOptions { DefaultValue = true, Value = options.IncludeFonts, OnChanged = toggle => options.IncludeFonts = toggle, Text = T("O5CP_INCLUDE_FONTS", "Include fonts") });
         var jsRow = O5Factory.Row(O5KitAdapters.Ctx, body);
-        O5Factory.Toggle(O5KitAdapters.Ctx, jsRow, true, options.IncludeScripts,
-            toggle => options.IncludeScripts = toggle,
-            T("O5CP_INCLUDE_JS", "Include JS (auto tracked)"), "o5cp_include_js");
+        O5Factory.Toggle(O5KitAdapters.Ctx, jsRow, "o5cp_include_js", new O5ToggleOptions { DefaultValue = true, Value = options.IncludeScripts, OnChanged = toggle => options.IncludeScripts = toggle, Text = T("O5CP_INCLUDE_JS", "Include JS (auto tracked)") });
 
         var noteRow = O5Factory.Row(O5KitAdapters.Ctx, body, 80f);
         var note = O5Factory.ControlText(O5KitAdapters.Ctx, noteRow, 16f, true);
@@ -208,8 +202,7 @@ internal static class O5cpDialogs {
                 label.rectTransform.anchorMax = new Vector2(0.62f, 1f);
                 label.rectTransform.offsetMax = new Vector2(-8f, 0f);
 
-                var importBtn = O5Factory.Button(O5KitAdapters.Ctx, row, () => { },
-                    T("O5CP_PRESET_IMPORT", "Import"), $"o5cp_preset_{captured.Id}", 36f);
+                var importBtn = O5Factory.Button(O5KitAdapters.Ctx, row, $"o5cp_preset_{captured.Id}", new O5ButtonOptions { Text = T("O5CP_PRESET_IMPORT", "Import"), OnClick = () => { }, Height = 36f });
                 var importRect = importBtn.Rect;
                 importRect.anchorMin = new Vector2(0.62f, 0f);
                 importRect.anchorMax = new Vector2(1f, 1f);
@@ -257,8 +250,7 @@ internal static class O5cpDialogs {
             label.rectTransform.anchorMax = new Vector2(0.62f, 1f);
             label.rectTransform.offsetMax = new Vector2(-8f, 0f);
 
-            var choiceBtn = O5Factory.Button(O5KitAdapters.Ctx, row, () => { },
-                ChoiceText(item.Choice), $"o5cp_choice_{item.Kind}_{item.Key}", 36f);
+            var choiceBtn = O5Factory.Button(O5KitAdapters.Ctx, row, $"o5cp_choice_{item.Kind}_{item.Key}", new O5ButtonOptions { Text = ChoiceText(item.Choice), OnClick = () => { }, Height = 36f });
             var choiceRect = choiceBtn.Rect;
             choiceRect.anchorMin = new Vector2(0.62f, 0f);
             choiceRect.anchorMax = new Vector2(1f, 1f);
@@ -278,9 +270,7 @@ internal static class O5cpDialogs {
             };
 
             var renameRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform, 44f);
-            var renameInput = O5Factory.Input(O5KitAdapters.Ctx, renameRow, null,
-                item.RenameTo, value => item.RenameTo = value,
-                T("O5CP_RENAME_TO", "New name..."), null, $"o5cp_rename_{item.Kind}_{item.Key}");
+            var renameInput = O5Factory.Input(O5KitAdapters.Ctx, renameRow, $"o5cp_rename_{item.Kind}_{item.Key}", new O5InputOptions { Value = item.RenameTo, OnChanged = value => item.RenameTo = value, Placeholder = T("O5CP_RENAME_TO", "New name...") });
             renameRow.gameObject.SetActive(item.Choice == Package.O5cpConflictChoice.Rename);
             renameInputs[item] = renameInput;
         }

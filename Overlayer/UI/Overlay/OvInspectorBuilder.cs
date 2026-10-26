@@ -358,7 +358,7 @@ internal sealed class OvInspectorBuilder(
         preserveAspectRow = FxToggle(card, "Preserve Aspect", cfg.PreserveAspect, false, "image_aspect");
         useSpriteMeshRow = FxToggle(card, "Use Sprite Mesh", cfg.UseSpriteMesh, false, "image_sprite_mesh");
         fillCenterRow = FxToggle(card, "Fill Center", cfg.FillCenter, true, "image_fill_center");
-        pixelsPerUnitRow = FxSlider(card, "Pixels Per Unit", cfg.PixelsPerUnitMultiplier, 1f, 0f, 10f, "image_pixels_per_unit", "F2", ClampMode.Slider, value => Math.Max(0d, value));
+        pixelsPerUnitRow = FxSlider(card, "Pixels Per Unit", cfg.PixelsPerUnitMultiplier, 1f, 0f, 10f, "image_pixels_per_unit", "F2", true, false, value => Math.Max(0d, value));
         fillMethodRow = FxEnum(card, "Fill Method", cfg.FillMethod, Image.FillMethod.Horizontal, "image_fill_method", () => {
             cfg.FillOrigin.Value = 0;
             ApplyAndSave();
@@ -433,19 +433,10 @@ internal sealed class OvInspectorBuilder(
                 .Cast<MovingManTarget>()
                 .Where(value => value != MovingManTarget.None)];
             var row = O5Factory.Row(O5KitAdapters.Ctx, group, 50f);
-            var dropdown = O5Factory.MultiDropDown(O5KitAdapters.Ctx,
-                row,
-                MovingManTarget.TextSize,
-                cfg.Target.Value,
-                values,
-                value => $"{label}: {value}",
-                value => $"{label}: {MovingManTargetSummary(value, values)}",
-                newValue => {
+            var dropdown = O5Factory.MultiDropDown(O5KitAdapters.Ctx, row, "moving_man_target", new O5MultiDropdownOptions<MovingManTarget> { DefaultValue = MovingManTarget.TextSize, Value = cfg.Target.Value, Values = values, Display = value => $"{label}: {value}", Summary = value => $"{label}: {MovingManTargetSummary(value, values)}", OnChanged = newValue => {
                     cfg.Target.Value = newValue;
                     ApplyAndSave();
-                },
-                "moving_man_target"
-            );
+                } });
             Track(dropdown);
         }, "moving_man_target", dropdown: true);
     }
@@ -677,7 +668,7 @@ internal sealed class OvInspectorBuilder(
             return;
         }
         var (_, basic) = Card("Transform", false);
-        var placeBtn = O5Factory.Button(O5KitAdapters.Ctx, basic, () => {
+        var placeBtn = O5Factory.Button(O5KitAdapters.Ctx, basic, "transform_place_in_front", new O5ButtonOptions { Text = InspectorLabel("Place In Front Of Camera"), OnClick = () => {
             var cam = MainCore.Cam.Camera;
             if (cam == null || obj.GameObject == null) {
                 return;
@@ -686,7 +677,7 @@ internal sealed class OvInspectorBuilder(
             obj.Config.TransformConfig.FromUnity(obj.GameObject);
             ApplyAndSave();
             rebuild();
-        }, InspectorLabel("Place In Front Of Camera"), "transform_place_in_front");
+        } });
         Track(placeBtn);
         FxNumericRow3(basic, "Position", cfg.LocalPosition, [
             ("X", 0f, () => cfg.LocalPosition.Value.x, value => { var v = cfg.LocalPosition.Value; v.x = value; cfg.LocalPosition.Value = v; }, "transform_position_x"),
@@ -901,7 +892,7 @@ internal sealed class OvInspectorBuilder(
         }
 
         var row = O5Factory.Row(O5KitAdapters.Ctx, content, 50f);
-        var dropdown = O5Factory.DropDown(O5KitAdapters.Ctx, row, options[0], options[0], options, InspectorLabel, selected => {
+        var dropdown = O5Factory.DropDown(O5KitAdapters.Ctx, row, "add_component", new O5DropdownOptions<string> { DefaultValue = options[0], Value = options[0], Values = options, Display = InspectorLabel, OnChanged = selected => {
             switch (selected) {
                 case "Text":
                     obj.Config.RectTransformConfig ??= new RectTransformSettings();
@@ -994,7 +985,7 @@ internal sealed class OvInspectorBuilder(
                     return;
             }
             RefreshComponents(obj);
-        }, "add_component");
+        } });
         Track(dropdown);
     }
 
@@ -1045,10 +1036,10 @@ internal sealed class OvInspectorBuilder(
     private void Input(Transform parent, string label, string defaultValue, string value, Action<string> changed, string id, Action finished = null) {
         label = InspectorLabel(label);
         var row = O5Factory.Row(O5KitAdapters.Ctx, parent, 50f);
-        var input = O5Factory.Input(O5KitAdapters.Ctx, row, defaultValue, value, changed, label, null, id, _ => {
+        var input = O5Factory.Input(O5KitAdapters.Ctx, row, id, new O5InputOptions { DefaultValue = defaultValue, Value = value, OnChanged = changed, Placeholder = label, OnEndEdit = _ => {
             finished?.Invoke();
             save();
-        });
+        } });
         Track(input);
     }
 
@@ -1098,19 +1089,7 @@ internal sealed class OvInspectorBuilder(
             changed(text);
         }
 
-        var input = O5Factory.Input(O5KitAdapters.Ctx,
-            row,
-            null,
-            value,
-            OnTextChanged,
-            InspectorLabel($"{label} / {language.LabelSuffix}"),
-            null,
-            id,
-            _ => save(),
-            multiline: true,
-            monospace: true,
-            fieldFactory: static go => go.AddComponent<UICodeInputField>()
-        );
+        var input = O5Factory.Input(O5KitAdapters.Ctx, row, id, new O5InputOptions { Value = value, OnChanged = OnTextChanged, Placeholder = InspectorLabel($"{label} / {language.LabelSuffix}"), OnEndEdit = _ => save(), Multiline = true, Monospace = true, FieldFactory = static go => go.AddComponent<UICodeInputField>() });
         var codeInput = (UICodeInputField)input.InputField;
 
         const float gutterWidth = 44f;
@@ -1433,8 +1412,7 @@ internal sealed class OvInspectorBuilder(
                 anchorGroup.alpha = 0f;
                 anchorGroup.interactable = false;
                 anchorGroup.blocksRaycasts = false;
-                hexPicker = O5Factory.ColorPicker(O5KitAdapters.Ctx, hexAnchor, UICore.CanvasObj.GetComponent<RectTransform>(),
-                    UICore.Canvas ? UICore.Canvas.worldCamera : null, null, color, OnHexPicked, _ => save(), id + "_hexpick");
+                hexPicker = O5Factory.ColorPicker(O5KitAdapters.Ctx, hexAnchor, id + "_hexpick", new O5ColorPickerOptions { CanvasRect = UICore.CanvasObj.GetComponent<RectTransform>(), CanvasCamera = UICore.Canvas ? UICore.Canvas.worldCamera : null, Value = color, OnChanged = OnHexPicked, OnComplete = _ => save() });
                 controls.Add(hexPicker);
             }
 
@@ -1525,7 +1503,7 @@ internal sealed class OvInspectorBuilder(
     }
 
     private O5Button FillWindowButton(Transform parent, Action onClick, string id, bool active) {
-        var button = O5Factory.Button(O5KitAdapters.Ctx, parent, onClick, MainCore.Spr.Get(UISprite.Expand128), id, 4f);
+        var button = O5Factory.Button(O5KitAdapters.Ctx, parent, id, new O5ButtonOptions { Icon = MainCore.Spr.Get(UISprite.Expand128), OnClick = onClick, IconPadding = 4f });
         button.NormalColor = active ? UIColors.FxOn : UIColors.FxOff;
         button.Icon.color = Color.white;
         button.Icon.rectTransform.offsetMin = new Vector2(9f, 9f);
@@ -1875,15 +1853,15 @@ internal sealed class OvInspectorBuilder(
         string source
     ) => $"{state}|{source?.GetHashCode() ?? 0}|{string.Join("|", diagnostics.Select(d => d.ToString()))}";
 
-    private RectTransform Slider(Transform parent, string label, double defaultValue, double min, double max, double value, Action<double> changed, string id, string format = "F2") => Slider(parent, label, defaultValue, min, max, value, changed, id, format, ClampMode.Slider, null);
+    private RectTransform Slider(Transform parent, string label, double defaultValue, double min, double max, double value, Action<double> changed, string id, string format = "F2") => Slider(parent, label, defaultValue, min, max, value, changed, id, format, true, false, null);
 
-    private RectTransform Slider(Transform parent, string label, double defaultValue, double min, double max, double value, Action<double> changed, string id, string format, ClampMode clampMode, Func<double, double> filter = null) {
+    private RectTransform Slider(Transform parent, string label, double defaultValue, double min, double max, double value, Action<double> changed, string id, string format, bool clampDrag, bool clampInput, Func<double, double> filter = null) {
         label = InspectorLabel(label);
         var row = O5Factory.Row(O5KitAdapters.Ctx, parent, 50f);
-        var slider = O5Factory.Slider(O5KitAdapters.Ctx, row, defaultValue, min, max, value, format, clampMode, filter, filter, newValue => {
+        var slider = O5Factory.Slider(O5KitAdapters.Ctx, row, id, new O5SliderOptions { DefaultValue = defaultValue, Min = min, Max = max, Value = value, Format = format, Label = label, ClampDrag = clampDrag, ClampInput = clampInput, DragFilter = filter, InputFilter = filter, OnChanged = newValue => {
             changed(newValue);
             apply();
-        }, _ => save(), label, id);
+        }, OnComplete = _ => save() });
         Track(slider);
         return row;
     }
@@ -1891,10 +1869,10 @@ internal sealed class OvInspectorBuilder(
     private RectTransform Toggle(Transform parent, string label, bool defaultValue, bool value, Action<bool> changed, string id) {
         label = InspectorLabel(label);
         var row = O5Factory.Row(O5KitAdapters.Ctx, parent, 50f);
-        var toggle = O5Factory.Toggle(O5KitAdapters.Ctx, row, defaultValue, value, newValue => {
+        var toggle = O5Factory.Toggle(O5KitAdapters.Ctx, row, id, new O5ToggleOptions { DefaultValue = defaultValue, Value = value, OnChanged = newValue => {
             changed(newValue);
             ApplyAndSave();
-        }, label, id);
+        }, Text = label });
         Track(toggle);
         return row;
     }
@@ -1903,14 +1881,14 @@ internal sealed class OvInspectorBuilder(
         label = InspectorLabel(label);
         T[] values = [.. Enum.GetValues(typeof(T)).Cast<T>()];
         var row = O5Factory.Row(O5KitAdapters.Ctx, parent, 50f);
-        var dropdown = O5Factory.DropDown(O5KitAdapters.Ctx, row, defaultValue, value, values, option => $"{label}: {option}", newValue => {
+        var dropdown = O5Factory.DropDown(O5KitAdapters.Ctx, row, id, new O5DropdownOptions<T> { DefaultValue = defaultValue, Value = value, Values = values, Display = option => $"{label}: {option}", OnChanged = newValue => {
             changed(newValue);
             if (completed == null) {
                 ApplyAndSave();
             } else {
                 completed();
             }
-        }, id);
+        } });
         Track(dropdown);
         return row;
     }
@@ -1951,7 +1929,7 @@ internal sealed class OvInspectorBuilder(
         slotLayout.preferredWidth = 36f;
         slotLayout.flexibleWidth = 0f;
         slotLayout.flexibleHeight = 0f;
-        var button = O5Factory.Button(O5KitAdapters.Ctx, buttonSlot, () => {
+        var button = O5Factory.Button(O5KitAdapters.Ctx, buttonSlot, id + "_use_fx", new O5ButtonOptions { Icon = MainCore.Spr.Get(UISprite.F128), OnClick = () => {
             if (switching) return;
             switching = true;
             fade.interactable = false;
@@ -1968,7 +1946,7 @@ internal sealed class OvInspectorBuilder(
                     group.gameObject.SetActive(false);
                     rebuild();
                 }).Play();
-        }, MainCore.Spr.Get(UISprite.F128), id + "_use_fx", 4f);
+        }, IconPadding = 4f });
         button.Rect.anchorMin = new Vector2(0f, 1f);
         button.Rect.anchorMax = new Vector2(1f, 1f);
         button.Rect.pivot = new Vector2(0.5f, 1f);
@@ -2035,8 +2013,8 @@ internal sealed class OvInspectorBuilder(
         return FxBlock(parent, label, fx, g => Slider(g, label, defaultValue, min, max, fx.Value, value => fx.Value = (float)value, id, format), id);
     }
 
-    private RectTransform FxSlider(Transform parent, string label, FxValue<float> fx, float defaultValue, float min, float max, string id, string format, ClampMode clampMode, Func<double, double> filter = null) {
-        return FxBlock(parent, label, fx, g => Slider(g, label, defaultValue, min, max, fx.Value, value => fx.Value = (float)value, id, format, clampMode, filter), id);
+    private RectTransform FxSlider(Transform parent, string label, FxValue<float> fx, float defaultValue, float min, float max, string id, string format, bool clampDrag, bool clampInput, Func<double, double> filter = null) {
+        return FxBlock(parent, label, fx, g => Slider(g, label, defaultValue, min, max, fx.Value, value => fx.Value = (float)value, id, format, clampDrag, clampInput, filter), id);
     }
 
     private RectTransform FxIntSlider(Transform parent, string label, FxValue<int> fx, int defaultValue, float min, float max, string id, string format = "F0") {
@@ -2044,7 +2022,7 @@ internal sealed class OvInspectorBuilder(
     }
 
     private RectTransform FxDoubleSlider(Transform parent, string label, FxValue<double> fx, double defaultValue, float min, float max, string id, string format = "F1") {
-        return FxBlock(parent, label, fx, g => Slider(g, label, defaultValue, min, max, fx.Value, value => fx.Value = value, id, format, ClampMode.Slider), id);
+        return FxBlock(parent, label, fx, g => Slider(g, label, defaultValue, min, max, fx.Value, value => fx.Value = value, id, format, true, false), id);
     }
 
     private RectTransform FxToggle(Transform parent, string label, FxValue<bool> fx, bool defaultValue, string id) {
@@ -2072,12 +2050,10 @@ internal sealed class OvInspectorBuilder(
             string label = InspectorLabel("Wrapping");
             int current = Math.Min(Math.Max(cfg.TextWrappingMode.Value, TmpCompat.NoWrap), TmpCompat.PreserveWhitespaceNoWrap);
             var row = O5Factory.Row(O5KitAdapters.Ctx, g, 50f);
-            var dropdown = O5Factory.DropDown(O5KitAdapters.Ctx, row,
-                TmpCompat.ToName(TmpCompat.Normal), TmpCompat.ToName(current), options,
-                option => $"{label}: {option}", selected => {
+            var dropdown = O5Factory.DropDown(O5KitAdapters.Ctx, row, "text_wrapping", new O5DropdownOptions<string> { DefaultValue = TmpCompat.ToName(TmpCompat.Normal), Value = TmpCompat.ToName(current), Values = options, Display = option => $"{label}: {option}", OnChanged = selected => {
                     cfg.TextWrappingMode.Value = TmpCompat.FromName(selected, TmpCompat.Normal);
                     ApplyAndSave();
-                }, "text_wrapping");
+                } });
             Track(dropdown);
         }, "text_wrapping", dropdown: true);
     }
@@ -2095,13 +2071,10 @@ internal sealed class OvInspectorBuilder(
             int current = Math.Min(Math.Max(cfg.CompositeOperation.Value,
                 ColliderCompat.CompositeNone), ColliderCompat.CompositeFlip);
             var row = O5Factory.Row(O5KitAdapters.Ctx, g, 50f);
-            var dropdown = O5Factory.DropDown(O5KitAdapters.Ctx, row,
-                ColliderCompat.CompositeToName(ColliderCompat.CompositeNone),
-                ColliderCompat.CompositeToName(current), options,
-                option => $"{label}: {option}", selected => {
+            var dropdown = O5Factory.DropDown(O5KitAdapters.Ctx, row, "box_collider_composite", new O5DropdownOptions<string> { DefaultValue = ColliderCompat.CompositeToName(ColliderCompat.CompositeNone), Value = ColliderCompat.CompositeToName(current), Values = options, Display = option => $"{label}: {option}", OnChanged = selected => {
                     cfg.CompositeOperation.Value = ColliderCompat.CompositeFromName(selected, ColliderCompat.CompositeNone);
                     ApplyAndSave();
-                }, "box_collider_composite");
+                } });
             Track(dropdown);
         }, "box_collider_composite", dropdown: true);
     }
@@ -2334,27 +2307,10 @@ internal sealed class OvInspectorBuilder(
         if (format.Length > 1 && (format[0] == 'F' || format[0] == 'f')) {
             int.TryParse(format[1..], out decimals);
         }
-        var field = O5Factory.Slider(O5KitAdapters.Ctx,
-            parent,
-            defaultValue,
-            -1d,
-            1d,
-            get(),
-            format,
-            ClampMode.None,
-            null,
-            null,
-            value => {
+        var field = O5Factory.Slider(O5KitAdapters.Ctx, parent, id, new O5SliderOptions { DefaultValue = defaultValue, Min = -1d, Max = 1d, Value = get(), Format = format, Label = label, ClampDrag = false, ClampInput = false, OnChanged = value => {
                 set((float)value);
                 apply();
-            },
-            _ => save(),
-            label,
-            id,
-            showFill: false,
-            dragStep: Math.Pow(10d, -decimals),
-            blockHoverWhileDragging: true
-        );
+            }, OnComplete = _ => save(), ShowFill = false, DragStep = Math.Pow(10d, -decimals), BlockHoverWhileDragging = true });
         var element = field.Rect.gameObject.GetComponent<LayoutElement>();
         element.preferredHeight = element.minHeight = 44f;
         element.minWidth = 100f;
@@ -2583,7 +2539,7 @@ internal sealed class OvInspectorBuilder(
         buttonLayout.minHeight = 66f;
         buttonLayout.preferredHeight = 66f;
         buttonLayout.flexibleHeight = 0f;
-        var summary = O5Factory.Button(O5KitAdapters.Ctx, buttonRow, null, string.Empty, "transform_anchor_presets");
+        var summary = O5Factory.Button(O5KitAdapters.Ctx, buttonRow, "transform_anchor_presets", new O5ButtonOptions { Text = string.Empty });
         summary.Label.gameObject.SetActive(false);
         summary.Rect.anchorMin = new Vector2(0f, 0.5f);
         summary.Rect.anchorMax = new Vector2(0f, 0.5f);
@@ -2727,7 +2683,7 @@ internal sealed class OvInspectorBuilder(
                     continue;
                 }
 
-                var cell = O5Factory.Button(O5KitAdapters.Ctx, table, null, string.Empty, $"transform_anchor_{x}_{y}");
+                var cell = O5Factory.Button(O5KitAdapters.Ctx, table, $"transform_anchor_{x}_{y}", new O5ButtonOptions { Text = string.Empty });
                 cell.Label.gameObject.SetActive(false);
                 Track(cell);
                 bool header = x == 0 || y == 0;
@@ -2801,7 +2757,7 @@ internal sealed class OvInspectorBuilder(
         buttonLayout.minHeight = 66f;
         buttonLayout.preferredHeight = 66f;
         buttonLayout.flexibleHeight = 0f;
-        var summary = O5Factory.Button(O5KitAdapters.Ctx, buttonRow, null, string.Empty, "transform_anchor_presets");
+        var summary = O5Factory.Button(O5KitAdapters.Ctx, buttonRow, "transform_anchor_presets", new O5ButtonOptions { Text = string.Empty });
         summary.Label.gameObject.SetActive(false);
         summary.Rect.anchorMin = new Vector2(0f, 0.5f);
         summary.Rect.anchorMax = new Vector2(0f, 0.5f);
@@ -2945,7 +2901,7 @@ internal sealed class OvInspectorBuilder(
                     continue;
                 }
 
-                var cell = O5Factory.Button(O5KitAdapters.Ctx, table, null, string.Empty, $"transform_anchor_{x}_{y}");
+                var cell = O5Factory.Button(O5KitAdapters.Ctx, table, $"transform_anchor_{x}_{y}", new O5ButtonOptions { Text = string.Empty });
                 cell.Label.gameObject.SetActive(false);
                 Track(cell);
                 bool header = x == 0 || y == 0;
@@ -3396,10 +3352,10 @@ internal sealed class OvInspectorBuilder(
         string current = string.IsNullOrEmpty(spriteKey.Value) ? none : spriteKey.Value;
         FxBlock(parent, "Sprite", spriteKey, group => {
             var row = O5Factory.Row(O5KitAdapters.Ctx, group, 50f);
-            var dropdown = O5Factory.DropDown(O5KitAdapters.Ctx, row, none, current, options, option => $"{InspectorLabel("Sprite")}: {(option == none ? InspectorLabel(option) : UserResourceSettings.FullName(folders, option))}", selected => {
+            var dropdown = O5Factory.DropDown(O5KitAdapters.Ctx, row, id, new O5DropdownOptions<string> { DefaultValue = none, Value = current, Values = options, Display = option => $"{InspectorLabel("Sprite")}: {(option == none ? InspectorLabel(option) : UserResourceSettings.FullName(folders, option))}", OnChanged = selected => {
                 spriteKey.Value = selected == none ? null : selected;
                 ApplyAndSave();
-            }, id);
+            } });
             Track(dropdown);
         }, id, dropdown: true);
     }
@@ -3421,10 +3377,10 @@ internal sealed class OvInspectorBuilder(
         string current = string.IsNullOrEmpty(cfg.SpriteKey.Value) ? none : cfg.SpriteKey.Value;
         FxBlock(parent, "Sprite Asset", cfg.SpriteKey, group => {
             var row = O5Factory.Row(O5KitAdapters.Ctx, group, 50f);
-            var dropdown = O5Factory.DropDown(O5KitAdapters.Ctx, row, none, current, options, option => $"{InspectorLabel("Sprite Asset")}: {(option == none ? InspectorLabel(option) : option)}", selected => {
+            var dropdown = O5Factory.DropDown(O5KitAdapters.Ctx, row, "text_sprite_asset", new O5DropdownOptions<string> { DefaultValue = none, Value = current, Values = options, Display = option => $"{InspectorLabel("Sprite Asset")}: {(option == none ? InspectorLabel(option) : option)}", OnChanged = selected => {
                 cfg.SpriteKey.Value = selected == none ? null : selected;
                 ApplyAndSave();
-            }, "text_sprite_asset");
+            } });
             Track(dropdown);
         }, "text_sprite_asset", dropdown: true);
     }
@@ -3444,20 +3400,20 @@ internal sealed class OvInspectorBuilder(
         string current = string.IsNullOrEmpty(cfg.FontKey.Value) ? none : cfg.FontKey.Value;
         FxBlock(parent, "Font", cfg.FontKey, group => {
             var row = O5Factory.Row(O5KitAdapters.Ctx, group, 50f);
-            var dropdown = O5Factory.DropDown(O5KitAdapters.Ctx, row, none, current, options, option => $"{InspectorLabel("Font")}: {(option == none ? InspectorLabel(option) : UserResourceSettings.FullName(folders, option))}", selected => {
+            var dropdown = O5Factory.DropDown(O5KitAdapters.Ctx, row, "text_font", new O5DropdownOptions<string> { DefaultValue = none, Value = current, Values = options, Display = option => $"{InspectorLabel("Font")}: {(option == none ? InspectorLabel(option) : UserResourceSettings.FullName(folders, option))}", OnChanged = selected => {
                 cfg.FontKey.Value = selected == none ? null : selected;
                 ApplyAndSave();
-            }, "text_font");
+            } });
             Track(dropdown);
         }, "text_font", dropdown: true);
     }
 
     private void ColorSliders(Transform parent, string label, Color defaults, Func<Color> get, Action<Color> set, string id) {
         RectTransform row = O5Factory.Row(O5KitAdapters.Ctx, parent, 50f);
-        O5ColorPicker picker = O5Factory.ColorPicker(O5KitAdapters.Ctx, row, UICore.CanvasObj.GetComponent<RectTransform>(), UICore.Canvas ? UICore.Canvas.worldCamera : null, defaults, get(), value => {
+        O5ColorPicker picker = O5Factory.ColorPicker(O5KitAdapters.Ctx, row, id, new O5ColorPickerOptions { CanvasRect = UICore.CanvasObj.GetComponent<RectTransform>(), CanvasCamera = UICore.Canvas ? UICore.Canvas.worldCamera : null, DefaultValue = defaults, Value = get(), OnChanged = value => {
             set(value);
             apply();
-        }, _ => save(), id, InspectorLabel(label));
+        }, OnComplete = _ => save(), Label = InspectorLabel(label) });
         Track(picker);
     }
 

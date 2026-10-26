@@ -58,18 +58,11 @@ internal static class PageJS {
 
         RectTransform toggleRow = O5Factory.Row(O5KitAdapters.Ctx, root, 50f);
         CoreSettings defSet = new();
-        var autoToggle = O5Factory.Toggle(O5KitAdapters.Ctx,
-            toggleRow,
-            defSet.EnableJSScriptWatcher,
-            MainCore.Conf.EnableJSScriptWatcher,
-            toggle => {
+        var autoToggle = O5Factory.Toggle(O5KitAdapters.Ctx, toggleRow, "js_auto_reload", new O5ToggleOptions { DefaultValue = defSet.EnableJSScriptWatcher, Value = MainCore.Conf.EnableJSScriptWatcher, OnChanged = toggle => {
                 MainCore.Conf.EnableJSScriptWatcher = toggle;
                 MainCore.ConfMgr.RequestSave();
                 MainCore.V8.UpdateWatcher();
-            },
-            T("JS_AUTO_RELOAD", "Auto Reload"),
-            "js_auto_reload"
-        );
+            }, Text = T("JS_AUTO_RELOAD", "Auto Reload") });
         autoToggle.Label.gameObject.AddComponent<TextLocalization>().Init("JS_AUTO_RELOAD", "Auto Reload");
 
         RectTransform diagBox = O5Factory.Row(O5KitAdapters.Ctx, root, 40f);
@@ -96,7 +89,7 @@ internal static class PageJS {
     }
 
     private static void ToolbarButton(Transform parent, string text, string id, Action onClick) {
-        O5Factory.Button(O5KitAdapters.Ctx, parent, onClick, text, id);
+        O5Factory.Button(O5KitAdapters.Ctx, parent, id, new O5ButtonOptions { Text = text, OnClick = onClick });
     }
 
     private static void ToggleUIStateByMod(bool isEnabled) {
@@ -320,13 +313,7 @@ internal static class PageJS {
         toggleLe.flexibleWidth = 0f;
         toggleLe.flexibleHeight = 0f;
 
-        var toggle = O5Factory.Toggle(O5KitAdapters.Ctx,
-            toggleGo.transform,
-            null,
-            enabled,
-            onChange,
-            string.Empty,
-            id);
+        var toggle = O5Factory.Toggle(O5KitAdapters.Ctx, toggleGo.transform, id, new O5ToggleOptions { Value = enabled, OnChanged = onChange, Text = string.Empty });
         var hoverOutline = toggle.Rect.transform.Find("Hover");
         if (hoverOutline != null) {
             UnityEngine.Object.Destroy(hoverOutline.gameObject);

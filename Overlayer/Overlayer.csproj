@@ -287,7 +287,7 @@
 		<Copy SourceFiles="@(NuGetUserLibs)" DestinationFolder="$(TargetGamePath)/UserLibs" SkipUnchangedFiles="true" />
 
 		<MakeDir Directories="$(TargetGamePath)/UserLibs" />
-		<Copy SourceFiles="$(TargetDir)O5Kit.dll" DestinationFolder="$(TargetGamePath)/UserLibs" SkipUnchangedFiles="true" Condition="Exists('$(TargetDir)O5Kit.dll')" />
+		<Copy SourceFiles="$(TargetDir)O5Kit.1.0.dll" DestinationFolder="$(TargetGamePath)/UserLibs" SkipUnchangedFiles="true" Condition="Exists('$(TargetDir)O5Kit.1.0.dll')" />
 		<ItemGroup>
 			<O5NativeLib Include="$(MSBuildProjectDirectory)/../../O5Kit/native/zig-out/lib/O5KitNative.*" />
 			<OvNativeLib Include="$(MSBuildProjectDirectory)/../native/zig-out/lib/OverlayerNative.*" />
@@ -343,7 +343,7 @@
 		<Copy Condition="'$(TargetPath)' != ''" SourceFiles="$(TargetPath)" DestinationFolder="$(BuildOutputDir)\Mods" SkipUnchangedFiles="true" />
 		<MakeDir Directories="$(BuildOutputDir)\UserLibs" Condition="'@(NuGetUserLibs)' != ''" />
 		<Copy SourceFiles="@(NuGetUserLibs)" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" />
-		<Copy SourceFiles="$(TargetDir)O5Kit.dll" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" Condition="Exists('$(TargetDir)O5Kit.dll')" />
+		<Copy SourceFiles="$(TargetDir)O5Kit.1.0.dll" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" Condition="Exists('$(TargetDir)O5Kit.1.0.dll')" />
 		<Copy SourceFiles="@(O5NativeLib)" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" Condition="'@(O5NativeLib)' != ''" />
 		<Copy SourceFiles="@(OvNativeLib)" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" Condition="'@(OvNativeLib)' != ''" />
 		<Copy SourceFiles="@(NativeAlias)" DestinationFiles="@(NativeAlias->'$(BuildOutputDir)/UserLibs/%(Alias)')" SkipUnchangedFiles="true" />

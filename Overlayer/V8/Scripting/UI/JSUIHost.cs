@@ -270,19 +270,17 @@ public sealed class JSUIBuilder {
 
     public O5Button Button(string text, object onClick) {
         var cb = Callback<object>(onClick);
-        return Track(O5Factory.Button(Ctx, Slot(), cb == null ? null : () => cb(null), text, NextId()));
+        return Track(O5Factory.Button(Ctx, Slot(), NextId(), new O5ButtonOptions { Text = text, OnClick = cb == null ? null : () => cb(null) }));
     }
 
     public O5Toggle Toggle(string text, bool value, object onChanged)
-        => Track(O5Factory.Toggle(Ctx, Slot(), null, value, Callback<bool>(onChanged), text, NextId()));
+        => Track(O5Factory.Toggle(Ctx, Slot(), NextId(), new O5ToggleOptions { Value = value, OnChanged = Callback<bool>(onChanged), Text = text }));
 
     public O5Slider Slider(string text, double min, double max, double value, object onChanged, string format = "0.##")
-        => Track(O5Factory.Slider(Ctx, Slot(), null, min, max, value, format, ClampMode.All,
-            null, null, Callback<double>(onChanged), null, text, NextId()));
+        => Track(O5Factory.Slider(Ctx, Slot(), NextId(), new O5SliderOptions { Min = min, Max = max, Value = value, Format = format, Label = text, ClampDrag = true, ClampInput = true, OnChanged = Callback<double>(onChanged) }));
 
     public O5InputField Input(string placeholder, string value, object onChanged, bool multiline = false)
-        => Track(O5Factory.Input(Ctx, Slot(), null, value, Callback<string>(onChanged), placeholder ?? string.Empty, null, NextId(),
-            multiline: multiline));
+        => Track(O5Factory.Input(Ctx, Slot(), NextId(), new O5InputOptions { Value = value, OnChanged = Callback<string>(onChanged), Placeholder = placeholder ?? string.Empty, Multiline = multiline }));
 
     public O5Dropdown<string> Dropdown(object values, string value, object onChanged) {
         List<string> list = [];
@@ -292,12 +290,11 @@ public sealed class JSUIBuilder {
                 list.Add(array.GetProperty(i)?.ToString() ?? string.Empty);
             }
         }
-        return Track(O5Factory.DropDown<string>(Ctx, Slot(), null, value, list, s => s, Callback<string>(onChanged), NextId()));
+        return Track(O5Factory.DropDown<string>(Ctx, Slot(), NextId(), new O5DropdownOptions<string> { Value = value, Values = list, Display = s => s, OnChanged = Callback<string>(onChanged) }));
     }
 
     public O5ColorPicker Color(string label, UnityEngine.Color value, object onChanged)
-        => Track(O5Factory.ColorPicker(Ctx, Slot(), UICore.CanvasObj.GetComponent<RectTransform>(),
-            UICore.Canvas ? UICore.Canvas.worldCamera : null, null, value, Callback<UnityEngine.Color>(onChanged), null, NextId(), label));
+        => Track(O5Factory.ColorPicker(Ctx, Slot(), NextId(), new O5ColorPickerOptions { CanvasRect = UICore.CanvasObj.GetComponent<RectTransform>(), CanvasCamera = UICore.Canvas ? UICore.Canvas.worldCamera : null, Value = value, OnChanged = Callback<UnityEngine.Color>(onChanged), Label = label }));
 
     /// <summary>Removes everything this builder (tab, card or row) contains, so it can be filled again.</summary>
     public void Clear() {

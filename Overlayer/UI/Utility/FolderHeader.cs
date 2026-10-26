@@ -15,7 +15,7 @@ namespace Overlayer.UI.Utility;
 /// <summary>Collapsible folder row used by list pages (Resources, JS).</summary>
 internal static class FolderHeader {
     public static O5Button Create(Transform parent, string name, int count, bool collapsed, Action onToggle, string id) {
-        O5Button button = O5Factory.Button(O5KitAdapters.Ctx, parent, onToggle, $"{name}  <alpha=#80>({count})", id, 40f);
+        O5Button button = O5Factory.Button(O5KitAdapters.Ctx, parent, id, new O5ButtonOptions { Text = $"{name}  <alpha=#80>({count})", OnClick = onToggle, Height = 40f });
         button.Label.alignment = TextAlignmentOptions.Left;
         button.Label.fontSize = 18f;
         button.Label.rectTransform.offsetMin = new Vector2(34f, 0f);

@@ -47,11 +47,7 @@ internal static class PageSettings {
 
         var inputRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
         var findInput =
-        O5Factory.Input(O5KitAdapters.Ctx,
-            inputRow,
-            null,
-            null,
-            value => {
+        O5Factory.Input(O5KitAdapters.Ctx, inputRow, "search_find", new O5InputOptions { OnChanged = value => {
                 bool isBlank = string.IsNullOrWhiteSpace(value);
                 Dictionary<GameObject, bool> labelActivationMap = [];
 
@@ -95,11 +91,7 @@ internal static class PageSettings {
                 }
 
                 LayoutRebuilder.ForceRebuildLayoutImmediate(contentRect);
-            },
-            "Find",
-            MainCore.Spr.Get(UISprite.MagnifyingGlass128),
-            "search_find"
-        );
+            }, Placeholder = "Find", Icon = MainCore.Spr.Get(UISprite.MagnifyingGlass128) });
         findInput.Placeholder.gameObject.AddComponent<TextLocalization>().Init("FIND", "Find");
         findInput.InputField.characterLimit = 22;
 
@@ -111,12 +103,7 @@ internal static class PageSettings {
         const float languageReloadWidth = 240f;
         const float languageControlSpacing = 8f;
         var langRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
-        languageDropdown = O5Factory.DropDown(O5KitAdapters.Ctx,
-            langRow,
-            null,
-            MainCore.Tr.Language,
-            langs,
-            lang => {
+        languageDropdown = O5Factory.DropDown(O5KitAdapters.Ctx, langRow, "language_dropdown", new O5DropdownOptions<string> { Value = MainCore.Tr.Language, Values = langs, Display = lang => {
                 if (lang == Translator.FALLBACK_LANGUAGE) {
                     return "DEFAULT";
                 }
@@ -128,22 +115,14 @@ internal static class PageSettings {
                 );
 
                 return $"{native} ({lang})";
-            },
-            value => {
+            }, OnChanged = value => {
                 MainCore.Tr.Language = value;
                 MainCore.Conf.Language = value;
                 MainCore.ConfMgr.RequestSave();
                 TextLocalization.RefreshAll();
-            },
-            "language_dropdown"
-        );
+            } });
         languageDropdown.Rect.offsetMax = new Vector2(-(languageReloadWidth + languageControlSpacing), 0f);
-        var langBtn = O5Factory.Button(O5KitAdapters.Ctx,
-            langRow,
-            () => { },
-            "Reload",
-            "language_reload"
-        );
+        var langBtn = O5Factory.Button(O5KitAdapters.Ctx, langRow, "language_reload", new O5ButtonOptions { Text = "Reload", OnClick = () => { } });
         langBtn.OnClick = async () => {
             languageDropdown.SetExpanded(false);
             languageDropdown.SetBlocked(true);
@@ -174,24 +153,17 @@ internal static class PageSettings {
         var overlayerTextTr = overlayerText.gameObject.AddComponent<TextLocalization>().Init("OVERLAYER", "Overlayer");
 
         var startupRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
-        var startupToggle = O5Factory.Toggle(O5KitAdapters.Ctx,
-            startupRow,
-            defSet.ShowOnStartup,
-            MainCore.Conf.ShowOnStartup,
-            toggle => {
+        var startupToggle = O5Factory.Toggle(O5KitAdapters.Ctx, startupRow, "show_on_startup", new O5ToggleOptions { DefaultValue = defSet.ShowOnStartup, Value = MainCore.Conf.ShowOnStartup, OnChanged = toggle => {
                 MainCore.Conf.ShowOnStartup = toggle;
                 MainCore.ConfMgr.RequestSave();
-            },
-            "Show Overlayer Panel at Startup",
-            "show_on_startup"
-        );
+            }, Text = "Show Overlayer Panel at Startup" });
         var startupToggleTr = startupToggle.Label.gameObject.AddComponent<TextLocalization>().Init("SHOW_OVERLAYER_PANEL_AT_STARTUP", "Show Overlayer Panel at Startup");
         objects[startupToggleTr] = (overlayerText.gameObject, startupRow.gameObject);
 
         var tooltipRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
-        var tooltipToggle = O5Factory.Toggle(O5KitAdapters.Ctx, tooltipRow, defSet.Tooltip, MainCore.Conf.Tooltip, null, "Show Tooltip", "show_tooltip");
+        var tooltipToggle = O5Factory.Toggle(O5KitAdapters.Ctx, tooltipRow, "show_tooltip", new O5ToggleOptions { DefaultValue = defSet.Tooltip, Value = MainCore.Conf.Tooltip, Text = "Show Tooltip" });
         var advTooltipRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
-        var advTooltipToggle = O5Factory.Toggle(O5KitAdapters.Ctx, advTooltipRow, defSet.AdvancedTooltip, MainCore.Conf.AdvancedTooltip, null, "Show Advanced Tooltip", "show_advanced_tooltip");
+        var advTooltipToggle = O5Factory.Toggle(O5KitAdapters.Ctx, advTooltipRow, "show_advanced_tooltip", new O5ToggleOptions { DefaultValue = defSet.AdvancedTooltip, Value = MainCore.Conf.AdvancedTooltip, Text = "Show Advanced Tooltip" });
         tooltipToggle.OnChanged = toggle => {
             O5KitAdapters.Ctx.Tooltip.Hide();
             MainCore.Conf.Tooltip = toggle;
@@ -218,17 +190,10 @@ internal static class PageSettings {
         advTooltipToggle.SetBlocked(!MainCore.Conf.Tooltip.Value);
 
         var middleClickRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
-        O5Toggle middleClickToggle = O5Factory.Toggle(O5KitAdapters.Ctx,
-            middleClickRow,
-            defSet.MiddleClickToDefault,
-            MainCore.Conf.MiddleClickToDefault,
-            toggle => {
+        O5Toggle middleClickToggle = O5Factory.Toggle(O5KitAdapters.Ctx, middleClickRow, "middle_click_default", new O5ToggleOptions { DefaultValue = defSet.MiddleClickToDefault, Value = MainCore.Conf.MiddleClickToDefault, OnChanged = toggle => {
                 MainCore.Conf.MiddleClickToDefault = toggle;
                 MainCore.ConfMgr.RequestSave();
-            },
-            "Middle-click to set as default",
-            "middle_click_default"
-        );
+            }, Text = "Middle-click to set as default" });
         middleClickToggle.OnChanged += _ => O5KitAdapters.SyncConfig();
         middleClickToggle.Rect.AddToolTip(O5KitAdapters.Ctx, () => MainCore.Tr.Get(
             "DESC_MIDDLE_CLICK_TO_SET_AS_DEFAULT",
@@ -238,17 +203,10 @@ internal static class PageSettings {
         objects[middleClickToggleTr] = (overlayerText.gameObject, middleClickRow.gameObject);
 
         var threeDRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
-        O5Toggle threeDToggle = O5Factory.Toggle(O5KitAdapters.Ctx,
-            threeDRow,
-            defSet.Enable3DFeatures,
-            MainCore.Conf.Enable3DFeatures,
-            toggle => {
+        O5Toggle threeDToggle = O5Factory.Toggle(O5KitAdapters.Ctx, threeDRow, "enable_3d_features", new O5ToggleOptions { DefaultValue = defSet.Enable3DFeatures, Value = MainCore.Conf.Enable3DFeatures, OnChanged = toggle => {
                 MainCore.Conf.Enable3DFeatures = toggle;
                 MainCore.ConfMgr.RequestSave();
-            },
-            "Enable 3D Features",
-            "enable_3d_features"
-        );
+            }, Text = "Enable 3D Features" });
         threeDToggle.Rect.AddToolTip(O5KitAdapters.Ctx, () => MainCore.Tr.Get(
             "DESC_ENABLE_3D_FEATURES",
             "Shows 3D object creation and 3D components (Mesh, Colliders, Rigidbody, Light).\nNew empty objects are created without RectTransform, and top-level objects can live outside any canvas."
@@ -257,11 +215,7 @@ internal static class PageSettings {
         objects[threeDToggleTr] = (overlayerText.gameObject, threeDRow.gameObject);
 
         var rawInputRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
-        O5Toggle rawInputToggle = O5Factory.Toggle(O5KitAdapters.Ctx,
-            rawInputRow,
-            defSet.UseRawInput,
-            MainCore.Conf.UseRawInput,
-            toggle => {
+        O5Toggle rawInputToggle = O5Factory.Toggle(O5KitAdapters.Ctx, rawInputRow, "use_raw_input", new O5ToggleOptions { DefaultValue = defSet.UseRawInput, Value = MainCore.Conf.UseRawInput, OnChanged = toggle => {
                 MainCore.Conf.UseRawInput = toggle;
                 MainCore.ConfMgr.RequestSave();
                 if (toggle) {
@@ -269,10 +223,7 @@ internal static class PageSettings {
                 } else {
                     OvRawInput.Stop();
                 }
-            },
-            "Use OS Raw Input",
-            "use_raw_input"
-        );
+            }, Text = "Use OS Raw Input" });
         rawInputToggle.Rect.AddToolTip(O5KitAdapters.Ctx, () => MainCore.Tr.Get(
             "DESC_USE_RAW_INPUT",
             "Collects keyboard input at OS level in the background with lower latency and higher accuracy (Windows/Linux only).\nDisable to fall back to standard Unity input polling."
@@ -283,21 +234,10 @@ internal static class PageSettings {
         ITweenHandle scaleSeq = null;
 
         var uiScaleRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
-        var uiScale = O5Factory.Slider(O5KitAdapters.Ctx,
-            uiScaleRow,
-            defSet.UIScale,
-            0.8f,
-            1.6f,
-            MainCore.Conf.UIScale,
-            "0.00x",
-            ClampMode.All,
-            value => Math.Round(value, 2),
-            value => Math.Round(value, 2),
-            value => {
+        var uiScale = O5Factory.Slider(O5KitAdapters.Ctx, uiScaleRow, "ui_scale", new O5SliderOptions { DefaultValue = defSet.UIScale, Min = 0.8f, Max = 1.6f, Value = MainCore.Conf.UIScale, Format = "0.00x", Label = "UI Scale", ClampDrag = true, ClampInput = true, DragFilter = value => Math.Round(value, 2), InputFilter = value => Math.Round(value, 2), OnChanged = value => {
                 MainCore.Conf.UIScale = (float)value;
                 O5KitAdapters.SyncConfig();
-            },
-            value => {
+            }, OnComplete = value => {
                 MainCore.Conf.UIScale = (float)value;
                 O5KitAdapters.SyncConfig();
                 MainCore.ConfMgr.RequestSave();
@@ -323,63 +263,32 @@ internal static class PageSettings {
                     .Join(done =>
                         UICore.Panel.TSizeDelta(targetSize, 0.4f, O5Ease.OutExpo, done)
                     ).Play();
-            },
-            "UI Scale",
-            "ui_scale"
-        );
+            } });
         var targetSize = UICore.DefaultPanelSize;
         var uiScaleTr = uiScale.Label.gameObject.AddComponent<TextLocalization>().Init("UI_SCALE", "UI Scale");
         objects[uiScaleTr] = (overlayerText.gameObject, uiScaleRow.gameObject);
 
         var sliderSensitivityRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
-        var sliderSensitivity = O5Factory.Slider(O5KitAdapters.Ctx,
-            sliderSensitivityRow,
-            defSet.SliderSensitivity,
-            0.1f,
-            2.0f,
-            MainCore.Conf.SliderSensitivity,
-            "0.00x",
-            ClampMode.Slider,
-            value => Math.Round(value, 2),
-            value => Math.Round(value, 2),
-            value => {
+        var sliderSensitivity = O5Factory.Slider(O5KitAdapters.Ctx, sliderSensitivityRow, "slider_sensitivity", new O5SliderOptions { DefaultValue = defSet.SliderSensitivity, Min = 0.1f, Max = 2.0f, Value = MainCore.Conf.SliderSensitivity, Format = "0.00x", Label = "Slider Sensitivity", ClampDrag = true, ClampInput = false, DragFilter = value => Math.Round(value, 2), InputFilter = value => Math.Round(value, 2), OnChanged = value => {
                 MainCore.Conf.SliderSensitivity = (float)value;
                 O5KitAdapters.SyncConfig();
-            },
-            value => {
+            }, OnComplete = value => {
                 MainCore.Conf.SliderSensitivity = (float)value;
                 O5KitAdapters.SyncConfig();
                 MainCore.ConfMgr.RequestSave();
-            },
-            "Slider Sensitivity",
-            "slider_sensitivity"
-        );
+            } });
         var sliderSensitivityTr = sliderSensitivity.Label.gameObject.AddComponent<TextLocalization>().Init("SLIDER_SENSITIVITY", "Slider Sensitivity");
         objects[sliderSensitivityTr] = (overlayerText.gameObject, sliderSensitivityRow.gameObject);
 
         var animationSpeedRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
-        var animationSpeed = O5Factory.Slider(O5KitAdapters.Ctx,
-            animationSpeedRow,
-            defSet.AnimationSpeed,
-            0.0f,
-            3.0f,
-            MainCore.Conf.AnimationSpeed,
-            "0.00x",
-            ClampMode.Slider,
-            value => Math.Round(value, 2),
-            value => Math.Round(value, 2),
-            value => {
+        var animationSpeed = O5Factory.Slider(O5KitAdapters.Ctx, animationSpeedRow, "animation_speed", new O5SliderOptions { DefaultValue = defSet.AnimationSpeed, Min = 0.0f, Max = 3.0f, Value = MainCore.Conf.AnimationSpeed, Format = "0.00x", Label = "Animation Speed", ClampDrag = true, ClampInput = false, DragFilter = value => Math.Round(value, 2), InputFilter = value => Math.Round(value, 2), OnChanged = value => {
                 MainCore.Conf.AnimationSpeed = (float)value;
                 O5KitAdapters.SyncConfig();
-            },
-            value => {
+            }, OnComplete = value => {
                 MainCore.Conf.AnimationSpeed = (float)value;
                 O5KitAdapters.SyncConfig();
                 MainCore.ConfMgr.RequestSave();
-            },
-            "Animation Speed",
-            "animation_speed"
-        );
+            } });
         var animationSpeedTr = animationSpeed.Label.gameObject.AddComponent<TextLocalization>().Init("ANIMATION_SPEED", "Animation Speed");
         objects[animationSpeedTr] = (overlayerText.gameObject, animationSpeedRow.gameObject);
 
@@ -399,21 +308,14 @@ internal static class PageSettings {
         updatesText.gameObject.AddComponent<TextLocalization>().Init("UPDATES", "Updates");
 
         var autoRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
-        var autoToggle = O5Factory.Toggle(O5KitAdapters.Ctx,
-            autoRow,
-            defSet.AutoUpdate,
-            MainCore.Conf.AutoUpdate,
-            toggle => {
+        var autoToggle = O5Factory.Toggle(O5KitAdapters.Ctx, autoRow, "auto_update", new O5ToggleOptions { DefaultValue = defSet.AutoUpdate, Value = MainCore.Conf.AutoUpdate, OnChanged = toggle => {
                 if (toggle && !UpdateService.IsHttpAvailable) {
                     MainCore.Log.Wrn("[Update] Cannot enable AutoUpdate: HTTP networking is not available.");
                     return;
                 }
                 MainCore.Conf.AutoUpdate = toggle;
                 MainCore.ConfMgr.RequestSave();
-            },
-            "Auto Update",
-            "auto_update"
-        );
+            }, Text = "Auto Update" });
         autoToggle.Rect.AddToolTip(O5KitAdapters.Ctx, () => MainCore.Tr.Get(
             "DESC_AUTO_UPDATE",
             "Checks GitHub for a newer Overlayer at launch and installs it in the background.\nThe update takes effect the next time the game starts."
@@ -422,17 +324,10 @@ internal static class PageSettings {
         objects[autoToggleTr] = (updatesText.gameObject, autoRow.gameObject);
 
         var betaRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
-        var betaToggle = O5Factory.Toggle(O5KitAdapters.Ctx,
-            betaRow,
-            defSet.UpdateBeta,
-            MainCore.Conf.UpdateBeta,
-            toggle => {
+        var betaToggle = O5Factory.Toggle(O5KitAdapters.Ctx, betaRow, "update_beta", new O5ToggleOptions { DefaultValue = defSet.UpdateBeta, Value = MainCore.Conf.UpdateBeta, OnChanged = toggle => {
                 MainCore.Conf.UpdateBeta = toggle;
                 MainCore.ConfMgr.RequestSave();
-            },
-            "Include Beta Releases",
-            "update_beta"
-        );
+            }, Text = "Include Beta Releases" });
         betaToggle.Rect.AddToolTip(O5KitAdapters.Ctx, () => MainCore.Tr.Get(
             "DESC_UPDATE_BETA",
             "Also offers releases marked as pre-release on GitHub."
@@ -446,8 +341,8 @@ internal static class PageSettings {
         var statusText = O5Factory.ControlText(O5KitAdapters.Ctx, statusRow, 22f, true);
         statusText.overflowMode = TextOverflowModes.Ellipsis;
         statusText.rectTransform.offsetMax = new Vector2(-(2f * (buttonWidth + buttonSpacing)), 0f);
-        var installBtn = O5Factory.Button(O5KitAdapters.Ctx, statusRow, () => UpdateService.Install(), "Install", "update_install");
-        var checkBtn = O5Factory.Button(O5KitAdapters.Ctx, statusRow, () => UpdateService.Check(), "Check", "update_check");
+        var installBtn = O5Factory.Button(O5KitAdapters.Ctx, statusRow, "update_install", new O5ButtonOptions { Text = "Install", OnClick = () => UpdateService.Install() });
+        var checkBtn = O5Factory.Button(O5KitAdapters.Ctx, statusRow, "update_check", new O5ButtonOptions { Text = "Check", OnClick = () => UpdateService.Check() });
         PinRight(installBtn.Rect, 0f, buttonWidth);
         PinRight(checkBtn.Rect, buttonWidth + buttonSpacing, buttonWidth);
         installBtn.Label.gameObject.AddComponent<TextLocalization>().Init("UPDATE_INSTALL", "Install");
@@ -522,13 +417,7 @@ internal static class PageSettings {
         var fallbackList = new FallbackListView();
 
         var pickerRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
-        var dropdown = O5Factory.DropDown(O5KitAdapters.Ctx,
-            pickerRow,
-            null,
-            string.IsNullOrEmpty(fx.Value) ? BuiltinFontOption : fx.Value,
-            FontOptions(includeBuiltin: true, includeKey: fx.Value),
-            FontOptionLabel,
-            value => {
+        var dropdown = O5Factory.DropDown(O5KitAdapters.Ctx, pickerRow, key.ToLowerInvariant() + "_dropdown", new O5DropdownOptions<string> { Value = string.IsNullOrEmpty(fx.Value) ? BuiltinFontOption : fx.Value, Values = FontOptions(includeBuiltin: true, includeKey: fx.Value), Display = FontOptionLabel, OnChanged = value => {
                 fx.Value = value == BuiltinFontOption ? null : value;
                 if (fallbacks.Value != null) {
                     fallbacks.Value.RemoveAll(k => k == fx.Value);
@@ -537,9 +426,7 @@ internal static class PageSettings {
                 O5KitAdapters.RefreshFonts();
                 TextLocalization.RefreshAll();
                 RefreshFallbackRows(fallbackList, fallbacks, fx.Value);
-            },
-            key.ToLowerInvariant() + "_dropdown"
-        );
+            } });
         dropdown.Rect.AddToolTip(O5KitAdapters.Ctx, () => {
             if (key == "SYSTEM_FONT") {
                 return MainCore.Tr.Get("DESC_SYSTEM_FONT",
@@ -572,7 +459,7 @@ internal static class PageSettings {
         RefreshFallbackRows(fallbackList, fallbacks, fx.Value);
 
         var addRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform, 44f);
-        O5Factory.Button(O5KitAdapters.Ctx, addRow, () => {
+        O5Factory.Button(O5KitAdapters.Ctx, addRow, key.ToLowerInvariant() + "_fallback_add", new O5ButtonOptions { Text = MainCore.Tr.Get("ADD_FALLBACK", "Add Fallback"), OnClick = () => {
             var chain = fallbacks.Value ?? [];
             string first = UserResourceManager.Fnt.Keys
                 .Where(k => !O5cpFormat.IsPackageKey(k))
@@ -590,7 +477,7 @@ internal static class PageSettings {
             O5KitAdapters.RefreshFonts();
             TextLocalization.RefreshAll();
             RefreshFallbackRows(fallbackList, fallbacks, fx.Value);
-        }, MainCore.Tr.Get("ADD_FALLBACK", "Add Fallback"), key.ToLowerInvariant() + "_fallback_add", 44f);
+        }, Height = 44f });
 
         fontOptionRefreshers.Add(() => {
             if (dropdown != null && fallbackList.Root != null) {
@@ -622,13 +509,7 @@ internal static class PageSettings {
             rowLayout.childControlHeight = true;
             rowLayout.childForceExpandWidth = false;
             rowLayout.childForceExpandHeight = true;
-            var dropdown = O5Factory.DropDown(O5KitAdapters.Ctx,
-                row,
-                null,
-                FontOptionLabel(chain[index]),
-                FontOptions(includeBuiltin: true, includeKey: chain[index]),
-                FontOptionLabel,
-                value => {
+            var dropdown = O5Factory.DropDown(O5KitAdapters.Ctx, row, $"fallback_row_{index}", new O5DropdownOptions<string> { Value = FontOptionLabel(chain[index]), Values = FontOptions(includeBuiltin: true, includeKey: chain[index]), Display = FontOptionLabel, OnChanged = value => {
                     var next = fallbacks.Value ?? [];
                     string selected = value;
                     if (index < next.Count && selected != primaryKey &&
@@ -642,9 +523,7 @@ internal static class PageSettings {
                     } else {
                         RefreshFallbackRows(list, fallbacks, primaryKey);
                     }
-                },
-                $"fallback_row_{index}"
-            );
+                } });
             list.Controls.Add(dropdown);
             var dropLe = dropdown.Rect.gameObject.GetComponent<LayoutElement>();
             if (dropLe == null) {
@@ -682,7 +561,7 @@ internal static class PageSettings {
     }
 
     private static O5Button IconButton(Transform parent, Sprite sprite, float rotationDeg, string id, Action onClick) {
-        var button = O5Factory.Button(O5KitAdapters.Ctx, parent, onClick, sprite, id, 5f, 44f);
+        var button = O5Factory.Button(O5KitAdapters.Ctx, parent, id, new O5ButtonOptions { Icon = sprite, OnClick = onClick, IconPadding = 5f, Height = 44f });
         if (rotationDeg != 0f && button.Icon != null) {
             button.Icon.rectTransform.localEulerAngles = new Vector3(0f, 0f, rotationDeg);
         }

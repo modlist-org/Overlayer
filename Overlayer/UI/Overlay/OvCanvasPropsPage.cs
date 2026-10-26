@@ -62,16 +62,14 @@ public sealed class OvCanvasPropsPage : IDisposable {
         headerRect.offsetMin = new Vector2(0f, -60f);
         headerRect.offsetMax = Vector2.zero;
 
-        var backBtn = O5Factory.Button(O5KitAdapters.Ctx, headerGo.transform,
-            () => Close(), T("O5CP_BACK", "Back"), "props_back", 40f);
+        var backBtn = O5Factory.Button(O5KitAdapters.Ctx, headerGo.transform, "props_back", new O5ButtonOptions { Text = T("O5CP_BACK", "Back"), OnClick = () => Close(), Height = 40f });
         backBtn.Rect.anchorMin = new Vector2(0f, 0.5f);
         backBtn.Rect.anchorMax = new Vector2(0f, 0.5f);
         backBtn.Rect.pivot = new Vector2(0f, 0.5f);
         backBtn.Rect.anchoredPosition = new Vector2(12f, 0f);
         backBtn.Rect.sizeDelta = new Vector2(120f, 40f);
 
-        var saveBtn = O5Factory.Button(O5KitAdapters.Ctx, headerGo.transform,
-            () => Save(), T("SAVE", "Save"), "props_save", 40f);
+        var saveBtn = O5Factory.Button(O5KitAdapters.Ctx, headerGo.transform, "props_save", new O5ButtonOptions { Text = T("SAVE", "Save"), OnClick = () => Save(), Height = 40f });
         saveBtn.Rect.anchorMin = new Vector2(1f, 0.5f);
         saveBtn.Rect.anchorMax = new Vector2(1f, 0.5f);
         saveBtn.Rect.pivot = new Vector2(1f, 0.5f);
@@ -120,16 +118,14 @@ public sealed class OvCanvasPropsPage : IDisposable {
         previewImage.preserveAspect = true;
         previewImage.color = new Color(1f, 1f, 1f, 0.35f);
 
-        var browseBtn = O5Factory.Button(O5KitAdapters.Ctx, thumbRow,
-            () => BrowseThumbnail(), T("BROWSE", "Browse"), "props_thumb_browse", 40f);
+        var browseBtn = O5Factory.Button(O5KitAdapters.Ctx, thumbRow, "props_thumb_browse", new O5ButtonOptions { Text = T("BROWSE", "Browse"), OnClick = () => BrowseThumbnail(), Height = 40f });
         browseBtn.Rect.anchorMin = new Vector2(0f, 1f);
         browseBtn.Rect.anchorMax = new Vector2(0f, 1f);
         browseBtn.Rect.pivot = new Vector2(0f, 1f);
         browseBtn.Rect.anchoredPosition = new Vector2(236f, 0f);
         browseBtn.Rect.sizeDelta = new Vector2(140f, 40f);
 
-        var clearBtn = O5Factory.Button(O5KitAdapters.Ctx, thumbRow,
-            () => SetThumbnail(null), T("REMOVE", "Remove"), "props_thumb_clear", 40f);
+        var clearBtn = O5Factory.Button(O5KitAdapters.Ctx, thumbRow, "props_thumb_clear", new O5ButtonOptions { Text = T("REMOVE", "Remove"), OnClick = () => SetThumbnail(null), Height = 40f });
         clearBtn.Rect.anchorMin = new Vector2(0f, 1f);
         clearBtn.Rect.anchorMax = new Vector2(0f, 1f);
         clearBtn.Rect.pivot = new Vector2(0f, 1f);
@@ -163,8 +159,7 @@ public sealed class OvCanvasPropsPage : IDisposable {
         var scriptFitter = scriptList.gameObject.AddComponent<ContentSizeFitter>();
         scriptFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
         var addRow = O5Factory.Row(O5KitAdapters.Ctx, root, 44f);
-        O5Factory.Button(O5KitAdapters.Ctx, addRow, () => BrowseScript(),
-            T("O5CP_ADD_SCRIPT", "Add JS"), "props_script_add", 40f);
+        O5Factory.Button(O5KitAdapters.Ctx, addRow, "props_script_add", new O5ButtonOptions { Text = T("O5CP_ADD_SCRIPT", "Add JS"), OnClick = () => BrowseScript(), Height = 40f });
     }
 
     private static O5InputField LabeledInput(Transform root, string key, string fallback, bool multiline = false) {
@@ -172,9 +167,7 @@ public sealed class OvCanvasPropsPage : IDisposable {
         var label = O5Factory.ControlText(O5KitAdapters.Ctx, labelRow, 18f, true);
         label.text = MainCore.Tr.Get(key, fallback);
         var inputRow = O5Factory.Row(O5KitAdapters.Ctx, root, multiline ? 80f : 44f);
-        return O5Factory.Input(O5KitAdapters.Ctx, inputRow, null, string.Empty,
-            null, MainCore.Tr.Get(key, fallback), null, $"props_{key.ToLowerInvariant()}",
-            null, multiline);
+        return O5Factory.Input(O5KitAdapters.Ctx, inputRow, $"props_{key.ToLowerInvariant()}", new O5InputOptions { Value = string.Empty, Placeholder = MainCore.Tr.Get(key, fallback), Multiline = multiline });
     }
 
     public void Open(OvCanvas canvas) {
@@ -239,10 +232,10 @@ public sealed class OvCanvasPropsPage : IDisposable {
             label.alignment = TextAlignmentOptions.Left;
             var labelLe = label.gameObject.AddComponent<LayoutElement>();
             labelLe.flexibleWidth = 1f;
-            var del = O5Factory.Button(O5KitAdapters.Ctx, row, () => {
+            var del = O5Factory.Button(O5KitAdapters.Ctx, row, $"props_script_del_{local.GetHashCode()}", new O5ButtonOptions { Text = "X", OnClick = () => {
                 draft.ExtraScripts.Remove(local);
                 RefreshScripts();
-            }, "X", $"props_script_del_{local.GetHashCode()}", 36f);
+            }, Height = 36f });
             var delLe = del.Rect.gameObject.AddComponent<LayoutElement>();
             delLe.minWidth = 64f;
             delLe.preferredWidth = 64f;

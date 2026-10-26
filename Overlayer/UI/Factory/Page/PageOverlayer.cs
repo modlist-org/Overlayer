@@ -352,20 +352,14 @@ internal static class PageOverlayer {
         toggleRect.pivot = new Vector2(1f, 1f);
         toggleRect.anchoredPosition = new Vector2(-10f, -10f);
         toggleRect.sizeDelta = new Vector2(64f, 34f);
-        var enabledToggle = O5Factory.Toggle(O5KitAdapters.Ctx,
-            toggleGo.transform,
-            null,
-            canvas.Config.Enabled.Value,
-            toggle => {
+        var enabledToggle = O5Factory.Toggle(O5KitAdapters.Ctx, toggleGo.transform, $"tile_enabled_{canvas.GetHashCode()}", new O5ToggleOptions { Value = canvas.Config.Enabled.Value, OnChanged = toggle => {
                 canvas.Config.Enabled.Value = toggle;
                 if (!toggle) {
                     settingPage?.CloseTabsForCanvas(canvas);
                 }
                 OverlayCore.SaveAllCanvases();
                 ApplyTileEnabledVisual(bgImg, txt, toggle);
-            },
-            string.Empty,
-            $"tile_enabled_{canvas.GetHashCode()}");
+            }, Text = string.Empty });
         var hoverOutline = enabledToggle.Rect.transform.Find("Hover");
         if (hoverOutline != null) {
             UnityEngine.Object.Destroy(hoverOutline.gameObject);
@@ -623,19 +617,13 @@ internal static class PageOverlayer {
         toggleRect.pivot = new Vector2(1f, 1f);
         toggleRect.anchoredPosition = new Vector2(-10f, -10f);
         toggleRect.sizeDelta = new Vector2(64f, 34f);
-        var enabledToggle = O5Factory.Toggle(O5KitAdapters.Ctx,
-            toggleGo.transform,
-            null,
-            entry.Enabled,
-            toggle => {
+        var enabledToggle = O5Factory.Toggle(O5KitAdapters.Ctx, toggleGo.transform, $"tile_pkgenabled_{entry.Id}", new O5ToggleOptions { Value = entry.Enabled, OnChanged = toggle => {
                 var toggleWarnings = PackageStore.SetEnabled(entry, toggle);
                 ApplyTileEnabledVisual(bgImg, txt, entry.Enabled);
                 if (toggleWarnings.Count > 0) {
                     O5cpDialogs.ShowWarnings("Package warnings", toggleWarnings);
                 }
-            },
-            string.Empty,
-            $"tile_pkgenabled_{entry.Id}");
+            }, Text = string.Empty });
         var hoverOutline = enabledToggle.Rect.transform.Find("Hover");
         if (hoverOutline != null) {
             UnityEngine.Object.Destroy(hoverOutline.gameObject);
@@ -866,9 +854,9 @@ internal static class PageOverlayer {
 
     private static O5Button TileButton(Transform parent, Sprite icon, string fallbackText, string id, Action onClick) {
         if (icon != null) {
-            return O5Factory.Button(O5KitAdapters.Ctx, parent, onClick, icon, id, 5f, 34f);
+            return O5Factory.Button(O5KitAdapters.Ctx, parent, id, new O5ButtonOptions { Icon = icon, OnClick = onClick, IconPadding = 5f, Height = 34f });
         }
-        return O5Factory.Button(O5KitAdapters.Ctx, parent, onClick, fallbackText, id, 34f);
+        return O5Factory.Button(O5KitAdapters.Ctx, parent, id, new O5ButtonOptions { Text = fallbackText, OnClick = onClick, Height = 34f });
     }
 
     private static bool PointerOnTileControl(GameObject tile, List<GameObject> controls) {
