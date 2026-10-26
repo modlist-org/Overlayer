@@ -8,8 +8,8 @@
 		<RootNamespace>Overlayer</RootNamespace>
 		<LangVersion>latest</LangVersion>
 		<IsPackable>false</IsPackable>
-		<AssemblyVersion>5.9.2.0</AssemblyVersion>
-		<FileVersion>5.9.2.0</FileVersion>
+		<AssemblyVersion>5.9.3.0</AssemblyVersion>
+		<FileVersion>5.9.3.0</FileVersion>
 		<NeutralLanguage>en-US</NeutralLanguage>
 		<AssemblyName>Overlayer</AssemblyName>
 		<AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
