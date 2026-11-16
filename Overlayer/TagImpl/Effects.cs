@@ -59,7 +59,7 @@ public static class Effects {
         return resolved;
     }
 
-    [Tag(TagType = TagType.ProcessFormat, Desc = "Smoothly follows a tag value with easing\nEx) {EasedValue:Combo} / {EasedValue(Combo,0,500,OutExpo)}\nargs are comma-separated: tag, digits, milliseconds, ease\nease: preset name, or curve(x,y;...) / lines(x,y;...) / mono(x,y;...) with x in 0..1\nEx) {EasedValue(Combo,0,500,curve(0,0;0.3,0.8;0.6,1.15;1,1))}")]
+    [Tag(TagType = TagType.ProcessFormat, Desc = "Smoothly follows a tag value with easing\nEx) {EasedValue:Combo} / {EasedValue(Combo,0,500,OutExpo)}\nargs are comma-separated: tag, digits, milliseconds, ease\nease: preset name, or curve(x,y;...) / lines(x,y;...) / mono(x,y;...) with x in 0..1\nanim(x,y,in,out;...): AnimationCurve keys with slopes\nEx) {EasedValue(Combo,0,500,curve(0,0;0.3,0.8;0.6,1.15;1,1))}")]
     public static double EasedValue(string tagName, int digits = -1, double speed = 500,
         string ease = "Linear") {
         if (!TryReadNumber(tagName, out double value)) {

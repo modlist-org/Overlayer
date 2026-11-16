@@ -26,7 +26,7 @@ internal static class CurveEditor {
 
     private static readonly CurveModel model = new();
     private static CurveGraph graph;
-    private static O5Toggle smoothToggle, monoToggle, heightsToggle;
+    private static O5Toggle smoothToggle, monoToggle, heightsToggle, animToggle;
     private static O5Slider xSlider, ySlider;
     private static O5InputField curveField, nameField;
     private static O5Dropdown<string> presetDropdown, compareDropdown;
@@ -259,23 +259,47 @@ internal static class CurveEditor {
             graph?.MarkDirty();
             SyncPoint();
         };
+
+        UiStyle.Section(parent, "Animation curve");
+        animToggle = O5Factory.Toggle(Ctx, O5Factory.Row(Ctx, parent), "easing_anim", new O5ToggleOptions {
+            Text = "Tangent handles",
+            Value = model.IsAnim,
+            DefaultValue = false,
+        });
+        animToggle.OnChanged = _ => ApplyKind();
+        UiStyle.Tooltip(animToggle, "Like Unity's AnimationCurve: each point gets handles that set its slope. "
+            + "Drag a handle to bend the curve; hold Alt to move one side only.");
+        var tangentRow = UiStyle.HRow(parent, 4f, 36f);
+        tangentButtons.Clear();
+        tangentButtons.Add(Button(tangentRow, "tan_auto", "Auto slopes", () => model.AutoTangents(), "Every point back to a smooth slope"));
+        tangentButtons.Add(Button(tangentRow, "tan_flat", "Flat", () => model.Flatten(graph.Selected), "Selected point: level slope"));
+        tangentButtons.Add(Button(tangentRow, "tan_join", "Join handles", () => model.Join(graph.Selected), "Selected point: one slope again"));
     }
+
+    private static readonly List<O5Button> tangentButtons = [];
 
 
     // ---- state sync ----
 
     private static void ApplyKind() {
+        bool anim = animToggle != null && animToggle.Value;
         bool smooth = smoothToggle == null || smoothToggle.Value;
         bool mono = monoToggle != null && monoToggle.Value;
-        model.SetKind(!smooth ? CustomEaseKind.Lines : mono ? CustomEaseKind.Mono : CustomEaseKind.Curve);
+        model.SetKind(anim ? CustomEaseKind.Anim : !smooth ? CustomEaseKind.Lines : mono ? CustomEaseKind.Mono : CustomEaseKind.Curve);
     }
 
     private static void OnModelChanged() {
-        smoothToggle?.Set(model.Kind != CustomEaseKind.Lines, false);
-        if (model.Kind == CustomEaseKind.Mono) {
-            monoToggle?.Set(true, false);
-        } else if (model.Kind == CustomEaseKind.Curve) {
-            monoToggle?.Set(false, false);
+        animToggle?.Set(model.IsAnim, false);
+        // Tangent handles decide the shape themselves; the other shape options wait until they're off.
+        smoothToggle?.SetBlocked(model.IsAnim, true);
+        monoToggle?.SetBlocked(model.IsAnim, true);
+        if (!model.IsAnim) {
+            smoothToggle?.Set(model.Kind != CustomEaseKind.Lines, false);
+            if (model.Kind == CustomEaseKind.Mono) {
+                monoToggle?.Set(true, false);
+            } else if (model.Kind == CustomEaseKind.Curve) {
+                monoToggle?.Set(false, false);
+            }
         }
         if (curveField != null && !curveField.InputField.isFocused) {
             curveField.Set(model.Text, false);
@@ -300,6 +324,10 @@ internal static class CurveEditor {
         bool endpoint = has && model.IsEndpoint(i);
         xSlider.SetBlocked(!has || endpoint, true);
         ySlider.SetBlocked(!has || (endpoint && !endpointHeights), true);
+        for (int b = 0; b < tangentButtons.Count; b++) {
+            // "Auto slopes" works on every point; the rest need a selected point.
+            tangentButtons[b].SetBlocked(!model.IsAnim || (b > 0 && !has), true);
+        }
         if (!has) {
             return;
         }

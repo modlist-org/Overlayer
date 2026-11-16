@@ -8,10 +8,12 @@ public enum CustomEaseKind {
     Curve,
     Lines,
     Mono,
+    Anim,
 }
 
 // Inline ease curve written in a tag argument, e.g. curve(0,0;0.3,0.8;1,1).
-// curve: Catmull-Rom through the points, lines: straight segments, mono: monotone cubic (Fritsch-Carlson).
+// curve: Catmull-Rom through the points, lines: straight segments, mono: monotone cubic (Fritsch-Carlson),
+// anim: Unity AnimationCurve style, each key x,y,inTangent,outTangent (slopes; x,y,t sets both, x,y is automatic).
 public sealed class CustomEase {
     private const int MaxCached = 128;
     private static readonly CultureInfo Invariant = CultureInfo.InvariantCulture;
@@ -21,20 +23,32 @@ public sealed class CustomEase {
     public readonly CustomEaseKind Kind;
     private readonly float[] xs;
     private readonly float[] ys;
-    private readonly float[] tangents;
+    // Slopes arriving at / leaving each point; equal except for anim keys with broken tangents.
+    private readonly float[] inTangents;
+    private readonly float[] outTangents;
 
     public int Count => xs.Length;
     public (float x, float y) this[int index] => (xs[index], ys[index]);
 
-    private CustomEase(CustomEaseKind kind, float[] xs, float[] ys) {
+    /// <summary>Slopes into and out of a point (0 for lines).</summary>
+    public (float inTangent, float outTangent) TangentAt(int index)
+        => inTangents == null ? (0f, 0f) : (inTangents[index], outTangents[index]);
+
+    private CustomEase(CustomEaseKind kind, float[] xs, float[] ys, float[] inTangents = null, float[] outTangents = null) {
         Kind = kind;
         this.xs = xs;
         this.ys = ys;
-        tangents = kind switch {
+        if (kind == CustomEaseKind.Anim) {
+            this.inTangents = inTangents;
+            this.outTangents = outTangents;
+            return;
+        }
+        this.inTangents = kind switch {
             CustomEaseKind.Curve => CatmullRomTangents(xs, ys),
             CustomEaseKind.Mono => MonotoneTangents(xs, ys),
             _ => null
         };
+        this.outTangents = this.inTangents;
     }
 
     public static bool TryParse(string text, out CustomEase ease) {
@@ -78,6 +92,8 @@ public sealed class CustomEase {
             kind = CustomEaseKind.Lines;
         } else if (name.Equals("mono", StringComparison.OrdinalIgnoreCase)) {
             kind = CustomEaseKind.Mono;
+        } else if (name.Equals("anim", StringComparison.OrdinalIgnoreCase)) {
+            kind = CustomEaseKind.Anim;
         } else {
             return null;
         }
@@ -88,21 +104,51 @@ public sealed class CustomEase {
             return null;
         }
 
-        var xs = new float[entries.Length];
-        var ys = new float[entries.Length];
-        for (int i = 0; i < entries.Length; i++) {
-            string[] pair = entries[i].Split(',');
-            if (pair.Length != 2
-                || !TryNumber(pair[0], out float x)
-                || !TryNumber(pair[1], out float y)
+        int n = entries.Length;
+        var xs = new float[n];
+        var ys = new float[n];
+        var ins = kind == CustomEaseKind.Anim ? new float[n] : null;
+        var outs = kind == CustomEaseKind.Anim ? new float[n] : null;
+        var auto = kind == CustomEaseKind.Anim ? new bool[n] : null;
+        for (int i = 0; i < n; i++) {
+            string[] parts = entries[i].Split(',');
+            int max = kind == CustomEaseKind.Anim ? 4 : 2;
+            if (parts.Length < 2 || parts.Length > max
+                || !TryNumber(parts[0], out float x)
+                || !TryNumber(parts[1], out float y)
                 || x < 0f || x > 1f
                 || (i > 0 && x <= xs[i - 1])) {
                 return null;
             }
             xs[i] = x;
             ys[i] = y;
+            if (kind != CustomEaseKind.Anim) {
+                continue;
+            }
+            if (parts.Length == 2) {
+                auto[i] = true;
+                continue;
+            }
+            if (!TryNumber(parts[2], out float inT)) {
+                return null;
+            }
+            float outT = inT;
+            if (parts.Length == 4 && !TryNumber(parts[3], out outT)) {
+                return null;
+            }
+            ins[i] = inT;
+            outs[i] = outT;
         }
-        return new CustomEase(kind, xs, ys);
+        if (kind == CustomEaseKind.Anim) {
+            // Keys without slopes get the smooth (Catmull-Rom) one.
+            float[] smooth = CatmullRomTangents(xs, ys);
+            for (int i = 0; i < n; i++) {
+                if (auto[i]) {
+                    ins[i] = outs[i] = smooth[i];
+                }
+            }
+        }
+        return new CustomEase(kind, xs, ys, ins, outs);
     }
 
     private static bool TryNumber(string text, out float value) {
@@ -139,17 +185,18 @@ public sealed class CustomEase {
         float u = (t - xs[lo]) / h;
         float y0 = ys[lo];
         float y1 = ys[lo + 1];
-        if (tangents == null) {
+        if (inTangents == null) {
             return y0 + ((y1 - y0) * u);
         }
 
+        // Cubic Hermite: leaves lo with its out-slope, arrives at lo+1 with its in-slope.
         float u2 = u * u;
         float u3 = u2 * u;
         float h00 = (2f * u3) - (3f * u2) + 1f;
         float h10 = u3 - (2f * u2) + u;
         float h01 = (-2f * u3) + (3f * u2);
         float h11 = u3 - u2;
-        return (h00 * y0) + (h10 * h * tangents[lo]) + (h01 * y1) + (h11 * h * tangents[lo + 1]);
+        return (h00 * y0) + (h10 * h * outTangents[lo]) + (h01 * y1) + (h11 * h * inTangents[lo + 1]);
     }
 
     private static float[] Secants(float[] xs, float[] ys) {
@@ -207,16 +254,26 @@ public sealed class CustomEase {
 
     public override string ToString() {
         var points = new (float x, float y)[xs.Length];
+        var slopes = Kind == CustomEaseKind.Anim ? new (float inTangent, float outTangent)[xs.Length] : null;
         for (int i = 0; i < points.Length; i++) {
             points[i] = (xs[i], ys[i]);
+            if (slopes != null) {
+                slopes[i] = TangentAt(i);
+            }
         }
-        return Format(Kind, points);
+        return Format(Kind, points, slopes);
     }
 
-    public static string Format(CustomEaseKind kind, IReadOnlyList<(float x, float y)> points) {
+    /// <summary>
+    /// Canonical text for a curve. <paramref name="tangents"/> is used for <see cref="CustomEaseKind.Anim"/>
+    /// only (one pair per point); a key whose slopes match is written with a single slope.
+    /// </summary>
+    public static string Format(CustomEaseKind kind, IReadOnlyList<(float x, float y)> points,
+        IReadOnlyList<(float inTangent, float outTangent)> tangents = null) {
         var sb = new StringBuilder(kind switch {
             CustomEaseKind.Lines => "lines",
             CustomEaseKind.Mono => "mono",
+            CustomEaseKind.Anim => "anim",
             _ => "curve"
         });
         sb.Append('(');
@@ -225,6 +282,15 @@ public sealed class CustomEase {
                 sb.Append(';');
             }
             sb.Append(FormatNumber(points[i].x)).Append(',').Append(FormatNumber(points[i].y));
+            if (kind != CustomEaseKind.Anim || tangents == null || i >= tangents.Count) {
+                continue;
+            }
+            string inT = FormatNumber(tangents[i].inTangent);
+            string outT = FormatNumber(tangents[i].outTangent);
+            sb.Append(',').Append(inT);
+            if (outT != inT) {
+                sb.Append(',').Append(outT);
+            }
         }
         return sb.Append(')').ToString();
     }

@@ -148,6 +148,66 @@ public sealed class CustomEaseTests {
         Assert.Same(first, second);
     }
 
+    [Theory]
+    [InlineData("anim(0,0;1,1)")]
+    [InlineData("anim(0,0,2;1,1,0)")]
+    [InlineData("anim(0,0,0,3;0.5,1,-1;1,1,0,0)")]
+    public void Anim_ParsesTwoThreeOrFourNumbersPerKey(string text) {
+        Assert.Equal(CustomEaseKind.Anim, Parse(text).Kind);
+    }
+
+    [Theory]
+    [InlineData("anim(0,0,1,2,3;1,1)")]
+    [InlineData("anim(0,0,a;1,1)")]
+    [InlineData("curve(0,0,1;1,1)")]
+    public void Anim_RejectsBadKeys(string text) {
+        Assert.False(CustomEase.TryParse(text, out _));
+    }
+
+    [Fact]
+    public void Anim_UsesGivenSlopes() {
+        // Flat at both ends: a smoothstep, 0.5 in the middle.
+        var flat = Parse("anim(0,0,0;1,1,0)");
+        Assert.Equal(0.5f, flat.Evaluate(0.5f), Eps);
+        Assert.Equal(0.15625f, flat.Evaluate(0.25f), Eps);
+        // Slope 1 at both ends is the straight line.
+        var line = Parse("anim(0,0,1;1,1,1)");
+        Assert.Equal(0.3f, line.Evaluate(0.3f), Eps);
+    }
+
+    [Fact]
+    public void Anim_BrokenTangents_UseOutOnTheLeftAndInOnTheRight() {
+        // Middle key arrives flat (in 0) and leaves steep (out 4).
+        var ease = Parse("anim(0,0,0;0.5,0.5,0,4;1,1,0)");
+        Assert.Equal((0f, 4f), ease.TangentAt(1));
+        Assert.Equal(0.5f, ease.Evaluate(0.5f), Eps);
+        // Just before the key the curve is nearly flat, just after it climbs fast.
+        float before = ease.Evaluate(0.5f) - ease.Evaluate(0.49f);
+        float after = ease.Evaluate(0.51f) - ease.Evaluate(0.5f);
+        Assert.True(after > before * 5f, $"before {before}, after {after}");
+    }
+
+    [Fact]
+    public void Anim_KeysWithoutSlopes_MatchCurve() {
+        var anim = Parse("anim(0,0;0.3,0.8;0.6,1.15;1,1)");
+        var curve = Parse("curve(0,0;0.3,0.8;0.6,1.15;1,1)");
+        for (int i = 0; i <= 20; i++) {
+            float t = i / 20f;
+            Assert.Equal(curve.Evaluate(t), anim.Evaluate(t), Eps);
+        }
+    }
+
+    [Fact]
+    public void Anim_FormatRoundTrip() {
+        var points = new List<(float x, float y)> { (0f, 0f), (0.5f, 0.75f), (1f, 1f) };
+        var slopes = new List<(float inTangent, float outTangent)> { (0f, 2f), (1.5f, 1.5f), (0.25f, 0.25f) };
+        string text = CustomEase.Format(CustomEaseKind.Anim, points, slopes);
+        Assert.Equal("anim(0,0,0,2;0.5,0.75,1.5;1,1,0.25)", text);
+        var ease = Parse(text);
+        Assert.Equal(text, ease.ToString());
+        Assert.Equal((0f, 2f), ease.TangentAt(0));
+    }
+
     // Both tag syntaxes must hand the whole curve(...) text to the ease parameter.
     private static class ProbeTags {
         public static string Probe(string tagName, int digits = -1, double speed = 500, string ease = "Linear")

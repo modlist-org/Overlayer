@@ -32,6 +32,9 @@ internal sealed class CurveGraph {
     private static readonly Color PointColor = new(1f, 1f, 1f, 0.95f);
     private static readonly Color EndpointColor = new(1f, 1f, 1f, 0.45f);
     private static readonly Color SelectedColor = new(1f, 0.35f, 0.75f, 1f);
+    private static readonly Color HandleColor = new(0.55f, 0.9f, 1f, 1f);
+    private const float HandleLength = 56f;
+    private const float HandleHit = 11f;
 
     public readonly RectTransform Rect;
     public readonly CurveModel Model;
@@ -43,13 +46,18 @@ internal sealed class CurveGraph {
     public RectTransform PreviewBox;
     public RectTransform CompareBox;
 
-    private readonly Lines grid, guides, compare, curve;
+    private readonly Lines grid, guides, compare, curve, handleLines;
+    private readonly RectTransform inHandle, outHandle;
+    private readonly TextMeshProUGUI hint;
+    private bool hintAnim;
     private readonly RectTransform progressDot;
     private readonly List<Image> pointImages = [];
 
     private int selected = -1;
     private int hoveredPoint = -1;
     private bool dragging;
+    // Dragging a tangent handle instead of the point: 0 none, -1 in, 1 out.
+    private int handleDrag;
     private bool pointerInside;
     private bool focused;
     private bool dirty = true;
@@ -70,11 +78,15 @@ internal sealed class CurveGraph {
         guides = new Lines(Rect, "Guides", GuideColor, 1.5f, false);
         compare = new Lines(Rect, "Compare", CompareColor, 2f, true);
         curve = new Lines(Rect, "Curve", CurveColor, 3f, true);
+        handleLines = new Lines(Rect, "HandleLines", HandleColor, 1.5f, false);
 
         progressDot = Dot("Progress", CurveColor);
         progressDot.sizeDelta = new Vector2(10f, 10f);
+        inHandle = Dot("InHandle", HandleColor);
+        outHandle = Dot("OutHandle", HandleColor);
+        inHandle.sizeDelta = outHandle.sizeDelta = new Vector2(11f, 11f);
 
-        var hint = O5Kit.Factory.O5Factory.ControlText(O5KitAdapters.Ctx, Rect, 14f, true);
+        hint = O5Kit.Factory.O5Factory.ControlText(O5KitAdapters.Ctx, Rect, 14f, true);
         hint.rectTransform.anchorMin = new Vector2(0f, 1f);
         hint.rectTransform.anchorMax = new Vector2(1f, 1f);
         hint.rectTransform.pivot = new Vector2(0f, 1f);
@@ -83,7 +95,7 @@ internal sealed class CurveGraph {
         hint.alignment = TextAlignmentOptions.TopLeft;
         hint.color = new Color(1f, 1f, 1f, 0.45f);
         hint.raycastTarget = false;
-        hint.text = MainCore.Tr.Get("EASING_GRAPH_HINT", "Click: add point   Drag: move   Right-click / Del: remove   Shift: snap   Ctrl+Z/Y");
+        UpdateHint();
 
         var trigger = Rect.gameObject.AddComponent<EventTrigger>();
         UnityUtils.AddEvents(trigger,
@@ -169,6 +181,51 @@ internal sealed class CurveGraph {
         return best;
     }
 
+    private void UpdateHint() {
+        hintAnim = Model.IsAnim;
+        hint.text = MainCore.Tr.Get("EASING_GRAPH_HINT", "Click: add point   Drag: move   Right-click / Del: remove   Shift: snap   Ctrl+Z/Y")
+            + (hintAnim ? MainCore.Tr.Get("EASING_GRAPH_HINT_ANIM", "   Handles: slope (Alt: split)") : string.Empty);
+    }
+
+    // ---- tangent handles (anim) ----
+
+    // Graph-local units per 1.0 of x and of y.
+    private float UnitX => Plot.width;
+    private float UnitY => Plot.height / (CurveModel.MaxY - CurveModel.MinY);
+
+    private bool ShowHandles => Model.IsAnim && selected >= 0 && selected < Model.Points.Count;
+
+    private bool HasHandle(int side) => side < 0 ? selected > 0 : selected < Model.Points.Count - 1;
+
+    // Handle position: a fixed screen length along the slope, behind (in) or ahead (out) of the key.
+    private Vector2 HandlePosition(int side) {
+        var t = Model.Tangents[selected];
+        float slope = side < 0 ? t.x : t.y;
+        var dir = new Vector2(UnitX, slope * UnitY).normalized;
+        return ToLocal(Model.Points[selected]) + dir * (side * HandleLength);
+    }
+
+    private int HandleAt(Vector2 local) {
+        if (!ShowHandles) {
+            return 0;
+        }
+        foreach (int side in new[] { 1, -1 }) {
+            if (HasHandle(side) && (HandlePosition(side) - local).sqrMagnitude <= HandleHit * HandleHit) {
+                return side;
+            }
+        }
+        return 0;
+    }
+
+    private void DragHandle(Vector2 local) {
+        // Vector from the key toward "ahead"; the in-handle sits behind, so mirror it.
+        Vector2 v = (local - ToLocal(Model.Points[selected])) * handleDrag;
+        v.x = Mathf.Max(v.x, 0.5f);
+        float slope = (v.y / UnitY) / (v.x / UnitX);
+        bool alt = Input.GetKey(KeyCode.LeftAlt) || Input.GetKey(KeyCode.RightAlt);
+        Model.SetSlope(selected, handleDrag > 0, slope, alt);
+    }
+
     private static Vector2 Snap(Vector2 v) {
         bool shift = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
         return shift ? new Vector2(Mathf.Round(v.x / 0.05f) * 0.05f, Mathf.Round(v.y / 0.05f) * 0.05f) : v;
@@ -194,6 +251,11 @@ internal sealed class CurveGraph {
         if (e.button != PointerEventData.InputButton.Left) {
             return;
         }
+        handleDrag = HandleAt(local);
+        if (handleDrag != 0) {
+            dragging = true;
+            return;
+        }
         if (hit < 0) {
             hit = Model.Insert(Snap(ToValue(local)));
             if (hit < 0) {
@@ -212,7 +274,11 @@ internal sealed class CurveGraph {
         if (!LocalFromScreen(e.position, e.pressEventCamera, out var local)) {
             return;
         }
-        Model.Move(selected, Snap(ToValue(local)), EndpointHeights?.Invoke() == true);
+        if (handleDrag != 0) {
+            DragHandle(local);
+        } else {
+            Model.Move(selected, Snap(ToValue(local)), EndpointHeights?.Invoke() == true);
+        }
         SelectionChanged?.Invoke(selected);
     }
 
@@ -221,6 +287,7 @@ internal sealed class CurveGraph {
             return;
         }
         dragging = false;
+        handleDrag = 0;
         Model.Snapshot();
     }
 
@@ -363,6 +430,24 @@ internal sealed class CurveGraph {
             img.color = i == selected ? SelectedColor : endpoint && EndpointHeights?.Invoke() != true ? EndpointColor : PointColor;
             img.rectTransform.SetAsLastSibling();
         }
+
+        if (hintAnim != Model.IsAnim) {
+            UpdateHint();
+        }
+        var handleSegments = new List<Vector2>();
+        foreach (var (side, dot) in new[] { (-1, inHandle), (1, outHandle) }) {
+            bool show = ShowHandles && HasHandle(side);
+            dot.gameObject.SetActive(show);
+            if (!show) {
+                continue;
+            }
+            Vector2 pos = HandlePosition(side);
+            dot.anchoredPosition = pos;
+            dot.SetAsLastSibling();
+            handleSegments.Add(ToLocal(Model.Points[selected]));
+            handleSegments.Add(pos);
+        }
+        handleLines.Set(handleSegments);
         progressDot.SetAsLastSibling();
     }
 
