@@ -1,5 +1,6 @@
 using O5Kit.Core;
 using Overlayer.Tag.Core;
+using Overlayer.Utility;
 using UnityEngine;
 
 namespace Overlayer.TagImpl;
@@ -24,16 +25,50 @@ public static class Effects {
     private static readonly Dictionary<string, (bool ok, Color color, bool hasAlpha)> parsedColors = [];
     private static readonly Dictionary<(string, string), ColorRangeMemo> colorRangeMemos = [];
 
-    [Tag(TagType = TagType.ProcessFormat, Desc = "Smoothly follows a tag value with easing\nEx) {EasedValue:Combo} / {EasedValue:Combo,0,500,OutExpo}\nargs are comma-separated: tag, digits, milliseconds, ease")]
+    // A preset or an inline curve; ease args are strings so tags can carry curve(...) text.
+    private readonly struct Ease(O5Ease preset, CustomEase custom) {
+        public readonly O5Ease Preset = preset;
+        public readonly CustomEase Custom = custom;
+
+        public float Apply(float progress) => Custom != null ? Custom.Evaluate(progress) : EaseValue(progress, Preset);
+    }
+
+    private static readonly Dictionary<string, Ease> resolvedEases = [];
+
+    private static Ease ResolveEase(string ease) {
+        if (string.IsNullOrWhiteSpace(ease)) {
+            return new Ease(O5Ease.Linear, null);
+        }
+        lock (resolvedEases) {
+            if (resolvedEases.TryGetValue(ease, out Ease cached)) {
+                return cached;
+            }
+        }
+
+        Ease resolved = Enum.TryParse(ease.Trim(), true, out O5Ease preset)
+            ? new Ease(preset, null)
+            : CustomEase.TryParse(ease, out CustomEase custom)
+                ? new Ease(O5Ease.Linear, custom)
+                : new Ease(O5Ease.Linear, null);
+        lock (resolvedEases) {
+            if (resolvedEases.Count >= 256) {
+                resolvedEases.Clear();
+            }
+            resolvedEases[ease] = resolved;
+        }
+        return resolved;
+    }
+
+    [Tag(TagType = TagType.ProcessFormat, Desc = "Smoothly follows a tag value with easing\nEx) {EasedValue:Combo} / {EasedValue(Combo,0,500,OutExpo)}\nargs are comma-separated: tag, digits, milliseconds, ease\nease: preset name, or curve(x,y;...) / lines(x,y;...) / mono(x,y;...) with x in 0..1\nEx) {EasedValue(Combo,0,500,curve(0,0;0.3,0.8;0.6,1.15;1,1))}")]
     public static double EasedValue(string tagName, int digits = -1, double speed = 500,
-        O5Ease ease = O5Ease.Linear) {
+        string ease = "Linear") {
         if (!TryReadNumber(tagName, out double value)) {
             return 0;
         }
 
         AnimationState state = GetState(easedValues, tagName, value);
         double now = UnityEngine.Time.realtimeSinceStartup * 1000d;
-        double current = Interpolate(state, now, speed, ease);
+        double current = Interpolate(state, now, speed, ResolveEase(ease));
         if (value != state.Target) {
             state.Previous = current;
             state.Target = value;
@@ -46,8 +81,8 @@ public static class Effects {
 
     [Tag]
     public static string ColorRange(string tagName, double minimum, double maximum, string minimumHex,
-        string maximumHex, O5Ease ease = O5Ease.Linear, int maxLength = -1) {
-        if (!TryColorRangeProgress(tagName, minimum, maximum, ease, out float progress)
+        string maximumHex, string ease = "Linear", int maxLength = -1) {
+        if (!TryColorRangeProgress(tagName, minimum, maximum, ResolveEase(ease), out float progress)
             || !TryColor(minimumHex, out Color from, out bool fromAlpha)
             || !TryColor(maximumHex, out Color to, out bool toAlpha)) {
             return string.Empty;
@@ -87,7 +122,13 @@ public static class Effects {
         return result;
     }
 
-    internal static bool TryColorRangeProgress(string tagName, double minimum, double maximum, O5Ease ease, out float progress) {
+    internal static bool TryColorRangeProgress(string tagName, double minimum, double maximum, O5Ease ease, out float progress)
+        => TryColorRangeProgress(tagName, minimum, maximum, new Ease(ease, null), out progress);
+
+    internal static bool TryColorRangeProgress(string tagName, double minimum, double maximum, string ease, out float progress)
+        => TryColorRangeProgress(tagName, minimum, maximum, ResolveEase(ease), out progress);
+
+    private static bool TryColorRangeProgress(string tagName, double minimum, double maximum, Ease ease, out float progress) {
         progress = 0f;
         if (!TryReadNumber(tagName, out double value)) {
             return false;
@@ -97,13 +138,21 @@ public static class Effects {
             return true;
         }
 
-        progress = EaseValue(Mathf.Clamp01((float)((value - minimum) / (maximum - minimum))), ease);
+        progress = ease.Apply(Mathf.Clamp01((float)((value - minimum) / (maximum - minimum))));
         return true;
     }
 
     [Tag]
     public static double MovingMan(string tagName, double startSize, double endSize, double defaultSize,
-        double speed, bool invert = false, O5Ease ease = O5Ease.OutExpo) {
+        double speed, bool invert = false, string ease = "OutExpo")
+        => MovingMan(tagName, startSize, endSize, defaultSize, speed, invert, ResolveEase(ease));
+
+    internal static double MovingMan(string tagName, double startSize, double endSize, double defaultSize,
+        double speed, bool invert, O5Ease ease)
+        => MovingMan(tagName, startSize, endSize, defaultSize, speed, invert, new Ease(ease, null));
+
+    private static double MovingMan(string tagName, double startSize, double endSize, double defaultSize,
+        double speed, bool invert, Ease ease) {
         if (!TryReadNumber(tagName, out double value)) {
             return defaultSize;
         }
@@ -120,7 +169,7 @@ public static class Effects {
         }
 
         float progress = Mathf.Clamp01((float)((now - state.StartedAt) / speed));
-        float eased = EaseValue(invert ? 1f - progress : progress, ease);
+        float eased = ease.Apply(invert ? 1f - progress : progress);
         return startSize + ((endSize - startSize) * eased);
     }
 
@@ -137,13 +186,13 @@ public static class Effects {
         return state;
     }
 
-    private static double Interpolate(AnimationState state, double now, double speed, O5Ease ease) {
+    private static double Interpolate(AnimationState state, double now, double speed, Ease ease) {
         if (speed <= 0) {
             return state.Target;
         }
 
         float progress = Mathf.Clamp01((float)((now - state.StartedAt) / speed));
-        return state.Previous + ((state.Target - state.Previous) * EaseValue(progress, ease));
+        return state.Previous + ((state.Target - state.Previous) * ease.Apply(progress));
     }
 
     private static float EaseValue(float progress, O5Ease ease) => ease switch {
