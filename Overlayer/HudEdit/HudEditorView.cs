@@ -188,8 +188,10 @@ internal static partial class HudEditor {
 
         BuildToolbar();
         BuildPanel(ctx);
+        BuildLayersPanel();
         ApplyPanelLayout();
         UpdateGridButton();
+        UpdateLayersButton();
     }
 
     // ---- toolbar: a compact floating bar, top-center of the free area ----
@@ -210,6 +212,8 @@ internal static partial class HudEditor {
         var fitter = toolbar.gameObject.AddComponent<ContentSizeFitter>();
         fitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
 
+        layersButton = Button(Cell(toolbar, 70f), "layers", "Layers", ToggleLayers, "Show or hide the layers list");
+        UiStyle.Separator(toolbar, true);
         Icon(toolbar, "add_text", UISprite.Text128, () => Create(NewKind.Text, CurrentPlacement, null), "Add text  (or right-click the screen)");
         Icon(toolbar, "add_image", UISprite.Image128, () => Create(NewKind.Image, CurrentPlacement, null), "Add image");
         O5Button presetsButton = null;
@@ -626,6 +630,7 @@ internal static partial class HudEditor {
             ApplyPanelLayout();
         }
         RenderGrid();
+        TickLayers();
         if (root == null) {
             return;
         }
@@ -875,10 +880,17 @@ internal static partial class HudEditor {
         panel.sizeDelta = new Vector2(w, PanelHeight);
         // The toolbar and hints use the space the panel leaves.
         float right = panelShown ? w + Margin : 0f;
+        float left = LayersShown ? LayersWidth + Margin : 0f;
+        if (layersPanel != null) {
+            layersPanel.gameObject.SetActive(LayersShown);
+            layersPanel.sizeDelta = new Vector2(LayersWidth, AvailableHeight);
+        }
         if (toolbarArea != null) {
+            toolbarArea.offsetMin = new Vector2(left, toolbarArea.offsetMin.y);
             toolbarArea.offsetMax = new Vector2(-right, 0f);
         }
         if (hintRect != null) {
+            hintRect.offsetMin = new Vector2(left + Margin + 4f, hintRect.offsetMin.y);
             hintRect.offsetMax = new Vector2(-right - Margin, 34f);
         }
     }
@@ -1022,6 +1034,14 @@ internal static partial class HudEditor {
         gridBuiltSpacing = -1f;
         gridLayer = null;
         panelShown = true;
+        layersPanel = layersContent = null;
+        layerRows.Clear();
+        dropMarker = null;
+        renameField = null;
+        layersButton = null;
+        dragRow = null;
+        layersDirty = true;
+        layersSignature = null;
         if (root != null) {
             Object.Destroy(root.gameObject);
         }
