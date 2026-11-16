@@ -221,27 +221,27 @@ internal static partial class HudEditor {
         var fitter = toolbar.gameObject.AddComponent<ContentSizeFitter>();
         fitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
 
-        layersButton = Button(Cell(toolbar, 76f), "layers", "Canvas", ToggleLayers, "Show or hide the canvas list");
+        layersButton = DrawnButton(toolbar, "layers", DrawCanvases, ToggleLayers, "Canvas list (show / hide)");
         UiStyle.Separator(toolbar, true);
         Icon(toolbar, "add_text", UISprite.Text128, () => Create(NewKind.Text, CurrentPlacement, null), "Add text  (or right-click the screen)");
         Icon(toolbar, "add_image", UISprite.Image128, () => Create(NewKind.Image, CurrentPlacement, null), "Add image");
         O5Button presetsButton = null;
-        presetsButton = Button(Cell(toolbar, 90f), "presets", "Presets", () => {
+        presetsButton = Icon(toolbar, "presets", UISprite.Star128, () => {
             var c = new Vector3[4];
             presetsButton.Rect.GetWorldCorners(c);
             OpenPresetMenu(new Vector2(c[0].x, c[0].y - 6f), null);
-        }, "Ready-made HUD pieces and layouts");
+        }, "Presets: ready-made HUD pieces and layouts");
         placementButton = Button(Cell(toolbar, 170f), "placement", string.Empty, CyclePlacement, "Where new objects go. Click to change.");
-        gridButton = Button(Cell(toolbar, 60f), "grid", "Grid", ToggleGrid, "Show the grid and snap to it");
-        rulersButton = Button(Cell(toolbar, 74f), "rulers", "Rulers", ToggleRulers, "Rulers and guides: drag out of a ruler to add a guide, drag it back to remove it");
+        gridButton = DrawnButton(toolbar, "grid", DrawGrid, ToggleGrid, "Grid: show it and snap to it");
+        rulersButton = DrawnButton(toolbar, "rulers", DrawRuler, ToggleRulers, "Rulers and guides: drag out of a ruler to add a guide, drag it back to remove it");
         UiStyle.Separator(toolbar, true);
         Icon(toolbar, "duplicate", UISprite.Clone128, DuplicateSelection, "Duplicate  Ctrl+D");
         Icon(toolbar, "delete", UISprite.X128, DeleteSelection, "Delete  Del");
         UiStyle.Separator(toolbar, true);
-        Button(Cell(toolbar, 64f), "undo", "Undo", () => AfterHistory(undo.Undo()), "Ctrl+Z");
-        Button(Cell(toolbar, 64f), "redo", "Redo", () => AfterHistory(undo.Redo()), "Ctrl+Y");
+        DrawnButton(toolbar, "undo", icon => DrawUndo(icon, false), () => AfterHistory(undo.Undo()), "Undo  Ctrl+Z");
+        DrawnButton(toolbar, "redo", icon => DrawUndo(icon, true), () => AfterHistory(undo.Redo()), "Redo  Ctrl+Y");
         UiStyle.Separator(toolbar, true);
-        Button(Cell(toolbar, 76f), "close", "Done", Close, "Esc", primary: true);
+        DrawnButton(toolbar, "close", DrawCheck, Close, "Done  Esc", primary: true);
         UpdatePlacementLabel();
     }
 

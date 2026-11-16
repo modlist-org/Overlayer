@@ -92,7 +92,7 @@ internal sealed class AlignPicker {
         r.anchoredPosition = new Vector2(column * (ButtonSize + Gap), -row * (ButtonSize + Gap));
         var icon = UiStyle.NewRect("Icon", r);
         icon.anchorMin = icon.anchorMax = new Vector2(0.5f, 0.5f);
-        icon.sizeDelta = new Vector2(18f, 16f);
+        icon.sizeDelta = new Vector2(20f, 20f);
         DrawIcon(icon, mark);
         var hover = UiStyle.NewRect("Hover", r).gameObject.AddComponent<Image>();
         hover.rectTransform.anchorMin = Vector2.zero;
@@ -110,78 +110,99 @@ internal sealed class AlignPicker {
 
     // ---- icons: 18 x 16 ----
 
-    /// <summary>Draws one of the marks into <paramref name="icon"/> (18 x 16).</summary>
+    /// <summary>Draws one of the marks into <paramref name="icon"/>, centered (about 18 x 16).</summary>
     internal static void DrawIcon(RectTransform icon, Mark mark) {
         switch (mark) {
-            case Mark.DistributeX:
-            case Mark.DistributeY:
-                // Three bars spread evenly, across or down.
-                for (int i = 0; i < 3; i++) {
-                    float spot = i * 0.5f;
-                    var bar = mark == Mark.DistributeX
-                        ? Box(icon, Bar, new Vector2(spot, 0f), new Vector2(spot, 1f), new Vector2(3f, 0f))
-                        : Box(icon, Bar, new Vector2(0f, spot), new Vector2(1f, spot), new Vector2(0f, 3f));
-                    bar.anchoredPosition = mark == Mark.DistributeX ? new Vector2((1 - i) * 1.5f, 0f) : new Vector2(0f, (1 - i) * 1.5f);
-                }
-                break;
             case Mark.Left:
-                Lines(icon, [1f, 0.6f, 0.85f, 0.5f], 0f);
+                Lines(icon, [1f, 0.6f, 0.85f, 0.45f], 0f);
                 break;
             case Mark.Center:
-                Lines(icon, [1f, 0.6f, 0.85f, 0.5f], 0.5f);
+                Lines(icon, [1f, 0.6f, 0.85f, 0.45f], 0.5f);
                 break;
             case Mark.Right:
-                Lines(icon, [1f, 0.6f, 0.85f, 0.5f], 1f);
+                Lines(icon, [1f, 0.6f, 0.85f, 0.45f], 1f);
                 break;
             case Mark.Justified:
-                Lines(icon, [1f, 1f, 1f, 0.5f], 0f);
+                // Full lines, the last one short (where a paragraph ends).
+                Lines(icon, [1f, 1f, 1f, 0.45f], 0f);
                 break;
             case Mark.Flush:
+                // Every line full, the last one too.
                 Lines(icon, [1f, 1f, 1f, 1f], 0f);
                 break;
             case Mark.Geometry:
-                Lines(icon, [0.55f, 0.9f, 0.45f, 0.75f], 0.5f);
-                Box(icon, Faint, new Vector2(0.5f, 0f), new Vector2(0.5f, 1f), new Vector2(1f, 0f));
+                Lines(icon, [0.55f, 0.95f, 0.4f, 0.75f], 0.5f);
+                Segment(icon, new Vector2(0f, -9f), new Vector2(0f, 9f), 1f, Accent);
                 break;
             case Mark.Top:
             case Mark.Middle:
-            case Mark.Bottom:
-                // A frame edge and three short lines sitting at the top / middle / bottom.
-                float y = mark == Mark.Top ? 1f : mark == Mark.Middle ? 0.5f : 0f;
-                Box(icon, Faint, new Vector2(0f, y), new Vector2(1f, y), new Vector2(0f, 1f));
-                for (int i = 0; i < 3; i++) {
-                    float lineY = mark switch {
-                        Mark.Top => -3f - i * 3.5f,
-                        Mark.Bottom => 3f + (2 - i) * 3.5f,
-                        _ => (1 - i) * 3.5f,
-                    };
-                    var line = Box(icon, Bar, new Vector2(0.15f, y), new Vector2(0.85f, y), new Vector2(0f, 2f));
-                    line.anchoredPosition = new Vector2(0f, lineY);
+            case Mark.Bottom: {
+                // The box edge (accent) and a short paragraph held against it; middle: around it.
+                float edge = mark == Mark.Top ? 8f : mark == Mark.Bottom ? -8f : 0f;
+                Segment(icon, new Vector2(-9f, edge), new Vector2(9f, edge), 1.5f, Accent);
+                float[] ys = mark switch {
+                    Mark.Top => [4.5f, 1f, -2.5f],
+                    Mark.Bottom => [2.5f, -1f, -4.5f],
+                    _ => [4f, -4f],
+                };
+                for (int i = 0; i < ys.Length; i++) {
+                    float half = ys.Length == 3 && i == 1 ? 4.5f : 6.5f;
+                    Segment(icon, new Vector2(-half, ys[i]), new Vector2(half, ys[i]), 2f, Bar);
                 }
                 break;
-            default:
-                // An "A" with a line through its baseline / middle / cap height.
-                var a = O5Factory.ControlText(O5KitAdapters.Ctx, icon, 17f, true);
-                a.rectTransform.anchorMin = Vector2.zero;
-                a.rectTransform.anchorMax = Vector2.one;
-                a.rectTransform.offsetMin = a.rectTransform.offsetMax = Vector2.zero;
+            }
+            case Mark.DistributeX:
+            case Mark.DistributeY:
+                // Three blocks spread evenly, across or down.
+                for (int i = -1; i <= 1; i++) {
+                    var block = Box(icon, Bar, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                        mark == Mark.DistributeX ? new Vector2(3f, 14f) : new Vector2(16f, 3f));
+                    block.anchoredPosition = mark == Mark.DistributeX ? new Vector2(i * 7f, 0f) : new Vector2(0f, i * 6f);
+                }
+                break;
+            default: {
+                // "A" with a line on its baseline / middle / cap height, measured from the glyph.
+                var a = O5Factory.ControlText(O5KitAdapters.Ctx, icon, 18f, true);
+                a.rectTransform.anchorMin = a.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
+                a.rectTransform.pivot = new Vector2(0.5f, 0.5f);
+                a.rectTransform.sizeDelta = new Vector2(24f, 24f);
                 a.alignment = TextAlignmentOptions.Center;
+                a.fontStyle = FontStyles.Bold;
                 a.color = Bar;
                 a.raycastTarget = false;
                 a.text = "A";
-                float at = mark == Mark.Baseline ? 0.12f : mark == Mark.Midline ? 0.5f : 0.88f;
-                Box(icon, new Color(0.569f, 0.604f, 1f, 1f), new Vector2(-0.1f, at), new Vector2(1.1f, at), new Vector2(0f, 1.5f));
+                a.ForceMeshUpdate();
+                float baseline = -5f, cap = 6f;
+                if (a.textInfo.characterCount > 0) {
+                    var ch = a.textInfo.characterInfo[0];
+                    baseline = ch.baseLine;
+                    cap = ch.topLeft.y;
+                }
+                float at = mark == Mark.Baseline ? baseline : mark == Mark.Midline ? (baseline + cap) * 0.5f : cap;
+                Segment(icon, new Vector2(-9f, at), new Vector2(9f, at), 1.5f, Accent);
                 break;
+            }
         }
     }
 
-    // Four text lines of the given widths (0..1), lined up at x (0 left, 0.5 middle, 1 right).
+    private static readonly Color Accent = new(0.62f, 0.66f, 1f, 1f);
+
+    // Four 2px text lines, 4px apart, centered in the icon; x lines them up (0 left, 0.5 middle, 1 right).
     private static void Lines(RectTransform icon, float[] widths, float x) {
         for (int i = 0; i < widths.Length; i++) {
-            var line = Box(icon, Bar, new Vector2(x, 1f), new Vector2(x, 1f), new Vector2(18f * widths[i], 2f));
-            line.pivot = new Vector2(x, 0.5f);
-            line.anchoredPosition = new Vector2(0f, -1f - i * 4.5f);
+            float w = 18f * widths[i];
+            float left = x switch { 0f => -9f, 1f => 9f - w, _ => -w * 0.5f };
+            float y = 6f - i * 4f;
+            Segment(icon, new Vector2(left, y), new Vector2(left + w, y), 2f, Bar);
         }
+    }
+
+    /// <summary>A straight stroke from a to b (offsets from the icon's middle).</summary>
+    internal static RectTransform Segment(RectTransform icon, Vector2 a, Vector2 b, float thickness, Color color) {
+        var r = Box(icon, color, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2((b - a).magnitude + (a.y == b.y || a.x == b.x ? 0f : thickness * 0.5f), thickness));
+        r.anchoredPosition = (a + b) * 0.5f;
+        r.localEulerAngles = new Vector3(0f, 0f, Mathf.Atan2(b.y - a.y, b.x - a.x) * Mathf.Rad2Deg);
+        return r;
     }
 
     private static RectTransform Box(RectTransform parent, Color color, Vector2 anchorMin, Vector2 anchorMax, Vector2 size) {
