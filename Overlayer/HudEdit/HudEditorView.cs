@@ -31,7 +31,7 @@ internal static partial class HudEditor {
     // Dragging the panel's left edge resizes it; remembered in the settings.
     private static float PanelWidth => Mathf.Clamp(MainCore.Conf.HudPanelWidth.Value, MinPanelWidth, MaxPanelWidth);
     private const float ToolbarHeight = 48f;
-    private const float MenuWidth = 236f;
+    private const float MenuWidth = 300f;
     private const float Margin = 16f;
 
     // Overlay canvases render below Overlayer's UI canvas, so this also tints the HUD: keep it light.
@@ -64,6 +64,7 @@ internal static partial class HudEditor {
     private static RectTransform rotateHandle;
     private static RectTransform rotateStem;
     private static Frame groupFrame;
+    private static Frame marqueeFrame;
 
     private static TextMeshProUGUI titleText;
     private static TextMeshProUGUI infoText;
@@ -158,7 +159,7 @@ internal static partial class HudEditor {
             hint.alignment = TextAlignmentOptions.BottomLeft;
             hint.raycastTarget = false;
             hint.color = UiStyle.Caption;
-            hint.text = "Right-click  add      Shift+click  multi-select      Alt  no snap      Arrows  nudge      Esc  close";
+            hint.text = "Double-click  into group      Ctrl+click  deep select      Drag empty  box select      Right-click  more      Alt  measure / no snap      Esc  close";
         }
 
         gridLayer = NewRect("Grid", root);
@@ -166,6 +167,12 @@ internal static partial class HudEditor {
         gizmoLayer = NewRect("Gizmos", root);
         Stretch(gizmoLayer);
 
+        marqueeFrame = NewFrame();
+        foreach (var edge in marqueeFrame.Edges) {
+            edge.color = SelectedColor;
+        }
+        var marqueeFill = NewImage("Fill", marqueeFrame.Rect, new Color(0.569f, 0.604f, 1f, 0.12f));
+        Stretch(marqueeFill.rectTransform);
         groupFrame = NewFrame();
         foreach (var edge in groupFrame.Edges) {
             edge.color = GroupColor;
@@ -492,18 +499,31 @@ internal static partial class HudEditor {
             items.Add(("Add text here", null, () => Create(NewKind.Text, where, mouse), false));
             items.Add(("Add image here", null, () => Create(NewKind.Image, where, mouse), false));
             items.Add(("Add preset here…", null, () => OpenPresetMenu(mouse, mouse), false));
+            items.Add(("Paste", "Ctrl+V", () => Paste(false), false));
             if (selection.Count > 0) {
                 items.Add(null);
                 items.Add(("Deselect", "Esc", () => Select(null), false));
             }
         } else {
             bool single = selection.Count == 1;
+            // Everything under the pointer, top first: reach objects hidden behind others.
+            var under = AllUnder(mouse);
+            if (under.Count > 1) {
+                foreach (var el in under.Take(6)) {
+                    var captured = el;
+                    string indent = new(' ', Math.Min(el.Depth, 4) * 2);
+                    items.Add(($"{indent}{(selection.Contains(el) ? "● " : "")}{el.Name}", null, () => Select(captured), false));
+                }
+                items.Add(null);
+            }
             if (single) {
                 items.Add(("Add text inside", null, () => Create(NewKind.Text, Placement.Child, mouse), false));
                 items.Add(("Add text next to it", null, () => Create(NewKind.Text, Placement.Sibling, mouse), false));
                 items.Add(null);
-                items.Add(("Bring forward", null, () => MoveOrder(1), false));
-                items.Add(("Send backward", null, () => MoveOrder(-1), false));
+                items.Add(("Bring to front", "Ctrl+Shift+]", () => MoveToEnd(true), false));
+                items.Add(("Bring forward", "Ctrl+]", () => MoveOrder(1), false));
+                items.Add(("Send backward", "Ctrl+[", () => MoveOrder(-1), false));
+                items.Add(("Send to back", "Ctrl+Shift+[", () => MoveToEnd(false), false));
                 items.Add(null);
             }
             items.Add(("Group", "Ctrl+G", GroupSelection, false));
@@ -511,7 +531,14 @@ internal static partial class HudEditor {
                 items.Add(("Ungroup", "Ctrl+Shift+G", UngroupSelection, false));
             }
             items.Add(null);
+            items.Add(("Copy", "Ctrl+C", CopySelection, false));
+            items.Add(("Paste", "Ctrl+V", () => Paste(false), false));
+            items.Add(("Copy style", "Ctrl+Alt+C", CopyStyle, false));
+            items.Add(("Paste style", "Ctrl+Alt+V", PasteStyle, false));
             items.Add(("Duplicate", "Ctrl+D", DuplicateSelection, false));
+            items.Add(null);
+            items.Add(("Lock", "Ctrl+Shift+L", ToggleLockSelection, false));
+            items.Add(("Hide", "Ctrl+Shift+H", HideSelection, false));
             items.Add(("Reset transform", null, ResetSelection, false));
             items.Add(null);
             items.Add(("Delete", "Del", DeleteSelection, true));
@@ -525,13 +552,14 @@ internal static partial class HudEditor {
                 gap2.gameObject.AddComponent<LayoutElement>().preferredHeight = 5f;
                 continue;
             }
-            string label = item.Shortcut == null ? item.Text : $"{item.Text}<pos=72%><alpha=#55>{item.Shortcut}";
+            string label = item.Shortcut == null ? item.Text : $"{item.Text}<pos=60%><alpha=#55>{item.Shortcut}";
             var button = Button(O5Factory.Row(O5KitAdapters.Ctx, contextMenu, 32f), "menu_" + i, label, () => {
                 CloseContextMenu();
                 item.Run();
             }, align: TextAlignmentOptions.MidlineLeft);
             if (button.Label != null) {
                 button.Label.fontSize = 16f;
+                button.Label.enableWordWrapping = false;
                 if (item.Danger) {
                     button.Label.color = UiStyle.Danger;
                 }
@@ -626,6 +654,15 @@ internal static partial class HudEditor {
         }
         for (int i = used; i < frames.Count; i++) {
             frames[i].Rect.gameObject.SetActive(false);
+        }
+
+        // Selection box while dragging on empty space.
+        if (drag == DragMode.Marquee && dragChanged) {
+            var r = MarqueeRect(lastMouse);
+            PlaceQuad(marqueeFrame.Rect, [new(r.xMin, r.yMin), new(r.xMin, r.yMax), new(r.xMax, r.yMax), new(r.xMax, r.yMin)]);
+            marqueeFrame.Rect.SetAsLastSibling();
+        } else {
+            marqueeFrame.Rect.gameObject.SetActive(false);
         }
 
         // Multi-selection: one box around everything that moves together.
@@ -970,7 +1007,7 @@ internal static partial class HudEditor {
         guides.Clear();
         measureLines.Clear();
         measureLabels.Clear();
-        groupFrame = null;
+        groupFrame = marqueeFrame = null;
         panelBefore = null;
         foreach (var control in controls) {
             try {

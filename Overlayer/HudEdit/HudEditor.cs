@@ -19,7 +19,7 @@ namespace Overlayer.HudEdit;
 // fine-tune in the side panel. Lives inside Overlayer's UI canvas so everything that
 // treats "Overlayer UI open" as "block game input" keeps working while editing.
 internal static partial class HudEditor {
-    private enum DragMode { None, Move, Scale, Rotate }
+    private enum DragMode { None, Move, Scale, Rotate, Marquee, Resize }
 
     private const float HandleHitPx = 12f;
     private const float HandleInsidePx = 6f;
@@ -223,6 +223,48 @@ internal static partial class HudEditor {
             DuplicateSelection();
             return;
         }
+        if (Ctrl && Input.GetKeyDown(KeyCode.C)) {
+            if (Alt) {
+                CopyStyle();
+            } else {
+                CopySelection();
+            }
+            return;
+        }
+        if (Ctrl && Input.GetKeyDown(KeyCode.X)) {
+            CopySelection();
+            DeleteSelection();
+            return;
+        }
+        if (Ctrl && Input.GetKeyDown(KeyCode.V)) {
+            if (Alt) {
+                PasteStyle();
+            } else {
+                Paste(inPlace: Shift);
+            }
+            return;
+        }
+        if (Ctrl && (Input.GetKeyDown(KeyCode.RightBracket) || Input.GetKeyDown(KeyCode.LeftBracket))) {
+            bool front = Input.GetKeyDown(KeyCode.RightBracket);
+            if (Shift) {
+                MoveToEnd(front);
+            } else {
+                MoveOrder(front ? 1 : -1);
+            }
+            return;
+        }
+        if (Ctrl && Shift && Input.GetKeyDown(KeyCode.L)) {
+            ToggleLockSelection();
+            return;
+        }
+        if (Ctrl && Shift && Input.GetKeyDown(KeyCode.H)) {
+            HideSelection();
+            return;
+        }
+        if (Ctrl && Input.GetKeyDown(KeyCode.A)) {
+            SetSelection(elements.Where(e => e.IsAlive && !e.UserLocked && e.Depth == 0));
+            return;
+        }
         if (Ctrl && Input.GetKeyDown(KeyCode.G)) {
             if (Shift) {
                 UngroupSelection();
@@ -277,9 +319,20 @@ internal static partial class HudEditor {
 
     // ---- mouse ----
 
+    private static Vector2 lastMouse;
+
     private static void HandleMouse() {
         Vector2 mouse = Input.mousePosition;
+        lastMouse = mouse;
 
+        if (drag == DragMode.Marquee) {
+            if (Input.GetMouseButton(0)) {
+                UpdateMarquee(mouse);
+            } else {
+                EndMarquee();
+            }
+            return;
+        }
         if (drag != DragMode.None) {
             if (Input.GetMouseButton(0)) {
                 UpdateDrag(mouse);
@@ -290,7 +343,9 @@ internal static partial class HudEditor {
         }
 
         bool overUi = PointerOverEditorUi(mouse);
-        hovered = overUi ? null : HitTest(mouse);
+        var deep = overUi ? null : HitTest(mouse);
+        // Hover shows what a click would pick.
+        hovered = ResolvePick(deep, Ctrl);
         UpdateMeasure(overUi);
         if (overUi) {
             return;
@@ -318,23 +373,24 @@ internal static partial class HudEditor {
                 return;
             }
         }
+        var picked = DiveOnDoubleClick(hovered, deep);
+        if (picked == null) {
+            BeginMarquee(mouse);
+            return;
+        }
         if (Shift) {
-            ToggleSelect(hovered);
-            if (hovered != null && selection.Contains(hovered)) {
+            ToggleSelect(picked);
+            if (selection.Contains(picked)) {
                 BeginDrag(DragMode.Move, mouse);
             }
             return;
         }
-        if (hovered == null) {
-            Select(null);
-            return;
-        }
         // Grabbing a member of a multi-selection drags the whole selection.
-        if (!selection.Contains(hovered)) {
-            Select(hovered);
-        } else if (!ReferenceEquals(Primary, hovered)) {
-            selection.Remove(hovered);
-            selection.Add(hovered);
+        if (!selection.Contains(picked)) {
+            Select(picked);
+        } else if (!ReferenceEquals(Primary, picked)) {
+            selection.Remove(picked);
+            selection.Add(picked);
             RefreshPanel();
         }
         BeginDrag(DragMode.Move, mouse);
@@ -344,7 +400,7 @@ internal static partial class HudEditor {
     private static HudElement HitTest(Vector2 mouse) {
         for (int i = elements.Count - 1; i >= 0; i--) {
             var el = elements[i];
-            if (!el.IsAlive) {
+            if (!el.IsAlive || el.UserLocked || el.IsGroup) {
                 continue;
             }
             el.GetScreenCorners(corners);
@@ -623,6 +679,10 @@ internal static partial class HudEditor {
         if (drag == DragMode.None) {
             return;
         }
+        if (drag == DragMode.Marquee) {
+            drag = DragMode.None;
+            return;
+        }
         drag = DragMode.None;
         guideX.Clear();
         guideY.Clear();
@@ -635,6 +695,11 @@ internal static partial class HudEditor {
 
     private static void CancelDrag() {
         if (drag == DragMode.None) {
+            return;
+        }
+        if (drag == DragMode.Marquee) {
+            drag = DragMode.None;
+            SetSelection(marqueeBase.ToList());
             return;
         }
         drag = DragMode.None;

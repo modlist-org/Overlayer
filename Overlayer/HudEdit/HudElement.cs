@@ -21,10 +21,13 @@ internal sealed class HudElement {
     public readonly RectTransformSettings Config;
     public readonly string LockReason;
     public readonly int Depth;
+    /// <summary>Locked with the lock toggle (can't be picked on screen).</summary>
+    public readonly bool UserLocked;
 
     private readonly TextMeshProUGUI text;
 
-    private HudElement(OvCanvas canvas, OvObject obj, string lockReason, int depth) {
+    private HudElement(OvCanvas canvas, OvObject obj, string lockReason, int depth, bool userLocked) {
+        UserLocked = userLocked;
         Canvas = canvas;
         Object = obj;
         Rect = obj.RectTransform;
@@ -78,19 +81,74 @@ internal sealed class HudElement {
     /// Screen-space corners BL, TL, TR, BR (overlay canvases render in screen pixels).
     /// Text uses the visible glyph bounds: a TMP rect is often much bigger than its text.
     /// </summary>
+    /// <summary>
+    /// Holds others and draws nothing itself. It's picked through its children (a click on
+    /// a child picks the group at the outer level), never by its own box.
+    /// </summary>
+    public bool IsGroup => Object.Children.Count > 0 && Object.GameObject.GetComponent<Graphic>() == null;
+
     public void GetScreenCorners(Vector3[] corners) {
-        if (text != null && text.enabled && !string.IsNullOrEmpty(text.text)) {
-            Bounds b = text.textBounds;
-            if (b.size.x > 0.01f && b.size.y > 0.01f) {
-                Vector3 min = b.min, max = b.max;
-                corners[0] = Rect.TransformPoint(new Vector3(min.x, min.y, 0f));
-                corners[1] = Rect.TransformPoint(new Vector3(min.x, max.y, 0f));
-                corners[2] = Rect.TransformPoint(new Vector3(max.x, max.y, 0f));
-                corners[3] = Rect.TransformPoint(new Vector3(max.x, min.y, 0f));
-                return;
-            }
+        if (TextCorners(Rect, text, corners)) {
+            return;
+        }
+        // Nothing drawn of its own (a group): its box is what its children show, so a
+        // full-screen layout group doesn't cover the whole screen for picking and snapping.
+        if (Object.Children.Count > 0 && Object.GameObject.GetComponent<Graphic>() == null
+            && ContentBounds(Object, out Vector2 min, out Vector2 max)) {
+            corners[0] = new Vector3(min.x, min.y);
+            corners[1] = new Vector3(min.x, max.y);
+            corners[2] = new Vector3(max.x, max.y);
+            corners[3] = new Vector3(max.x, min.y);
+            return;
         }
         Rect.GetWorldCorners(corners);
+    }
+
+    private static bool TextCorners(RectTransform rect, TextMeshProUGUI tmp, Vector3[] corners) {
+        if (tmp == null || !tmp.enabled || string.IsNullOrEmpty(tmp.text)) {
+            return false;
+        }
+        Bounds b = tmp.textBounds;
+        if (b.size.x <= 0.01f || b.size.y <= 0.01f) {
+            return false;
+        }
+        Vector3 min = b.min, max = b.max;
+        corners[0] = rect.TransformPoint(new Vector3(min.x, min.y, 0f));
+        corners[1] = rect.TransformPoint(new Vector3(min.x, max.y, 0f));
+        corners[2] = rect.TransformPoint(new Vector3(max.x, max.y, 0f));
+        corners[3] = rect.TransformPoint(new Vector3(max.x, min.y, 0f));
+        return true;
+    }
+
+    private static readonly Vector3[] scratch = new Vector3[4];
+
+    // Screen box of everything visible under (and including) obj; groups add up their children.
+    private static bool ContentBounds(OvObject obj, out Vector2 min, out Vector2 max) {
+        min = new Vector2(float.MaxValue, float.MaxValue);
+        max = new Vector2(float.MinValue, float.MinValue);
+        bool any = false;
+        foreach (var child in obj.Children) {
+            if (child?.GameObject == null || !child.GameObject.activeInHierarchy || child.RectTransform == null) {
+                continue;
+            }
+            bool drawn = child.GameObject.GetComponent<Graphic>() != null;
+            if (drawn) {
+                if (!TextCorners(child.RectTransform, child.GameObject.GetComponent<TextMeshProUGUI>(), scratch)) {
+                    child.RectTransform.GetWorldCorners(scratch);
+                }
+                foreach (var p in scratch) {
+                    min = Vector2.Min(min, p);
+                    max = Vector2.Max(max, p);
+                }
+                any = true;
+            }
+            if (child.Children.Count > 0 && ContentBounds(child, out var cMin, out var cMax)) {
+                min = Vector2.Min(min, cMin);
+                max = Vector2.Max(max, cMax);
+                any = true;
+            }
+        }
+        return any;
     }
 
     public Vector2 ScreenPivot => Rect.position;
@@ -140,7 +198,13 @@ internal sealed class HudElement {
         if (obj.RectTransform != null && obj.Config?.RectTransformConfig != null) {
             var parent = obj.GameObject.transform.parent;
             bool layoutDriven = parent != null && parent.GetComponent<LayoutGroup>() != null;
-            list.Add(new HudElement(canvas, obj, inheritedLock ?? (layoutDriven ? "Positioned by a layout group" : null), depth));
+            bool userLocked = HudEditor.IsUserLocked(canvas, obj);
+            string reason = inheritedLock ?? (userLocked ? "Locked" : layoutDriven ? "Positioned by a layout group" : null);
+            list.Add(new HudElement(canvas, obj, reason, depth, userLocked || inheritedLock == "Locked"));
+            // A locked object's children are locked with it.
+            if (userLocked) {
+                inheritedLock ??= "Locked";
+            }
         }
         foreach (var child in obj.Children) {
             Add(list, canvas, child, inheritedLock, depth + 1);

@@ -37,6 +37,7 @@ public sealed class CoreSettings : ISettingsFile {
     public FxValue<bool> HudPanelPinned = new(true);
     public FxValue<bool> HudGrid = new(false);
     public FxValue<float> HudGridSize = new(40f);
+    public FxValue<List<string>> HudLocked = new([]);
 
     public JToken Serialize() {
         return new JObject {
@@ -70,7 +71,8 @@ public sealed class CoreSettings : ISettingsFile {
             [nameof(HudPanelHeight)] = IOUtils.WriteFx(HudPanelHeight),
             [nameof(HudPanelPinned)] = IOUtils.WriteFx(HudPanelPinned),
             [nameof(HudGrid)] = IOUtils.WriteFx(HudGrid),
-            [nameof(HudGridSize)] = IOUtils.WriteFx(HudGridSize)
+            [nameof(HudGridSize)] = IOUtils.WriteFx(HudGridSize),
+            [nameof(HudLocked)] = IOUtils.WriteFx(HudLocked)
         };
     }
 
@@ -106,5 +108,6 @@ public sealed class CoreSettings : ISettingsFile {
         HudPanelPinned = IOUtils.ReadFx(token, nameof(HudPanelPinned), HudPanelPinned);
         HudGrid = IOUtils.ReadFx(token, nameof(HudGrid), HudGrid);
         HudGridSize = IOUtils.ReadFx(token, nameof(HudGridSize), HudGridSize);
+        HudLocked = IOUtils.ReadFx(token, nameof(HudLocked), HudLocked);
     }
 }
