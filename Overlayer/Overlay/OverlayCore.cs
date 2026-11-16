@@ -302,6 +302,24 @@ public static class OverlayCore {
         }
     }
 
+    /// <summary>Puts back a canvas from its saved JSON at <paramref name="index"/> (undoing a delete).</summary>
+    public static OvCanvas RestoreCanvas(Newtonsoft.Json.Linq.JToken token, int index) {
+        try {
+            var canvas = new OvCanvas();
+            canvas.Deserialize(token);
+            canvas.RectTransform.SetParent(Transform, false);
+            canvas.ApplyConfig();
+            canvas.RefreshLayouts();
+            Canvases.Insert(Math.Max(0, Math.Min(index, Canvases.Count)), canvas);
+            SaveAllCanvases();
+            NotifyChanged();
+            return canvas;
+        } catch (Exception e) {
+            MainCore.Log.Err($"[{nameof(OverlayCore)}] Failed to restore canvas: {e.Message}");
+            return null;
+        }
+    }
+
     public static bool DeleteOvCanvas(OvCanvas canvas) {
         if (canvas == null || !Canvases.Remove(canvas)) {
             return false;

@@ -20,8 +20,8 @@ namespace Overlayer.HudEdit;
 // Presets in the HUD editor drop into the main canvas as normal, editable objects (one undo
 // step). Fonts / images / scripts a preset brings become the user's own first.
 internal static partial class HudEditor {
-    private const float PresetMenuWidth = 300f;
-    private const float PresetMenuMaxHeight = 520f;
+    private const float PresetMenuWidth = 240f;
+    private const float PresetMenuMaxHeight = 380f;
 
     /// <summary>Inserts a preset. <paramref name="screen"/>: put a single-object preset there.</summary>
     public static void InsertPreset(PackagePreset preset, Vector2? screen) {
@@ -166,12 +166,12 @@ internal static partial class HudEditor {
                 var captured = preset;
                 string source = string.IsNullOrEmpty(preset.Module) ? "File" : preset.Module;
                 string label = $"{preset.Name}<pos=70%><alpha=#55>{source}";
-                var button = Button(O5Factory.Row(O5KitAdapters.Ctx, content, 32f), "preset_" + preset.Id, label, () => {
+                var button = Button(O5Factory.Row(O5KitAdapters.Ctx, content, 28f), "preset_" + preset.Id, label, () => {
                     CloseContextMenu();
                     InsertPreset(captured, insertAt);
                 }, align: TextAlignmentOptions.MidlineLeft);
                 if (button.Label != null) {
-                    button.Label.fontSize = 16f;
+                    button.Label.fontSize = 14f;
                 }
                 button.NormalColor = Color.clear;
                 button.UpdateVisual(true);

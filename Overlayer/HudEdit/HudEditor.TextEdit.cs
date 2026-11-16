@@ -66,12 +66,15 @@ internal static partial class HudEditor {
         r.anchorMin = Vector2.zero;
         r.anchorMax = Vector2.one;
         r.offsetMin = r.offsetMax = Vector2.zero;
-        // Enter finishes; a text that already has several lines keeps Enter for new lines.
-        inlineField.InputField.lineType = text.Contains('\n') ? TMP_InputField.LineType.MultiLineNewline : TMP_InputField.LineType.MultiLineSubmit;
+        // Enter makes a new line; clicking anywhere else finishes.
+        inlineField.InputField.lineType = TMP_InputField.LineType.MultiLineNewline;
         inlineField.InputField.ActivateInputField();
         inlineField.InputField.Select();
         inlineField.InputField.MoveTextEnd(false);
     }
+
+    /// <summary>Where full-screen editors go while the editor is open (Overlayer's own panel is hidden then).</summary>
+    internal static RectTransform FillHost => IsOpen ? root : null;
 
     private static void EndInlineEdit() {
         if (inlineField != null) {

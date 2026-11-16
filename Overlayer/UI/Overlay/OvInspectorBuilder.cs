@@ -1443,7 +1443,8 @@ internal sealed class OvInspectorBuilder(
 
             if (on) {
                 fillOverlay = new GameObject("CodeEditorFill").AddComponent<RectTransform>();
-                fillOverlay.SetParent(UICore.Panel, false);
+                // The HUD editor hides Overlayer's panel: fill its screen instead.
+                fillOverlay.SetParent(HudEdit.HudEditor.FillHost ?? UICore.Panel, false);
                 fillOverlay.SetAsLastSibling();
                 fillOverlay.anchorMin = Vector2.zero;
                 fillOverlay.anchorMax = Vector2.one;

@@ -15,17 +15,21 @@ internal sealed class HudInspector : IDisposable {
     private readonly List<O5Object> controls = [];
     private readonly Action changed;
     private readonly OvObject obj;
+    private readonly Action<RectTransform> built;
+    // The cards made last time: some may have been moved out of content (into windows).
+    private readonly List<GameObject> cards = [];
     private bool disposed;
 
-    private HudInspector(RectTransform content, OvObject obj, Action changed) {
+    private HudInspector(RectTransform content, OvObject obj, Action changed, Action<RectTransform> built) {
         this.content = content;
         this.obj = obj;
         this.changed = changed;
+        this.built = built;
     }
 
-    /// <summary><paramref name="changed"/> runs after every applied edit.</summary>
-    public static HudInspector ForObject(RectTransform content, OvObject obj, Action changed = null) {
-        var inspector = new HudInspector(content, obj, changed);
+    /// <summary><paramref name="changed"/> runs after every applied edit, <paramref name="built"/> after every (re)build.</summary>
+    public static HudInspector ForObject(RectTransform content, OvObject obj, Action changed = null, Action<RectTransform> built = null) {
+        var inspector = new HudInspector(content, obj, changed, built);
         inspector.Rebuild();
         return inspector;
     }
@@ -58,6 +62,14 @@ internal sealed class HudInspector : IDisposable {
         } catch (Exception e) {
             MainCore.Log.Err($"[{nameof(HudInspector)}] Build failed: {e}");
         }
+        for (int i = 0; i < content.childCount; i++) {
+            cards.Add(content.GetChild(i).gameObject);
+        }
+        try {
+            built?.Invoke(content);
+        } catch (Exception e) {
+            MainCore.Log.Err($"[{nameof(HudInspector)}] After-build failed: {e.Message}");
+        }
     }
 
     private void Notify() {
@@ -76,6 +88,12 @@ internal sealed class HudInspector : IDisposable {
             }
         }
         controls.Clear();
+        foreach (var card in cards) {
+            if (card != null) {
+                Object.Destroy(card);
+            }
+        }
+        cards.Clear();
         if (content == null) {
             return;
         }

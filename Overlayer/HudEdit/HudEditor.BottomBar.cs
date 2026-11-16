@@ -31,9 +31,10 @@ internal static partial class HudEditor {
         UiStyle.Horizontal(bar.gameObject, 4f, new RectOffset(6, 6, 6, 6));
         bar.gameObject.AddComponent<UnityEngine.UI.ContentSizeFitter>().horizontalFit = UnityEngine.UI.ContentSizeFitter.FitMode.PreferredSize;
 
-        bool CanAlign() => selection.Count(e => e.IsAlive && e.CanMove) >= 2;
+        // One thing lines up with its parent (or the screen), several with each other.
+        bool CanAlign() => selection.Any(e => e.IsAlive && e.CanMove);
         bool CanDistribute() => selection.Count(e => e.IsAlive && e.CanMove) >= 3;
-        MarkTool(bar, "align_l", AlignPicker.Mark.Left, "Align left", () => Align(AlignMode.Left), CanAlign);
+        MarkTool(bar, "align_l", AlignPicker.Mark.Left, "Align left (one thing: to its parent / the screen)", () => Align(AlignMode.Left), CanAlign);
         MarkTool(bar, "align_c", AlignPicker.Mark.Center, "Align centers (horizontally)", () => Align(AlignMode.CenterX), CanAlign);
         MarkTool(bar, "align_r", AlignPicker.Mark.Right, "Align right", () => Align(AlignMode.Right), CanAlign);
         MarkTool(bar, "align_t", AlignPicker.Mark.Top, "Align top", () => Align(AlignMode.Top), CanAlign);

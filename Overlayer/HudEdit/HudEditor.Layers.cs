@@ -256,9 +256,12 @@ internal static partial class HudEditor {
             // Visible (dot) and locked (square) toggles on the right.
             Toggle(rect, -34f, UISprite.Circle256, !hidden, "Visible", () => SetHidden([obj], !hidden));
             Toggle(rect, -12f, null, locked, "Locked (can't be picked on screen)", () => SetLocked(canvas, obj, !locked));
-        } else if (!canvas.Config.Enabled.UseFx) {
-            bool shown = canvas.Config.Enabled.StaticValue;
-            Toggle(rect, -34f, UISprite.Circle256, shown, "Visible (the whole canvas)", () => SetCanvasHidden(canvas, shown));
+        } else {
+            if (!canvas.Config.Enabled.UseFx) {
+                bool shown = canvas.Config.Enabled.StaticValue;
+                Toggle(rect, -34f, UISprite.Circle256, shown, "Visible (the whole canvas)", () => SetCanvasHidden(canvas, shown));
+            }
+            DeleteToggle(rect, canvas);
         }
 
         UnityUtils.AddEvents(rect.gameObject.AddComponent<EventTrigger>(),
@@ -431,6 +434,50 @@ internal static partial class HudEditor {
         }, () => { }));
         Save();
         layersDirty = true;
+    }
+
+    // Small X at the row's end; red on hover.
+    private static void DeleteToggle(RectTransform row, OvCanvas canvas) {
+        var hit = NewRect("Delete", row);
+        hit.anchorMin = hit.anchorMax = new Vector2(1f, 0.5f);
+        hit.anchoredPosition = new Vector2(-12f, 0f);
+        hit.sizeDelta = new Vector2(20f, RowHeight);
+        var back = hit.gameObject.AddComponent<Image>();
+        back.color = Color.clear;
+        back.raycastTarget = true;
+        var mark = NewImage("X", hit, new Color(1f, 1f, 1f, 0.3f), MainCore.Spr.Get(UISprite.X128));
+        mark.rectTransform.sizeDelta = new Vector2(10f, 10f);
+        UnityUtils.AddEvents(hit.gameObject.AddComponent<EventTrigger>(),
+            (EventTriggerType.PointerEnter, _ => mark.color = UiStyle.Danger),
+            (EventTriggerType.PointerExit, _ => mark.color = new Color(1f, 1f, 1f, 0.3f)),
+            (EventTriggerType.PointerClick, _ => DeleteCanvas(canvas)));
+        hit.AddToolTip(O5KitAdapters.Ctx, "Delete this canvas (and everything in it). Ctrl+Z brings it back.");
+    }
+
+    public static void DeleteCanvas(OvCanvas canvas) {
+        if (canvas == null || HudElement.IsPackage(canvas)) {
+            return;
+        }
+        O5KitAdapters.Ctx.Tooltip.Hide();
+        // Kept as JSON so undo can make it again, contents and all.
+        var saved = Newtonsoft.Json.Linq.JToken.Parse(canvas.Serialize().ToString());
+        int index = OverlayCore.Canvases.IndexOf(canvas);
+        var current = canvas;
+        void Delete() {
+            selection.RemoveAll(e => ReferenceEquals(e.Canvas, current));
+            OverlayCore.DeleteOvCanvas(current);
+            Recollect();
+            RefreshPanel();
+            layersDirty = true;
+        }
+        void Restore() {
+            current = OverlayCore.RestoreCanvas(saved.DeepClone(), index) ?? current;
+            Recollect();
+            RefreshPanel();
+            layersDirty = true;
+        }
+        Delete();
+        undo.Push(new ActionCommand(Restore, Delete));
     }
 
     public static void SetCanvasHidden(OvCanvas canvas, bool hidden) {

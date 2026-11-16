@@ -805,10 +805,14 @@ internal static partial class HudEditor {
 
     internal static void Align(AlignMode mode) {
         var items = selection.Where(e => e.IsAlive && e.CanMove).ToList();
-        if (items.Count < 2) {
+        if (items.Count == 0) {
             return;
         }
-        if (!UnionBounds(items, out float minX, out float maxX, out float minY, out float maxY)) {
+        float minX, maxX, minY, maxY;
+        if (items.Count == 1) {
+            // One thing: line it up with what it sits in (a parent that draws something), else the screen.
+            AlignTarget(items[0], out minX, out maxX, out minY, out maxY);
+        } else if (!UnionBounds(items, out minX, out maxX, out minY, out maxY)) {
             return;
         }
         var boxes = items.Select(e => {
@@ -857,6 +861,20 @@ internal static partial class HudEditor {
             }
         }
         Commit(changes);
+    }
+
+    private static void AlignTarget(HudElement el, out float minX, out float maxX, out float minY, out float maxY) {
+        var parent = el.Object.Parent;
+        if (parent?.RectTransform != null && parent.GameObject.GetComponent<UnityEngine.UI.Graphic>() != null) {
+            var c = new Vector3[4];
+            parent.RectTransform.GetWorldCorners(c);
+            Bounds(c, out minX, out maxX, out minY, out maxY);
+            return;
+        }
+        minX = 0f;
+        maxX = Screen.width;
+        minY = 0f;
+        maxY = Screen.height;
     }
 
     // ---- history / save ----

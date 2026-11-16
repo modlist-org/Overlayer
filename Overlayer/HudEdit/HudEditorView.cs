@@ -227,6 +227,11 @@ internal static partial class HudEditor {
         Icon(toolbar, "add_image", UISprite.Image128, () => Create(NewKind.Image, CurrentPlacement, null), "Add image");
         O5Button presetsButton = null;
         presetsButton = Icon(toolbar, "presets", UISprite.Star128, () => {
+            // A second press closes it.
+            if (contextMenu != null && contextMenu.name == "PresetMenu") {
+                CloseContextMenu();
+                return;
+            }
             var c = new Vector3[4];
             presetsButton.Rect.GetWorldCorners(c);
             OpenPresetMenu(new Vector2(c[0].x, c[0].y - 6f), null);
@@ -329,7 +334,7 @@ internal static partial class HudEditor {
         Button(Cell(flowRow, 0f), "group_row", "Group as row", () => GroupAs(Flow.Row), "Group them, lined up left to right with even gaps");
         Button(Cell(flowRow, 0f), "group_column", "Group as column", () => GroupAs(Flow.Column), "Group them, stacked top to bottom with even gaps");
 
-        inspectorContent = DockSection(body, "properties", "All properties", () => inspector != null);
+        inspectorContent = VerticalGroup("Inspector", body);
         inspectorHost = inspectorContent.gameObject;
         // Last, so the edge grips and the pin sit above the content.
         BuildResizeGrip();
@@ -486,7 +491,7 @@ internal static partial class HudEditor {
         inspectedObject = target;
         inspectorHost.SetActive(target != null);
         inspector?.Dispose();
-        inspector = target == null ? null : HudInspector.ForObject(inspectorContent, (Overlayer.Overlay.OvObject)target, OnInspectorEdit);
+        inspector = target == null ? null : HudInspector.ForObject(inspectorContent, (Overlayer.Overlay.OvObject)target, OnInspectorEdit, SetUpCards);
     }
 
     // The inspector applied an edit itself: follow it on screen, don't rebuild (keeps field focus).
@@ -1086,6 +1091,9 @@ internal static partial class HudEditor {
         pullingPanel = false;
         bottomArea = null;
         docks.Clear();
+        grabbable.Clear();
+        tearing = null;
+        pressedHeader = null;
         bottomGroup = null;
         bottomTools.Clear();
         DestroyRulers();
