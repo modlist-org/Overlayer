@@ -1,0 +1,671 @@
+using Overlayer.Core;
+using Overlayer.Overlay;
+using Overlayer.UI;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using UnityEngine;
+using UnityEngine.EventSystems;
+
+#if ML && IL2CPP
+using Il2CppTMPro;
+#else
+using TMPro;
+#endif
+
+namespace Overlayer.HudEdit;
+
+// osu!lazer skin editor style: manipulate HUD objects directly on the game screen,
+// fine-tune in the side panel. Lives inside Overlayer's UI canvas so everything that
+// treats "Overlayer UI open" as "block game input" keeps working while editing.
+internal static partial class HudEditor {
+    private enum DragMode { None, Move, Scale, Rotate }
+
+    private const float HandleHitPx = 12f;
+    private const float HandleInsidePx = 6f;
+    private const int RecollectFrames = 30;
+
+    public static bool IsOpen { get; private set; }
+
+    private static bool uiWasOpen;
+    private static List<HudElement> elements = [];
+    private static int collectedFrame = -1000;
+    private static HudElement hovered;
+    private static readonly List<HudElement> selection = [];
+
+    /// <summary>Last clicked element; handles, panel and "relative to selection" placements use it.</summary>
+    private static HudElement Primary => selection.Count > 0 ? selection[selection.Count - 1] : null;
+
+    private static DragMode drag;
+    private static List<(HudElement Element, HudElement.State Start)> dragStart = [];
+    private static Vector2 dragMouseStart;
+    private static bool dragChanged;
+
+    private static readonly UndoStack undo = new();
+    private static readonly Vector3[] corners = new Vector3[4];
+    private static readonly List<float> guideX = [];
+    private static readonly List<float> guideY = [];
+
+    private const string ShortcutId = "overlayer.hud_editor";
+
+    public static KeyCode Key => Enum.TryParse(MainCore.Conf.HudEditorKey.Value, out KeyCode key) ? key : KeyCode.None;
+
+    public static void RegisterShortcut() {
+        O5Kit.Input.O5ShortcutManager.Unregister(ShortcutId);
+        if (Key != KeyCode.None) {
+            O5Kit.Input.O5ShortcutManager.Register(ShortcutId, new O5Kit.Input.O5KeyCombo(Key), onPressed: _ => Toggle());
+        }
+    }
+
+    public static void UnregisterShortcut() => O5Kit.Input.O5ShortcutManager.Unregister(ShortcutId);
+
+    public static void Toggle() {
+        if (IsOpen) {
+            Close();
+        } else {
+            Open();
+        }
+    }
+
+    public static void Open() {
+        if (IsOpen || !Core.MainCore.IsModEnabled || UICore.CanvasObj == null) {
+            return;
+        }
+        if (ModuleAPI.PlaybackState.IsPlaying && !ModuleAPI.PlaybackState.IsPaused && !MainCore.Conf.HudEditorInPlay.Value) {
+            MainCore.Log.Msg("[HudEditor] Pause first (or allow it in Settings) to edit the HUD while playing.");
+            return;
+        }
+        uiWasOpen = UICore.CanvasObj.activeSelf;
+        UICore.Open(true);
+        if (UICore.Panel != null) {
+            UICore.Panel.gameObject.SetActive(false);
+        }
+        BuildView();
+        IsOpen = true;
+        collectedFrame = -1000;
+        selection.Clear();
+        hovered = null;
+        drag = DragMode.None;
+        undo.Clear();
+        RefreshPanel();
+    }
+
+    public static void Close() {
+        if (!IsOpen) {
+            return;
+        }
+        IsOpen = false;
+        EndDrag();
+        CommitPanelEdit();
+        FlushSave();
+        DestroyView();
+        selection.Clear();
+        hovered = null;
+        elements.Clear();
+        undo.Clear();
+        pendingPlace.Clear();
+        EmptyTrash();
+        if (UICore.Panel != null) {
+            UICore.Panel.gameObject.SetActive(true);
+        }
+        if (!uiWasOpen) {
+            UICore.Close(true);
+        }
+    }
+
+    public static void Tick() {
+        if (!IsOpen) {
+            return;
+        }
+        // Overlayer's own toggle shortcut (or anything else) hid its canvas: leave cleanly.
+        if (UICore.CanvasObj == null || !UICore.CanvasObj.activeSelf || root == null) {
+            Close();
+            return;
+        }
+
+        if (pendingPlace.Count > 0) {
+            FlushPendingPlace();
+        }
+        if (Time.frameCount - collectedFrame >= RecollectFrames) {
+            Recollect();
+        }
+        if (selection.RemoveAll(e => !e.IsAlive) > 0) {
+            RefreshPanel();
+        }
+
+        HandleKeys();
+        if (!IsOpen) {
+            return;
+        }
+        HandleMouse();
+        if (saveDue > 0f && Time.realtimeSinceStartup >= saveDue) {
+            FlushSave();
+        }
+        Render();
+    }
+
+    private static void Recollect() {
+        collectedFrame = Time.frameCount;
+        var fresh = HudElement.Collect();
+        // Keep the same wrapper for the same object so undo entries and selection survive.
+        for (int i = 0; i < fresh.Count; i++) {
+            foreach (var old in elements) {
+                if (ReferenceEquals(old.Object, fresh[i].Object) && old.LockReason == fresh[i].LockReason) {
+                    fresh[i] = old;
+                    break;
+                }
+            }
+        }
+        elements = fresh;
+        if (selection.RemoveAll(e => !elements.Contains(e)) > 0) {
+            RefreshPanel();
+        }
+    }
+
+    // ---- selection ----
+
+    private static void SetSelection(IEnumerable<HudElement> items) {
+        CommitPanelEdit();
+        selection.Clear();
+        selection.AddRange(items.Where(e => e != null).Distinct());
+        RefreshPanel();
+    }
+
+    private static void Select(HudElement element) => SetSelection(element == null ? [] : [element]);
+
+    private static void ToggleSelect(HudElement element) {
+        if (element == null) {
+            return;
+        }
+        CommitPanelEdit();
+        if (!selection.Remove(element)) {
+            selection.Add(element);
+        }
+        RefreshPanel();
+    }
+
+    private static bool TypingInField() {
+        var go = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
+        var field = go != null ? go.GetComponent<TMP_InputField>() : null;
+        return field != null && field.isFocused;
+    }
+
+    private static bool Shift => Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+    private static bool Ctrl => Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
+    private static bool Alt => Input.GetKey(KeyCode.LeftAlt) || Input.GetKey(KeyCode.RightAlt);
+
+    // ---- keyboard ----
+
+    private static void HandleKeys() {
+        if (TypingInField()) {
+            return;
+        }
+
+        if (Input.GetKeyDown(KeyCode.Escape)) {
+            if (ContextMenuOpen) {
+                CloseContextMenu();
+            } else if (drag != DragMode.None) {
+                CancelDrag();
+            } else if (selection.Count > 0) {
+                Select(null);
+            } else {
+                Close();
+            }
+            return;
+        }
+        if (Ctrl && Input.GetKeyDown(KeyCode.Z)) {
+            AfterHistory(Shift ? undo.Redo() : undo.Undo());
+            return;
+        }
+        if (Ctrl && Input.GetKeyDown(KeyCode.Y)) {
+            AfterHistory(undo.Redo());
+            return;
+        }
+        if (drag != DragMode.None) {
+            return;
+        }
+        if (Ctrl && Input.GetKeyDown(KeyCode.D)) {
+            DuplicateSelection();
+            return;
+        }
+        if (Input.GetKeyDown(KeyCode.Delete)) {
+            DeleteSelection();
+            return;
+        }
+
+        Vector2 nudge = Vector2.zero;
+        if (Input.GetKeyDown(KeyCode.LeftArrow)) {
+            nudge.x -= 1f;
+        }
+        if (Input.GetKeyDown(KeyCode.RightArrow)) {
+            nudge.x += 1f;
+        }
+        if (Input.GetKeyDown(KeyCode.UpArrow)) {
+            nudge.y += 1f;
+        }
+        if (Input.GetKeyDown(KeyCode.DownArrow)) {
+            nudge.y -= 1f;
+        }
+        if (nudge == Vector2.zero) {
+            return;
+        }
+        var changes = new List<(HudElement, HudElement.State, HudElement.State)>();
+        foreach (var el in selection) {
+            if (!el.CanMove) {
+                continue;
+            }
+            var before = el.Capture();
+            var after = before;
+            after.Position += el.ScreenToParentDelta(nudge * (Shift ? 10f : 1f) * UiScale);
+            el.Apply(after);
+            changes.Add((el, before, after));
+        }
+        Commit(changes);
+    }
+
+    private static void AfterHistory(bool changed) {
+        if (!changed) {
+            return;
+        }
+        Save();
+        Recollect();
+        RefreshPanel();
+    }
+
+    // ---- mouse ----
+
+    private static void HandleMouse() {
+        Vector2 mouse = Input.mousePosition;
+
+        if (drag != DragMode.None) {
+            if (Input.GetMouseButton(0)) {
+                UpdateDrag(mouse);
+            } else {
+                EndDrag();
+            }
+            return;
+        }
+
+        bool overUi = PointerOverEditorUi(mouse);
+        hovered = overUi ? null : HitTest(mouse);
+        if (overUi) {
+            return;
+        }
+
+        if (Input.GetMouseButtonDown(1)) {
+            if (hovered != null && !selection.Contains(hovered)) {
+                Select(hovered);
+            }
+            OpenContextMenu(mouse, hovered);
+            return;
+        }
+        if (!Input.GetMouseButtonDown(0)) {
+            return;
+        }
+        if (ContextMenuOpen) {
+            CloseContextMenu();
+            return;
+        }
+
+        if (selection.Count == 1) {
+            var handle = HitHandle(selection[0], mouse);
+            if (handle != DragMode.None) {
+                BeginDrag(handle, mouse);
+                return;
+            }
+        }
+        if (Shift) {
+            ToggleSelect(hovered);
+            if (hovered != null && selection.Contains(hovered)) {
+                BeginDrag(DragMode.Move, mouse);
+            }
+            return;
+        }
+        if (hovered == null) {
+            Select(null);
+            return;
+        }
+        // Grabbing a member of a multi-selection drags the whole selection.
+        if (!selection.Contains(hovered)) {
+            Select(hovered);
+        } else if (!ReferenceEquals(Primary, hovered)) {
+            selection.Remove(hovered);
+            selection.Add(hovered);
+            RefreshPanel();
+        }
+        BeginDrag(DragMode.Move, mouse);
+    }
+
+    // Topmost first: later canvases and later/deeper objects render above earlier ones.
+    private static HudElement HitTest(Vector2 mouse) {
+        for (int i = elements.Count - 1; i >= 0; i--) {
+            var el = elements[i];
+            if (!el.IsAlive) {
+                continue;
+            }
+            el.GetScreenCorners(corners);
+            if (InQuad(mouse, corners)) {
+                return el;
+            }
+        }
+        return null;
+    }
+
+    private static bool InQuad(Vector2 p, Vector3[] q) {
+        bool? sign = null;
+        for (int i = 0; i < 4; i++) {
+            Vector2 a = q[i], b = q[(i + 1) % 4];
+            float cross = (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x);
+            if (Mathf.Abs(cross) < 1e-4f) {
+                continue;
+            }
+            bool s = cross > 0f;
+            if (sign == null) {
+                sign = s;
+            } else if (sign != s) {
+                return false;
+            }
+        }
+        return sign != null;
+    }
+
+    private static DragMode HitHandle(HudElement el, Vector2 mouse) {
+        float r = HandleHitPx * UiScale;
+        el.GetScreenCorners(corners);
+        if (el.CanRotate && (mouse - RotateHandleScreen(corners)).sqrMagnitude <= r * r) {
+            return DragMode.Rotate;
+        }
+        if (el.CanScale) {
+            // Inside the box only the handle square itself scales; anything further in moves,
+            // otherwise grabbing near a corner to move it scaled it instead.
+            float inner = HandleInsidePx * UiScale;
+            bool inside = InQuad(mouse, corners);
+            for (int i = 0; i < 4; i++) {
+                float d2 = (mouse - (Vector2)corners[i]).sqrMagnitude;
+                if (d2 <= (inside ? inner * inner : r * r)) {
+                    return DragMode.Scale;
+                }
+            }
+        }
+        return DragMode.None;
+    }
+
+    private static Vector2 RotateHandleScreen(Vector3[] c) {
+        Vector2 topMid = (c[1] + c[2]) * 0.5f;
+        Vector2 up = ((Vector2)(c[1] - c[0])).normalized;
+        if (up == Vector2.zero) {
+            up = Vector2.up;
+        }
+        return topMid + up * (RotateHandleOffset * UiScale);
+    }
+
+    // ---- drag ----
+
+    private static void BeginDrag(DragMode mode, Vector2 mouse) {
+        var targets = mode == DragMode.Move ? selection.Where(e => e.CanMove).ToList() : [Primary];
+        if (targets.Count == 0 || targets[0] == null) {
+            return;
+        }
+        CommitPanelEdit();
+        drag = mode;
+        dragStart = targets.Select(e => (e, e.Capture())).ToList();
+        dragMouseStart = mouse;
+        dragChanged = false;
+    }
+
+    private static void UpdateDrag(Vector2 mouse) {
+        if (!dragChanged && (mouse - dragMouseStart).sqrMagnitude < 4f) {
+            return;
+        }
+        dragChanged = true;
+        guideX.Clear();
+        guideY.Clear();
+
+        switch (drag) {
+            case DragMode.Move: {
+                Vector2 screenDelta = mouse - dragMouseStart;
+                ApplyMove(screenDelta);
+                if (!Alt && MainCore.Conf.HudSnap.Value) {
+                    Vector2 snap = SnapOffset(dragStart.Select(d => d.Element).ToList());
+                    if (snap != Vector2.zero) {
+                        ApplyMove(screenDelta + snap);
+                    }
+                }
+                break;
+            }
+            case DragMode.Scale: {
+                var (el, start) = dragStart[0];
+                Vector2 pivot = el.ScreenPivot;
+                float startDist = (dragMouseStart - pivot).magnitude;
+                if (startDist < 1f) {
+                    break;
+                }
+                float ratio = (mouse - pivot).magnitude / startDist;
+                if (Shift) {
+                    ratio = Mathf.Round(ratio * start.Scale.x / 0.05f) * 0.05f / Mathf.Max(start.Scale.x, 1e-4f);
+                }
+                ratio = Mathf.Max(ratio, 0.01f);
+                var state = start;
+                state.Scale = new Vector3(start.Scale.x * ratio, start.Scale.y * ratio, start.Scale.z);
+                el.Apply(state);
+                break;
+            }
+            case DragMode.Rotate: {
+                var (el, start) = dragStart[0];
+                Vector2 pivot = el.ScreenPivot;
+                float a0 = Mathf.Atan2(dragMouseStart.y - pivot.y, dragMouseStart.x - pivot.x);
+                float a1 = Mathf.Atan2(mouse.y - pivot.y, mouse.x - pivot.x);
+                float rot = start.Rotation + Mathf.DeltaAngle(a0 * Mathf.Rad2Deg, a1 * Mathf.Rad2Deg);
+                if (Shift) {
+                    rot = Mathf.Round(rot / 15f) * 15f;
+                }
+                var state = start;
+                state.Rotation = Mathf.Repeat(rot + 180f, 360f) - 180f;
+                el.Apply(state);
+                break;
+            }
+        }
+        SyncPanelValues();
+    }
+
+    private static void ApplyMove(Vector2 screenDelta) {
+        foreach (var (el, start) in dragStart) {
+            var state = start;
+            state.Position = start.Position + el.ScreenToParentDelta(screenDelta);
+            el.Apply(state);
+        }
+    }
+
+    // Screen-space snapping of the dragged group's box to screen edges/center and other HUD boxes.
+    // Returns an extra screen offset.
+    private static Vector2 SnapOffset(List<HudElement> moving) {
+        if (!UnionBounds(moving, out float minX, out float maxX, out float minY, out float maxY)) {
+            return Vector2.zero;
+        }
+        float threshold = MainCore.Conf.HudSnapDistance.Value * UiScale;
+
+        float bestX = threshold, dx = 0f, lineX = float.NaN;
+        float bestY = threshold, dy = 0f, lineY = float.NaN;
+        void TryX(float line) {
+            foreach (float v in new[] { minX, (minX + maxX) * 0.5f, maxX }) {
+                float d = line - v;
+                if (Mathf.Abs(d) < bestX) { bestX = Mathf.Abs(d); dx = d; lineX = line; }
+            }
+        }
+        void TryY(float line) {
+            foreach (float v in new[] { minY, (minY + maxY) * 0.5f, maxY }) {
+                float d = line - v;
+                if (Mathf.Abs(d) < bestY) { bestY = Mathf.Abs(d); dy = d; lineY = line; }
+            }
+        }
+
+        TryX(0f); TryX(Screen.width * 0.5f); TryX(Screen.width);
+        TryY(0f); TryY(Screen.height * 0.5f); TryY(Screen.height);
+        var other = new Vector3[4];
+        foreach (var o in elements) {
+            if (!o.IsAlive || moving.Contains(o) || moving.Any(m => IsAncestor(m.Object, o.Object))) {
+                continue;
+            }
+            o.GetScreenCorners(other);
+            Bounds(other, out float oMinX, out float oMaxX, out float oMinY, out float oMaxY);
+            TryX(oMinX); TryX((oMinX + oMaxX) * 0.5f); TryX(oMaxX);
+            TryY(oMinY); TryY((oMinY + oMaxY) * 0.5f); TryY(oMaxY);
+        }
+
+        if (!float.IsNaN(lineX)) {
+            guideX.Add(lineX);
+        }
+        if (!float.IsNaN(lineY)) {
+            guideY.Add(lineY);
+        }
+        return new Vector2(dx, dy);
+    }
+
+    private static bool UnionBounds(IEnumerable<HudElement> items, out float minX, out float maxX, out float minY, out float maxY) {
+        minX = minY = float.MaxValue;
+        maxX = maxY = float.MinValue;
+        bool any = false;
+        var c = new Vector3[4];
+        foreach (var el in items) {
+            if (el == null || !el.IsAlive) {
+                continue;
+            }
+            el.GetScreenCorners(c);
+            Bounds(c, out float a, out float b, out float d, out float e);
+            minX = Mathf.Min(minX, a); maxX = Mathf.Max(maxX, b);
+            minY = Mathf.Min(minY, d); maxY = Mathf.Max(maxY, e);
+            any = true;
+        }
+        return any;
+    }
+
+    private static void Bounds(Vector3[] c, out float minX, out float maxX, out float minY, out float maxY) {
+        minX = maxX = c[0].x;
+        minY = maxY = c[0].y;
+        for (int i = 1; i < 4; i++) {
+            minX = Mathf.Min(minX, c[i].x);
+            maxX = Mathf.Max(maxX, c[i].x);
+            minY = Mathf.Min(minY, c[i].y);
+            maxY = Mathf.Max(maxY, c[i].y);
+        }
+    }
+
+    private static void EndDrag() {
+        if (drag == DragMode.None) {
+            return;
+        }
+        drag = DragMode.None;
+        guideX.Clear();
+        guideY.Clear();
+        if (!dragChanged) {
+            return;
+        }
+        Commit(dragStart.Select(d => (d.Element, d.Start, d.Element.Capture())).ToList());
+    }
+
+    private static void CancelDrag() {
+        if (drag == DragMode.None) {
+            return;
+        }
+        drag = DragMode.None;
+        guideX.Clear();
+        guideY.Clear();
+        foreach (var (el, start) in dragStart) {
+            el.Apply(start);
+        }
+        SyncPanelValues();
+    }
+
+    // ---- align / distribute (screen space, by visible boxes) ----
+
+    internal enum AlignMode { Left, CenterX, Right, Top, CenterY, Bottom, DistributeX, DistributeY }
+
+    internal static void Align(AlignMode mode) {
+        var items = selection.Where(e => e.IsAlive && e.CanMove).ToList();
+        if (items.Count < 2) {
+            return;
+        }
+        if (!UnionBounds(items, out float minX, out float maxX, out float minY, out float maxY)) {
+            return;
+        }
+        var boxes = items.Select(e => {
+            var c = new Vector3[4];
+            e.GetScreenCorners(c);
+            Bounds(c, out float a, out float b, out float d, out float f);
+            return (El: e, MinX: a, MaxX: b, MinY: d, MaxY: f);
+        }).ToList();
+
+        var changes = new List<(HudElement, HudElement.State, HudElement.State)>();
+        void Shift(HudElement el, Vector2 screenDelta) {
+            if (screenDelta.sqrMagnitude < 1e-6f) {
+                return;
+            }
+            var before = el.Capture();
+            var after = before;
+            after.Position += el.ScreenToParentDelta(screenDelta);
+            el.Apply(after);
+            changes.Add((el, before, after));
+        }
+
+        switch (mode) {
+            case AlignMode.Left: foreach (var b in boxes) Shift(b.El, new Vector2(minX - b.MinX, 0f)); break;
+            case AlignMode.Right: foreach (var b in boxes) Shift(b.El, new Vector2(maxX - b.MaxX, 0f)); break;
+            case AlignMode.CenterX: foreach (var b in boxes) Shift(b.El, new Vector2((minX + maxX - b.MinX - b.MaxX) * 0.5f, 0f)); break;
+            case AlignMode.Bottom: foreach (var b in boxes) Shift(b.El, new Vector2(0f, minY - b.MinY)); break;
+            case AlignMode.Top: foreach (var b in boxes) Shift(b.El, new Vector2(0f, maxY - b.MaxY)); break;
+            case AlignMode.CenterY: foreach (var b in boxes) Shift(b.El, new Vector2(0f, (minY + maxY - b.MinY - b.MaxY) * 0.5f)); break;
+            case AlignMode.DistributeX:
+            case AlignMode.DistributeY: {
+                if (boxes.Count < 3) {
+                    return;
+                }
+                bool x = mode == AlignMode.DistributeX;
+                var sorted = boxes.OrderBy(b => x ? b.MinX : b.MinY).ToList();
+                float total = sorted.Sum(b => x ? b.MaxX - b.MinX : b.MaxY - b.MinY);
+                float span = x ? maxX - minX : maxY - minY;
+                float gap = (span - total) / (sorted.Count - 1);
+                float cursor = x ? minX : minY;
+                foreach (var b in sorted) {
+                    float start = x ? b.MinX : b.MinY;
+                    Shift(b.El, x ? new Vector2(cursor - start, 0f) : new Vector2(0f, cursor - start));
+                    cursor += (x ? b.MaxX - b.MinX : b.MaxY - b.MinY) + gap;
+                }
+                break;
+            }
+        }
+        Commit(changes);
+    }
+
+    // ---- history / save ----
+
+    private static void Commit(List<(HudElement Element, HudElement.State Before, HudElement.State After)> changes) {
+        changes = changes.Where(c => !SameState(c.Before, c.After)).ToList();
+        if (changes.Count == 0) {
+            return;
+        }
+        undo.Push(new TransformCommand(changes));
+        Save();
+        SyncPanelValues();
+        RefreshInspectorSoon();
+    }
+
+    private static bool SameState(HudElement.State a, HudElement.State b)
+        => a.Position == b.Position && a.Scale == b.Scale && Mathf.Approximately(a.Rotation, b.Rotation);
+
+    // Edits come in bursts (arrow keys, slider drags); write once things settle.
+    private static float saveDue;
+
+    private static void Save() => saveDue = Time.realtimeSinceStartup + 0.5f;
+
+    private static void FlushSave() {
+        if (saveDue <= 0f) {
+            return;
+        }
+        saveDue = 0f;
+        try {
+            OverlayCore.SaveAllCanvases();
+        } catch (Exception e) {
+            MainCore.Log.Err($"[HudEditor] Save failed: {e.Message}");
+        }
+    }
+}

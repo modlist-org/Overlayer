@@ -31,6 +31,7 @@ public enum OriginalMenuState {
     Credits,
     Resources,
     JS,
+    Easing,
 }
 
 public static class UICore {
@@ -78,6 +79,7 @@ public static class UICore {
         }
         O5KitAdapters.Ctx.Tooltip.Initialize(CanvasObj.transform);
         RegisterToggleShortcut();
+        HudEdit.HudEditor.RegisterShortcut();
 
         _onPageSettings = state => {
             if (state == TranslationFailState.Success) {
@@ -1032,6 +1034,8 @@ public static class UICore {
         foreach (var id in ToggleShortcutIds) {
             O5ShortcutManager.Unregister(id);
         }
+        HudEdit.HudEditor.Close();
+        HudEdit.HudEditor.UnregisterShortcut();
         MainCore.Tr.OnLoadEnd -= _onPageSettings;
         MainCore.Tr.OnLoadEnd -= _onRefresh;
         O5KitAdapters.Ctx.Tooltip.Dispose();

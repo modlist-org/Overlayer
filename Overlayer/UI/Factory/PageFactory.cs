@@ -32,6 +32,7 @@ public static class PageFactory {
         PageDocs.Create(UICore.Pages[(int)OriginalMenuState.Docs]);
         PageResources.Create(UICore.Pages[(int)OriginalMenuState.Resources]);
         PageJS.Create(UICore.Pages[(int)OriginalMenuState.JS]);
+        UI.Easing.CurveEditor.Create(UICore.Pages[(int)OriginalMenuState.Easing]);
 
         return PagesContaner;
     }

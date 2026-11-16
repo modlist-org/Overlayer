@@ -37,6 +37,7 @@ public static class MenuFactory {
         var overlayer = CreateItem(parent, "Overlayer", MainCore.Spr.Get(UISprite.Monitor128), 0);
         var resources = CreateItem(parent, "Resources", MainCore.Spr.Get(UISprite.Box128), 4);
         var js = CreateItem(parent, "JS", MainCore.Spr.Get(UISprite.CodeBlock128), 5);
+        var easing = CreateItem(parent, "Easing", MainCore.Spr.Get(UISprite.Ping128), (int)OriginalMenuState.Easing);
         var settings = CreateItem(parent, "Settings", MainCore.Spr.Get(UISprite.Gear128), 1);
         var docs = CreateItem(parent, "Docs", MainCore.Spr.Get(UISprite.Book128), 2);
         var credits = CreateItem(parent, "Credits", MainCore.Spr.Get(UISprite.Star128), 3);
@@ -58,6 +59,9 @@ public static class MenuFactory {
 
         js.label.gameObject.AddComponent<TextLocalization>()
             .Init("JS", "JS");
+
+        easing.label.gameObject.AddComponent<TextLocalization>()
+            .Init("EASING", "Easing");
 
         ApplyState(UICore.CurrentMenuState, true);
     }

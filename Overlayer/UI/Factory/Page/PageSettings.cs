@@ -15,6 +15,7 @@ using Overlayer.IO.User;
 using Overlayer.Package;
 using Overlayer.Update;
 using Overlayer.Native;
+using Overlayer.UI.Utility;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -294,7 +295,86 @@ internal static class PageSettings {
 
         BuildFontPickers(content, objects, overlayerText);
 
+        BuildHudEditor(content, defSet);
+
         BuildUpdates(content, defSet);
+    }
+
+    private static void BuildHudEditor(GameObject content, CoreSettings defSet) {
+        var ctx = O5KitAdapters.Ctx;
+        var headerRow = O5Factory.Row(ctx, content.transform);
+        var header = O5Factory.ControlTextH1(ctx, headerRow);
+        header.gameObject.AddComponent<TextLocalization>().Init("HUD_EDITOR", "HUD Editor");
+
+        var tabs = new UiStyle.Tabs(content.transform, "hud_settings",
+            MainCore.Tr.Get("BASIC", "Basic"), MainCore.Tr.Get("ADVANCED", "Advanced"));
+        Transform basic = tabs[0], advanced = tabs[1];
+
+        var openRow = O5Factory.Row(ctx, basic);
+        var openButton = O5Factory.Button(ctx, openRow, "hud_editor_open", new O5ButtonOptions { Text = "Open HUD Editor", OnClick = HudEdit.HudEditor.Open });
+        openButton.Label.gameObject.AddComponent<TextLocalization>().Init("OPEN_HUD_EDITOR", "Open HUD Editor");
+        openButton.Rect.AddToolTip(ctx, () => MainCore.Tr.Get("DESC_HUD_EDITOR",
+            "Move, scale, rotate and create HUD objects right on the game screen."));
+
+        var keyRow = O5Factory.Row(ctx, basic);
+        O5Button keyButton = null;
+        string KeyCaption() => $"{MainCore.Tr.Get("HUD_EDITOR_KEY", "Open Key")}: {HudEdit.HudEditor.Key}";
+        keyButton = O5Factory.Button(ctx, keyRow, "hud_editor_key", new O5ButtonOptions { Text = KeyCaption(), OnClick = () => KeyCapture.Begin(
+            () => keyButton.Text = $"{MainCore.Tr.Get("HUD_EDITOR_KEY", "Open Key")}: ...",
+            key => {
+                if (key != KeyCode.None) {
+                    MainCore.Conf.HudEditorKey = key.ToString();
+                    MainCore.ConfMgr.RequestSave();
+                    HudEdit.HudEditor.RegisterShortcut();
+                }
+                keyButton.Text = KeyCaption();
+            }) });
+        keyButton.Rect.AddToolTip(ctx, () => MainCore.Tr.Get("DESC_HUD_EDITOR_KEY", "Click, then press a key. Esc cancels."));
+
+        var snapRow = O5Factory.Row(ctx, basic);
+        var snapToggle = O5Factory.Toggle(ctx, snapRow, "hud_snap", new O5ToggleOptions { DefaultValue = defSet.HudSnap, Value = MainCore.Conf.HudSnap, OnChanged = toggle => {
+                MainCore.Conf.HudSnap = toggle;
+                MainCore.ConfMgr.RequestSave();
+            }, Text = "Snap to Edges and Other Objects" });
+        snapToggle.Rect.AddToolTip(ctx, () => MainCore.Tr.Get("DESC_HUD_SNAP", "Hold Alt while dragging to place freely."));
+        var snapTr = snapToggle.Label.gameObject.AddComponent<TextLocalization>().Init("HUD_SNAP", "Snap to Edges and Other Objects");
+        objects[snapTr] = (headerRow.gameObject, snapRow.gameObject);
+
+        var hintsRow = O5Factory.Row(ctx, basic);
+        var hintsToggle = O5Factory.Toggle(ctx, hintsRow, "hud_hints", new O5ToggleOptions { DefaultValue = defSet.HudShowHints, Value = MainCore.Conf.HudShowHints, OnChanged = toggle => {
+                MainCore.Conf.HudShowHints = toggle;
+                MainCore.ConfMgr.RequestSave();
+            }, Text = "Show Shortcut Hints" });
+        var hintsTr = hintsToggle.Label.gameObject.AddComponent<TextLocalization>().Init("HUD_SHOW_HINTS", "Show Shortcut Hints");
+        objects[hintsTr] = (headerRow.gameObject, hintsRow.gameObject);
+
+        var canvasLabel = O5Factory.ControlText(ctx, O5Factory.Row(ctx, basic, 30f), 20f, true);
+        canvasLabel.gameObject.AddComponent<TextLocalization>().Init("HUD_MAIN_CANVAS", "Main Canvas (new objects go here)");
+        var canvasRow = O5Factory.Row(ctx, basic);
+        var canvasInput = O5Factory.Input(ctx, canvasRow, "hud_main_canvas", new O5InputOptions { Value = MainCore.Conf.HudMainCanvas, Placeholder = "HUD", OnEndEdit = value => {
+                MainCore.Conf.HudMainCanvas = string.IsNullOrWhiteSpace(value) ? "HUD" : value.Trim();
+                MainCore.ConfMgr.RequestSave();
+            } });
+        canvasInput.Rect.AddToolTip(ctx, () => MainCore.Tr.Get("DESC_HUD_MAIN_CANVAS",
+            "Main canvas: where new HUD objects go. Created automatically if it doesn't exist."));
+
+        var distanceRow = O5Factory.Row(ctx, advanced);
+        var distance = O5Factory.Slider(ctx, distanceRow, "hud_snap_distance", new O5SliderOptions { DefaultValue = defSet.HudSnapDistance, Min = 2f, Max = 32f, Value = MainCore.Conf.HudSnapDistance, Format = "0 px", Label = "Snap Distance", ClampDrag = true, ClampInput = true, DragFilter = value => Math.Round(value), OnComplete = value => {
+                MainCore.Conf.HudSnapDistance = (float)value;
+                MainCore.ConfMgr.RequestSave();
+            } });
+        var distanceTr = distance.Label.gameObject.AddComponent<TextLocalization>().Init("HUD_SNAP_DISTANCE", "Snap Distance");
+        objects[distanceTr] = (headerRow.gameObject, distanceRow.gameObject);
+
+        var inPlayRow = O5Factory.Row(ctx, advanced);
+        var inPlayToggle = O5Factory.Toggle(ctx, inPlayRow, "hud_in_play", new O5ToggleOptions { DefaultValue = defSet.HudEditorInPlay, Value = MainCore.Conf.HudEditorInPlay, OnChanged = toggle => {
+                MainCore.Conf.HudEditorInPlay = toggle;
+                MainCore.ConfMgr.RequestSave();
+            }, Text = "Allow Opening While Playing" });
+        inPlayToggle.Rect.AddToolTip(ctx, () => MainCore.Tr.Get("DESC_HUD_IN_PLAY",
+            "By default the HUD editor only opens outside of play or while paused."));
+        var inPlayTr = inPlayToggle.Label.gameObject.AddComponent<TextLocalization>().Init("HUD_IN_PLAY", "Allow Opening While Playing");
+        objects[inPlayTr] = (headerRow.gameObject, inPlayRow.gameObject);
     }
 
     private static Action refreshUpdates;

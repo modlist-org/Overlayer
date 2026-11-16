@@ -124,7 +124,12 @@ public sealed class OverlayerRuntime {
         _ = V8Manager.LoadScriptsAsync();
     }
 
-    public void Tick() => ticks.Tick();
+    public void Tick() {
+        ticks.Tick();
+        UI.Utility.KeyCapture.Tick();
+        HudEdit.HudEditor.Tick();
+        UI.Easing.CurveEditor.Tick();
+    }
 
     public void Dispose() {
         _disposed = true;
@@ -179,6 +184,8 @@ public sealed class OverlayerRuntime {
             ModuleService?.NotifyEnabledChanged(false, isDispose);
             OnModEnabledChanged?.Invoke(false, isDispose);
 
+            // The HUD editor holds overlay objects (and parked deletions): let go first.
+            HudEdit.HudEditor.Close();
             OverlayCore.Dispose();
 
             SafePatchController.SuspendAll();

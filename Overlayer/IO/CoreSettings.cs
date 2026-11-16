@@ -25,6 +25,13 @@ public sealed class CoreSettings : ISettingsFile {
     public FxValue<List<string>> SystemFontFallbacks = new([]);
     public FxValue<List<string>> CodeFontFallbacks = new([]);
     public FxValue<bool> UseRawInput = new(true);
+    public FxValue<string> HudEditorKey = FxValue<string>.FromValue("F8");
+    public FxValue<bool> HudEditorInPlay = new(false);
+    public FxValue<bool> HudSnap = new(true);
+    public FxValue<float> HudSnapDistance = new(8f);
+    public FxValue<bool> HudShowHints = new(true);
+    public FxValue<string> HudMainCanvas = FxValue<string>.FromValue("HUD");
+    public FxValue<string> HudPlacement = FxValue<string>.FromValue("MainCanvas");
 
     public JToken Serialize() {
         return new JObject {
@@ -46,7 +53,14 @@ public sealed class CoreSettings : ISettingsFile {
             [nameof(CodeFontKey)] = IOUtils.WriteFx(CodeFontKey),
             [nameof(SystemFontFallbacks)] = IOUtils.WriteFx(SystemFontFallbacks),
             [nameof(CodeFontFallbacks)] = IOUtils.WriteFx(CodeFontFallbacks),
-            [nameof(UseRawInput)] = IOUtils.WriteFx(UseRawInput)
+            [nameof(UseRawInput)] = IOUtils.WriteFx(UseRawInput),
+            [nameof(HudEditorKey)] = IOUtils.WriteFx(HudEditorKey),
+            [nameof(HudEditorInPlay)] = IOUtils.WriteFx(HudEditorInPlay),
+            [nameof(HudSnap)] = IOUtils.WriteFx(HudSnap),
+            [nameof(HudSnapDistance)] = IOUtils.WriteFx(HudSnapDistance),
+            [nameof(HudShowHints)] = IOUtils.WriteFx(HudShowHints),
+            [nameof(HudMainCanvas)] = IOUtils.WriteFx(HudMainCanvas),
+            [nameof(HudPlacement)] = IOUtils.WriteFx(HudPlacement)
         };
     }
 
@@ -70,5 +84,12 @@ public sealed class CoreSettings : ISettingsFile {
         SystemFontFallbacks = IOUtils.ReadFx(token, nameof(SystemFontFallbacks), SystemFontFallbacks);
         CodeFontFallbacks = IOUtils.ReadFx(token, nameof(CodeFontFallbacks), CodeFontFallbacks);
         UseRawInput = IOUtils.ReadFx(token, nameof(UseRawInput), UseRawInput);
+        HudEditorKey = IOUtils.ReadFx(token, nameof(HudEditorKey), HudEditorKey);
+        HudEditorInPlay = IOUtils.ReadFx(token, nameof(HudEditorInPlay), HudEditorInPlay);
+        HudSnap = IOUtils.ReadFx(token, nameof(HudSnap), HudSnap);
+        HudSnapDistance = IOUtils.ReadFx(token, nameof(HudSnapDistance), HudSnapDistance);
+        HudShowHints = IOUtils.ReadFx(token, nameof(HudShowHints), HudShowHints);
+        HudMainCanvas = IOUtils.ReadFx(token, nameof(HudMainCanvas), HudMainCanvas);
+        HudPlacement = IOUtils.ReadFx(token, nameof(HudPlacement), HudPlacement);
     }
 }

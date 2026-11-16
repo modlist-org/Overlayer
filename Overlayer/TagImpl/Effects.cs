@@ -195,7 +195,7 @@ public static class Effects {
         return state.Previous + ((state.Target - state.Previous) * ease.Apply(progress));
     }
 
-    private static float EaseValue(float progress, O5Ease ease) => ease switch {
+    internal static float EaseValue(float progress, O5Ease ease) => ease switch {
         O5Ease.Linear => progress,
         O5Ease.InSine => 1f - Mathf.Cos(progress * (float)Math.PI * 0.5f),
         O5Ease.OutSine => Mathf.Sin(progress * (float)Math.PI * 0.5f),
