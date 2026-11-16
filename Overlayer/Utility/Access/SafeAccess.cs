@@ -182,7 +182,7 @@ public static class SafeAccess {
             if (!callers.TryGetValue(key, out caller)) {
                 lock (syncLock) {
                     if (!callers.TryGetValue(key, out caller)) {
-                        caller = BuildCaller(key.Item1, method, args.Length);
+                        caller = BuildCaller(key.Item1, method, args);
                         callers[key] = caller;
                     }
                 }
@@ -268,9 +268,13 @@ public static class SafeAccess {
         return null;
     }
 
-    private static Func<object, object[], object> BuildCaller(Type type, string method, int arity) {
+    private static Func<object, object[], object> BuildCaller(Type type, string method, object[] sampleArgs) {
         const BindingFlags flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance;
-        var match = type.GetMethods(flags).FirstOrDefault(m => m.Name == method && m.GetParameters().Length == arity);
+        int arity = sampleArgs.Length;
+        var candidates = type.GetMethods(flags).Where(m => m.Name == method && m.GetParameters().Length == arity).ToArray();
+        // Prefer the overload whose parameters accept the given arguments,
+        // e.g. GetHits(HitMargin) over GetHits(params HitMargin[]).
+        var match = candidates.FirstOrDefault(m => ArgsFit(m.GetParameters(), sampleArgs)) ?? candidates.FirstOrDefault();
         if (match == null) {
             return null;
         }
@@ -287,6 +291,21 @@ public static class SafeAccess {
             ? Expression.Block(call, Expression.Constant(null, typeof(object)))
             : Expression.Convert(call, typeof(object));
         return Expression.Lambda<Func<object, object[], object>>(body, inst, args).Compile();
+    }
+
+    private static bool ArgsFit(ParameterInfo[] ps, object[] args) {
+        for (int i = 0; i < ps.Length; i++) {
+            Type p = ps[i].ParameterType;
+            object a = args[i];
+            if (a == null) {
+                if (p.IsValueType && Nullable.GetUnderlyingType(p) == null) {
+                    return false;
+                }
+            } else if (!p.IsInstanceOfType(a)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static void SweepLocked() {
