@@ -33,6 +33,10 @@ public sealed class CoreSettings : ISettingsFile {
     public FxValue<string> HudMainCanvas = FxValue<string>.FromValue("HUD");
     public FxValue<string> HudPlacement = FxValue<string>.FromValue("MainCanvas");
     public FxValue<float> HudPanelWidth = new(520f);
+    public FxValue<float> HudPanelHeight = new(0f);
+    public FxValue<bool> HudPanelPinned = new(true);
+    public FxValue<bool> HudGrid = new(false);
+    public FxValue<float> HudGridSize = new(40f);
 
     public JToken Serialize() {
         return new JObject {
@@ -62,7 +66,11 @@ public sealed class CoreSettings : ISettingsFile {
             [nameof(HudShowHints)] = IOUtils.WriteFx(HudShowHints),
             [nameof(HudMainCanvas)] = IOUtils.WriteFx(HudMainCanvas),
             [nameof(HudPlacement)] = IOUtils.WriteFx(HudPlacement),
-            [nameof(HudPanelWidth)] = IOUtils.WriteFx(HudPanelWidth)
+            [nameof(HudPanelWidth)] = IOUtils.WriteFx(HudPanelWidth),
+            [nameof(HudPanelHeight)] = IOUtils.WriteFx(HudPanelHeight),
+            [nameof(HudPanelPinned)] = IOUtils.WriteFx(HudPanelPinned),
+            [nameof(HudGrid)] = IOUtils.WriteFx(HudGrid),
+            [nameof(HudGridSize)] = IOUtils.WriteFx(HudGridSize)
         };
     }
 
@@ -94,5 +102,9 @@ public sealed class CoreSettings : ISettingsFile {
         HudMainCanvas = IOUtils.ReadFx(token, nameof(HudMainCanvas), HudMainCanvas);
         HudPlacement = IOUtils.ReadFx(token, nameof(HudPlacement), HudPlacement);
         HudPanelWidth = IOUtils.ReadFx(token, nameof(HudPanelWidth), HudPanelWidth);
+        HudPanelHeight = IOUtils.ReadFx(token, nameof(HudPanelHeight), HudPanelHeight);
+        HudPanelPinned = IOUtils.ReadFx(token, nameof(HudPanelPinned), HudPanelPinned);
+        HudGrid = IOUtils.ReadFx(token, nameof(HudGrid), HudGrid);
+        HudGridSize = IOUtils.ReadFx(token, nameof(HudGridSize), HudGridSize);
     }
 }

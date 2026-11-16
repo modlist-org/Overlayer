@@ -557,6 +557,28 @@ internal static partial class HudEditor {
             lineY = float.NaN;
         }
 
+        // Grid on: whatever didn't snap to an object or the screen lands on the nearest grid
+        // line (edge or middle, whichever is closest). The grid runs through the screen centre.
+        if (MainCore.Conf.HudGrid.Value) {
+            float s = GridSpacing;
+            float GridDelta(float a, float b, float centre) {
+                float best = float.MaxValue;
+                foreach (float v in new[] { a, (a + b) * 0.5f, b }) {
+                    float d = centre + Mathf.Round((v - centre) / s) * s - v;
+                    if (Mathf.Abs(d) < Mathf.Abs(best)) {
+                        best = d;
+                    }
+                }
+                return best;
+            }
+            if (float.IsNaN(lineX) && !ex.HasValue) {
+                dx = GridDelta(minX, maxX, Screen.width * 0.5f);
+            }
+            if (float.IsNaN(lineY) && !ey.HasValue) {
+                dy = GridDelta(minY, maxY, Screen.height * 0.5f);
+            }
+        }
+
         if (!float.IsNaN(lineX)) {
             guideX.Add(lineX);
         }

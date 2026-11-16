@@ -35,7 +35,8 @@ internal static partial class HudEditor {
     private const float Margin = 16f;
 
     // Overlay canvases render below Overlayer's UI canvas, so this also tints the HUD: keep it light.
-    private static readonly Color DimColor = new(0f, 0f, 0f, 0.1f);
+    // A light veil over the game while editing (also tints the HUD, so keep it faint).
+    private static readonly Color DimColor = new(1f, 1f, 1f, 0.07f);
     private static readonly Color IdleColor = new(1f, 1f, 1f, 0.14f);
     private static readonly Color HoverColor = new(1f, 1f, 1f, 0.75f);
     private static readonly Color SelectedColor = new(0.569f, 0.604f, 1f, 1f);
@@ -160,6 +161,8 @@ internal static partial class HudEditor {
             hint.text = "Right-click  add      Shift+click  multi-select      Alt  no snap      Arrows  nudge      Esc  close";
         }
 
+        gridLayer = NewRect("Grid", root);
+        Stretch(gridLayer);
         gizmoLayer = NewRect("Gizmos", root);
         Stretch(gizmoLayer);
 
@@ -178,6 +181,8 @@ internal static partial class HudEditor {
 
         BuildToolbar();
         BuildPanel(ctx);
+        ApplyPanelLayout();
+        UpdateGridButton();
     }
 
     // ---- toolbar: a compact floating bar, top-center of the free area ----
@@ -207,6 +212,7 @@ internal static partial class HudEditor {
             OpenPresetMenu(new Vector2(c[0].x, c[0].y - 6f), null);
         }, "Ready-made HUD pieces and layouts");
         placementButton = Button(Cell(toolbar, 170f), "placement", string.Empty, CyclePlacement, "Where new objects go. Click to change.");
+        gridButton = Button(Cell(toolbar, 60f), "grid", "Grid", ToggleGrid, "Show the grid and snap to it");
         UiStyle.Separator(toolbar, true);
         Icon(toolbar, "duplicate", UISprite.Clone128, DuplicateSelection, "Duplicate  Ctrl+D");
         Icon(toolbar, "delete", UISprite.X128, DeleteSelection, "Delete  Del");
@@ -233,11 +239,9 @@ internal static partial class HudEditor {
 
     private static void BuildPanel(O5Kit.Core.O5Context ctx) {
         panel = UiStyle.Rounded("Panel", root, UiStyle.Surface).rectTransform;
-        panel.anchorMin = new Vector2(1f, 0f);
-        panel.anchorMax = new Vector2(1f, 1f);
-        panel.pivot = new Vector2(1f, 0.5f);
-        panel.offsetMin = new Vector2(-PanelWidth - Margin, Margin);
-        panel.offsetMax = new Vector2(-Margin, -Margin);
+        // Hangs from the top-right corner; width and height come from ApplyPanelLayout.
+        panel.anchorMin = panel.anchorMax = panel.pivot = Vector2.one;
+        panel.anchoredPosition = new Vector2(-Margin, -Margin);
         BuildResizeGrip();
 
         var content = NewRect("Content", panel);
@@ -590,6 +594,10 @@ internal static partial class HudEditor {
     }
 
     private static void Render() {
+        if (panelShown != PanelWanted) {
+            ApplyPanelLayout();
+        }
+        RenderGrid();
         if (root == null) {
             return;
         }
@@ -719,24 +727,52 @@ internal static partial class HudEditor {
         return frames[index];
     }
 
-    // ---- panel width ----
+    // ---- panel size / pin ----
 
+    private const float MinPanelHeight = 260f;
     private static RectTransform toolbarArea, hintRect;
     private static bool resizingPanel;
+    private static bool panelShown = true;
+    private static O5Button pinButton;
 
-    // A strip along the panel's left edge: drag it to make the panel wider or narrower.
+    // Pinned: always shown. Unpinned: only while something is selected.
+    private static bool PanelWanted => MainCore.Conf.HudPanelPinned.Value || selection.Count > 0;
+
     private static void BuildResizeGrip() {
-        var grip = NewImage("ResizeGrip", panel, Color.clear);
+        // Left edge: width.
+        Grip("WidthGrip", Vector2.zero, new Vector2(0f, 1f), new Vector2(12f, 0f), new Vector2(0.5f, 0.3f), new Vector2(0.5f, 0.7f),
+            new Vector2(3f, 0f), "Drag to resize the panel",
+            d => MainCore.Conf.HudPanelWidth.Value = Mathf.Clamp(PanelWidth - d.x / UiScale, MinPanelWidth, MaxPanelWidth),
+            () => { });
+        // Bottom edge: height (double-click: full height again).
+        Grip("HeightGrip", Vector2.zero, new Vector2(1f, 0f), new Vector2(0f, 12f), new Vector2(0.4f, 0.5f), new Vector2(0.6f, 0.5f),
+            new Vector2(0f, 3f), "Drag to resize the panel, double-click for full height",
+            d => MainCore.Conf.HudPanelHeight.Value = Mathf.Clamp(PanelHeight - d.y / UiScale, MinPanelHeight, AvailableHeight),
+            () => MainCore.Conf.HudPanelHeight.Value = 0f);
+
+        // Small pin toggle in the corner: pinned = always shown, else only with a selection.
+        var pinCell = NewRect("Pin", panel);
+        pinCell.anchorMin = pinCell.anchorMax = pinCell.pivot = Vector2.one;
+        pinCell.anchoredPosition = new Vector2(-8f, -8f);
+        pinCell.sizeDelta = new Vector2(64f, 24f);
+        pinButton = Track(UiStyle.Button(pinCell, "plus_hud_pin", string.Empty, TogglePin, fontSize: 13f));
+        UiStyle.Tooltip(pinButton, "Pinned: the panel stays open. Auto: it shows only while something is selected.");
+        UpdatePinLabel();
+    }
+
+    private static void Grip(string name, Vector2 anchorMin, Vector2 anchorMax, Vector2 size, Vector2 lineMin, Vector2 lineMax,
+        Vector2 lineSize, string tooltip, Action<Vector2> drag, Action doubleClick) {
+        var grip = NewImage(name, panel, Color.clear);
         grip.raycastTarget = true;
         var r = grip.rectTransform;
-        r.anchorMin = Vector2.zero;
-        r.anchorMax = new Vector2(0f, 1f);
-        r.sizeDelta = new Vector2(12f, 0f);
+        r.anchorMin = anchorMin;
+        r.anchorMax = anchorMax;
+        r.sizeDelta = size;
         r.anchoredPosition = Vector2.zero;
         var line = NewImage("Line", r, UiStyle.Line);
-        line.rectTransform.anchorMin = new Vector2(0.5f, 0.3f);
-        line.rectTransform.anchorMax = new Vector2(0.5f, 0.7f);
-        line.rectTransform.sizeDelta = new Vector2(3f, 0f);
+        line.rectTransform.anchorMin = lineMin;
+        line.rectTransform.anchorMax = lineMax;
+        line.rectTransform.sizeDelta = lineSize;
 
         var trigger = grip.gameObject.AddComponent<EventTrigger>();
         UnityUtils.AddEvents(trigger,
@@ -749,29 +785,128 @@ internal static partial class HudEditor {
             (EventTriggerType.BeginDrag, _ => resizingPanel = true),
             (EventTriggerType.Drag, e => {
                 if (e is PointerEventData pe) {
-                    MainCore.Conf.HudPanelWidth.Value = Mathf.Clamp(PanelWidth - pe.delta.x / UiScale, MinPanelWidth, MaxPanelWidth);
-                    ApplyPanelWidth();
+                    drag(pe.delta);
+                    ApplyPanelLayout();
                 }
             }),
             (EventTriggerType.EndDrag, _ => {
                 resizingPanel = false;
                 line.color = UiStyle.Line;
                 MainCore.ConfMgr.RequestSave();
+            }),
+            (EventTriggerType.PointerClick, e => {
+                if (e is PointerEventData { clickCount: 2 }) {
+                    doubleClick();
+                    ApplyPanelLayout();
+                    MainCore.ConfMgr.RequestSave();
+                }
             })
         );
-        grip.rectTransform.AddToolTip(O5KitAdapters.Ctx, "Drag to resize the panel");
+        r.AddToolTip(O5KitAdapters.Ctx, tooltip);
     }
 
-    private static void ApplyPanelWidth() {
-        float w = PanelWidth;
-        if (panel != null) {
-            panel.offsetMin = new Vector2(-w - Margin, Margin);
+    private static void TogglePin() {
+        MainCore.Conf.HudPanelPinned.Value = !MainCore.Conf.HudPanelPinned.Value;
+        MainCore.ConfMgr.RequestSave();
+        UpdatePinLabel();
+        ApplyPanelLayout();
+    }
+
+    private static void UpdatePinLabel() {
+        if (pinButton != null) {
+            pinButton.Text = MainCore.Conf.HudPanelPinned.Value ? "Pinned" : "Auto";
         }
+    }
+
+    private static float AvailableHeight => root != null ? Mathf.Max(MinPanelHeight, root.rect.height - Margin * 2f) : 800f;
+
+    // 0 = full height.
+    private static float PanelHeight {
+        get {
+            float h = MainCore.Conf.HudPanelHeight.Value;
+            return h <= 0f ? AvailableHeight : Mathf.Clamp(h, MinPanelHeight, AvailableHeight);
+        }
+    }
+
+    private static void ApplyPanelLayout() {
+        if (panel == null) {
+            return;
+        }
+        panelShown = PanelWanted;
+        panel.gameObject.SetActive(panelShown);
+        float w = PanelWidth;
+        panel.sizeDelta = new Vector2(w, PanelHeight);
+        // The toolbar and hints use the space the panel leaves.
+        float right = panelShown ? w + Margin : 0f;
         if (toolbarArea != null) {
-            toolbarArea.offsetMax = new Vector2(-w - Margin, 0f);
+            toolbarArea.offsetMax = new Vector2(-right, 0f);
         }
         if (hintRect != null) {
-            hintRect.offsetMax = new Vector2(-w - Margin * 2f, 34f);
+            hintRect.offsetMax = new Vector2(-right - Margin, 34f);
+        }
+    }
+
+    // ---- grid ----
+
+    private static RectTransform gridLayer;
+    private static O5Button gridButton;
+    private static readonly List<Image> gridLines = [];
+    private static float gridBuiltSpacing = -1f;
+    private static Vector2 gridBuiltScreen;
+
+    private static void ToggleGrid() {
+        MainCore.Conf.HudGrid.Value = !MainCore.Conf.HudGrid.Value;
+        MainCore.ConfMgr.RequestSave();
+        UpdateGridButton();
+    }
+
+    private static void UpdateGridButton() {
+        if (gridButton == null) {
+            return;
+        }
+        gridButton.NormalColor = MainCore.Conf.HudGrid.Value ? O5KitAdapters.Ctx.Theme.ObjectButton : UiStyle.Ghost;
+        gridButton.UpdateVisual(true);
+    }
+
+    /// <summary>Grid spacing in screen pixels (the setting is in HUD canvas units).</summary>
+    private static float GridSpacing => Mathf.Max(4f, MainCore.Conf.HudGridSize.Value) / UnitsPerPixel(elements.FirstOrDefault());
+
+    // Lines through the screen centre every GridSpacing, a stronger one every 4th.
+    private static void RenderGrid() {
+        bool on = MainCore.Conf.HudGrid.Value;
+        gridLayer.gameObject.SetActive(on);
+        if (!on) {
+            return;
+        }
+        float s = GridSpacing;
+        var screen = new Vector2(Screen.width, Screen.height);
+        if (Mathf.Approximately(s, gridBuiltSpacing) && screen == gridBuiltScreen) {
+            return;
+        }
+        gridBuiltSpacing = s;
+        gridBuiltScreen = screen;
+        int used = 0;
+        Vector2 c = screen * 0.5f;
+        void Line(Vector2 a, Vector2 b, int step) {
+            while (gridLines.Count <= used) {
+                gridLines.Add(NewImage("GridLine", gridLayer, Color.white));
+            }
+            var img = gridLines[used++];
+            img.color = new Color(1f, 1f, 1f, step == 0 ? 0.22f : step % 4 == 0 ? 0.12f : 0.05f);
+            PlaceLine(img.rectTransform, ToLocal(a), ToLocal(b), 1f);
+        }
+        int nx = Mathf.CeilToInt(c.x / s);
+        for (int i = -nx; i <= nx; i++) {
+            float x = c.x + i * s;
+            Line(new Vector2(x, 0f), new Vector2(x, screen.y), i);
+        }
+        int ny = Mathf.CeilToInt(c.y / s);
+        for (int i = -ny; i <= ny; i++) {
+            float y = c.y + i * s;
+            Line(new Vector2(0f, y), new Vector2(screen.x, y), i);
+        }
+        for (int i = used; i < gridLines.Count; i++) {
+            gridLines[i].gameObject.SetActive(false);
         }
     }
 
@@ -845,7 +980,11 @@ internal static partial class HudEditor {
         }
         controls.Clear();
         xSlider = ySlider = scaleSlider = rotationSlider = null;
-        placementButton = fitButton = ungroupButton = null;
+        placementButton = fitButton = ungroupButton = pinButton = gridButton = null;
+        gridLines.Clear();
+        gridBuiltSpacing = -1f;
+        gridLayer = null;
+        panelShown = true;
         if (root != null) {
             Object.Destroy(root.gameObject);
         }

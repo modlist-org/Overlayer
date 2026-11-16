@@ -367,6 +367,15 @@ internal static class PageSettings {
         var distanceTr = distance.Label.gameObject.AddComponent<TextLocalization>().Init("HUD_SNAP_DISTANCE", "Snap Distance");
         objects[distanceTr] = (headerRow.gameObject, distanceRow.gameObject);
 
+        var gridRow = O5Factory.Row(ctx, advanced);
+        var grid = O5Factory.Slider(ctx, gridRow, "hud_grid_size", new O5SliderOptions { DefaultValue = defSet.HudGridSize, Min = 8f, Max = 200f, Value = MainCore.Conf.HudGridSize, Format = "0", Label = "Grid Size", ClampDrag = true, ClampInput = true, DragFilter = value => Math.Round(value), OnComplete = value => {
+                MainCore.Conf.HudGridSize = (float)value;
+                MainCore.ConfMgr.RequestSave();
+            } });
+        grid.Rect.AddToolTip(ctx, () => MainCore.Tr.Get("DESC_HUD_GRID_SIZE", "Spacing of the HUD editor grid, in HUD units."));
+        var gridTr = grid.Label.gameObject.AddComponent<TextLocalization>().Init("HUD_GRID_SIZE", "Grid Size");
+        objects[gridTr] = (headerRow.gameObject, gridRow.gameObject);
+
         var inPlayRow = O5Factory.Row(ctx, advanced);
         var inPlayToggle = O5Factory.Toggle(ctx, inPlayRow, "hud_in_play", new O5ToggleOptions { DefaultValue = defSet.HudEditorInPlay, Value = MainCore.Conf.HudEditorInPlay, OnChanged = toggle => {
                 MainCore.Conf.HudEditorInPlay = toggle;
