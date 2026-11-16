@@ -83,6 +83,47 @@ public static class SafePatchController {
         }
     }
 
+    // Patches removed by SuspendAll, re-applied by ResumeAll. Lets the mod be
+    // disabled/enabled without applying patches that were never in use (lazy).
+    private static SafeConditionalPatch[] suspended;
+
+    public static void SuspendAll() {
+        SafeConditionalPatch[] copy;
+        lock (syncLock) {
+            copy = [.. patches];
+        }
+        List<SafeConditionalPatch> wasApplied = [];
+        foreach (var patch in copy) {
+            if (!patch.IsApplied) {
+                continue;
+            }
+            wasApplied.Add(patch);
+            patch.Remove();
+        }
+        lock (syncLock) {
+            suspended = [.. wasApplied];
+        }
+    }
+
+    // Re-applies what SuspendAll removed. Nothing to do before the first
+    // suspend: modules apply their own patches on initialize/enable.
+    public static void ResumeAll() {
+        SafeConditionalPatch[] toApply;
+        lock (syncLock) {
+            toApply = suspended == null ? [] : [.. suspended.Where(patches.Contains)];
+            suspended = null;
+        }
+        foreach (var patch in toApply) {
+            patch.Apply();
+        }
+    }
+
+    public static bool IsSuspended(SafeConditionalPatch patch) {
+        lock (syncLock) {
+            return suspended != null && Array.IndexOf(suspended, patch) >= 0;
+        }
+    }
+
     public static Task UnloadAllAsync() {
         SafeConditionalPatch[] copy;
         lock (syncLock) {

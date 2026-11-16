@@ -10,6 +10,9 @@ public abstract class SafeConditionalPatch(string id) {
     private readonly object syncLock = new();
     private MethodBase targetMethod;
     protected MethodBase TargetMethod => targetMethod ??= GetTargetMethod();
+    // Patch methods actually applied, so Remove() unpatches only these and not
+    // other patches that share the same target method.
+    private MethodInfo[] appliedMethods = [];
 
     public void Apply() {
         lock (syncLock) {
@@ -19,7 +22,11 @@ public abstract class SafeConditionalPatch(string id) {
 
             try {
                 var method = TargetMethod;
-                SafePatchManager.Harmony.Patch(method, Prefix(), Postfix(), Transpiler());
+                HarmonyMethod prefix = Prefix(), postfix = Postfix(), transpiler = Transpiler();
+                SafePatchManager.Harmony.Patch(method, prefix, postfix, transpiler);
+                appliedMethods = [.. new[] { prefix, postfix, transpiler }
+                    .Where(h => h?.method != null)
+                    .Select(h => h.method)];
                 IsApplied = true;
                 MainCore.Log.Msg($"[{nameof(SafePatch)}] {Id} Applied");
             } catch (Exception e) {
@@ -38,7 +45,10 @@ public abstract class SafeConditionalPatch(string id) {
 
             try {
                 var method = TargetMethod;
-                SafePatchManager.Harmony.Unpatch(method, HarmonyPatchType.All, SafePatchManager.Harmony.Id);
+                foreach (var patchMethod in appliedMethods) {
+                    SafePatchManager.Harmony.Unpatch(method, patchMethod);
+                }
+                appliedMethods = [];
                 IsApplied = false;
                 MainCore.Log.Msg($"[{nameof(SafePatch)}] {Id} Removed");
             } catch (Exception e) {

@@ -114,6 +114,10 @@ public sealed class OverlayerRuntime {
 
         ModuleService.DiscoverAndRegisterModules();
         ModuleService.InitializeAllModules();
+        // SetModEnabled ran before modules existed; tell them if they start disabled.
+        if (!State.IsEnabled) {
+            ModuleService.NotifyEnabledChanged(false, false);
+        }
 
         SetModEnabledLate(Config.Data.Active, false);
 
@@ -163,7 +167,7 @@ public sealed class OverlayerRuntime {
             UserResourceManager.Initialize();
             Compat.O5KitAdapters.SetUserFontsEnabled(true);
 
-            SafePatchController.ApplyAll();
+            SafePatchController.ResumeAll();
 
             OverlayCore.Initialize(RootObject);
 
@@ -177,7 +181,7 @@ public sealed class OverlayerRuntime {
 
             OverlayCore.Dispose();
 
-            SafePatchController.UnloadAll();
+            SafePatchController.SuspendAll();
 
             Compat.O5KitAdapters.SetUserFontsEnabled(false);
             UserResourceManager.Dispose();

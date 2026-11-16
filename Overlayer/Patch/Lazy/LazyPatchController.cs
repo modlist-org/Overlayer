@@ -88,7 +88,9 @@ public static class LazyPatchController {
                 if (patch != null && patch.IsApplied && !patch.WantsApply()) {
                     patch.Remove();
                 }
-                if (patch == null || !patch.IsApplied) {
+                // A suspended patch comes back on resume; keep owning it so it
+                // can still be released once its tags are gone.
+                if (patch == null || (!patch.IsApplied && !SafePatchController.IsSuspended(patch))) {
                     owned.Remove(type);
                 }
             }
