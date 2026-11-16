@@ -44,6 +44,12 @@ internal static partial class HudEditor {
     private static GameObject pressedObject;
     private static float pressedHeight;
     private static Dock tearing;
+    // A window being carried by something inside it (a card's header), and where it was grabbed.
+    private static Dock moving;
+    private static Vector2 movingOffset;
+    // A window being carried by its title bar (drag events).
+    private static Dock titleDragging;
+    private static Image dropHint;
 
     /// <summary>A section with a title you can drag out; returns where its controls go.</summary>
     private static RectTransform DockSection(Transform parent, string id, string title, Func<bool> visible) {
@@ -126,22 +132,40 @@ internal static partial class HudEditor {
             pressedHeader = GrabbableUnder(mouse);
             pressedObject = pressedHeader != null && raycastHits.Count > 0 ? raycastHits[0].gameObject : null;
             pressedHeight = pressedHeader != null && pressedHeader.parent is RectTransform card ? card.rect.height : 0f;
+            // A header inside a window that's already out: carry the window.
+            var owner = pressedHeader == null ? null : docks.FirstOrDefault(d => d.Window != null && pressedHeader.IsChildOf(d.Window));
+            if (owner != null) {
+                moving = owner;
+                movingOffset = owner.Window.anchoredPosition - ToLocal(mouse);
+                pressedHeader = null;
+            }
         }
+        bool overPanel = panel != null && panelShown && RectTransformUtility.RectangleContainsScreenPoint(panel, mouse, null);
         if (!Input.GetMouseButton(0)) {
             pressedHeader = null;
-            if (tearing != null) {
-                tearing = null;
-                SaveDocks();
+            // Let go over the panel: back in.
+            var carried = tearing ?? moving;
+            tearing = moving = null;
+            if (carried != null) {
+                if (overPanel) {
+                    Attach(carried);
+                } else {
+                    SaveDocks();
+                }
             }
         } else if (tearing != null && tearing.Window != null) {
             Vector2 at = ToLocal(mouse);
             tearing.Window.anchoredPosition = new Vector2(at.x - 60f, at.y + DockTitleHeight * 0.5f);
+        } else if (moving != null && moving.Window != null) {
+            moving.Window.anchoredPosition = ToLocal(mouse) + movingOffset;
         } else if (pressedHeader != null && panel != null
             && !RectTransformUtility.RectangleContainsScreenPoint(panel, mouse, null)
             && grabbable.TryGetValue(pressedHeader, out var tear)) {
             pressedHeader = null;
             tear();
         }
+
+        ShowDropHint((tearing != null || moving != null || titleDragging != null) && overPanel);
 
         foreach (var dock in docks) {
             bool visible = dock.Visible();
@@ -204,10 +228,12 @@ internal static partial class HudEditor {
         UnityUtils.AddEvents(bar.gameObject.AddComponent<EventTrigger>(),
             (EventTriggerType.Drag, e => {
                 if (e is PointerEventData pe) {
+                    titleDragging = dock;
                     window.anchoredPosition += pe.delta / UiScale;
                 }
             }),
             (EventTriggerType.EndDrag, e => {
+                titleDragging = null;
                 if (e is PointerEventData pe && panelShown && RectTransformUtility.RectangleContainsScreenPoint(panel, pe.position, null)) {
                     Attach(dock);
                 } else {
@@ -242,6 +268,22 @@ internal static partial class HudEditor {
         dock.Section?.gameObject.SetActive(false);
 
         DockResizeGrip(dock);
+    }
+
+    // The panel lights up while a window held over it would go back in when let go.
+    private static void ShowDropHint(bool show) {
+        if (panel == null) {
+            return;
+        }
+        if (dropHint == null) {
+            dropHint = UiStyle.Rounded("DropHint", panel, new Color(0.569f, 0.604f, 1f, 0.16f));
+            dropHint.raycastTarget = false;
+            Stretch(dropHint.rectTransform);
+        }
+        dropHint.gameObject.SetActive(show);
+        if (show) {
+            dropHint.rectTransform.SetAsLastSibling();
+        }
     }
 
     private static void DockResizeGrip(Dock dock) {
@@ -282,6 +324,11 @@ internal static partial class HudEditor {
         if (ReferenceEquals(tearing, dock)) {
             tearing = null;
         }
+        if (ReferenceEquals(moving, dock)) {
+            moving = null;
+        }
+        titleDragging = null;
+        ShowDropHint(false);
         SaveDocks();
         RefreshPanel();
     }

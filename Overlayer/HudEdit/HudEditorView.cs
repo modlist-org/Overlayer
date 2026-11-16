@@ -555,12 +555,15 @@ internal static partial class HudEditor {
                 }
                 items.Add(null);
             }
-            if (single && target.Object.Config.TextConfig != null) {
-                var text = target;
+            // The text under the pointer, also when what's picked is the group it's in (a preset card).
+            var text = target.Object.Config.TextConfig != null ? target
+                : under.Concat(AllUnder(mouse)).FirstOrDefault(e => e.Object.Config.TextConfig != null);
+            if (text != null) {
+                string which = ReferenceEquals(text, target) ? string.Empty : $"  ({text.Name})";
                 if (CanEditText(text)) {
-                    items.Add(("Edit text", "Double-click", () => BeginInlineEdit(text), false));
+                    items.Add(("Edit text" + which, ReferenceEquals(text, target) ? "Double-click" : null, () => BeginInlineEdit(text), false));
                 }
-                items.Add(("Preview in game", null, () => HudPreview.Open(text.Object), false));
+                items.Add(("Preview in game" + which, null, () => HudPreview.Open(text.Object), false));
                 items.Add(null);
             }
             if (single) {
@@ -1092,8 +1095,9 @@ internal static partial class HudEditor {
         bottomArea = null;
         docks.Clear();
         grabbable.Clear();
-        tearing = null;
+        tearing = moving = titleDragging = null;
         pressedHeader = null;
+        dropHint = null;
         bottomGroup = null;
         bottomTools.Clear();
         DestroyRulers();
