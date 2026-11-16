@@ -41,7 +41,6 @@ internal static partial class HudEditor {
     private static readonly Color HoverColor = new(1f, 1f, 1f, 0.75f);
     private static readonly Color SelectedColor = new(0.569f, 0.604f, 1f, 1f);
     private static readonly Color GroupColor = new(0.569f, 0.604f, 1f, 0.5f);
-    private static readonly Color LockedColor = new(1f, 0.6f, 0.35f, 0.9f);
     private static readonly Color GuideColor = new(1f, 0.35f, 0.75f, 0.9f);
     private static readonly Color MeasureColor = new(1f, 0.32f, 0.36f, 1f);
 
@@ -198,6 +197,7 @@ internal static partial class HudEditor {
         BuildPullTab();
         BuildLayersPanel();
         ApplyPanelLayout();
+        RestoreDocks();
         UpdateGridButton();
         UpdateLayersButton();
         UpdateRulersButton();
@@ -286,29 +286,28 @@ internal static partial class HudEditor {
         singleRows = VerticalGroup("Single", body).gameObject;
         var single = singleRows.transform;
         BuildQuickName(ctx, single);
-        UiStyle.Section(single, "Position and size");
-        xSlider = Slider(ctx, single, "x", "X", -1000, 1000, "F1",
+        var place = DockSection(single, "transform", "Position and size", () => selection.Count == 1);
+        xSlider = Slider(ctx, place, "x", "X", -1000, 1000, "F1",
             (ref HudElement.State s, double v) => s.Position = new Vector2((float)v, s.Position.y));
-        ySlider = Slider(ctx, single, "y", "Y", -600, 600, "F1",
+        ySlider = Slider(ctx, place, "y", "Y", -600, 600, "F1",
             (ref HudElement.State s, double v) => s.Position = new Vector2(s.Position.x, (float)v));
-        BuildQuickSize(ctx, single);
-        rotationSlider = Slider(ctx, single, "rotation", "Rotation", -180, 180, "F1",
+        BuildQuickSize(ctx, place);
+        rotationSlider = Slider(ctx, place, "rotation", "Rotation", -180, 180, "F1",
             (ref HudElement.State s, double v) => s.Rotation = (float)v);
-        scaleSlider = Slider(ctx, single, "scale", "Scale", 0, 3, "F2",
+        scaleSlider = Slider(ctx, place, "scale", "Scale", 0, 3, "F2",
             (ref HudElement.State s, double v) => s.Scale = new Vector3((float)v, (float)v, s.Scale.z));
-        BuildAnchorPicker(ctx, single);
-        var actions = UiStyle.HRow(single, 6f, 36f);
+        BuildAnchorPicker(ctx, place);
+        var actions = UiStyle.HRow(place, 6f, 36f);
         Button(Cell(actions, 0f), "reset", "Reset", ResetSelection, "Position 0, scale 1, rotation 0");
         fitButton = Button(Cell(actions, 0f), "fit", "Fit to text", FitSelection, "Resize the box to the visible text");
         ungroupButton = Button(Cell(actions, 0f), "ungroup", "Ungroup", UngroupSelection, "Ctrl+Shift+G");
-        BuildQuickLayout(ctx, single);
-        UiStyle.Section(single, "Look");
-        BuildQuickLook(ctx, single);
+        BuildQuickLayout(ctx, DockSection(single, "layout", "Auto layout", () => selection.Count == 1 && CanAutoLayout(Primary)));
+        BuildQuickLook(ctx, DockSection(single, "look", "Look", () => selection.Count == 1));
         BuildAllPropsToggle(single);
 
         // Several objects: align / distribute.
         multiRows = VerticalGroup("Multi", body).gameObject;
-        var multi = multiRows.transform;
+        var multi = DockSection(multiRows.transform, "arrange", "Align and arrange", () => selection.Count > 1);
         UiStyle.Section(multi, "Align");
         var alignRow = UiStyle.HRow(multi, 4f, 34f);
         Button(Cell(alignRow, 0f), "align_left", "Left", () => Align(AlignMode.Left));
@@ -322,7 +321,7 @@ internal static partial class HudEditor {
         var distRow = UiStyle.HRow(multi, 4f, 34f);
         Button(Cell(distRow, 0f), "dist_x", "Horizontally", () => Align(AlignMode.DistributeX), "Equal gaps, needs 3 or more");
         Button(Cell(distRow, 0f), "dist_y", "Vertically", () => Align(AlignMode.DistributeY), "Equal gaps, needs 3 or more");
-        UiStyle.Section(multi, "Arrange");
+        UiStyle.Section(multi, "Group");
         var arrangeRow = UiStyle.HRow(multi, 4f, 34f);
         Button(Cell(arrangeRow, 0f), "group", "Group", GroupSelection, "Ctrl+G");
         Button(Cell(arrangeRow, 0f), "multi_ungroup", "Ungroup", UngroupSelection, "Ctrl+Shift+G (selected groups)");
@@ -330,7 +329,7 @@ internal static partial class HudEditor {
         Button(Cell(flowRow, 0f), "group_row", "Group as row", () => GroupAs(Flow.Row), "Group them, lined up left to right with even gaps");
         Button(Cell(flowRow, 0f), "group_column", "Group as column", () => GroupAs(Flow.Column), "Group them, stacked top to bottom with even gaps");
 
-        inspectorContent = VerticalGroup("Inspector", body);
+        inspectorContent = DockSection(body, "properties", "All properties", () => inspector != null);
         inspectorHost = inspectorContent.gameObject;
         // Last, so the edge grips and the pin sit above the content.
         BuildResizeGrip();
@@ -672,6 +671,7 @@ internal static partial class HudEditor {
         TickLayers();
         RenderRulers();
         FadeBottomBarWhileDragging();
+        TickDocks();
         if (root == null) {
             return;
         }
@@ -682,18 +682,19 @@ internal static partial class HudEditor {
             }
         }
 
+        // While moving / scaling / rotating / resizing only what's selected keeps its outline.
+        bool dragging = dragChanged && drag is DragMode.Move or DragMode.Scale or DragMode.Rotate or DragMode.Resize;
         int used = 0;
         foreach (var el in elements) {
-            if (!el.IsAlive) {
+            if (!el.IsAlive || (dragging && !selection.Contains(el))) {
                 continue;
             }
             var frame = GetFrame(used++);
             el.GetScreenCorners(corners);
             PlaceQuad(frame.Rect, corners);
-            bool isHovered = ReferenceEquals(el, hovered);
+            // One look for every outline (locked ones say so in the panel instead).
             Color color = selection.Contains(el) ? SelectedColor
-                : el.Locked ? LockedColor * new Color(1f, 1f, 1f, isHovered ? 1f : 0.5f)
-                : isHovered ? HoverColor : IdleColor;
+                : ReferenceEquals(el, hovered) ? HoverColor : IdleColor;
             foreach (var edge in frame.Edges) {
                 edge.color = color;
             }
@@ -1084,6 +1085,7 @@ internal static partial class HudEditor {
         pullTab = null;
         pullingPanel = false;
         bottomArea = null;
+        docks.Clear();
         bottomGroup = null;
         bottomTools.Clear();
         DestroyRulers();

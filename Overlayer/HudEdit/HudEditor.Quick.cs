@@ -143,7 +143,6 @@ internal static partial class HudEditor {
     private static void BuildQuickLayout(O5Kit.Core.O5Context ctx, Transform parent) {
         layoutRows = VerticalGroup("AutoLayout", parent).gameObject;
         var rows = layoutRows.transform;
-        UiStyle.Section(rows, "Auto layout");
         var flowRow = UiStyle.HRow(rows, 4f, 34f);
         flowButtons[0] = Button(Cell(flowRow, 0f), "flow_off", "Off", () => SetFlow(Flow.None), "Children stay where you put them");
         flowButtons[1] = Button(Cell(flowRow, 0f), "flow_row", "Row", () => SetFlow(Flow.Row), "Line the children up left to right");
