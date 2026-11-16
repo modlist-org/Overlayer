@@ -131,6 +131,7 @@ public sealed class OverlayerRuntime {
         HudEdit.HudEditor.Tick();
         UI.Easing.CurveEditor.Tick();
         HudEdit.HudPreview.Tick();
+        Tutorial.Tutorial.Tick();
     }
 
     public void Dispose() {

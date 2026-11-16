@@ -32,6 +32,7 @@ public enum OriginalMenuState {
     Resources,
     JS,
     Easing,
+    Tutorial,
 }
 
 public static class UICore {
@@ -190,6 +191,10 @@ public static class UICore {
 
     private static void EndFirstRunHelper() {
         MainCore.Conf.IsFirstRun = false;
+        if (!MainCore.Conf.TutorialOffered.Value) {
+            MainCore.Conf.TutorialOffered.Value = true;
+            Factory.MenuFactory.GoTo((int)OriginalMenuState.Tutorial);
+        }
         MainCore.ConfMgr.Save();
 
         firstRunHelperImageSequence?.Kill();

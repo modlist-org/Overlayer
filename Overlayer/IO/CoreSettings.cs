@@ -45,6 +45,8 @@ public sealed class CoreSettings : ISettingsFile {
     public FxValue<float> HudPreviewWidth = new(760f);
     public FxValue<float> HudPreviewHeight = new(520f);
     public FxValue<List<string>> HudDetached = new([]);
+    public FxValue<List<string>> TutorialDone = new([]);
+    public FxValue<bool> TutorialOffered = new(false);
 
     public JToken Serialize() {
         return new JObject {
@@ -86,7 +88,9 @@ public sealed class CoreSettings : ISettingsFile {
             [nameof(HudGuides)] = IOUtils.WriteFx(HudGuides),
             [nameof(HudPreviewWidth)] = IOUtils.WriteFx(HudPreviewWidth),
             [nameof(HudPreviewHeight)] = IOUtils.WriteFx(HudPreviewHeight),
-            [nameof(HudDetached)] = IOUtils.WriteFx(HudDetached)
+            [nameof(HudDetached)] = IOUtils.WriteFx(HudDetached),
+            [nameof(TutorialDone)] = IOUtils.WriteFx(TutorialDone),
+            [nameof(TutorialOffered)] = IOUtils.WriteFx(TutorialOffered)
         };
     }
 
@@ -130,5 +134,7 @@ public sealed class CoreSettings : ISettingsFile {
         HudPreviewWidth = IOUtils.ReadFx(token, nameof(HudPreviewWidth), HudPreviewWidth);
         HudPreviewHeight = IOUtils.ReadFx(token, nameof(HudPreviewHeight), HudPreviewHeight);
         HudDetached = IOUtils.ReadFx(token, nameof(HudDetached), HudDetached);
+        TutorialDone = IOUtils.ReadFx(token, nameof(TutorialDone), TutorialDone);
+        TutorialOffered = IOUtils.ReadFx(token, nameof(TutorialOffered), TutorialOffered);
     }
 }

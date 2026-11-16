@@ -35,6 +35,12 @@ public static class MenuFactory {
         items.Clear();
 
         var overlayer = CreateItem(parent, "Overlayer", MainCore.Spr.Get(UISprite.Monitor128), 0);
+        var tutorial = CreateItem(parent, "Tutorial", MainCore.Spr.Get(UISprite.Triangle128), (int)OriginalMenuState.Tutorial);
+        // The triangle points down; a quarter turn makes it a play button.
+        var playIcon = (RectTransform)tutorial.obj.transform.Find("Icon");
+        playIcon.pivot = new Vector2(0.5f, 0.5f);
+        playIcon.anchoredPosition = new Vector2(24f + 14f, 0f);
+        playIcon.localEulerAngles = new Vector3(0f, 0f, 90f);
         var resources = CreateItem(parent, "Resources", MainCore.Spr.Get(UISprite.Box128), 4);
         var js = CreateItem(parent, "JS", MainCore.Spr.Get(UISprite.CodeBlock128), 5);
         var easing = CreateItem(parent, "Easing", MainCore.Spr.Get(UISprite.Ping128), (int)OriginalMenuState.Easing);
@@ -62,6 +68,9 @@ public static class MenuFactory {
 
         easing.label.gameObject.AddComponent<TextLocalization>()
             .Init("EASING", "Easing");
+
+        tutorial.label.gameObject.AddComponent<TextLocalization>()
+            .Init("TUTORIAL", "Tutorial");
 
         ApplyState(UICore.CurrentMenuState, true);
     }
@@ -180,6 +189,12 @@ public static class MenuFactory {
             UnityEngine.Object.Destroy(item.obj);
         }
     }
+
+    /// <summary>Switches to a page as if its menu item was clicked.</summary>
+    public static void GoTo(int state) => SetState(state);
+
+    /// <summary>The menu item of a page (for pointing at it).</summary>
+    public static RectTransform ItemOf(int state) => items.FirstOrDefault(i => i.state == state)?.obj?.GetComponent<RectTransform>();
 
     private static void SetState(int to) {
         int from = UICore.CurrentMenuState;
