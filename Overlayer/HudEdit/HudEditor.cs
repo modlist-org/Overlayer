@@ -66,8 +66,10 @@ internal static partial class HudEditor {
         if (IsOpen || !Core.MainCore.IsModEnabled || UICore.CanvasObj == null) {
             return;
         }
-        if (ModuleAPI.PlaybackState.IsPlaying && !ModuleAPI.PlaybackState.IsPaused && !MainCore.Conf.HudEditorInPlay.Value) {
-            MainCore.Log.Msg("[HudEditor] Pause first (or allow it in Settings) to edit the HUD while playing.");
+        // While playing it needs a pause, unless the game plays itself (autoplay) or Settings allow it.
+        if (ModuleAPI.PlaybackState.IsPlaying && !ModuleAPI.PlaybackState.IsPaused
+            && !ModuleAPI.PlaybackState.IsAutoplay && !MainCore.Conf.HudEditorInPlay.Value) {
+            MainCore.Log.Msg("[HudEditor] Pause first (or use autoplay, or allow it in Settings) to edit the HUD while playing.");
             return;
         }
         uiWasOpen = UICore.CanvasObj.activeSelf;
