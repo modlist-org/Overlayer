@@ -26,6 +26,7 @@ internal static partial class HudEditor {
     private static O5InputField nameInput, textInput;
     private static O5Slider wSlider, hSlider, opacitySlider, fontSizeSlider;
     private static O5ColorPicker textColorPicker, imageColorPicker;
+    private static AlignPicker textAlign;
     private static GameObject textRows, imageRows, anchorRow, allPropsRow;
     private static readonly Image[] anchorCells = new Image[9];
     private static O5Button allPropsButton;
@@ -117,6 +118,9 @@ internal static partial class HudEditor {
             (o, s) => o.Config.TextConfig.FontSize.StaticValue = s, Mathf.Max(1f, (float)v), false);
         fontSizeSlider.OnComplete = v => QuickEdit("fontsize", o => o.Config.TextConfig.FontSize.StaticValue,
             (o, s) => o.Config.TextConfig.FontSize.StaticValue = s, Mathf.Max(1f, (float)v), true);
+        textAlign = new AlignPicker(textRows.transform, "Alignment",
+            () => Primary?.Object.Config.TextConfig?.Alignment.StaticValue ?? TextAlignmentOptions.Center,
+            value => QuickEdit("align", o => o.Config.TextConfig.Alignment.StaticValue, (o, a) => o.Config.TextConfig.Alignment.StaticValue = a, value, true));
         textColorPicker = ColorRow(ctx, textRows.transform, "textcolor", "Text color", (c, done) => QuickEdit("textcolor",
             o => o.Config.TextConfig.Color.StaticValue, (o, g) => o.Config.TextConfig.Color.StaticValue = g, new GradientColor(c, true), done));
 
@@ -358,6 +362,8 @@ internal static partial class HudEditor {
             textInput.SetBlocked(!editable || cfg.TextEngineConfig?.Text.UseFx == true, true);
             fontSizeSlider.SetBlocked(!editable || cfg.TextConfig.FontSize.UseFx, true);
             textColorPicker.SetBlocked(!editable || cfg.TextConfig.Color.UseFx, true);
+            // Set by an expression: only the full inspector can show that.
+            textAlign.Rect.gameObject.SetActive(editable && !cfg.TextConfig.Alignment.UseFx);
         }
         imageRows.SetActive(cfg.ImageConfig != null);
         if (cfg.ImageConfig != null) {
@@ -403,6 +409,7 @@ internal static partial class HudEditor {
                     textInput.Set(TextOf(el.Object), false);
                 }
                 fontSizeSlider.Set(cfg.TextConfig.FontSize.StaticValue, false);
+                textAlign.Refresh();
                 if (liveKey != "textcolor") {
                     textColorPicker.Set(cfg.TextConfig.Color.StaticValue.TL, false);
                 }

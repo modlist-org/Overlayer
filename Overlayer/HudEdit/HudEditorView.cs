@@ -1117,6 +1117,7 @@ internal static partial class HudEditor {
         nameInput = textInput = null;
         wSlider = hSlider = opacitySlider = fontSizeSlider = null;
         textColorPicker = imageColorPicker = null;
+        textAlign = null;
         allPropsButton = null;
         layoutRows = layoutDetails = null;
         gapSlider = paddingSlider = null;

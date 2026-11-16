@@ -17,6 +17,7 @@ using Overlayer.TextEngine.Highlight;
 using O5Kit.Factory;
 using O5Kit.Control;
 using Overlayer.UI.Objects.Impl;
+using Overlayer.UI.Utility;
 using O5Kit.Behaviour;
 using UnityEngine;
 using UnityEngine.UI;
@@ -315,7 +316,10 @@ internal sealed class OvInspectorBuilder(
         FxToggle(card, "Rich Text", cfg.RichText, true, "text_rich");
         FxToggle(card, "Auto Size", cfg.AutoSize, false, "text_auto_size");
         FxVector2(card, "Font Range", cfg.FontSizeRange, new Vector2(16, 64), 1f, 512f, "text_font_range", "F1");
-        FxEnum(card, "Alignment", cfg.Alignment, TextAlignmentOptions.Center, "text_alignment");
+        FxBlock(card, "Alignment", cfg.Alignment, g => new AlignPicker(g, InspectorLabel("Alignment"), () => cfg.Alignment.Value, value => {
+            cfg.Alignment.Value = value;
+            ApplyAndSave();
+        }), "text_alignment");
         FxWrapping(card, cfg);
         FxEnum(card, "Overflow", cfg.OverFlowMode, TextOverflowModes.Overflow, "text_overflow");
         FxSlider(card, "Line Spacing", cfg.LineSpacing, 0f, -100f, 100f, "text_line_spacing", "F1");
