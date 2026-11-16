@@ -11,9 +11,9 @@ public sealed class SettingsFile<T>(string path) where T : class, ISettingsFile,
 
     private readonly object saveLock = new();
 
-    private CancellationTokenSource saveCts;
+    private readonly object scheduleLock = new();
 
-    private bool saveScheduled;
+    private CancellationTokenSource saveCts;
 
     private Task saveTask;
 
@@ -60,50 +60,46 @@ public sealed class SettingsFile<T>(string path) where T : class, ISettingsFile,
         }
     }
 
+    // Debounced: every call restarts the delay and only the last one saves.
+    // (Used to cancel the pending save and then bail out because one was
+    // "already scheduled", so two calls within the delay saved nothing.)
     public void RequestSave(
         int delay = 500
     ) {
-        saveCts?.Cancel();
+        lock (scheduleLock) {
+            saveCts?.Cancel();
 
-        saveCts = new CancellationTokenSource();
+            saveCts = new CancellationTokenSource();
 
-        CancellationToken token = saveCts.Token;
+            CancellationToken token = saveCts.Token;
 
-        if (saveScheduled) {
-            return;
-        }
+            saveTask = Task.Run((Func<Task>)(async () => {
+                try {
+                    await Task.Delay(delay, token);
 
-        saveScheduled = true;
-
-        saveTask = Task.Run((Func<Task>)(async () => {
-            try {
-                await Task.Delay(delay, token);
-
-                if (token.IsCancellationRequested) {
-                    return;
+                    Save();
+                } catch (OperationCanceledException) {
+                } catch (Exception e) {
+                    MainCore.Log.Err(
+                        $"[{nameof(SettingsFile<>)}] Failed to request save '{Path}': {e}"
+                    );
                 }
-
-                Save();
-            } catch (OperationCanceledException) {
-            } catch (Exception e) {
-                MainCore.Log.Err(
-                    $"[{nameof(SettingsFile<>)}] Failed to request save '{Path}': {e}"
-                );
-            } finally {
-                saveScheduled = false;
-            }
-        }), token);
+            }));
+        }
     }
 
     public void Dispose() {
-        saveCts?.Cancel();
+        Task pending;
+        lock (scheduleLock) {
+            saveCts?.Cancel();
+            pending = saveTask;
+            saveTask = null;
+            saveCts = null;
+        }
         try {
-            saveTask?.Wait();
+            pending?.Wait();
         } catch (AggregateException) {
         }
-        saveTask = null;
-        saveCts = null;
-        saveScheduled = false;
 
         if (Data is IDisposable disposable) {
             disposable.Dispose();
