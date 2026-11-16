@@ -61,6 +61,8 @@ internal static partial class HudEditor {
     private static readonly List<Frame> frames = [];
     private static readonly List<RectTransform> guides = [];
     private static readonly RectTransform[] cornerHandles = new RectTransform[4];
+    private static readonly RectTransform[] edgeHandles = new RectTransform[4];
+    private static readonly Vector3[] rectCorners = new Vector3[4];
     private static RectTransform rotateHandle;
     private static RectTransform rotateStem;
     private static Frame groupFrame;
@@ -182,6 +184,9 @@ internal static partial class HudEditor {
             handle.sizeDelta = new Vector2(HandleSize, HandleSize);
             cornerHandles[i] = handle;
         }
+        for (int i = 0; i < 4; i++) {
+            edgeHandles[i] = WithHalo(NewImage("Edge" + i, gizmoLayer, Color.white)).rectTransform;
+        }
         rotateStem = WithHalo(NewImage("RotateStem", gizmoLayer, SelectedColor)).rectTransform;
         rotateHandle = WithHalo(NewImage("Rotate", gizmoLayer, Color.white, MainCore.Spr.Get(UISprite.Circle256))).rectTransform;
         rotateHandle.sizeDelta = new Vector2(HandleSize + 4f, HandleSize + 4f);
@@ -266,25 +271,35 @@ internal static partial class HudEditor {
         infoText.color = UiStyle.Muted;
         infoText.enableWordWrapping = true;
 
-        // One object: quick transform values, then Overlayer's full inspector.
-        singleRows = VerticalGroup("Single", content).gameObject;
+        // Everything below scrolls together.
+        var (_, scrollContent, _) = O5Factory.ScrollView(ctx, content, 10f, expandLayout: true);
+        var body = VerticalGroup("Body", scrollContent);
+
+        // One object: the common things first, everything else folded under "All properties".
+        singleRows = VerticalGroup("Single", body).gameObject;
         var single = singleRows.transform;
-        UiStyle.Section(single, "Transform");
+        BuildQuickName(ctx, single);
+        UiStyle.Section(single, "Position and size");
         xSlider = Slider(ctx, single, "x", "X", -1000, 1000, "F1",
             (ref HudElement.State s, double v) => s.Position = new Vector2((float)v, s.Position.y));
         ySlider = Slider(ctx, single, "y", "Y", -600, 600, "F1",
             (ref HudElement.State s, double v) => s.Position = new Vector2(s.Position.x, (float)v));
-        scaleSlider = Slider(ctx, single, "scale", "Scale", 0, 3, "F2",
-            (ref HudElement.State s, double v) => s.Scale = new Vector3((float)v, (float)v, s.Scale.z));
+        BuildQuickSize(ctx, single);
         rotationSlider = Slider(ctx, single, "rotation", "Rotation", -180, 180, "F1",
             (ref HudElement.State s, double v) => s.Rotation = (float)v);
+        scaleSlider = Slider(ctx, single, "scale", "Scale", 0, 3, "F2",
+            (ref HudElement.State s, double v) => s.Scale = new Vector3((float)v, (float)v, s.Scale.z));
+        BuildAnchorPicker(ctx, single);
         var actions = UiStyle.HRow(single, 6f, 36f);
         Button(Cell(actions, 0f), "reset", "Reset", ResetSelection, "Position 0, scale 1, rotation 0");
         fitButton = Button(Cell(actions, 0f), "fit", "Fit to text", FitSelection, "Resize the box to the visible text");
         ungroupButton = Button(Cell(actions, 0f), "ungroup", "Ungroup", UngroupSelection, "Ctrl+Shift+G");
+        UiStyle.Section(single, "Look");
+        BuildQuickLook(ctx, single);
+        BuildAllPropsToggle(single);
 
         // Several objects: align / distribute.
-        multiRows = VerticalGroup("Multi", content).gameObject;
+        multiRows = VerticalGroup("Multi", body).gameObject;
         var multi = multiRows.transform;
         UiStyle.Section(multi, "Align");
         var alignRow = UiStyle.HRow(multi, 4f, 34f);
@@ -304,15 +319,9 @@ internal static partial class HudEditor {
         Button(Cell(arrangeRow, 0f), "group", "Group", GroupSelection, "Ctrl+G");
         Button(Cell(arrangeRow, 0f), "multi_ungroup", "Ungroup", UngroupSelection, "Ctrl+Shift+G (selected groups)");
 
-        var properties = VerticalGroup("PropertiesHeader", content);
-        UiStyle.Section(properties, "Properties");
-        var (viewport, scrollContent, _) = O5Factory.ScrollView(ctx, content, 10f, expandLayout: true);
-        inspectorHost = viewport.parent.gameObject;
-        inspectorPropertiesHeader = properties.gameObject;
-        inspectorContent = VerticalGroup("Inspector", scrollContent);
+        inspectorContent = VerticalGroup("Inspector", body);
+        inspectorHost = inspectorContent.gameObject;
     }
-
-    private static GameObject inspectorPropertiesHeader;
 
     private static RectTransform VerticalGroup(string name, Transform parent) {
         var rect = NewRect(name, parent);
@@ -371,7 +380,11 @@ internal static partial class HudEditor {
                 continue;
             }
             var before = el.Capture();
-            el.Apply(new HudElement.State { Position = Vector2.zero, Scale = Vector3.one, Rotation = 0f });
+            var reset = before;
+            reset.Position = Vector2.zero;
+            reset.Scale = Vector3.one;
+            reset.Rotation = 0f;
+            el.Apply(reset);
             changes.Add((el, before, el.Capture()));
         }
         Commit(changes);
@@ -404,9 +417,12 @@ internal static partial class HudEditor {
         if (panel == null) {
             return;
         }
+        CommitQuickEdit();
         var el = Primary;
         bool single = selection.Count == 1;
         singleRows.SetActive(single);
+        // One object: its name is the editable field instead of the title.
+        titleText.transform.parent.gameObject.SetActive(!single);
         multiRows.SetActive(selection.Count > 1);
 
         if (selection.Count == 0) {
@@ -442,10 +458,11 @@ internal static partial class HudEditor {
             rotationSlider.SetBlocked(!el.CanRotate, true);
             fitButton.Rect.parent.gameObject.SetActive(el.Object.GameObject.GetComponent<TextMeshProUGUI>() != null);
             ungroupButton.Rect.parent.gameObject.SetActive(!el.Locked && el.Object.Children.Count > 0);
+            RefreshQuick(el);
         }
         SyncPanelValues();
 
-        object target = single && !el.Locked ? el.Object : null;
+        object target = single && !el.Locked && allPropsShown ? el.Object : null;
         if (!ReferenceEquals(target, inspectedObject)) {
             RebuildInspector(target);
         }
@@ -455,7 +472,6 @@ internal static partial class HudEditor {
         inspectorDirty = false;
         inspectedObject = target;
         inspectorHost.SetActive(target != null);
-        inspectorPropertiesHeader.SetActive(target != null);
         inspector?.Dispose();
         inspector = target == null ? null : HudInspector.ForObject(inspectorContent, (Overlayer.Overlay.OvObject)target, OnInspectorEdit);
     }
@@ -479,6 +495,7 @@ internal static partial class HudEditor {
         ySlider.Set(s.Position.y, false);
         scaleSlider.Set(s.Scale.x, false);
         rotationSlider.Set(s.Rotation, false);
+        SyncQuickValues(Primary);
     }
 
     // ---- context menu ----
@@ -691,6 +708,18 @@ internal static partial class HudEditor {
                 cornerHandles[i].anchoredPosition = ToLocal(corners[i]);
             }
         }
+        if (showHandles) {
+            sel.Rect.GetWorldCorners(rectCorners);
+        }
+        for (int i = 0; i < 4; i++) {
+            bool show = showHandles && (i % 2 == 0 ? sel.CanResizeX : sel.CanResizeY);
+            edgeHandles[i].gameObject.SetActive(show);
+            if (show) {
+                Vector2 a = ToLocal(rectCorners[i]), b = ToLocal(rectCorners[(i + 1) % 4]);
+                Vector2 mid = (a + b) * 0.5f, along = (b - a).normalized * Mathf.Min(8f, (b - a).magnitude * 0.25f);
+                PlaceLine(edgeHandles[i], mid - along, mid + along, 4f);
+            }
+        }
         bool showRotate = showHandles && sel.CanRotate;
         rotateHandle.gameObject.SetActive(showRotate);
         rotateStem.gameObject.SetActive(showRotate);
@@ -714,6 +743,9 @@ internal static partial class HudEditor {
         RenderMeasures();
 
         // Keep handles above frames.
+        foreach (var h in edgeHandles) {
+            h.SetAsLastSibling();
+        }
         foreach (var h in cornerHandles) {
             h.SetAsLastSibling();
         }
@@ -1010,6 +1042,7 @@ internal static partial class HudEditor {
     }
 
     private static void DestroyView() {
+        CommitQuickEdit();
         CloseContextMenu();
         inspector?.Dispose();
         inspector = null;
@@ -1046,6 +1079,10 @@ internal static partial class HudEditor {
             Object.Destroy(root.gameObject);
         }
         root = gizmoLayer = panel = toolbar = inspectorContent = toolbarArea = hintRect = null;
-        singleRows = multiRows = inspectorHost = inspectorPropertiesHeader = null;
+        singleRows = multiRows = inspectorHost = textRows = imageRows = anchorRow = allPropsRow = null;
+        nameInput = textInput = null;
+        wSlider = hSlider = opacitySlider = fontSizeSlider = null;
+        textColorPicker = imageColorPicker = null;
+        allPropsButton = null;
     }
 }

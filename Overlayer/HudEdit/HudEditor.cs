@@ -448,7 +448,29 @@ internal static partial class HudEditor {
                 }
             }
         }
+        // Anywhere along an edge (of the real box) changes width / height.
+        el.Rect.GetWorldCorners(corners);
+        float edgeR = EdgeHitPx * UiScale;
+        for (int i = 0; i < 4; i++) {
+            bool horizontal = i % 2 == 0; // 0 left, 2 right change the width; 1 top, 3 bottom the height
+            if (!(horizontal ? el.CanResizeX : el.CanResizeY)) {
+                continue;
+            }
+            Vector2 a = corners[i], b = corners[(i + 1) % 4];
+            if (DistanceToSegment(mouse, a, b) <= edgeR) {
+                resizeEdge = i;
+                return DragMode.Resize;
+            }
+        }
         return DragMode.None;
+    }
+
+    private const float EdgeHitPx = 5f;
+
+    private static float DistanceToSegment(Vector2 p, Vector2 a, Vector2 b) {
+        Vector2 ab = b - a;
+        float t = ab.sqrMagnitude < 1e-6f ? 0f : Mathf.Clamp01(Vector2.Dot(p - a, ab) / ab.sqrMagnitude);
+        return (p - (a + ab * t)).magnitude;
     }
 
     private static Vector2 RotateHandleScreen(Vector3[] c) {
@@ -478,7 +500,19 @@ internal static partial class HudEditor {
             scaleOppositeStart = corners[(scaleCorner + 2) % 4];
             scaleCenterStart = (corners[0] + corners[2]) * 0.5f;
         }
+        if (mode == DragMode.Resize) {
+            targets[0].Rect.GetWorldCorners(corners);
+            resizeEdgeStart = EdgeMid(corners, resizeEdge);
+            resizeOppositeStart = EdgeMid(corners, (resizeEdge + 2) % 4);
+            resizeCenterStart = (corners[0] + corners[2]) * 0.5f;
+        }
     }
+
+    // Edge resizing: 0 left, 1 top, 2 right, 3 bottom (between corner i and i + 1).
+    private static int resizeEdge;
+    private static Vector2 resizeEdgeStart, resizeOppositeStart, resizeCenterStart;
+
+    private static Vector2 EdgeMid(Vector3[] c, int edge) => (c[edge] + c[(edge + 1) % 4]) * 0.5f;
 
     // Corner scaling: which corner was grabbed (0 BL, 1 TL, 2 TR, 3 BR) and where things started.
     private static int scaleCorner;
@@ -526,6 +560,36 @@ internal static partial class HudEditor {
                 // Scaling happens around the pivot; shift back so the fixed point didn't move.
                 el.GetScreenCorners(corners);
                 Vector2 now = Alt ? (Vector2)(corners[0] + corners[2]) * 0.5f : (Vector2)corners[(scaleCorner + 2) % 4];
+                if (el.CanMove) {
+                    state.Position = start.Position + el.ScreenToParentDelta(fixedPoint - now);
+                    el.Apply(state);
+                }
+                break;
+            }
+            case DragMode.Resize: {
+                // The grabbed edge follows the pointer, the opposite edge stays (Alt: the middle).
+                var (el, start) = dragStart[0];
+                Vector2 fixedPoint = Alt ? resizeCenterStart : resizeOppositeStart;
+                Vector2 outward = resizeEdgeStart - fixedPoint;
+                if (outward.sqrMagnitude < 1e-4f) {
+                    break;
+                }
+                float startLen = outward.magnitude;
+                float len = Vector2.Dot(mouse - fixedPoint, outward / startLen);
+                bool widthAxis = resizeEdge % 2 == 0;
+                float startSize = widthAxis ? start.Size.x : start.Size.y;
+                // Screen pixels per unit of size along this axis (scale, canvas scale).
+                float perUnit = startLen / Mathf.Max(Alt ? startSize * 0.5f : startSize, 1e-4f);
+                float size = Alt ? len * 2f / perUnit : len / perUnit;
+                if (Shift) {
+                    size = Mathf.Round(size / 10f) * 10f;
+                }
+                size = Mathf.Max(size, 1f);
+                var state = start;
+                state.Size = widthAxis ? new Vector2(size, start.Size.y) : new Vector2(start.Size.x, size);
+                el.Apply(state);
+                el.Rect.GetWorldCorners(corners);
+                Vector2 now = Alt ? (Vector2)(corners[0] + corners[2]) * 0.5f : EdgeMid(corners, (resizeEdge + 2) % 4);
                 if (el.CanMove) {
                     state.Position = start.Position + el.ScreenToParentDelta(fixedPoint - now);
                     el.Apply(state);

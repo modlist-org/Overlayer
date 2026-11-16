@@ -45,17 +45,31 @@ internal sealed class HudElement {
     public bool CanMove => !Locked && !Config.AnchoredPosition.UseFx;
     public bool CanScale => !Locked && !Config.Scale.UseFx;
     public bool CanRotate => !Locked && !Config.Rotation.UseFx;
+    // Width / height: not for groups (their box is their children) or sizes a fitter sets.
+    public bool CanResizeX => CanResize(0);
+    public bool CanResizeY => CanResize(1);
+
+    private bool CanResize(int axis) {
+        if (Locked || Config.SizeDelta.UseFx || IsGroup) {
+            return false;
+        }
+        var fitter = Object.GameObject.GetComponent<ContentSizeFitter>();
+        return fitter == null || !fitter.enabled
+            || (axis == 0 ? fitter.horizontalFit : fitter.verticalFit) == ContentSizeFitter.FitMode.Unconstrained;
+    }
 
     public struct State {
         public Vector2 Position;
         public Vector3 Scale;
         public float Rotation;
+        public Vector2 Size;
     }
 
     public State Capture() => new() {
         Position = Config.AnchoredPosition.StaticValue,
         Scale = Config.Scale.StaticValue,
         Rotation = Config.Rotation.StaticValue,
+        Size = Config.SizeDelta.StaticValue,
     };
 
     public void Apply(State state) {
@@ -67,6 +81,10 @@ internal sealed class HudElement {
         }
         if (CanRotate) {
             Config.Rotation.StaticValue = state.Rotation;
+        }
+        if (CanResizeX || CanResizeY) {
+            Config.SizeDelta.StaticValue = new Vector2(CanResizeX ? state.Size.x : Config.SizeDelta.StaticValue.x,
+                CanResizeY ? state.Size.y : Config.SizeDelta.StaticValue.y);
         }
         Config.ToUnity(Object.GameObject);
     }
