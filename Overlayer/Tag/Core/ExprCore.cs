@@ -215,6 +215,9 @@ public static class ExprCore {
 
     private static Func<double> CreateGetter(TagCore tag) {
         try {
+            if (tag.IsStandIn) {
+                return () => Convert.ToDouble(tag.Invoke());
+            }
             if (tag.MemberType == TagMemberType.Method) {
                 var method = (MethodInfo)tag.Member;
                 var p = method.GetParameters();

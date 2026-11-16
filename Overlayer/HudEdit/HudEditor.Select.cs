@@ -83,6 +83,10 @@ internal static partial class HudEditor {
         var chain = Chain(deep);
         int i = chain.IndexOf(picked);
         if (i < 0 || i + 1 >= chain.Count) {
+            // Nothing deeper: a text gets edited right there.
+            if (CanEditText(picked)) {
+                pendingInlineEdit = picked;
+            }
             return picked;
         }
         lastClickElement = chain[i + 1];

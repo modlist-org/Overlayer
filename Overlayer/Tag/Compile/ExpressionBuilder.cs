@@ -11,6 +11,15 @@ public static class ExpressionBuilder {
     internal static object[] ArgumentValues(TagCore tag, ResolvedSignature sig) =>
         [.. BuildValues(tag, sig).Cast<ConstantExpression>().Select(value => value.Value)];
 
+    // A stand-in tag: call its made-up values with the bound arguments, typed like the real tag.
+    private static Expression StandInCall(TagCore tag, Expression[] values) {
+        object[] normalized = tag.NormalizeForInvoke([.. values.Cast<ConstantExpression>().Select(value => value.Value)]);
+        var invoke = typeof(TagCore).GetMethod(nameof(TagCore.InvokeNormalized), BindingFlags.Instance | BindingFlags.NonPublic)!;
+        return Expression.Convert(
+            Expression.Call(Expression.Constant(tag), invoke, Expression.Constant(normalized, typeof(object[]))),
+            tag.ReturnType);
+    }
+
     public static Expression Build(TagCore tag, ResolvedSignature sig, List<CompileDiagnostic> diag) =>
         BuildBody(tag, sig, BuildValues(tag, sig));
 
@@ -46,7 +55,7 @@ public static class ExpressionBuilder {
     }
 
     private static Expression BuildBody(TagCore tag, ResolvedSignature sig, Expression[] values) {
-        Expression call = tag.MemberType switch {
+        Expression call = tag.IsStandIn ? StandInCall(tag, values) : tag.MemberType switch {
             TagMemberType.Method => Expression.Call(
                 (MethodInfo)tag.Member,
                 BuildCallArgs(tag.Parameters, values)

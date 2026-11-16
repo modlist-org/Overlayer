@@ -95,6 +95,29 @@ public class TagCore {
         }
     }
 
+    /// <summary>Returns made-up values in place of <see cref="Member"/> (HUD preview).</summary>
+    internal bool IsStandIn { get; }
+
+    // Same name, arguments and result type as the real tag, so a text compiles the same way.
+    private TagCore(TagCore real, Func<object[], object> values) {
+        Name = real.Name;
+        Description = real.Description;
+        // Made-up values are always there to show.
+        TagType = real.TagType & ~TagType.BlockOnAll;
+        Member = real.Member;
+        MemberType = real.MemberType;
+        Parameters = real.Parameters;
+        RequiredParameterCount = real.RequiredParameterCount;
+        ReturnType = real.ReturnType;
+        _variadic = real._variadic;
+        IsStandIn = true;
+        Type result = ReturnType;
+        _compiledDelegate = args => result == typeof(void) ? null : CoerceArg(values(args), result);
+    }
+
+    /// <summary>A stand-in for <paramref name="real"/> whose value comes from <paramref name="values"/> (gets the call's arguments).</summary>
+    internal static TagCore StandIn(TagCore real, Func<object[], object> values) => new(real, values);
+
     public class JSParameterInfo : ParameterInfo {
         private readonly string _name;
         private readonly Type _type;

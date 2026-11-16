@@ -42,6 +42,8 @@ internal sealed class HudElement {
     public bool Locked => LockReason != null;
     /// <summary>Placed by its parent's layout group: can't be moved, but can change order.</summary>
     public bool LayoutDriven => LockReason == LayoutReason;
+    /// <summary>Nothing about it can change (a layout group only takes its position).</summary>
+    public bool ReadOnly => Locked && !LayoutDriven;
     public const string LayoutReason = "Positioned by a layout group";
 
     // A tag/JS expression owns the value; dragging would fight it every frame.

@@ -194,6 +194,7 @@ internal static partial class HudEditor {
 
         BuildToolbar();
         BuildPanel(ctx);
+        BuildPullTab();
         BuildLayersPanel();
         ApplyPanelLayout();
         UpdateGridButton();
@@ -261,7 +262,6 @@ internal static partial class HudEditor {
         // Hangs from the top-right corner; width and height come from ApplyPanelLayout.
         panel.anchorMin = panel.anchorMax = panel.pivot = Vector2.one;
         panel.anchoredPosition = new Vector2(-Margin, -Margin);
-        BuildResizeGrip();
 
         var content = NewRect("Content", panel);
         Stretch(content);
@@ -273,6 +273,9 @@ internal static partial class HudEditor {
         infoText = O5Factory.ControlText(ctx, O5Factory.Row(ctx, content, 36f), 14f);
         infoText.color = UiStyle.Muted;
         infoText.enableWordWrapping = true;
+        // They span the panel's width, right under the pin button: don't take its clicks.
+        titleText.raycastTarget = false;
+        infoText.raycastTarget = false;
 
         // Everything below scrolls together.
         var (_, scrollContent, _) = O5Factory.ScrollView(ctx, content, 10f, expandLayout: true);
@@ -328,6 +331,8 @@ internal static partial class HudEditor {
 
         inspectorContent = VerticalGroup("Inspector", body);
         inspectorHost = inspectorContent.gameObject;
+        // Last, so the edge grips and the pin sit above the content.
+        BuildResizeGrip();
     }
 
     private static RectTransform VerticalGroup(string name, Transform parent) {
@@ -469,7 +474,7 @@ internal static partial class HudEditor {
         }
         SyncPanelValues();
 
-        object target = single && !el.Locked && allPropsShown ? el.Object : null;
+        object target = single && !el.ReadOnly && allPropsShown ? el.Object : null;
         if (!ReferenceEquals(target, inspectedObject)) {
             RebuildInspector(target);
         }
@@ -542,6 +547,14 @@ internal static partial class HudEditor {
                     string indent = new(' ', Math.Min(el.Depth, 4) * 2);
                     items.Add(($"{indent}{(selection.Contains(el) ? "● " : "")}{el.Name}", null, () => Select(captured), false));
                 }
+                items.Add(null);
+            }
+            if (single && target.Object.Config.TextConfig != null) {
+                var text = target;
+                if (CanEditText(text)) {
+                    items.Add(("Edit text", "Double-click", () => BeginInlineEdit(text), false));
+                }
+                items.Add(("Preview in game", null, () => HudPreview.Open(text.Object), false));
                 items.Add(null);
             }
             if (single) {
@@ -818,7 +831,7 @@ internal static partial class HudEditor {
     private static O5Button pinButton;
 
     // Pinned: always shown. Unpinned: only while something is selected.
-    private static bool PanelWanted => MainCore.Conf.HudPanelPinned.Value || selection.Count > 0;
+    private static bool PanelWanted => MainCore.Conf.HudPanelPinned.Value || selection.Count > 0 || pullingPanel;
 
     private static void BuildResizeGrip() {
         // Left edge: width.
@@ -840,6 +853,7 @@ internal static partial class HudEditor {
         pinButton = Track(UiStyle.Button(pinCell, "plus_hud_pin", string.Empty, TogglePin, fontSize: 13f));
         UiStyle.Tooltip(pinButton, "Pinned: the panel stays open. Auto: it shows only while something is selected.");
         UpdatePinLabel();
+        pinCell.SetAsLastSibling();
     }
 
     private static void Grip(string name, Vector2 anchorMin, Vector2 anchorMax, Vector2 size, Vector2 lineMin, Vector2 lineMax,
@@ -914,6 +928,11 @@ internal static partial class HudEditor {
         if (panel == null) {
             return;
         }
+        // A tooltip only hides when the pointer leaves its control, which never happens if
+        // the control is switched off under the pointer.
+        if (panelShown != PanelWanted) {
+            O5KitAdapters.Ctx.Tooltip.Hide();
+        }
         panelShown = PanelWanted;
         panel.gameObject.SetActive(panelShown);
         float w = PanelWidth;
@@ -934,6 +953,7 @@ internal static partial class HudEditor {
             hintRect.offsetMax = new Vector2(-right - Margin, 34f);
         }
         ApplyRulerLayout(left, right);
+        UpdatePullTab();
     }
 
     // ---- grid ----
@@ -1051,7 +1071,11 @@ internal static partial class HudEditor {
     }
 
     private static void DestroyView() {
+        EndInlineEdit();
         CommitQuickEdit();
+        O5KitAdapters.Ctx.Tooltip.Hide();
+        pullTab = null;
+        pullingPanel = false;
         DestroyRulers();
         CloseContextMenu();
         inspector?.Dispose();

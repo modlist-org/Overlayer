@@ -42,6 +42,8 @@ public sealed class CoreSettings : ISettingsFile {
     public FxValue<float> HudLayersWidth = new(300f);
     public FxValue<bool> HudRulers = new(true);
     public FxValue<List<string>> HudGuides = new([]);
+    public FxValue<float> HudPreviewWidth = new(760f);
+    public FxValue<float> HudPreviewHeight = new(520f);
 
     public JToken Serialize() {
         return new JObject {
@@ -80,7 +82,9 @@ public sealed class CoreSettings : ISettingsFile {
             [nameof(HudLayersShown)] = IOUtils.WriteFx(HudLayersShown),
             [nameof(HudLayersWidth)] = IOUtils.WriteFx(HudLayersWidth),
             [nameof(HudRulers)] = IOUtils.WriteFx(HudRulers),
-            [nameof(HudGuides)] = IOUtils.WriteFx(HudGuides)
+            [nameof(HudGuides)] = IOUtils.WriteFx(HudGuides),
+            [nameof(HudPreviewWidth)] = IOUtils.WriteFx(HudPreviewWidth),
+            [nameof(HudPreviewHeight)] = IOUtils.WriteFx(HudPreviewHeight)
         };
     }
 
@@ -121,5 +125,7 @@ public sealed class CoreSettings : ISettingsFile {
         HudLayersWidth = IOUtils.ReadFx(token, nameof(HudLayersWidth), HudLayersWidth);
         HudRulers = IOUtils.ReadFx(token, nameof(HudRulers), HudRulers);
         HudGuides = IOUtils.ReadFx(token, nameof(HudGuides), HudGuides);
+        HudPreviewWidth = IOUtils.ReadFx(token, nameof(HudPreviewWidth), HudPreviewWidth);
+        HudPreviewHeight = IOUtils.ReadFx(token, nameof(HudPreviewHeight), HudPreviewHeight);
     }
 }

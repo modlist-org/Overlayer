@@ -374,6 +374,12 @@ internal static partial class HudEditor {
             }
         }
         var picked = DiveOnDoubleClick(hovered, deep);
+        if (pendingInlineEdit != null) {
+            var target = pendingInlineEdit;
+            pendingInlineEdit = null;
+            BeginInlineEdit(target);
+            return;
+        }
         if (picked == null) {
             BeginMarquee(mouse);
             return;

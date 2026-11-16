@@ -65,6 +65,10 @@ internal static class CurveEditor {
             model.Reset();
             graph.Select(-1);
         }, "Back to a straight line", 90f);
+        // One decimal so the motion between whole numbers shows; follows edits live.
+        Button(tools, "preview_game", "Preview in game", () => HudEdit.HudPreview.OpenSample("Easing on a combo counter",
+            () => $"{{EasedValue(Combo,1,300,{model.Text})}}\n<size=35%><alpha=#99>COMBO"),
+            "A combo counter using this curve, on a pretend game screen", 160f);
 
         var tabs = new UiStyle.Tabs(content, "easing", "Basic", "Advanced");
         BuildBasic(tabs[0]);

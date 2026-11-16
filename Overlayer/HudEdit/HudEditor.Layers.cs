@@ -102,6 +102,7 @@ internal static partial class HudEditor {
     }
 
     private static void ToggleLayers() {
+        O5KitAdapters.Ctx.Tooltip.Hide();
         MainCore.Conf.HudLayersShown.Value = !LayersShown;
         MainCore.ConfMgr.RequestSave();
         UpdateLayersButton();

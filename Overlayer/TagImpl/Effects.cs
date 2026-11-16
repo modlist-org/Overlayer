@@ -174,6 +174,10 @@ public static class Effects {
     }
 
     private static AnimationState GetState(Dictionary<string, AnimationState> states, string key, double value) {
+        // A text with its own tags (a HUD preview with made-up values) animates on its own.
+        if (LocalTagSet.Current is { } locals) {
+            key = string.Concat(key, "\0", locals.Id.ToString());
+        }
         if (!states.TryGetValue(key, out AnimationState state)) {
             state = new AnimationState {
                 Previous = value,

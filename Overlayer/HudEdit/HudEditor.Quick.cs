@@ -233,7 +233,7 @@ internal static partial class HudEditor {
             return;
         }
         var el = Primary;
-        if (el == null || !el.IsAlive || el.Locked || selection.Count != 1) {
+        if (el == null || !el.IsAlive || el.ReadOnly || selection.Count != 1) {
             return;
         }
         var obj = el.Object;
@@ -345,7 +345,7 @@ internal static partial class HudEditor {
 
     private static void RefreshQuick(HudElement el) {
         var cfg = el.Object.Config;
-        bool editable = !el.Locked;
+        bool editable = !el.ReadOnly;
         nameInput.SetBlocked(!editable, true);
         wSlider.SetBlocked(!el.CanResizeX, true);
         hSlider.SetBlocked(!el.CanResizeY, true);
