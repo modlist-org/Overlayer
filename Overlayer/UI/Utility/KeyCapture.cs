@@ -3,18 +3,21 @@ using UnityEngine;
 
 namespace Overlayer.UI.Utility;
 
-// Waits for the next key press for a key-bind button. Esc cancels.
+// Waits for the next key press for a key-bind button, with whatever Ctrl / Shift / Alt is held.
+// Modifier keys alone don't finish the capture. Esc cancels.
 internal static class KeyCapture {
     private static readonly KeyCode[] Keys = [.. Enum.GetValues(typeof(KeyCode)).Cast<KeyCode>()
-        .Where(k => k != KeyCode.None && !(k >= KeyCode.Mouse0 && k <= KeyCode.Mouse6) && k < KeyCode.JoystickButton0)
+        .Where(k => k != KeyCode.None && !(k >= KeyCode.Mouse0 && k <= KeyCode.Mouse6) && k < KeyCode.JoystickButton0
+            && !KeyBind.IsModifierKey(k))
         .Distinct()];
 
-    private static Action<KeyCode> pending;
+    private static Action<KeyBind?> pending;
     private static int startFrame;
 
     public static bool Active => pending != null;
 
-    public static void Begin(Action onStart, Action<KeyCode> onDone) {
+    /// <summary><paramref name="onDone"/> gets the bind, or null when cancelled.</summary>
+    public static void Begin(Action onStart, Action<KeyBind?> onDone) {
         Cancel();
         pending = onDone;
         startFrame = Time.frameCount;
@@ -24,7 +27,7 @@ internal static class KeyCapture {
     public static void Cancel() {
         var done = pending;
         pending = null;
-        done?.Invoke(KeyCode.None);
+        done?.Invoke(null);
     }
 
     public static void Tick() {
@@ -43,7 +46,7 @@ internal static class KeyCapture {
             var done = pending;
             pending = null;
             try {
-                done(key);
+                done(new KeyBind(key, KeyBind.HeldModifiers()));
             } catch (Exception e) {
                 MainCore.Log.Err($"[{nameof(KeyCapture)}] Key bind handler failed: {e.Message}");
             }

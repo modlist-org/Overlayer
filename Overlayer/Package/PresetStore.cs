@@ -1,5 +1,12 @@
 using Newtonsoft.Json.Linq;
 using Overlayer.Core;
+using UnityEngine;
+
+#if ML && IL2CPP
+using Il2CppTMPro;
+#else
+using TMPro;
+#endif
 
 namespace Overlayer.Package;
 
@@ -7,6 +14,8 @@ public sealed class PackagePreset {
     public string Id;
     public string Name;
     public string Module;
+    /// <summary>Optional grouping in pickers, e.g. <see cref="HudPreset.ElementCategory"/>.</summary>
+    public string Category;
     public Func<byte[]> ReadBytes;
 }
 
@@ -55,7 +64,17 @@ public static class PresetStore {
             Directory.CreateDirectory(MainCore.Paths.PresetsPath);
         } catch {
         }
+        RegisterBuiltIn();
         RefreshFilePresets();
+    }
+
+    // Game-independent starters; modules add their own (accuracy, combo, ...).
+    private static void RegisterBuiltIn() {
+        const string module = "Overlayer";
+        Register(HudPreset.Preset("overlayer:fps", "FPS", HudPreset.ElementCategory, module, "Frames per second",
+            () => [HudPreset.Text("FPS", "{Fps:500,0} FPS", 28f, new Vector2(1f, 1f), new Vector2(-24f, -20f), TextAlignmentOptions.TopRight)]));
+        Register(HudPreset.Preset("overlayer:clock", "Clock", HudPreset.ElementCategory, module, "Current time",
+            () => [HudPreset.Text("Clock", "{Hour:00}:{Minute:00}", 28f, new Vector2(1f, 1f), new Vector2(-24f, -60f), TextAlignmentOptions.TopRight)]));
     }
 
     public static void RefreshFilePresets() {

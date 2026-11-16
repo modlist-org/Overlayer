@@ -321,15 +321,16 @@ internal static class PageSettings {
         string KeyCaption() => $"{MainCore.Tr.Get("HUD_EDITOR_KEY", "Open Key")}: {HudEdit.HudEditor.Key}";
         keyButton = O5Factory.Button(ctx, keyRow, "hud_editor_key", new O5ButtonOptions { Text = KeyCaption(), OnClick = () => KeyCapture.Begin(
             () => keyButton.Text = $"{MainCore.Tr.Get("HUD_EDITOR_KEY", "Open Key")}: ...",
-            key => {
-                if (key != KeyCode.None) {
-                    MainCore.Conf.HudEditorKey = key.ToString();
+            bind => {
+                if (bind is { IsNone: false } b) {
+                    MainCore.Conf.HudEditorKey = b.ToString();
                     MainCore.ConfMgr.RequestSave();
                     HudEdit.HudEditor.RegisterShortcut();
                 }
                 keyButton.Text = KeyCaption();
             }) });
-        keyButton.Rect.AddToolTip(ctx, () => MainCore.Tr.Get("DESC_HUD_EDITOR_KEY", "Click, then press a key. Esc cancels."));
+        keyButton.Rect.AddToolTip(ctx, () => MainCore.Tr.Get("DESC_HUD_EDITOR_KEY",
+            "Click, then press a key (hold Ctrl / Shift / Alt for a combination). Esc cancels."));
 
         var snapRow = O5Factory.Row(ctx, basic);
         var snapToggle = O5Factory.Toggle(ctx, snapRow, "hud_snap", new O5ToggleOptions { DefaultValue = defSet.HudSnap, Value = MainCore.Conf.HudSnap, OnChanged = toggle => {

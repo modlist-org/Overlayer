@@ -48,16 +48,11 @@ internal static partial class HudEditor {
 
     private const string ShortcutId = "overlayer.hud_editor";
 
-    public static KeyCode Key => Enum.TryParse(MainCore.Conf.HudEditorKey.Value, out KeyCode key) ? key : KeyCode.None;
+    public static UI.Utility.KeyBind Key => UI.Utility.KeyBind.Parse(MainCore.Conf.HudEditorKey.Value);
 
-    public static void RegisterShortcut() {
-        O5Kit.Input.O5ShortcutManager.Unregister(ShortcutId);
-        if (Key != KeyCode.None) {
-            O5Kit.Input.O5ShortcutManager.Register(ShortcutId, new O5Kit.Input.O5KeyCombo(Key), onPressed: _ => Toggle());
-        }
-    }
+    public static void RegisterShortcut() => Key.Register(ShortcutId, Toggle);
 
-    public static void UnregisterShortcut() => O5Kit.Input.O5ShortcutManager.Unregister(ShortcutId);
+    public static void UnregisterShortcut() => UI.Utility.KeyBind.Unregister(ShortcutId);
 
     public static void Toggle() {
         if (IsOpen) {
@@ -228,6 +223,14 @@ internal static partial class HudEditor {
             DuplicateSelection();
             return;
         }
+        if (Ctrl && Input.GetKeyDown(KeyCode.G)) {
+            if (Shift) {
+                UngroupSelection();
+            } else {
+                GroupSelection();
+            }
+            return;
+        }
         if (Input.GetKeyDown(KeyCode.Delete)) {
             DeleteSelection();
             return;
@@ -288,6 +291,7 @@ internal static partial class HudEditor {
 
         bool overUi = PointerOverEditorUi(mouse);
         hovered = overUi ? null : HitTest(mouse);
+        UpdateMeasure(overUi);
         if (overUi) {
             return;
         }
@@ -420,6 +424,7 @@ internal static partial class HudEditor {
         dragChanged = true;
         guideX.Clear();
         guideY.Clear();
+        measures.Clear();
 
         switch (drag) {
             case DragMode.Move: {
@@ -501,6 +506,8 @@ internal static partial class HudEditor {
 
         TryX(0f); TryX(Screen.width * 0.5f); TryX(Screen.width);
         TryY(0f); TryY(Screen.height * 0.5f); TryY(Screen.height);
+        var self = new Box(minX, maxX, minY, maxY);
+        var others = new List<Box>();
         var other = new Vector3[4];
         foreach (var o in elements) {
             if (!o.IsAlive || moving.Contains(o) || moving.Any(m => IsAncestor(m.Object, o.Object))) {
@@ -510,6 +517,23 @@ internal static partial class HudEditor {
             Bounds(other, out float oMinX, out float oMaxX, out float oMinY, out float oMaxY);
             TryX(oMinX); TryX((oMinX + oMaxX) * 0.5f); TryX(oMaxX);
             TryY(oMinY); TryY((oMinY + oMaxY) * 0.5f); TryY(oMaxY);
+            var box = new Box(oMinX, oMaxX, oMinY, oMaxY);
+            // Boxes around the moving one (its parents, backgrounds) aren't neighbours to space against.
+            if (!box.Contains(self)) {
+                others.Add(box);
+            }
+        }
+
+        // Equal spacing with the neighbours wins when it's nearer than a line.
+        float? ex = EqualSpacing(self, others, true, threshold);
+        if (ex.HasValue && (float.IsNaN(lineX) || Mathf.Abs(ex.Value) < Mathf.Abs(dx))) {
+            dx = ex.Value;
+            lineX = float.NaN;
+        }
+        float? ey = EqualSpacing(self, others, false, threshold);
+        if (ey.HasValue && (float.IsNaN(lineY) || Mathf.Abs(ey.Value) < Mathf.Abs(dy))) {
+            dy = ey.Value;
+            lineY = float.NaN;
         }
 
         if (!float.IsNaN(lineX)) {
@@ -518,6 +542,8 @@ internal static partial class HudEditor {
         if (!float.IsNaN(lineY)) {
             guideY.Add(lineY);
         }
+        measures.Clear();
+        AddSpacingGuides(self.Shift(dx, dy), others, UnitsPerPixel(moving.FirstOrDefault()));
         return new Vector2(dx, dy);
     }
 
@@ -557,6 +583,7 @@ internal static partial class HudEditor {
         drag = DragMode.None;
         guideX.Clear();
         guideY.Clear();
+        measures.Clear();
         if (!dragChanged) {
             return;
         }
@@ -570,6 +597,7 @@ internal static partial class HudEditor {
         drag = DragMode.None;
         guideX.Clear();
         guideY.Clear();
+        measures.Clear();
         foreach (var (el, start) in dragStart) {
             el.Apply(start);
         }

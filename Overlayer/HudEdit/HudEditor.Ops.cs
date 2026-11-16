@@ -270,50 +270,8 @@ internal static partial class HudEditor {
         AfterStructureChange(null, created.Select(c => c.Obj));
     }
 
-    // "Parent" placement: a new group object takes the selected object's place and holds it.
-    private static void WrapSelection() {
-        var target = Primary;
-        if (target == null || !target.IsAlive || target.Locked) {
-            return;
-        }
-        var obj = target.Object;
-        var slot = SlotOf(target);
-        var before = target.Capture();
-        var srcCfg = target.Config;
-
-        var group = new OvObject();
-        group.Config.Name.Value = "Group";
-        var g = group.Config.RectTransformConfig;
-        g.AnchorMin.StaticValue = srcCfg.AnchorMin.StaticValue;
-        g.AnchorMax.StaticValue = srcCfg.AnchorMax.StaticValue;
-        g.Pivot.StaticValue = srcCfg.Pivot.StaticValue;
-        g.AnchoredPosition.StaticValue = srcCfg.AnchoredPosition.StaticValue;
-        g.SizeDelta.StaticValue = target.Rect.rect.size;
-        group.ApplyComponent();
-
-        void Wrap() {
-            Vector2 world = obj.RectTransform.position;
-            DetachFrom(obj, slot);
-            AttachAt(group, slot);
-            group.Attach(obj);
-            obj.ApplyConfig();
-            PlaceAt(obj, world);
-        }
-        void Unwrap() {
-            obj.Detach();
-            ToTrash(group, slot);
-            AttachAt(obj, slot);
-            srcCfg.AnchoredPosition.StaticValue = before.Position;
-            srcCfg.ToUnity(obj.GameObject);
-        }
-
-        Wrap();
-        undo.Push(new ActionCommand(Unwrap, () => {
-            trash.Remove(group);
-            Wrap();
-        }));
-        AfterStructureChange(group);
-    }
+    // "Parent" placement: a new group takes the selected object's place and holds it.
+    private static void WrapSelection() => GroupSelection();
 
     // Draw order among siblings: +1 = one step toward the front.
     public static void MoveOrder(int direction) {

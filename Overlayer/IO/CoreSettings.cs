@@ -25,7 +25,7 @@ public sealed class CoreSettings : ISettingsFile {
     public FxValue<List<string>> SystemFontFallbacks = new([]);
     public FxValue<List<string>> CodeFontFallbacks = new([]);
     public FxValue<bool> UseRawInput = new(true);
-    public FxValue<string> HudEditorKey = FxValue<string>.FromValue("F8");
+    public FxValue<string> HudEditorKey = FxValue<string>.FromValue("Alt+H");
     public FxValue<bool> HudEditorInPlay = new(false);
     public FxValue<bool> HudSnap = new(true);
     public FxValue<float> HudSnapDistance = new(8f);

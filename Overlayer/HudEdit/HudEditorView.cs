@@ -38,6 +38,7 @@ internal static partial class HudEditor {
     private static readonly Color GroupColor = new(0.569f, 0.604f, 1f, 0.5f);
     private static readonly Color LockedColor = new(1f, 0.6f, 0.35f, 0.9f);
     private static readonly Color GuideColor = new(1f, 0.35f, 0.75f, 0.9f);
+    private static readonly Color MeasureColor = new(1f, 0.32f, 0.36f, 1f);
 
     private static readonly string[] PlacementNames = ["Main canvas", "New canvas", "Next to selected", "Inside selected", "Wrap selected"];
 
@@ -62,7 +63,7 @@ internal static partial class HudEditor {
     private static TextMeshProUGUI titleText;
     private static TextMeshProUGUI infoText;
     private static O5Slider xSlider, ySlider, scaleSlider, rotationSlider;
-    private static O5Button placementButton, fitButton;
+    private static O5Button placementButton, fitButton, ungroupButton;
     private static GameObject singleRows, multiRows, inspectorHost;
     private static RectTransform inspectorContent;
     private static HudInspector inspector;
@@ -194,6 +195,12 @@ internal static partial class HudEditor {
 
         Icon(toolbar, "add_text", UISprite.Text128, () => Create(NewKind.Text, CurrentPlacement, null), "Add text  (or right-click the screen)");
         Icon(toolbar, "add_image", UISprite.Image128, () => Create(NewKind.Image, CurrentPlacement, null), "Add image");
+        O5Button presetsButton = null;
+        presetsButton = Button(Cell(toolbar, 90f), "presets", "Presets", () => {
+            var c = new Vector3[4];
+            presetsButton.Rect.GetWorldCorners(c);
+            OpenPresetMenu(new Vector2(c[0].x, c[0].y - 6f), null);
+        }, "Ready-made HUD pieces and layouts");
         placementButton = Button(Cell(toolbar, 170f), "placement", string.Empty, CyclePlacement, "Where new objects go. Click to change.");
         UiStyle.Separator(toolbar, true);
         Icon(toolbar, "duplicate", UISprite.Clone128, DuplicateSelection, "Duplicate  Ctrl+D");
@@ -253,6 +260,7 @@ internal static partial class HudEditor {
         var actions = UiStyle.HRow(single, 6f, 36f);
         Button(Cell(actions, 0f), "reset", "Reset", ResetSelection, "Position 0, scale 1, rotation 0");
         fitButton = Button(Cell(actions, 0f), "fit", "Fit to text", FitSelection, "Resize the box to the visible text");
+        ungroupButton = Button(Cell(actions, 0f), "ungroup", "Ungroup", UngroupSelection, "Ctrl+Shift+G");
 
         // Several objects: align / distribute.
         multiRows = VerticalGroup("Multi", content).gameObject;
@@ -270,6 +278,10 @@ internal static partial class HudEditor {
         var distRow = UiStyle.HRow(multi, 4f, 34f);
         Button(Cell(distRow, 0f), "dist_x", "Horizontally", () => Align(AlignMode.DistributeX), "Equal gaps, needs 3 or more");
         Button(Cell(distRow, 0f), "dist_y", "Vertically", () => Align(AlignMode.DistributeY), "Equal gaps, needs 3 or more");
+        UiStyle.Section(multi, "Arrange");
+        var arrangeRow = UiStyle.HRow(multi, 4f, 34f);
+        Button(Cell(arrangeRow, 0f), "group", "Group", GroupSelection, "Ctrl+G");
+        Button(Cell(arrangeRow, 0f), "multi_ungroup", "Ungroup", UngroupSelection, "Ctrl+Shift+G (selected groups)");
 
         var properties = VerticalGroup("PropertiesHeader", content);
         UiStyle.Section(properties, "Properties");
@@ -408,6 +420,7 @@ internal static partial class HudEditor {
             scaleSlider.SetBlocked(!el.CanScale, true);
             rotationSlider.SetBlocked(!el.CanRotate, true);
             fitButton.Rect.parent.gameObject.SetActive(el.Object.GameObject.GetComponent<TextMeshProUGUI>() != null);
+            ungroupButton.Rect.parent.gameObject.SetActive(!el.Locked && el.Object.Children.Count > 0);
         }
         SyncPanelValues();
 
@@ -468,6 +481,7 @@ internal static partial class HudEditor {
             Placement where = CurrentPlacement is Placement.NewCanvas ? Placement.NewCanvas : Placement.MainCanvas;
             items.Add(("Add text here", null, () => Create(NewKind.Text, where, mouse), false));
             items.Add(("Add image here", null, () => Create(NewKind.Image, where, mouse), false));
+            items.Add(("Add preset here…", null, () => OpenPresetMenu(mouse, mouse), false));
             if (selection.Count > 0) {
                 items.Add(null);
                 items.Add(("Deselect", "Esc", () => Select(null), false));
@@ -477,12 +491,16 @@ internal static partial class HudEditor {
             if (single) {
                 items.Add(("Add text inside", null, () => Create(NewKind.Text, Placement.Child, mouse), false));
                 items.Add(("Add text next to it", null, () => Create(NewKind.Text, Placement.Sibling, mouse), false));
-                items.Add(("Wrap in a group", null, () => Create(NewKind.Text, Placement.Parent, null), false));
                 items.Add(null);
                 items.Add(("Bring forward", null, () => MoveOrder(1), false));
                 items.Add(("Send backward", null, () => MoveOrder(-1), false));
                 items.Add(null);
             }
+            items.Add(("Group", "Ctrl+G", GroupSelection, false));
+            if (selection.Any(e => !e.Locked && e.Object.Children.Count > 0)) {
+                items.Add(("Ungroup", "Ctrl+Shift+G", UngroupSelection, false));
+            }
+            items.Add(null);
             items.Add(("Duplicate", "Ctrl+D", DuplicateSelection, false));
             items.Add(("Reset transform", null, ResetSelection, false));
             items.Add(null);
@@ -637,6 +655,7 @@ internal static partial class HudEditor {
         for (int i = g; i < guides.Count; i++) {
             guides[i].gameObject.SetActive(false);
         }
+        RenderMeasures();
 
         // Keep handles above frames.
         foreach (var h in cornerHandles) {
@@ -694,6 +713,49 @@ internal static partial class HudEditor {
         return frames[index];
     }
 
+    // Distance lines with a value badge in the middle (Alt measuring, equal-spacing gaps).
+    private static readonly List<Image> measureLines = [];
+    private static readonly List<(Image Back, TextMeshProUGUI Text)> measureLabels = [];
+
+    private static void RenderMeasures() {
+        int i = 0;
+        foreach (var (a, b, label, spacing) in measures) {
+            Color color = spacing ? GuideColor : MeasureColor;
+            while (measureLines.Count <= i) {
+                measureLines.Add(NewImage("Measure", gizmoLayer, MeasureColor));
+            }
+            while (measureLabels.Count <= i) {
+                var back = UiStyle.Rounded("MeasureLabel", gizmoLayer, MeasureColor);
+                back.raycastTarget = false;
+                back.rectTransform.anchorMin = back.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
+                var text = O5Factory.ControlText(O5KitAdapters.Ctx, back.rectTransform, 13f, true);
+                Stretch(text.rectTransform);
+                text.alignment = TextAlignmentOptions.Center;
+                text.raycastTarget = false;
+                text.color = Color.white;
+                measureLabels.Add((back, text));
+            }
+            var line = measureLines[i];
+            line.color = color;
+            PlaceLine(line.rectTransform, ToLocal(a), ToLocal(b), 1.5f);
+            line.rectTransform.SetAsLastSibling();
+            var (bg, txt) = measureLabels[i];
+            bg.color = color;
+            txt.text = label;
+            bg.rectTransform.sizeDelta = new Vector2(12f + label.Length * 8f, 18f);
+            bg.rectTransform.anchoredPosition = ToLocal((a + b) * 0.5f);
+            bg.gameObject.SetActive(true);
+            bg.rectTransform.SetAsLastSibling();
+            i++;
+        }
+        for (int j = i; j < measureLines.Count; j++) {
+            measureLines[j].gameObject.SetActive(false);
+        }
+        for (int j = i; j < measureLabels.Count; j++) {
+            measureLabels[j].Back.gameObject.SetActive(false);
+        }
+    }
+
     private static RectTransform GetGuide(int index) {
         while (guides.Count <= index) {
             guides.Add(NewImage("Guide", gizmoLayer, GuideColor).rectTransform);
@@ -709,6 +771,8 @@ internal static partial class HudEditor {
         inspectorDirty = false;
         frames.Clear();
         guides.Clear();
+        measureLines.Clear();
+        measureLabels.Clear();
         groupFrame = null;
         panelBefore = null;
         foreach (var control in controls) {
@@ -719,7 +783,7 @@ internal static partial class HudEditor {
         }
         controls.Clear();
         xSlider = ySlider = scaleSlider = rotationSlider = null;
-        placementButton = fitButton = null;
+        placementButton = fitButton = ungroupButton = null;
         if (root != null) {
             Object.Destroy(root.gameObject);
         }
