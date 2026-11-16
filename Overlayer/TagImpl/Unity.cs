@@ -23,6 +23,9 @@ public static class Unity {
     [Tag(Desc = "[Unity] Name of the currently active Unity scene")]
     public static string SceneName { get; private set; } = string.Empty;
 
+    [Tag(Desc = "[Overlayer] True while the HUD editor is open\nEx) a canvas group opacity of IsPlaying() || HudEditorOpen() ? 1 : 0 shows a play-only HUD while editing it")]
+    public static bool HudEditorOpen => HudEdit.HudEditor.IsOpen;
+
     [Tag(Desc = "[Unity] Current screen width in pixels")]
     public static int ScreenWidth => UnityEngine.Screen.width;
 

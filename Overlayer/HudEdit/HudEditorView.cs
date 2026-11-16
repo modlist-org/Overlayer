@@ -1,3 +1,4 @@
+using O5Kit.Behaviour;
 using O5Kit.Control;
 using O5Kit.Factory;
 using Overlayer.Compat;
@@ -25,7 +26,10 @@ internal static partial class HudEditor {
     private const float RotateHandleOffset = 28f;
     private const float HandleSize = 10f;
     private const float Border = 1.5f;
-    private const float PanelWidth = 520f;
+    private const float MinPanelWidth = 380f;
+    private const float MaxPanelWidth = 1000f;
+    // Dragging the panel's left edge resizes it; remembered in the settings.
+    private static float PanelWidth => Mathf.Clamp(MainCore.Conf.HudPanelWidth.Value, MinPanelWidth, MaxPanelWidth);
     private const float ToolbarHeight = 48f;
     private const float MenuWidth = 236f;
     private const float Margin = 16f;
@@ -149,6 +153,7 @@ internal static partial class HudEditor {
             hint.rectTransform.pivot = new Vector2(0.5f, 0f);
             hint.rectTransform.offsetMin = new Vector2(Margin + 4f, 10f);
             hint.rectTransform.offsetMax = new Vector2(-PanelWidth - Margin * 2f, 34f);
+            hintRect = hint.rectTransform;
             hint.alignment = TextAlignmentOptions.BottomLeft;
             hint.raycastTarget = false;
             hint.color = UiStyle.Caption;
@@ -179,7 +184,7 @@ internal static partial class HudEditor {
 
     private static void BuildToolbar() {
         // Centered over the area left of the panel, sized to its buttons.
-        var area = NewRect("ToolbarArea", root);
+        var area = toolbarArea = NewRect("ToolbarArea", root);
         area.anchorMin = new Vector2(0f, 1f);
         area.anchorMax = new Vector2(1f, 1f);
         area.offsetMin = new Vector2(0f, -1f);
@@ -233,6 +238,7 @@ internal static partial class HudEditor {
         panel.pivot = new Vector2(1f, 0.5f);
         panel.offsetMin = new Vector2(-PanelWidth - Margin, Margin);
         panel.offsetMax = new Vector2(-Margin, -Margin);
+        BuildResizeGrip();
 
         var content = NewRect("Content", panel);
         Stretch(content);
@@ -713,6 +719,62 @@ internal static partial class HudEditor {
         return frames[index];
     }
 
+    // ---- panel width ----
+
+    private static RectTransform toolbarArea, hintRect;
+    private static bool resizingPanel;
+
+    // A strip along the panel's left edge: drag it to make the panel wider or narrower.
+    private static void BuildResizeGrip() {
+        var grip = NewImage("ResizeGrip", panel, Color.clear);
+        grip.raycastTarget = true;
+        var r = grip.rectTransform;
+        r.anchorMin = Vector2.zero;
+        r.anchorMax = new Vector2(0f, 1f);
+        r.sizeDelta = new Vector2(12f, 0f);
+        r.anchoredPosition = Vector2.zero;
+        var line = NewImage("Line", r, UiStyle.Line);
+        line.rectTransform.anchorMin = new Vector2(0.5f, 0.3f);
+        line.rectTransform.anchorMax = new Vector2(0.5f, 0.7f);
+        line.rectTransform.sizeDelta = new Vector2(3f, 0f);
+
+        var trigger = grip.gameObject.AddComponent<EventTrigger>();
+        UnityUtils.AddEvents(trigger,
+            (EventTriggerType.PointerEnter, _ => line.color = SelectedColor),
+            (EventTriggerType.PointerExit, _ => {
+                if (!resizingPanel) {
+                    line.color = UiStyle.Line;
+                }
+            }),
+            (EventTriggerType.BeginDrag, _ => resizingPanel = true),
+            (EventTriggerType.Drag, e => {
+                if (e is PointerEventData pe) {
+                    MainCore.Conf.HudPanelWidth.Value = Mathf.Clamp(PanelWidth - pe.delta.x / UiScale, MinPanelWidth, MaxPanelWidth);
+                    ApplyPanelWidth();
+                }
+            }),
+            (EventTriggerType.EndDrag, _ => {
+                resizingPanel = false;
+                line.color = UiStyle.Line;
+                MainCore.ConfMgr.RequestSave();
+            })
+        );
+        grip.rectTransform.AddToolTip(O5KitAdapters.Ctx, "Drag to resize the panel");
+    }
+
+    private static void ApplyPanelWidth() {
+        float w = PanelWidth;
+        if (panel != null) {
+            panel.offsetMin = new Vector2(-w - Margin, Margin);
+        }
+        if (toolbarArea != null) {
+            toolbarArea.offsetMax = new Vector2(-w - Margin, 0f);
+        }
+        if (hintRect != null) {
+            hintRect.offsetMax = new Vector2(-w - Margin * 2f, 34f);
+        }
+    }
+
     // Distance lines with a value badge in the middle (Alt measuring, equal-spacing gaps).
     private static readonly List<Image> measureLines = [];
     private static readonly List<(Image Back, TextMeshProUGUI Text)> measureLabels = [];
@@ -787,7 +849,7 @@ internal static partial class HudEditor {
         if (root != null) {
             Object.Destroy(root.gameObject);
         }
-        root = gizmoLayer = panel = toolbar = inspectorContent = null;
+        root = gizmoLayer = panel = toolbar = inspectorContent = toolbarArea = hintRect = null;
         singleRows = multiRows = inspectorHost = inspectorPropertiesHeader = null;
     }
 }

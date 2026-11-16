@@ -72,12 +72,14 @@ public static class Compiler {
                 compiledFunc = inner;
             } else if (js != null) {
                 var binding = js;
-                compiledFunc = () => binding.IsBlocked ? binding.Last ?? parsed.Raw : binding.Last = inner();
+                var preview = new Preview(inner, parsed.Raw);
+                compiledFunc = () => binding.IsBlocked ? binding.Last ?? preview.Get() : binding.Last = inner();
             } else {
                 string last = null;
+                var preview = new Preview(inner, parsed.Raw);
                 compiledFunc = () => {
                     if (IsBlocked(tag)) {
-                        return last ?? parsed.Raw;
+                        return last ?? preview.Get();
                     }
                     return last = inner();
                 };
@@ -89,6 +91,25 @@ public static class Compiler {
             [.. diagnostics],
             js
         );
+    }
+
+    // A blocked tag that never ran shows its raw text. In the HUD editor show what it says
+    // right now instead (0 combo, 0.00% ...), so a layout can be judged before playing.
+    // A tag that can't run outside play falls back to raw for good (no throw every frame).
+    private sealed class Preview(Func<string> inner, string raw) {
+        private bool failed;
+
+        public string Get() {
+            if (failed || !HudEdit.HudEditor.IsOpen) {
+                return raw;
+            }
+            try {
+                return inner() ?? raw;
+            } catch {
+                failed = true;
+                return raw;
+            }
+        }
     }
 
     private static bool HasBlockFlag(TagCore tag)

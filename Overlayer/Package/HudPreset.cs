@@ -36,6 +36,33 @@ public static class HudPreset {
             return this;
         }
 
+        /// <summary>Any other tweak to the object's settings.</summary>
+        public Node Set(Action<OvObjectSettings> edit) {
+            edit(Config);
+            return this;
+        }
+
+        /// <summary>
+        /// Visible only while <paramref name="condition"/> (a JS expression, e.g. <c>IsPlaying()</c>)
+        /// is true, and always while the HUD editor is open so it can still be edited.
+        /// </summary>
+        public Node ShowWhen(string condition) {
+            Config.CanvasGroupConfig ??= new CanvasGroupSettings();
+            Config.CanvasGroupConfig.Alpha = new FxValue<float>($"({condition}) || HudEditorOpen() ? 1 : 0");
+            return this;
+        }
+
+        /// <summary>Stretches across the parent's width at height <paramref name="y"/> (0 bottom, 1 top).</summary>
+        public Node StretchX(float y, float height, float offsetY = 0f) {
+            var rt = Config.RectTransformConfig;
+            rt.AnchorMin.StaticValue = new Vector2(0f, y);
+            rt.AnchorMax.StaticValue = new Vector2(1f, y);
+            rt.Pivot.StaticValue = new Vector2(0.5f, y);
+            rt.AnchoredPosition.StaticValue = new Vector2(0f, offsetY);
+            rt.SizeDelta.StaticValue = new Vector2(0f, height);
+            return this;
+        }
+
         public JToken Serialize() {
             var json = new JObject { [nameof(Config)] = Config.Serialize() };
             if (Children.Count > 0) {
@@ -68,7 +95,8 @@ public static class HudPreset {
         tmp.FontSize.StaticValue = fontSize;
         tmp.Alignment.StaticValue = alignment;
         tmp.Color.StaticValue = new GradientColor(color ?? Color.white, true);
-        tmp.EnableOutline.StaticValue = true;
+        // An outline thick enough for big numbers fills small captions in.
+        tmp.EnableOutline.StaticValue = fontSize >= 20f;
         tmp.OutlineWidth.StaticValue = 0.15f;
         tmp.OutlineColor.StaticValue = new GradientColor(new Color(0f, 0f, 0f, 0.8f), true);
         node.Config.TextEngineConfig = OvTextSettings.FromLegacy(text);
@@ -86,6 +114,18 @@ public static class HudPreset {
             node.Config.RectTransformConfig.SizeDelta = new FxValue<Vector2>(sizeFx);
         }
         return node;
+    }
+
+    /// <summary>
+    /// A track with a fill that covers <paramref name="progress"/> (a JS expression giving 0..1) of it.
+    /// The fill follows the track's size, so the bar can be stretched or resized freely.
+    /// </summary>
+    public static Node Bar(string name, string progress, Color fill, Color track, Vector2 anchor, Vector2 position,
+        Vector2 size, Vector2? pivot = null) {
+        var bar = Box(name, track, anchor, position, size, pivot);
+        var fillNode = Box("Fill", fill, Vector2.zero, Vector2.zero, Vector2.zero, new Vector2(0f, 0.5f));
+        fillNode.Config.RectTransformConfig.AnchorMax = new FxValue<Vector2>($"[Math.min(Math.max({progress}, 0), 1), 1]");
+        return bar.Add(fillNode);
     }
 
     /// <summary>An empty object holding others (move them together).</summary>

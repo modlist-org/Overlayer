@@ -387,6 +387,7 @@ internal static partial class HudEditor {
             for (int i = 0; i < 4; i++) {
                 float d2 = (mouse - (Vector2)corners[i]).sqrMagnitude;
                 if (d2 <= (inside ? inner * inner : r * r)) {
+                    scaleCorner = i;
                     return DragMode.Scale;
                 }
             }
@@ -415,7 +416,17 @@ internal static partial class HudEditor {
         dragStart = targets.Select(e => (e, e.Capture())).ToList();
         dragMouseStart = mouse;
         dragChanged = false;
+        if (mode == DragMode.Scale) {
+            targets[0].GetScreenCorners(corners);
+            scaleCornerStart = corners[scaleCorner];
+            scaleOppositeStart = corners[(scaleCorner + 2) % 4];
+            scaleCenterStart = (corners[0] + corners[2]) * 0.5f;
+        }
     }
+
+    // Corner scaling: which corner was grabbed (0 BL, 1 TL, 2 TR, 3 BR) and where things started.
+    private static int scaleCorner;
+    private static Vector2 scaleCornerStart, scaleOppositeStart, scaleCenterStart;
 
     private static void UpdateDrag(Vector2 mouse) {
         if (!dragChanged && (mouse - dragMouseStart).sqrMagnitude < 4f) {
@@ -439,13 +450,16 @@ internal static partial class HudEditor {
                 break;
             }
             case DragMode.Scale: {
+                // The grabbed corner follows the pointer and the opposite corner stays put
+                // (Alt: the middle stays put). Measured along the box's diagonal, so dragging
+                // outward grows and inward shrinks whatever the pivot or rotation is.
                 var (el, start) = dragStart[0];
-                Vector2 pivot = el.ScreenPivot;
-                float startDist = (dragMouseStart - pivot).magnitude;
-                if (startDist < 1f) {
+                Vector2 fixedPoint = Alt ? scaleCenterStart : scaleOppositeStart;
+                Vector2 diagonal = scaleCornerStart - fixedPoint;
+                if (diagonal.sqrMagnitude < 1f) {
                     break;
                 }
-                float ratio = (mouse - pivot).magnitude / startDist;
+                float ratio = Vector2.Dot(mouse - fixedPoint, diagonal) / diagonal.sqrMagnitude;
                 if (Shift) {
                     ratio = Mathf.Round(ratio * start.Scale.x / 0.05f) * 0.05f / Mathf.Max(start.Scale.x, 1e-4f);
                 }
@@ -453,6 +467,13 @@ internal static partial class HudEditor {
                 var state = start;
                 state.Scale = new Vector3(start.Scale.x * ratio, start.Scale.y * ratio, start.Scale.z);
                 el.Apply(state);
+                // Scaling happens around the pivot; shift back so the fixed point didn't move.
+                el.GetScreenCorners(corners);
+                Vector2 now = Alt ? (Vector2)(corners[0] + corners[2]) * 0.5f : (Vector2)corners[(scaleCorner + 2) % 4];
+                if (el.CanMove) {
+                    state.Position = start.Position + el.ScreenToParentDelta(fixedPoint - now);
+                    el.Apply(state);
+                }
                 break;
             }
             case DragMode.Rotate: {

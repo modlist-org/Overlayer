@@ -32,6 +32,7 @@ public sealed class CoreSettings : ISettingsFile {
     public FxValue<bool> HudShowHints = new(true);
     public FxValue<string> HudMainCanvas = FxValue<string>.FromValue("HUD");
     public FxValue<string> HudPlacement = FxValue<string>.FromValue("MainCanvas");
+    public FxValue<float> HudPanelWidth = new(520f);
 
     public JToken Serialize() {
         return new JObject {
@@ -60,7 +61,8 @@ public sealed class CoreSettings : ISettingsFile {
             [nameof(HudSnapDistance)] = IOUtils.WriteFx(HudSnapDistance),
             [nameof(HudShowHints)] = IOUtils.WriteFx(HudShowHints),
             [nameof(HudMainCanvas)] = IOUtils.WriteFx(HudMainCanvas),
-            [nameof(HudPlacement)] = IOUtils.WriteFx(HudPlacement)
+            [nameof(HudPlacement)] = IOUtils.WriteFx(HudPlacement),
+            [nameof(HudPanelWidth)] = IOUtils.WriteFx(HudPanelWidth)
         };
     }
 
@@ -91,5 +93,6 @@ public sealed class CoreSettings : ISettingsFile {
         HudShowHints = IOUtils.ReadFx(token, nameof(HudShowHints), HudShowHints);
         HudMainCanvas = IOUtils.ReadFx(token, nameof(HudMainCanvas), HudMainCanvas);
         HudPlacement = IOUtils.ReadFx(token, nameof(HudPlacement), HudPlacement);
+        HudPanelWidth = IOUtils.ReadFx(token, nameof(HudPanelWidth), HudPanelWidth);
     }
 }
