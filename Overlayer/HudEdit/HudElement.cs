@@ -40,6 +40,9 @@ internal sealed class HudElement {
     public string Name => Object.GameObject != null ? Object.GameObject.name : "?";
     public bool IsAlive => Rect != null && Object.GameObject != null && Object.GameObject.activeInHierarchy;
     public bool Locked => LockReason != null;
+    /// <summary>Placed by its parent's layout group: can't be moved, but can change order.</summary>
+    public bool LayoutDriven => LockReason == LayoutReason;
+    public const string LayoutReason = "Positioned by a layout group";
 
     // A tag/JS expression owns the value; dragging would fight it every frame.
     public bool CanMove => !Locked && !Config.AnchoredPosition.UseFx;
@@ -217,7 +220,7 @@ internal sealed class HudElement {
             var parent = obj.GameObject.transform.parent;
             bool layoutDriven = parent != null && parent.GetComponent<LayoutGroup>() != null;
             bool userLocked = HudEditor.IsUserLocked(canvas, obj);
-            string reason = inheritedLock ?? (userLocked ? "Locked" : layoutDriven ? "Positioned by a layout group" : null);
+            string reason = inheritedLock ?? (userLocked ? "Locked" : layoutDriven ? LayoutReason : null);
             list.Add(new HudElement(canvas, obj, reason, depth, userLocked || inheritedLock == "Locked"));
             // A locked object's children are locked with it.
             if (userLocked) {

@@ -647,6 +647,15 @@ internal static partial class HudEditor {
 
         TryX(0f); TryX(Screen.width * 0.5f); TryX(Screen.width);
         TryY(0f); TryY(Screen.height * 0.5f); TryY(Screen.height);
+        var guideXs = new List<float>();
+        var guideYs = new List<float>();
+        GuideLines(guideXs, guideYs);
+        foreach (float x in guideXs) {
+            TryX(x);
+        }
+        foreach (float y in guideYs) {
+            TryY(y);
+        }
         var self = new Box(minX, maxX, minY, maxY);
         var others = new List<Box>();
         var other = new Vector3[4];

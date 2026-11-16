@@ -148,7 +148,7 @@ internal static partial class HudEditor {
     /// <summary>Front (true) or back (false) of its siblings.</summary>
     public static void MoveToEnd(bool front) {
         var target = Primary;
-        if (target == null || !target.IsAlive || target.Locked) {
+        if (target == null || !target.IsAlive || (target.Locked && !target.LayoutDriven)) {
             return;
         }
         var slot = SlotOf(target);

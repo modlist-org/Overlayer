@@ -168,6 +168,7 @@ internal static partial class HudEditor {
         Stretch(gridLayer);
         gizmoLayer = NewRect("Gizmos", root);
         Stretch(gizmoLayer);
+        BuildRulers();
 
         marqueeFrame = NewFrame();
         foreach (var edge in marqueeFrame.Edges) {
@@ -197,6 +198,7 @@ internal static partial class HudEditor {
         ApplyPanelLayout();
         UpdateGridButton();
         UpdateLayersButton();
+        UpdateRulersButton();
     }
 
     // ---- toolbar: a compact floating bar, top-center of the free area ----
@@ -229,6 +231,7 @@ internal static partial class HudEditor {
         }, "Ready-made HUD pieces and layouts");
         placementButton = Button(Cell(toolbar, 170f), "placement", string.Empty, CyclePlacement, "Where new objects go. Click to change.");
         gridButton = Button(Cell(toolbar, 60f), "grid", "Grid", ToggleGrid, "Show the grid and snap to it");
+        rulersButton = Button(Cell(toolbar, 74f), "rulers", "Rulers", ToggleRulers, "Rulers and guides: drag out of a ruler to add a guide, drag it back to remove it");
         UiStyle.Separator(toolbar, true);
         Icon(toolbar, "duplicate", UISprite.Clone128, DuplicateSelection, "Duplicate  Ctrl+D");
         Icon(toolbar, "delete", UISprite.X128, DeleteSelection, "Delete  Del");
@@ -294,6 +297,7 @@ internal static partial class HudEditor {
         Button(Cell(actions, 0f), "reset", "Reset", ResetSelection, "Position 0, scale 1, rotation 0");
         fitButton = Button(Cell(actions, 0f), "fit", "Fit to text", FitSelection, "Resize the box to the visible text");
         ungroupButton = Button(Cell(actions, 0f), "ungroup", "Ungroup", UngroupSelection, "Ctrl+Shift+G");
+        BuildQuickLayout(ctx, single);
         UiStyle.Section(single, "Look");
         BuildQuickLook(ctx, single);
         BuildAllPropsToggle(single);
@@ -318,6 +322,9 @@ internal static partial class HudEditor {
         var arrangeRow = UiStyle.HRow(multi, 4f, 34f);
         Button(Cell(arrangeRow, 0f), "group", "Group", GroupSelection, "Ctrl+G");
         Button(Cell(arrangeRow, 0f), "multi_ungroup", "Ungroup", UngroupSelection, "Ctrl+Shift+G (selected groups)");
+        var flowRow = UiStyle.HRow(multi, 4f, 34f);
+        Button(Cell(flowRow, 0f), "group_row", "Group as row", () => GroupAs(Flow.Row), "Group them, lined up left to right with even gaps");
+        Button(Cell(flowRow, 0f), "group_column", "Group as column", () => GroupAs(Flow.Column), "Group them, stacked top to bottom with even gaps");
 
         inspectorContent = VerticalGroup("Inspector", body);
         inspectorHost = inspectorContent.gameObject;
@@ -648,6 +655,7 @@ internal static partial class HudEditor {
         }
         RenderGrid();
         TickLayers();
+        RenderRulers();
         if (root == null) {
             return;
         }
@@ -925,6 +933,7 @@ internal static partial class HudEditor {
             hintRect.offsetMin = new Vector2(left + Margin + 4f, hintRect.offsetMin.y);
             hintRect.offsetMax = new Vector2(-right - Margin, 34f);
         }
+        ApplyRulerLayout(left, right);
     }
 
     // ---- grid ----
@@ -1043,6 +1052,7 @@ internal static partial class HudEditor {
 
     private static void DestroyView() {
         CommitQuickEdit();
+        DestroyRulers();
         CloseContextMenu();
         inspector?.Dispose();
         inspector = null;
@@ -1084,5 +1094,7 @@ internal static partial class HudEditor {
         wSlider = hSlider = opacitySlider = fontSizeSlider = null;
         textColorPicker = imageColorPicker = null;
         allPropsButton = null;
+        layoutRows = layoutDetails = null;
+        gapSlider = paddingSlider = null;
     }
 }

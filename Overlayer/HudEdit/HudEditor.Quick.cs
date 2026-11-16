@@ -29,6 +29,10 @@ internal static partial class HudEditor {
     private static GameObject textRows, imageRows, anchorRow, allPropsRow;
     private static readonly Image[] anchorCells = new Image[9];
     private static O5Button allPropsButton;
+    private static GameObject layoutRows, layoutDetails;
+    private static readonly O5Button[] flowButtons = new O5Button[3];
+    private static readonly O5Button[] alignButtons = new O5Button[3];
+    private static O5Slider gapSlider, paddingSlider;
     private static bool allPropsShown;
 
     private static readonly Color AnchorIdle = new(1f, 1f, 1f, 0.12f);
@@ -130,6 +134,63 @@ internal static partial class HudEditor {
         picker.OnChanged = c => edit(c, false);
         picker.OnComplete = c => edit(c, true);
         return picker;
+    }
+
+    private static void BuildQuickLayout(O5Kit.Core.O5Context ctx, Transform parent) {
+        layoutRows = VerticalGroup("AutoLayout", parent).gameObject;
+        var rows = layoutRows.transform;
+        UiStyle.Section(rows, "Auto layout");
+        var flowRow = UiStyle.HRow(rows, 4f, 34f);
+        flowButtons[0] = Button(Cell(flowRow, 0f), "flow_off", "Off", () => SetFlow(Flow.None), "Children stay where you put them");
+        flowButtons[1] = Button(Cell(flowRow, 0f), "flow_row", "Row", () => SetFlow(Flow.Row), "Line the children up left to right");
+        flowButtons[2] = Button(Cell(flowRow, 0f), "flow_column", "Column", () => SetFlow(Flow.Column), "Stack the children top to bottom");
+        layoutDetails = VerticalGroup("Details", rows).gameObject;
+        var details = layoutDetails.transform;
+        gapSlider = Track(O5Factory.Slider(ctx, O5Factory.Row(ctx, details), "plus_hud_gap", new O5SliderOptions {
+            Min = 0,
+            Max = 100,
+            Label = "Gap",
+            Format = "F0",
+            ClampDrag = false,
+            ClampInput = false,
+        }));
+        gapSlider.OnChanged = v => QuickEdit("gap", o => GapOf(o).StaticValue, (o, g) => GapOf(o).StaticValue = g, Mathf.Max(0f, (float)v), false);
+        gapSlider.OnComplete = v => QuickEdit("gap", o => GapOf(o).StaticValue, (o, g) => GapOf(o).StaticValue = g, Mathf.Max(0f, (float)v), true);
+        paddingSlider = Track(O5Factory.Slider(ctx, O5Factory.Row(ctx, details), "plus_hud_padding", new O5SliderOptions {
+            Min = 0,
+            Max = 100,
+            Label = "Padding",
+            Format = "F0",
+            ClampDrag = false,
+            ClampInput = false,
+        }));
+        paddingSlider.OnChanged = v => QuickEdit("padding", PaddingOf, SetPadding, Mathf.Max(0f, (float)v), false);
+        paddingSlider.OnComplete = v => QuickEdit("padding", PaddingOf, SetPadding, Mathf.Max(0f, (float)v), true);
+        var alignRow = UiStyle.HRow(details, 4f, 34f);
+        for (int i = 0; i < 3; i++) {
+            int where = i;
+            alignButtons[i] = Button(Cell(alignRow, 0f), "flow_align" + i, string.Empty, () => {
+                if (Primary is { } el) {
+                    var anchor = CrossAlign(FlowOf(el.Object), where);
+                    QuickEdit("flowalign", o => AlignOf(o).StaticValue, (o, a) => AlignOf(o).StaticValue = a, anchor, true);
+                    SyncPanelValues();
+                }
+            });
+        }
+    }
+
+    // One padding for all four sides (the full inspector has them separately).
+    private static float PaddingOf(OvObject o) => PadHOf(o).StaticValue.x;
+
+    private static void SetPadding(OvObject o, float p) {
+        PadHOf(o).StaticValue = new Vector2(p, p);
+        PadVOf(o).StaticValue = new Vector2(p, p);
+    }
+
+    private static void HighlightButton(O5Button button, bool on) {
+        // Same as the toolbar toggles: the chosen one is the accent button, the rest are ghosts.
+        button.NormalColor = on ? O5KitAdapters.Ctx.Theme.ObjectButton : UiStyle.Ghost;
+        button.UpdateVisual(true);
     }
 
     private static void BuildAllPropsToggle(Transform parent) {
@@ -303,6 +364,23 @@ internal static partial class HudEditor {
             imageColorPicker.SetBlocked(!editable || cfg.ImageConfig.Color.UseFx, true);
         }
         allPropsRow.SetActive(editable);
+        bool layoutable = CanAutoLayout(el);
+        layoutRows.SetActive(layoutable);
+        if (layoutable) {
+            var flow = FlowOf(el.Object);
+            for (int i = 0; i < 3; i++) {
+                HighlightButton(flowButtons[i], (int)flow == i);
+            }
+            layoutDetails.SetActive(flow != Flow.None);
+            if (flow != Flow.None) {
+                string[] names = flow == Flow.Row ? ["Top", "Middle", "Bottom"] : ["Left", "Center", "Right"];
+                for (int i = 0; i < 3; i++) {
+                    alignButtons[i].Text = names[i];
+                }
+                gapSlider.SetBlocked(GapOf(el.Object).UseFx, true);
+                paddingSlider.SetBlocked(PadHOf(el.Object).UseFx || PadVOf(el.Object).UseFx, true);
+            }
+        }
         allPropsButton.Text = allPropsShown ? "Hide all properties" : "All properties…";
     }
 
@@ -331,6 +409,14 @@ internal static partial class HudEditor {
             }
             if (cfg.ImageConfig != null && liveKey != "imagecolor") {
                 imageColorPicker.Set(cfg.ImageConfig.Color.StaticValue, false);
+            }
+            if (FlowOf(el.Object) != Flow.None) {
+                gapSlider.Set(GapOf(el.Object).StaticValue, false);
+                paddingSlider.Set(PaddingOf(el.Object), false);
+                int aligned = CrossAlignIndex(AlignOf(el.Object).StaticValue);
+                for (int i = 0; i < 3; i++) {
+                    HighlightButton(alignButtons[i], i == aligned);
+                }
             }
             // Highlight the pin that matches (none for a stretched box).
             Vector2 min = cfg.RectTransformConfig.AnchorMin.StaticValue, max = cfg.RectTransformConfig.AnchorMax.StaticValue;

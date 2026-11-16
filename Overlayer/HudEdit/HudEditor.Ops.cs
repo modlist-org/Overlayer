@@ -276,7 +276,7 @@ internal static partial class HudEditor {
     // Draw order among siblings: +1 = one step toward the front.
     public static void MoveOrder(int direction) {
         var target = Primary;
-        if (target == null || !target.IsAlive || target.Locked) {
+        if (target == null || !target.IsAlive || (target.Locked && !target.LayoutDriven)) {
             return;
         }
         var from = SlotOf(target);
