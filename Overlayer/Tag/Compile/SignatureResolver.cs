@@ -123,6 +123,53 @@ public static class SignatureResolver {
         };
     }
 
+    /// <summary>
+    /// {Tag:a,b,c} arrives as one argument (the text after the colon). For a C# tag it's read
+    /// as separate arguments when that makes a valid call; otherwise it stays one piece, so a
+    /// format with commas like {Accuracy:#,##0.00} keeps working.
+    /// </summary>
+    public static string[] ColonArgs(TagCore tag, string[] args) {
+        if (tag == null || tag.IsJS || args is not [string single]) {
+            return args;
+        }
+        var parts = SplitTopLevel(single);
+        if (parts.Length < 2) {
+            return args;
+        }
+        var trial = new List<CompileDiagnostic>();
+        var sig = Resolve(tag, new Placeholder(tag.Name, parts), trial, new DiagnosticContext(tag.Name, 0, 0));
+        // Every piece has to be used: as an argument, or the last one as the format.
+        bool usesAll = sig.IsExecutable && sig.Args.Length <= tag.Parameters.Length
+            && sig.Args.Length + (sig.HasFormat ? 1 : 0) == parts.Length;
+        // Not even a warning (extra arguments only warn).
+        return usesAll && trial.Count == 0 ? parts : args;
+    }
+
+    // Commas outside parentheses and quotes; each piece trimmed.
+    private static string[] SplitTopLevel(string text) {
+        var parts = new List<string>();
+        int depth = 0, start = 0;
+        char quote = '\0';
+        for (int i = 0; i < text.Length; i++) {
+            char ch = text[i];
+            if (quote != '\0') {
+                if (ch == quote) {
+                    quote = '\0';
+                }
+            } else if (ch is '"' or '\'') {
+                quote = ch;
+            } else if (ch == '(') {
+                depth++;
+            } else if (ch == ')') {
+                depth = Math.Max(0, depth - 1);
+            } else if (ch == ',' && depth == 0) {
+                parts.Add(text[start..i].Trim());
+                start = i + 1;
+            }
+        }
+        parts.Add(text[start..].Trim());
+        return [.. parts];
+    }
     private static bool TryTakeAllAsValues(string[] rawArgs, System.Reflection.ParameterInfo[] parameters, int minRequired) {
         if (rawArgs.Length > parameters.Length || rawArgs.Length < minRequired) {
             return false;

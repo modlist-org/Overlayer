@@ -44,7 +44,9 @@ public sealed class TagCache {
             compiled = new CompiledPlaceholder(EmptyDelegates.ReturnEmpty, []);
         } else if (Locals != null && Locals.TryGet(lookupName, out var local)) {
             compiled = Compiler.Compile(local, parsed);
-        } else if (TagManager.TryGet(lookupName, out var tag) && (tag.RequiredParameterCount == 0 || expr.EndsWith("()"))) {
+        } else if (TagManager.TryGet(lookupName, out var tag) && (tag.RequiredParameterCount == 0 || expr.EndsWith("()")
+            // {EasedValue:Combo,0,500}: a C# tag's arguments after the colon (JS tags take those in V8).
+            || (!tag.IsJS && !string.IsNullOrEmpty(parsed.Format)))) {
             compiled = (tag.TagType & TagType.Advanced) != 0
                 ? AdvancedCompiler.Compile(tag, parsed)
                 : Compiler.Compile(tag, parsed);

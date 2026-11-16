@@ -15,6 +15,7 @@ public sealed class SignatureResolverTests {
         public static double Meter(int windowMs = 0) => windowMs;
         public static int Margin(string margin) => margin.Length;
         public static double Smooth(string tag, int digits = -1, int speed = 500, DummyEase ease = DummyEase.Linear) => speed;
+        public static double SmoothCurve(string tag, int digits = -1, double speed = 500, string ease = "Linear") => speed;
     }
 
     private enum DummyEase { Linear, OutExpo }
@@ -182,5 +183,54 @@ public sealed class SignatureResolverTests {
         Assert.True(sig.HasFormat);
         Assert.Equal("xyz", sig.Format);
         Assert.Equal(["Combo"], sig.Args);
+    }
+
+    // {Tag:a,b,c}: the colon part arrives as one argument.
+
+    [Fact]
+    public void ColonArgs_SplitWhenTheCallFits() {
+        var tag = MethodTag("Smooth", nameof(DummyTags.Smooth), TagType.ProcessFormat);
+        Assert.Equal(["Combo", "0", "500", "OutExpo"], SignatureResolver.ColonArgs(tag, ["Combo,0,500,OutExpo"]));
+    }
+
+    [Fact]
+    public void ColonArgs_TrailingFormatStillSplits() {
+        var tag = MethodTag("Smooth", nameof(DummyTags.Smooth), TagType.ProcessFormat);
+        string[] args = SignatureResolver.ColonArgs(tag, ["Combo,0,500,OutExpo,F1"]);
+        Assert.Equal(["Combo", "0", "500", "OutExpo", "F1"], args);
+        var sig = Resolve(tag, args, []);
+        Assert.True(sig.IsExecutable);
+        Assert.Equal("F1", sig.Format);
+    }
+
+    [Fact]
+    public void ColonArgs_CommasInsideParenthesesStay() {
+        var tag = MethodTag("SmoothCurve", nameof(DummyTags.SmoothCurve), TagType.ProcessFormat);
+        Assert.Equal(["Combo", "1", "300", "curve(0,0;0.3,0.8;1,1)"],
+            SignatureResolver.ColonArgs(tag, ["Combo, 1, 300, curve(0,0;0.3,0.8;1,1)"]));
+    }
+
+    [Fact]
+    public void ColonArgs_NumberFormatWithCommasStaysWhole() {
+        var tag = PropertyTag("FullCombo", nameof(DummyTags.FullComboValue), TagType.None);
+        Assert.Equal(["#,##0.00"], SignatureResolver.ColonArgs(tag, ["#,##0.00"]));
+    }
+
+    [Fact]
+    public void ColonArgs_NoSplitWhenItDoesNotFit() {
+        var tag = MethodTag("Margin", nameof(DummyTags.Margin), TagType.ProcessFormat);
+        Assert.Equal(["a,b,c"], SignatureResolver.ColonArgs(tag, ["a,b,c"]));
+    }
+
+    [Fact]
+    public void ColonArgs_SingleValueUnchanged() {
+        var tag = MethodTag("Smooth", nameof(DummyTags.Smooth), TagType.ProcessFormat);
+        Assert.Equal(["Combo"], SignatureResolver.ColonArgs(tag, ["Combo"]));
+    }
+
+    [Fact]
+    public void ColonArgs_JsTagsUnchanged() {
+        var tag = JsTag("Knob", ["left", "right"], TagType.ProcessFormat);
+        Assert.Equal(["200,174"], SignatureResolver.ColonArgs(tag, ["200,174"]));
     }
 }

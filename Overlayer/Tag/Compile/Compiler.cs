@@ -13,7 +13,7 @@ public static class Compiler {
         ParsedTag parsed
     ) {
         string exprStr = parsed.Expression;
-        return Compile(tag, parsed, exprStr.EndsWith("()") ? exprStr[..^2].Trim() : exprStr, parsed.Args);
+        return Compile(tag, parsed, exprStr.EndsWith("()") ? exprStr[..^2].Trim() : exprStr, SignatureResolver.ColonArgs(tag, parsed.Args));
     }
 
     // Call syntax {Name(a, b)} supplies its own name and arguments.
