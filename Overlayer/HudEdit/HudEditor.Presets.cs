@@ -17,9 +17,8 @@ using TMPro;
 
 namespace Overlayer.HudEdit;
 
-// Presets in the HUD editor: resource-free ones drop into the main canvas as normal, editable
-// objects (one undo step); ones that bring fonts / images / scripts install as a package like
-// the canvas list's preset button does.
+// Presets in the HUD editor drop into the main canvas as normal, editable objects (one undo
+// step). Fonts / images / scripts a preset brings become the user's own first.
 internal static partial class HudEditor {
     private const float PresetMenuWidth = 300f;
     private const float PresetMenuMaxHeight = 520f;
@@ -37,14 +36,7 @@ internal static partial class HudEditor {
             MainCore.Log.Err($"[HudEditor] Preset '{preset.Name}' isn't a valid package.");
             return;
         }
-        if (hasResources) {
-            var entry = PackageStore.InstallBytes(data, out var warnings);
-            foreach (string warning in warnings) {
-                MainCore.Log.Wrn($"[HudEditor] {preset.Name}: {warning}");
-            }
-            MainCore.Log.Msg(entry != null
-                ? $"[HudEditor] '{preset.Name}' brings its own fonts / images, so it was installed as a package. Use Copy on it in the canvas list to edit it."
-                : $"[HudEditor] '{preset.Name}' could not be installed.");
+        if (hasResources && !TryMakeResourcesOwn(preset, data, out objects)) {
             return;
         }
 
@@ -77,6 +69,44 @@ internal static partial class HudEditor {
                 }
             }));
         AfterStructureChange(null, created.Select(c => c.Obj));
+    }
+
+    // A preset with fonts / images / scripts: they become the user's own (copied next to their
+    // other resources, like Copy in the canvas list does), and the objects come back pointing at
+    // them, so they go in as normal editable objects. The package is only a step on the way:
+    // it's removed again unless it was installed before.
+    private static bool TryMakeResourcesOwn(PackagePreset preset, byte[] data, out List<JToken> objects) {
+        objects = [];
+        bool installedBefore = PackageStore.FindByHash(O5cpPackage.ComputeSha256(data)[..7]) != null;
+        var entry = PackageStore.InstallBytes(data, out var warnings);
+        if (entry == null) {
+            foreach (string warning in warnings) {
+                MainCore.Log.Wrn($"[HudEditor] {preset.Name}: {warning}");
+            }
+            MainCore.Log.Err($"[HudEditor] '{preset.Name}' could not be loaded.");
+            return false;
+        }
+        var plan = O5cpPromote.BuildPlan(entry);
+        var canvas = O5cpPromote.ApplyJson(entry, plan, out var promoteWarnings, copyScripts: !installedBefore);
+        if (!installedBefore) {
+            PackageStore.Remove(entry.Id);
+            // Removing the package unloads its script files, which may take the copies' tags with them.
+            foreach (string script in plan.Scripts) {
+                try {
+                    MainCore.V8?.ReloadScriptFile(script);
+                } catch {
+                }
+            }
+        }
+        foreach (string warning in promoteWarnings) {
+            MainCore.Log.Wrn($"[HudEditor] {preset.Name}: {warning}");
+        }
+        if (canvas?["OvObjects"] is not JArray array) {
+            MainCore.Log.Err($"[HudEditor] '{preset.Name}' could not be inserted.");
+            return false;
+        }
+        objects.AddRange(array);
+        return true;
     }
 
     private static bool TryReadObjects(byte[] data, out List<JToken> objects, out bool hasResources) {

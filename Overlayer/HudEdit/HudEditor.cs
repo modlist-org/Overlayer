@@ -102,6 +102,10 @@ internal static partial class HudEditor {
         undo.Clear();
         pendingPlace.Clear();
         EmptyTrash();
+        // At quit the UI is already being torn down.
+        if (UICore.CanvasObj == null) {
+            return;
+        }
         if (UICore.Panel != null) {
             UICore.Panel.gameObject.SetActive(true);
         }

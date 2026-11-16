@@ -27,6 +27,8 @@ public sealed class O5cpPromoteItem {
 public sealed class O5cpPromotePlan {
     public List<O5cpPromoteItem> Items = [];
     public List<string> Warnings = [];
+    /// <summary>User script files the package's scripts were copied to (filled by Apply).</summary>
+    public List<string> Scripts = [];
 }
 
 public static class O5cpPromote {
@@ -84,6 +86,31 @@ public static class O5cpPromote {
     }
 
     public static OvCanvas Apply(PackageEntry entry, O5cpPromotePlan plan, out List<string> warnings) {
+        var canvasJson = ApplyJson(entry, plan, out warnings);
+        if (canvasJson == null) {
+            return null;
+        }
+        try {
+            var canvas = new OvCanvas();
+            canvas.Deserialize(canvasJson);
+            if (!canvas.Config.Name.Value.EndsWith(" Copy")) {
+                canvas.Config.Name.Value = $"{canvas.Config.Name.Value} Copy";
+            }
+            return canvas;
+        } catch (Exception e) {
+            MainCore.Log.Err($"[{nameof(O5cpPromote)}] Promote failed: {e.Message}");
+            warnings.Add($"promote failed: {e.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Makes the package's resources the user's own (copied next to their other fonts / images)
+    /// and returns its canvas JSON pointing at them. <paramref name="copyScripts"/>: also its
+    /// scripts, for when the package goes away after this (while it's installed its own copies
+    /// run, and the same script loaded twice clashes).
+    /// </summary>
+    public static JToken ApplyJson(PackageEntry entry, O5cpPromotePlan plan, out List<string> warnings, bool copyScripts = false) {
         warnings = [];
         if (entry?.Manifest == null || plan == null) {
             return null;
@@ -129,13 +156,11 @@ public static class O5cpPromote {
                     warnings.Add($"missing resource, left empty: {key}");
                 }
             }
-            var canvas = new OvCanvas();
-            canvas.Deserialize(canvasJson);
-            if (!canvas.Config.Name.Value.EndsWith(" Copy")) {
-                canvas.Config.Name.Value = $"{canvas.Config.Name.Value} Copy";
+            if (copyScripts) {
+                CopyScripts(entry, plan, warnings);
             }
             UserResourceManager.Config.Save();
-            return canvas;
+            return canvasJson;
         } catch (Exception e) {
             MainCore.Log.Err($"[{nameof(O5cpPromote)}] Promote failed: {e.Message}");
             warnings.Add($"promote failed: {e.Message}");
@@ -163,7 +188,7 @@ public static class O5cpPromote {
             }
             return item.Key;
         }
-        string source = PackageStore.GetPackageFile(entry, manifestFont.File);
+        string source = KeepFile(PackageStore.GetPackageFile(entry, manifestFont.File), MainCore.Paths.UserFontPath, manifestFont.File);
         if (source == null || !File.Exists(source)) {
             warnings.Add($"font file missing in package: {item.Key}");
             return item.Key;
@@ -192,7 +217,7 @@ public static class O5cpPromote {
             }
             return item.Key;
         }
-        string source = PackageStore.GetPackageFile(entry, manifestTexture.File);
+        string source = KeepFile(PackageStore.GetPackageFile(entry, manifestTexture.File), MainCore.Paths.UserImagePath, manifestTexture.File);
         if (source == null || !File.Exists(source)) {
             warnings.Add($"texture file missing in package: {item.Key}");
             return item.Key;
@@ -201,11 +226,17 @@ public static class O5cpPromote {
         string targetKey = item.Choice == O5cpConflictChoice.Rename && !string.IsNullOrWhiteSpace(item.RenameTo)
             ? item.RenameTo.Trim()
             : item.Key;
+        // Sprites cut from the replaced texture would go with it: keep how they were cut
+        // and cut them again from the new one.
+        var cutFrom = new List<(string Key, IO.Unity.SpriteSettings Settings)>();
         if (item.Choice == O5cpConflictChoice.Overwrite) {
             UserResourceManager.T2D.Remove(item.Key);
             foreach (string spriteKey in UserResourceManager.Spr.Keys
                 .Where(k => UserResourceManager.Spr.TryGet(k, out var s) && s.textureKey == item.Key)
                 .ToArray()) {
+                if (UserResourceManager.Spr.TryGet(spriteKey, out var old)) {
+                    cutFrom.Add((spriteKey, old.settings.Copy()));
+                }
                 UserResourceManager.Spr.Remove(spriteKey);
             }
         } else {
@@ -216,6 +247,12 @@ public static class O5cpPromote {
         if (result != UserTexture2D.Result.Success) {
             warnings.Add($"texture load failed ({result}): {targetKey}");
             return item.Key;
+        }
+        foreach (var (spriteKey, s) in cutFrom) {
+            if (UserResourceManager.Spr.Load(spriteKey, targetKey, s.Rect.Value, s.Pivot.Value, s.PixelsPerUnit.Value, s.Border.Value, out _)
+                != UserSprite.Result.Success) {
+                warnings.Add($"sprite couldn't be cut again from the new texture: {spriteKey}");
+            }
         }
         if (!string.IsNullOrEmpty(manifestTexture.Folder)) {
             UserResourceManager.Config.Data.ImageFolders[targetKey] = manifestTexture.Folder;
@@ -294,6 +331,69 @@ public static class O5cpPromote {
                 && Math.Abs(global.settings.PixelsPerUnit.Value - manifest.PixelsPerUnit) < 0.01f;
         } catch {
             return false;
+        }
+    }
+
+    /// <summary>
+    /// Copies <paramref name="source"/> into <paramref name="folder"/> under the package's file
+    /// name; the same file already there is reused, a different one gets a numbered name.
+    /// </summary>
+    private static string KeepFile(string source, string folder, string packagePath) {
+        if (source == null || !File.Exists(source)) {
+            return null;
+        }
+        string ext = Path.GetExtension(packagePath);
+        string stem = O5cpPackage.SanitizeSegment(Path.GetFileNameWithoutExtension(packagePath), string.Empty);
+        string hash = HashFileQuiet(source);
+        Directory.CreateDirectory(folder);
+        string dest = Path.Combine(folder, stem + ext);
+        for (int n = 2; File.Exists(dest) && HashFileQuiet(dest) != hash; n++) {
+            dest = Path.Combine(folder, $"{stem} ({n}){ext}");
+        }
+        if (!File.Exists(dest)) {
+            File.Copy(source, dest);
+        }
+        return dest;
+    }
+
+    // The package's scripts become ordinary user scripts, so its tags keep working after the
+    // package is removed. Not named pkg_..., which marks package-owned scripts.
+    private static void CopyScripts(PackageEntry entry, O5cpPromotePlan plan, List<string> warnings) {
+        if (entry.Manifest.Scripts.Count == 0 || MainCore.V8 == null) {
+            return;
+        }
+        string folder = MainCore.V8.ScriptFolderPath;
+        if (string.IsNullOrEmpty(folder)) {
+            return;
+        }
+        Directory.CreateDirectory(folder);
+        foreach (var script in entry.Manifest.Scripts) {
+            byte[] data = PackageStore.GetPackageBytes(entry, script.File);
+            if (data == null) {
+                warnings.Add($"script file missing in package: {script.File}");
+                continue;
+            }
+            string stem = O5cpPackage.SanitizeSegment(Path.GetFileNameWithoutExtension(
+                string.IsNullOrEmpty(script.OriginalName) ? script.File : script.OriginalName), string.Empty);
+            if (stem.StartsWith("pkg_", StringComparison.OrdinalIgnoreCase)) {
+                stem = "user_" + stem;
+            }
+            string hash = O5cpPackage.ComputeSha256(data);
+            string dest = Path.Combine(folder, stem + ".js");
+            for (int n = 2; File.Exists(dest) && HashFileQuiet(dest) != hash; n++) {
+                dest = Path.Combine(folder, $"{stem}_{n}.js");
+            }
+            if (File.Exists(dest)) {
+                plan.Scripts.Add(dest);
+                continue;
+            }
+            try {
+                File.WriteAllBytes(dest, data);
+                MainCore.V8.ReloadScriptFile(dest);
+                plan.Scripts.Add(dest);
+            } catch (Exception e) {
+                warnings.Add($"script copy failed: {Path.GetFileName(dest)} ({e.Message})");
+            }
         }
     }
 
