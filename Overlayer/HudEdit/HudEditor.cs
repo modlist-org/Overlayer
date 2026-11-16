@@ -77,6 +77,7 @@ internal static partial class HudEditor {
         }
         BuildView();
         IsOpen = true;
+        Tag.Compile.Compiler.ShowBlockedLive = true;
         collectedFrame = -1000;
         selection.Clear();
         hovered = null;
@@ -90,6 +91,7 @@ internal static partial class HudEditor {
             return;
         }
         IsOpen = false;
+        Tag.Compile.Compiler.ShowBlockedLive = false;
         EndDrag();
         CommitPanelEdit();
         FlushSave();

@@ -96,11 +96,14 @@ public static class Compiler {
     // A blocked tag that never ran shows its raw text. In the HUD editor show what it says
     // right now instead (0 combo, 0.00% ...), so a layout can be judged before playing.
     // A tag that can't run outside play falls back to raw for good (no throw every frame).
+    /// <summary>Set while the HUD editor is open: blocked tags that never ran show their current value.</summary>
+    internal static bool ShowBlockedLive { get; set; }
+
     private sealed class Preview(Func<string> inner, string raw) {
         private bool failed;
 
         public string Get() {
-            if (failed || !HudEdit.HudEditor.IsOpen) {
+            if (failed || !ShowBlockedLive) {
                 return raw;
             }
             try {
