@@ -114,6 +114,7 @@ public sealed class OverlayerRuntime {
 
         ModuleService.DiscoverAndRegisterModules();
         ModuleService.InitializeAllModules();
+        Package.PackageStore.RecheckModules();
         // SetModEnabled ran before modules existed; tell them if they start disabled.
         if (!State.IsEnabled) {
             ModuleService.NotifyEnabledChanged(false, false);

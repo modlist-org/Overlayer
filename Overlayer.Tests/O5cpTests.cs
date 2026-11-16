@@ -174,6 +174,13 @@ public sealed class O5cpTests {
         Assert.True(O5cpPackage.IsAllowedPath("manifest.json", out _));
         Assert.True(O5cpPackage.IsAllowedPath("scripts/a.js", out _));
         Assert.True(O5cpPackage.IsAllowedPath("assets/thumbnail.png", out _));
+        // Allowed prefix and extension, but climbing out or rooted.
+        Assert.False(O5cpPackage.IsAllowedPath("fonts/../../evil.ttf", out _));
+        Assert.False(O5cpPackage.IsAllowedPath("scripts/../../../x.js", out _));
+        Assert.False(O5cpPackage.IsAllowedPath("fonts//a.ttf", out _));
+        Assert.False(O5cpPackage.IsAllowedPath("/fonts/a.ttf", out _));
+        Assert.False(O5cpPackage.IsAllowedPath("fonts/C:a.ttf", out _));
+        Assert.False(O5cpPackage.IsAllowedPath("./canvas.json", out _));
     }
 
     [Fact]
@@ -199,6 +206,21 @@ public sealed class O5cpTests {
         Assert.Contains("Accuracy", names);
         Assert.Contains("Kps", names);
         Assert.Contains("Miss", names);
+        Assert.DoesNotContain("t", names);
+    }
+
+    [Fact]
+    public void TagScanner_FindsTagsInsideArgumentsAndJsCalls() {
+        var canvas = JToken.Parse(@"{
+            ""Config"": { ""TextConfig"": { ""Text"": ""{EasedValue(Combo,0,500,OutExpo)} {XAccuracy * 100}"" } },
+            ""OvObjects"": [ { ""Config"": { ""GraphConfig"": { ""JsCode"": ""Kps() * Math.sin(t)"" } } } ]
+        }");
+        var names = O5cpTagScanner.Scan(canvas);
+        Assert.Contains("EasedValue", names);
+        Assert.Contains("Combo", names);
+        Assert.Contains("XAccuracy", names);
+        Assert.Contains("Kps", names);
+        Assert.DoesNotContain("sin", names);
         Assert.DoesNotContain("t", names);
     }
 
@@ -239,6 +261,8 @@ public sealed class O5cpTests {
         Assert.False(O5cpFormat.IsPackageScript("my.js"));
         Assert.False(O5cpFormat.IsPackageScript("pkg_my.js"));
         Assert.False(O5cpFormat.IsPackageScript("pkg_zzzzzzz_fx.js"));
+        // Longer id when two packages' hashes start the same.
+        Assert.True(O5cpFormat.IsPackageScript("pkg_a3f9c1f00b2c_fx.js"));
     }
 
     [Fact]

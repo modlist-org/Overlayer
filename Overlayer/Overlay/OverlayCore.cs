@@ -268,6 +268,7 @@ public static class OverlayCore {
         canvas.RefreshLayouts();
         Canvases.Add(canvas);
         SaveAllCanvases();
+        PackageStore.MarkPromoted(entry);
         foreach (string warning in warnings) {
             MainCore.Log.Wrn($"[{nameof(OverlayCore)}] Promote warning: {warning}");
         }

@@ -51,6 +51,17 @@ public static class O5cpExporter {
 
         var files = new List<(string path, byte[] data)>();
         var packedTextures = new HashSet<string>(StringComparer.Ordinal);
+        // Keys like "a/b" and "a_b" clean up to the same file name; a zip keeps both entries
+        // but reading finds only the first, so every file gets a name of its own.
+        var usedFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        string UniqueFile(string prefix, string name, string ext) {
+            string stem = O5cpPackage.SanitizeSegment(name, string.Empty);
+            string file = prefix + stem + ext.ToLowerInvariant();
+            for (int n = 2; !usedFiles.Add(file); n++) {
+                file = $"{prefix}{stem}_{n}{ext.ToLowerInvariant()}";
+            }
+            return file;
+        }
 
         foreach (string key in scan.FontKeys.Concat(scan.GuessedFontKeys).Distinct()) {
             if (manifest.Fonts.Any(f => f.Key == key)) {
@@ -75,7 +86,7 @@ public static class O5cpExporter {
             byte[] data = File.ReadAllBytes(diskPath);
             manifest.Fonts.Add(new O5cpFontEntry {
                 Key = key,
-                File = O5cpFormat.FontsPrefix + O5cpPackage.SanitizeSegment(key, Path.GetExtension(diskPath)),
+                File = UniqueFile(O5cpFormat.FontsPrefix, key, Path.GetExtension(diskPath)),
                 Sha256 = O5cpPackage.ComputeSha256(data),
                 Bytes = data.Length,
             });
@@ -125,7 +136,7 @@ public static class O5cpExporter {
             byte[] data = File.ReadAllBytes(diskPath);
             manifest.Textures.Add(new O5cpTextureEntry {
                 Key = textureKey,
-                File = O5cpFormat.TexturesPrefix + O5cpPackage.SanitizeSegment(textureKey, Path.GetExtension(diskPath)),
+                File = UniqueFile(O5cpFormat.TexturesPrefix, textureKey, Path.GetExtension(diskPath)),
                 Sha256 = O5cpPackage.ComputeSha256(data),
                 Bytes = data.Length,
                 MipChain = texture.settings.MipChain.Value,
@@ -154,8 +165,7 @@ public static class O5cpExporter {
                 result.Warnings.Add($"excluded script (option off): {tokenized}");
                 continue;
             }
-            string rel = O5cpFormat.ScriptsPrefix + O5cpPackage.SanitizeSegment(
-                Path.GetFileNameWithoutExtension(diskPath), Path.GetExtension(diskPath));
+            string rel = UniqueFile(O5cpFormat.ScriptsPrefix, Path.GetFileNameWithoutExtension(diskPath), Path.GetExtension(diskPath));
             manifest.Scripts.Add(new O5cpScriptEntry {
                 File = rel,
                 OriginalName = Path.GetFileName(diskPath),

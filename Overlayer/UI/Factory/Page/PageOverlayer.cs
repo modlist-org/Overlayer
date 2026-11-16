@@ -1205,14 +1205,26 @@ internal static class PageOverlayer {
                 foreach (string warning in warnings) {
                     MainCore.Log.Wrn($"[CanvasImport] {warning}");
                 }
-                if (entry != null && warnings.Count > 0) {
-                    O5cpDialogs.ShowWarnings("Import warnings", warnings);
-                }
+                ShowInstallResult(entry, warnings);
             } catch (Exception e) {
                 MainCore.Log.Err($"[CanvasImport] Preset install failed: {e.Message}");
+                ShowInstallResult(null, [e.Message]);
             }
             BuildAllTiles(grid);
         });
+    }
+
+    // A failed install says so (with why, if known); a working one only when there's something to say.
+    private static void ShowInstallResult(PackageEntry entry, List<string> warnings) {
+        if (entry != null) {
+            if (warnings.Count > 0) {
+                O5cpDialogs.ShowWarnings("Import warnings", warnings);
+            }
+            return;
+        }
+        var reasons = new List<string> { "The package could not be installed." };
+        reasons.AddRange(warnings.Count > 0 ? warnings : ["No reason was given; see the log for details."]);
+        O5cpDialogs.ShowWarnings("Import failed", reasons);
     }
 
     private static string ExportDialogDir() {
@@ -1234,13 +1246,12 @@ internal static class PageOverlayer {
                 MainCore.Log.Wrn($"[CanvasImport] {warning}");
             }
             if (staged == null) {
-                if (stageWarnings.Count > 0) {
-                    O5cpDialogs.ShowWarnings("Import warnings", stageWarnings);
-                }
+                ShowInstallResult(null, stageWarnings);
                 return;
             }
         } catch (Exception e) {
             MainCore.Log.Err($"[CanvasImport] Stage failed: {e.Message}");
+            ShowInstallResult(null, [e.Message]);
             return;
         }
         PackageEntry entry;
@@ -1249,11 +1260,10 @@ internal static class PageOverlayer {
             foreach (string warning in warnings) {
                 MainCore.Log.Wrn($"[CanvasImport] {warning}");
             }
-            if (entry != null && warnings.Count > 0) {
-                O5cpDialogs.ShowWarnings("Import warnings", warnings);
-            }
+            ShowInstallResult(entry, warnings);
         } catch (Exception e) {
             MainCore.Log.Err($"[CanvasImport] Install failed: {e.Message}");
+            ShowInstallResult(null, [e.Message]);
             staged.Dispose();
         }
         BuildAllTiles(grid);

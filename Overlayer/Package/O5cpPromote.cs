@@ -49,7 +49,7 @@ public static class O5cpPromote {
             } else {
                 item.IsConflict = true;
                 item.Choice = O5cpConflictChoice.Rename;
-                item.RenameTo = SuggestRename(font.Key);
+                item.RenameTo = SuggestRename(font.Key, k => UserResourceManager.Fnt.TryGet(k, out _));
             }
             plan.Items.Add(item);
         }
@@ -65,7 +65,7 @@ public static class O5cpPromote {
             } else {
                 item.IsConflict = true;
                 item.Choice = O5cpConflictChoice.Rename;
-                item.RenameTo = SuggestRename(texture.Key);
+                item.RenameTo = SuggestRename(texture.Key, k => UserResourceManager.T2D.TryGet(k, out _));
             }
             plan.Items.Add(item);
         }
@@ -78,7 +78,7 @@ public static class O5cpPromote {
             } else {
                 item.IsConflict = true;
                 item.Choice = O5cpConflictChoice.Rename;
-                item.RenameTo = SuggestRename(sprite.Key);
+                item.RenameTo = SuggestRename(sprite.Key, k => UserResourceManager.Spr.TryGet(k, out _));
             }
             plan.Items.Add(item);
         }
@@ -198,7 +198,10 @@ public static class O5cpPromote {
             : item.Key;
         if (item.Choice == O5cpConflictChoice.Overwrite) {
             UserResourceManager.Fnt.Remove(item.Key);
+        } else if (item.Choice == O5cpConflictChoice.Rename) {
+            targetKey = FreeName(targetKey, k => UserResourceManager.Fnt.TryGet(k, out _), warnings);
         } else {
+            // Import: a key left over without its file.
             UserResourceManager.Fnt.Remove(targetKey);
         }
         var result = UserResourceManager.Fnt.Load(targetKey, source);
@@ -239,7 +242,10 @@ public static class O5cpPromote {
                 }
                 UserResourceManager.Spr.Remove(spriteKey);
             }
+        } else if (item.Choice == O5cpConflictChoice.Rename) {
+            targetKey = FreeName(targetKey, k => UserResourceManager.T2D.TryGet(k, out _), warnings);
         } else {
+            // Import: a key left over without its file.
             UserResourceManager.T2D.Remove(targetKey);
         }
         var result = UserResourceManager.T2D.LoadData(
@@ -285,7 +291,10 @@ public static class O5cpPromote {
             : item.Key;
         if (item.Choice == O5cpConflictChoice.Overwrite) {
             UserResourceManager.Spr.Remove(item.Key);
+        } else if (item.Choice == O5cpConflictChoice.Rename) {
+            targetKey = FreeName(targetKey, k => UserResourceManager.Spr.TryGet(k, out _), warnings);
         } else {
+            // Import: a key left over without its file.
             UserResourceManager.Spr.Remove(targetKey);
         }
         var result = UserResourceManager.Spr.Load(
@@ -356,6 +365,16 @@ public static class O5cpPromote {
         return dest;
     }
 
+    /// <summary>Copies the package's scripts into the user's script folder (and loads them).</summary>
+    public static List<string> KeepScripts(PackageEntry entry, out List<string> warnings) {
+        warnings = [];
+        var plan = new O5cpPromotePlan();
+        if (entry?.Manifest != null) {
+            CopyScripts(entry, plan, warnings);
+        }
+        return plan.Scripts;
+    }
+
     // The package's scripts become ordinary user scripts, so its tags keep working after the
     // package is removed. Not named pkg_..., which marks package-owned scripts.
     private static void CopyScripts(PackageEntry entry, O5cpPromotePlan plan, List<string> warnings) {
@@ -403,11 +422,28 @@ public static class O5cpPromote {
             || UserResourceManager.T2D.TryGet(key, out _);
     }
 
-    private static string SuggestRename(string key) {
+    private static string SuggestRename(string key, Func<string, bool> taken) {
         int slash = key.LastIndexOf('/');
         string head = slash >= 0 ? key[..(slash + 1)] : string.Empty;
         string tail = slash >= 0 ? key[(slash + 1)..] : key;
-        return $"{head}{tail} (imported)";
+        string name = $"{head}{tail} (imported)";
+        for (int n = 2; taken(name); n++) {
+            name = $"{head}{tail} (imported {n})";
+        }
+        return name;
+    }
+
+    // Rename never replaces what already has that name: it moves on to a free one.
+    private static string FreeName(string wanted, Func<string, bool> taken, List<string> warnings) {
+        if (!taken(wanted)) {
+            return wanted;
+        }
+        string name = wanted;
+        for (int n = 2; taken(name); n++) {
+            name = $"{wanted} ({n})";
+        }
+        warnings.Add($"'{wanted}' is already used, named it '{name}'");
+        return name;
     }
 
     private static string HashFileQuiet(string path) {

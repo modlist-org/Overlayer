@@ -141,6 +141,11 @@ public static class PackageStore {
             return null;
         }
         string temp = TempCachePath(entry, rel);
+        // Belt and braces: the file must land inside this package's temp folder.
+        string root = Path.GetFullPath(TempCachePath(entry, string.Empty)).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        if (!Path.GetFullPath(temp).StartsWith(root, StringComparison.OrdinalIgnoreCase)) {
+            return null;
+        }
         if (!File.Exists(temp)) {
             byte[] data = GetPackageBytes(entry, rel);
             if (data == null) {
@@ -258,12 +263,31 @@ public static class PackageStore {
     public static PackageEntry FindByHash(string hash) =>
         Packages.FirstOrDefault(p => p.Id == hash);
 
+    /// <summary>Remembers that a canvas was copied out of this package (see <see cref="Remove"/>).</summary>
+    public static void MarkPromoted(PackageEntry entry) {
+        if (entry == null) {
+            return;
+        }
+        var state = ReadStateFile(entry.Dir);
+        state.Promoted = true;
+        WriteStateFile(entry.Dir, state);
+    }
+
+    /// <summary>The installed package made from exactly this file (full SHA-256), or null.</summary>
+    public static PackageEntry FindByContent(string fullSha) =>
+        Packages.FirstOrDefault(p => ReadStateFile(p.Dir).FullSha == fullSha);
+
     public static PackageEntry CommitStaged(StagedPackage staged, out List<string> warnings) {
         warnings = [];
         if (staged?.Manifest == null || !File.Exists(staged.SourcePath)) {
             return null;
         }
         var live = FindByHash(staged.Hash);
+        if (live != null && ReadStateFile(live.Dir).FullSha is { Length: > 0 } liveSha && liveSha != staged.FileHash) {
+            // A different package whose hash happens to start the same: a longer id for this one.
+            staged.Hash = staged.FileHash[..12];
+            live = FindByHash(staged.Hash);
+        }
         if (live != null) {
             if (!live.Enabled) {
                 warnings.AddRange(SetEnabled(live, true));
@@ -324,10 +348,21 @@ public static class PackageStore {
             return false;
         }
         Packages.Remove(entry);
+        bool promoted = ReadStateFile(entry.Dir).Promoted;
         try {
             UninstallScripts(entry);
         } catch (Exception e) {
             MainCore.Log.Err($"[{nameof(PackageStore)}] Script uninstall failed: {e.Message}");
+        }
+        // A canvas copied out of it may call its scripts: they stay, as the user's own.
+        if (promoted) {
+            var kept = O5cpPromote.KeepScripts(entry, out var keepWarnings);
+            foreach (string warning in keepWarnings) {
+                MainCore.Log.Wrn($"[{nameof(PackageStore)}] [{entry.Id}] {warning}");
+            }
+            if (kept.Count > 0) {
+                MainCore.Log.Msg($"[{nameof(PackageStore)}] Kept {kept.Count} script(s) of {packageId} for canvases copied from it");
+            }
         }
         UnloadEntryResources(entry);
         try {
@@ -413,14 +448,19 @@ public static class PackageStore {
             Enabled = state.Enabled,
         };
         LoadThumbnail(entry);
-        CheckModules(entry);
+        // At startup modules aren't up yet: RecheckModules does it then.
+        if (modulesReady) {
+            CheckModules(entry);
+        }
         if (entry.Enabled) {
             if (!EnsureLoaded(entry, out var loadWarnings)) {
                 entry.Enabled = false;
                 entry.Warnings.AddRange(loadWarnings);
                 entry.Warnings.Insert(0, "package failed to load (disabled)");
-                state.Enabled = false;
-                WriteStateFile(dir, state);
+                // Re-read: loading wrote the installed scripts into it since.
+                var current = ReadStateFile(dir);
+                current.Enabled = false;
+                WriteStateFile(dir, current);
             } else {
                 entry.Warnings.AddRange(loadWarnings);
             }
@@ -712,7 +752,26 @@ public static class PackageStore {
         }
     }
 
+    /// <summary>
+    /// Packages load before modules do, so their module check runs again once modules are up
+    /// (otherwise every package that needs a module says it isn't installed).
+    /// </summary>
+    public static void RecheckModules() {
+        modulesReady = true;
+        foreach (var entry in Packages) {
+            CheckModules(entry);
+            foreach (string warning in entry.Warnings.Where(w => w.StartsWith(ModuleWarningPrefix, StringComparison.Ordinal))) {
+                MainCore.Log.Wrn($"[{nameof(PackageStore)}] [{entry.Id}] {warning}");
+            }
+        }
+        NotifyChanged();
+    }
+
+    private const string ModuleWarningPrefix = "needs module ";
+    private static bool modulesReady;
+
     private static void CheckModules(PackageEntry entry) {
+        entry.Warnings.RemoveAll(w => w.StartsWith(ModuleWarningPrefix, StringComparison.Ordinal));
         if (entry.Manifest.Modules.Count == 0) {
             return;
         }
@@ -728,13 +787,20 @@ public static class PackageStore {
                 }
             }
             if (match == null) {
-                entry.Warnings.Add($"needs module '{module.Name}' v{module.Version} (not installed)");
-            } else if (!string.IsNullOrEmpty(module.Version)
-                && !string.IsNullOrEmpty(match.Version)
-                && module.Version != match.Version) {
-                entry.Warnings.Add($"needs module '{module.Name}' v{module.Version} (have v{match.Version})");
+                entry.Warnings.Add($"{ModuleWarningPrefix}'{module.Name}' v{module.Version} (not installed)");
+            } else if (IsOlder(match.Version, module.Version)) {
+                entry.Warnings.Add($"{ModuleWarningPrefix}'{module.Name}' v{module.Version} or newer (have v{match.Version})");
             }
         }
+    }
+
+    // A newer module than the package was made with is fine. Versions that don't parse only
+    // count when they differ.
+    private static bool IsOlder(string have, string need) {
+        if (string.IsNullOrEmpty(have) || string.IsNullOrEmpty(need)) {
+            return false;
+        }
+        return Version.TryParse(have, out var h) && Version.TryParse(need, out var n) ? h < n : have != need;
     }
 
     private static void RemoveLegacyDir(string dir) {
@@ -807,6 +873,8 @@ public static class PackageStore {
     private sealed class PackageState {
         public bool Enabled = true;
         public string FullSha = string.Empty;
+        /// <summary>Copied to an editable canvas once: its scripts outlive the package.</summary>
+        public bool Promoted;
         public List<(string File, string Sha)> InstalledScripts = [];
     }
 
@@ -822,6 +890,7 @@ public static class PackageStore {
             }
             state.Enabled = (bool?)obj["enabled"] ?? true;
             state.FullSha = (string)obj["sha256"] ?? string.Empty;
+            state.Promoted = (bool?)obj["promoted"] ?? false;
             if (obj["scripts"] is JArray arr) {
                 foreach (var item in arr) {
                     if (item is JObject so && (string)so["file"] is string file && !string.IsNullOrEmpty(file)) {
@@ -839,6 +908,7 @@ public static class PackageStore {
             var obj = new JObject {
                 ["enabled"] = state.Enabled,
                 ["sha256"] = state.FullSha ?? string.Empty,
+                ["promoted"] = state.Promoted,
                 ["scripts"] = new JArray(state.InstalledScripts.Select(s => new JObject {
                     ["file"] = s.File,
                     ["sha256"] = s.Sha ?? string.Empty,

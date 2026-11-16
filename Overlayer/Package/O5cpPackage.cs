@@ -66,6 +66,12 @@ public static class O5cpPackage {
             return false;
         }
         string path = rel.Replace('\\', '/');
+        // fonts/../../x.ttf passes every prefix and extension check below: no climbing out,
+        // no rooted or drive paths, no empty segments.
+        if (path.StartsWith("/", StringComparison.Ordinal) || path.IndexOf(':') >= 0
+            || path.Split('/').Any(segment => segment.Length == 0 || segment == "." || segment == "..")) {
+            return false;
+        }
         if (path == O5cpFormat.ManifestFile) {
             kind = O5cpEntryKind.Manifest;
             return true;

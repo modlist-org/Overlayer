@@ -77,7 +77,7 @@ internal static partial class HudEditor {
     // it's removed again unless it was installed before.
     private static bool TryMakeResourcesOwn(PackagePreset preset, byte[] data, out List<JToken> objects) {
         objects = [];
-        bool installedBefore = PackageStore.FindByHash(O5cpPackage.ComputeSha256(data)[..7]) != null;
+        bool installedBefore = PackageStore.FindByContent(O5cpPackage.ComputeSha256(data)) != null;
         var entry = PackageStore.InstallBytes(data, out var warnings);
         if (entry == null) {
             foreach (string warning in warnings) {
@@ -88,7 +88,10 @@ internal static partial class HudEditor {
         }
         var plan = O5cpPromote.BuildPlan(entry);
         var canvas = O5cpPromote.ApplyJson(entry, plan, out var promoteWarnings, copyScripts: !installedBefore);
-        if (!installedBefore) {
+        if (installedBefore) {
+            // The objects now use its scripts: keep them if the package is removed later.
+            PackageStore.MarkPromoted(entry);
+        } else {
             PackageStore.Remove(entry.Id);
             // Removing the package unloads its script files, which may take the copies' tags with them.
             foreach (string script in plan.Scripts) {

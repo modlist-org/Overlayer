@@ -233,7 +233,8 @@ internal static class O5cpDialogs {
         var bar = ButtonBar(panel, 96f);
 
         var (_, content, _) = O5Factory.ScrollView(O5KitAdapters.Ctx, body, 8f, 8f, true);
-        var renameInputs = new Dictionary<Package.O5cpPromoteItem, O5InputField>();
+        // The whole row shows / hides (hiding just the input left it stuck inside a hidden row).
+        var renameRows = new Dictionary<Package.O5cpPromoteItem, RectTransform>();
         foreach (var item in plan.Items) {
             if (!item.IsConflict) {
                 var infoRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform, 30f);
@@ -264,15 +265,15 @@ internal static class O5cpDialogs {
                     _ => Package.O5cpConflictChoice.Overwrite,
                 };
                 choiceBtn.Label.text = ChoiceText(item.Choice);
-                if (renameInputs.TryGetValue(item, out var input)) {
-                    input.Rect.gameObject.SetActive(item.Choice == Package.O5cpConflictChoice.Rename);
+                if (renameRows.TryGetValue(item, out var renameRowOf)) {
+                    renameRowOf.gameObject.SetActive(item.Choice == Package.O5cpConflictChoice.Rename);
                 }
             };
 
             var renameRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform, 44f);
             var renameInput = O5Factory.Input(O5KitAdapters.Ctx, renameRow, $"o5cp_rename_{item.Kind}_{item.Key}", new O5InputOptions { Value = item.RenameTo, OnChanged = value => item.RenameTo = value, Placeholder = T("O5CP_RENAME_TO", "New name...") });
             renameRow.gameObject.SetActive(item.Choice == Package.O5cpConflictChoice.Rename);
-            renameInputs[item] = renameInput;
+            renameRows[item] = renameRow;
         }
 
         BarButtonLeft(bar, T("O5CP_ALL_OVERWRITE", "All: overwrite"), 0f, 24f, 160f, () => {

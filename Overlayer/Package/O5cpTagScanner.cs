@@ -21,11 +21,17 @@ public static class O5cpTagScanner {
             foreach (var property in obj.Properties()) {
                 if (TagTextKeys.Contains(property.Name)) {
                     foreach (string text in CandidateTexts(property.Value)) {
+                        // JS code isn't a template: tags are called there like functions.
+                        if (property.Name == "JsCode") {
+                            AddIdentifiers(text, names, callsOnly: true);
+                            continue;
+                        }
                         try {
                             foreach (var tag in TextEngine.Parse.Parser.Parse(text)) {
-                                if (!string.IsNullOrEmpty(tag.Name)) {
-                                    names.Add(tag.Name);
-                                }
+                                // Every name in the placeholder, not just the outer one:
+                                // {EasedValue(Combo,0,500)} uses Combo too, {Combo * 2} is an expression.
+                                AddIdentifiers(tag.Expression, names);
+                                AddIdentifiers(tag.Format, names);
                             }
                         } catch {
                         }
@@ -37,6 +43,34 @@ public static class O5cpTagScanner {
         } else if (token is JArray array) {
             foreach (var item in array) {
                 Visit(item, names);
+            }
+        }
+    }
+
+    // Words that could be tag names; the caller keeps only real tags. callsOnly: only name(...)
+    // that isn't a member (Combo() yes, Math.sin() and plain variables no).
+    private static void AddIdentifiers(string text, HashSet<string> names, bool callsOnly = false) {
+        if (string.IsNullOrEmpty(text)) {
+            return;
+        }
+        int i = 0;
+        while (i < text.Length) {
+            if (char.IsLetter(text[i]) || text[i] == '_') {
+                int start = i;
+                while (i < text.Length && (char.IsLetterOrDigit(text[i]) || text[i] == '_')) {
+                    i++;
+                }
+                int next = i;
+                while (next < text.Length && text[next] == ' ') {
+                    next++;
+                }
+                bool call = next < text.Length && text[next] == '(';
+                bool member = start > 0 && text[start - 1] == '.';
+                if (!callsOnly || (call && !member)) {
+                    names.Add(text[start..i]);
+                }
+            } else {
+                i++;
             }
         }
     }

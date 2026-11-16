@@ -20,12 +20,15 @@ public static class O5cpFormat {
         }
         if (string.IsNullOrEmpty(name)
             || !name.StartsWith("pkg_", StringComparison.OrdinalIgnoreCase)
-            || !name.EndsWith(".js", StringComparison.OrdinalIgnoreCase)
-            || name.Length < 13
-            || name[11] != '_') {
+            || !name.EndsWith(".js", StringComparison.OrdinalIgnoreCase)) {
             return false;
         }
-        for (int i = 4; i < 11; i++) {
+        // pkg_<id>_name.js; the id is 7 hex digits, or 12 when two packages started the same.
+        int idEnd = name.Length > 11 && name[11] == '_' ? 11 : name.Length > 16 && name[16] == '_' ? 16 : -1;
+        if (idEnd < 0 || name.Length < idEnd + 2) {
+            return false;
+        }
+        for (int i = 4; i < idEnd; i++) {
             char c = name[i];
             bool hex = (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
             if (!hex) {
