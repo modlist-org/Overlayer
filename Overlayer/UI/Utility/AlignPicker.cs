@@ -21,7 +21,7 @@ internal sealed class AlignPicker {
     private const float ButtonSize = 30f;
     private const float Gap = 3f;
 
-    private enum Mark { Left, Center, Right, Justified, Flush, Geometry, Top, Middle, Bottom, Baseline, Midline, Capline }
+    internal enum Mark { Left, Center, Right, Justified, Flush, Geometry, Top, Middle, Bottom, Baseline, Midline, Capline, DistributeX, DistributeY }
 
     // TMP keeps the horizontal part in the low byte and the vertical part in the next one.
     private static readonly int[] HorizontalValues = [1, 2, 4, 8, 16, 32];
@@ -110,8 +110,20 @@ internal sealed class AlignPicker {
 
     // ---- icons: 18 x 16 ----
 
-    private static void DrawIcon(RectTransform icon, Mark mark) {
+    /// <summary>Draws one of the marks into <paramref name="icon"/> (18 x 16).</summary>
+    internal static void DrawIcon(RectTransform icon, Mark mark) {
         switch (mark) {
+            case Mark.DistributeX:
+            case Mark.DistributeY:
+                // Three bars spread evenly, across or down.
+                for (int i = 0; i < 3; i++) {
+                    float spot = i * 0.5f;
+                    var bar = mark == Mark.DistributeX
+                        ? Box(icon, Bar, new Vector2(spot, 0f), new Vector2(spot, 1f), new Vector2(3f, 0f))
+                        : Box(icon, Bar, new Vector2(0f, spot), new Vector2(1f, spot), new Vector2(0f, 3f));
+                    bar.anchoredPosition = mark == Mark.DistributeX ? new Vector2((1 - i) * 1.5f, 0f) : new Vector2(0f, (1 - i) * 1.5f);
+                }
+                break;
             case Mark.Left:
                 Lines(icon, [1f, 0.6f, 0.85f, 0.5f], 0f);
                 break;

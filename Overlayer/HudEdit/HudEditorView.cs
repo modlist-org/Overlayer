@@ -155,8 +155,8 @@ internal static partial class HudEditor {
             hint.rectTransform.anchorMin = new Vector2(0f, 0f);
             hint.rectTransform.anchorMax = new Vector2(1f, 0f);
             hint.rectTransform.pivot = new Vector2(0.5f, 0f);
-            hint.rectTransform.offsetMin = new Vector2(Margin + 4f, 10f);
-            hint.rectTransform.offsetMax = new Vector2(-PanelWidth - Margin * 2f, 34f);
+            hint.rectTransform.offsetMin = new Vector2(Margin + 4f, HintBottom);
+            hint.rectTransform.offsetMax = new Vector2(-PanelWidth - Margin * 2f, HintBottom + 24f);
             hintRect = hint.rectTransform;
             hint.alignment = TextAlignmentOptions.BottomLeft;
             hint.raycastTarget = false;
@@ -193,6 +193,7 @@ internal static partial class HudEditor {
         rotateHandle.sizeDelta = new Vector2(HandleSize + 4f, HandleSize + 4f);
 
         BuildToolbar();
+        BuildBottomBar();
         BuildPanel(ctx);
         BuildPullTab();
         BuildLayersPanel();
@@ -220,7 +221,7 @@ internal static partial class HudEditor {
         var fitter = toolbar.gameObject.AddComponent<ContentSizeFitter>();
         fitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
 
-        layersButton = Button(Cell(toolbar, 70f), "layers", "Layers", ToggleLayers, "Show or hide the layers list");
+        layersButton = Button(Cell(toolbar, 76f), "layers", "Canvas", ToggleLayers, "Show or hide the canvas list");
         UiStyle.Separator(toolbar, true);
         Icon(toolbar, "add_text", UISprite.Text128, () => Create(NewKind.Text, CurrentPlacement, null), "Add text  (or right-click the screen)");
         Icon(toolbar, "add_image", UISprite.Image128, () => Create(NewKind.Image, CurrentPlacement, null), "Add image");
@@ -430,6 +431,7 @@ internal static partial class HudEditor {
             return;
         }
         CommitQuickEdit();
+        UpdateBottomBar();
         var el = Primary;
         bool single = selection.Count == 1;
         singleRows.SetActive(single);
@@ -669,6 +671,7 @@ internal static partial class HudEditor {
         RenderGrid();
         TickLayers();
         RenderRulers();
+        FadeBottomBarWhileDragging();
         if (root == null) {
             return;
         }
@@ -948,9 +951,13 @@ internal static partial class HudEditor {
             toolbarArea.offsetMin = new Vector2(left, toolbarArea.offsetMin.y);
             toolbarArea.offsetMax = new Vector2(-right, 0f);
         }
+        if (bottomArea != null) {
+            bottomArea.offsetMin = new Vector2(left, 0f);
+            bottomArea.offsetMax = new Vector2(-right, 1f);
+        }
         if (hintRect != null) {
-            hintRect.offsetMin = new Vector2(left + Margin + 4f, hintRect.offsetMin.y);
-            hintRect.offsetMax = new Vector2(-right - Margin, 34f);
+            hintRect.offsetMin = new Vector2(left + Margin + 4f, HintBottom);
+            hintRect.offsetMax = new Vector2(-right - Margin, HintBottom + 24f);
         }
         ApplyRulerLayout(left, right);
         UpdatePullTab();
@@ -1076,6 +1083,9 @@ internal static partial class HudEditor {
         O5KitAdapters.Ctx.Tooltip.Hide();
         pullTab = null;
         pullingPanel = false;
+        bottomArea = null;
+        bottomGroup = null;
+        bottomTools.Clear();
         DestroyRulers();
         CloseContextMenu();
         inspector?.Dispose();

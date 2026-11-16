@@ -19,10 +19,11 @@ using TMPro;
 
 namespace Overlayer.HudEdit;
 
-// The layers list (left panel): every canvas and object as a tree, hidden ones included.
-// Click selects (Shift adds), double-click renames, the dots on the right toggle visible /
-// locked, the arrow folds a group. Dragging a row onto another moves it: the top or bottom
-// part puts it before / after, the middle puts it inside. Objects keep their spot on screen.
+// The canvas list (left panel): every canvas with its objects as a tree, hidden ones included.
+// Click selects (Shift adds), double-click renames (canvases too), the dots on the right toggle
+// visible / locked, the arrow folds. "+" makes a new canvas. Dragging a row onto another moves
+// it: the top or bottom part puts it before / after, the middle puts it inside. Objects keep
+// their spot on screen.
 internal static partial class HudEditor {
     private const float RowHeight = 26f;
     private const float IndentPx = 14f;
@@ -72,7 +73,15 @@ internal static partial class HudEditor {
         title.color = UiStyle.Caption;
         title.characterSpacing = 6f;
         title.raycastTarget = false;
-        title.text = "LAYERS";
+        title.text = "CANVAS";
+
+        // New canvas, at the right of the title.
+        var addHost = NewRect("NewCanvas", layersPanel);
+        addHost.anchorMin = addHost.anchorMax = addHost.pivot = new Vector2(1f, 1f);
+        addHost.anchoredPosition = new Vector2(-8f, -6f);
+        addHost.sizeDelta = new Vector2(28f, 28f);
+        var add = Track(UiStyle.IconButton(addHost, "plus_hud_new_canvas", MainCore.Spr.Get(UISprite.Plus128), AddCanvas, 8f));
+        UiStyle.Tooltip(add, "New canvas");
 
         var scrollHost = NewRect("Scroll", layersPanel);
         Stretch(scrollHost);
@@ -204,7 +213,7 @@ internal static partial class HudEditor {
 
         bool isCanvas = obj == null;
         bool hasChildren = isCanvas ? canvas.OvObjects.Count > 0 : obj.Children.Count > 0;
-        bool hidden = !isCanvas && !obj.Config.Enabled.Value;
+        bool hidden = isCanvas ? !canvas.Config.Enabled.Value : !obj.Config.Enabled.Value;
         bool locked = !isCanvas && IsUserLocked(canvas, obj);
         float x = 6f + depth * IndentPx;
 
@@ -238,7 +247,7 @@ internal static partial class HudEditor {
 
         string name = isCanvas ? canvas.Config.Name.Value : obj.Config.Name.Value;
         var label = RowText(rect, isCanvas ? $"<b>{name}</b>" : name, x, -56f, isCanvas ? 14f : 15f,
-            isCanvas ? UiStyle.Muted : hidden ? new Color(1f, 1f, 1f, 0.35f) : Color.white);
+            hidden ? new Color(1f, 1f, 1f, 0.35f) : isCanvas ? UiStyle.Muted : Color.white);
         label.rectTransform.anchorMax = new Vector2(1f, 1f);
         label.overflowMode = TextOverflowModes.Ellipsis;
         label.enableWordWrapping = false;
@@ -247,6 +256,9 @@ internal static partial class HudEditor {
             // Visible (dot) and locked (square) toggles on the right.
             Toggle(rect, -34f, UISprite.Circle256, !hidden, "Visible", () => SetHidden([obj], !hidden));
             Toggle(rect, -12f, null, locked, "Locked (can't be picked on screen)", () => SetLocked(canvas, obj, !locked));
+        } else if (!canvas.Config.Enabled.UseFx) {
+            bool shown = canvas.Config.Enabled.StaticValue;
+            Toggle(rect, -34f, UISprite.Circle256, shown, "Visible (the whole canvas)", () => SetCanvasHidden(canvas, shown));
         }
 
         UnityUtils.AddEvents(rect.gameObject.AddComponent<EventTrigger>(),
@@ -338,15 +350,21 @@ internal static partial class HudEditor {
     private static LayerRow lastRowClicked;
 
     private static void OnRowClick(LayerRow row, PointerEventData e) {
-        if (e == null || e.button != PointerEventData.InputButton.Left || row.Object == null) {
+        if (e == null || e.button != PointerEventData.InputButton.Left) {
             return;
         }
-        // By object: the first click selects, which rebuilds the rows.
-        bool isDouble = ReferenceEquals(row.Object, lastRowClicked?.Object) && Time.unscaledTime - lastRowClickTime <= DoubleClickSeconds;
+        // By object (or canvas): the first click selects, which rebuilds the rows.
+        bool sameRow = row.Object != null
+            ? ReferenceEquals(row.Object, lastRowClicked?.Object)
+            : lastRowClicked?.Object == null && ReferenceEquals(row.Canvas, lastRowClicked?.Canvas);
+        bool isDouble = sameRow && Time.unscaledTime - lastRowClickTime <= DoubleClickSeconds;
         lastRowClickTime = Time.unscaledTime;
         lastRowClicked = row;
         if (isDouble) {
             BeginRename(row);
+            return;
+        }
+        if (row.Object == null) {
             return;
         }
         // Hidden objects aren't on screen, so they can't be selected (show them first).
@@ -363,6 +381,10 @@ internal static partial class HudEditor {
     }
 
     private static void BeginRename(LayerRow row) {
+        if (row.Object == null) {
+            BeginRenameCanvas(row);
+            return;
+        }
         var obj = row.Object;
         renameField = O5Factory.Input(O5KitAdapters.Ctx, row.Rect, "plus_hud_rename", new O5InputOptions {
             Value = obj.Config.Name.Value,
@@ -393,6 +415,100 @@ internal static partial class HudEditor {
         renameField.Rect.offsetMax = new Vector2(-50f, -1f);
         renameField.InputField.ActivateInputField();
         renameField.InputField.Select();
+    }
+
+    // ---- canvases ----
+
+    private static void AddCanvas() {
+        var canvas = NewCanvas();
+        foldedCanvases.Remove(canvas);
+        // Undo takes it away again only while it's still empty.
+        undo.Push(new ActionCommand(() => {
+            if (canvas.OvObjects.Count == 0) {
+                OverlayCore.DeleteOvCanvas(canvas);
+                layersDirty = true;
+            }
+        }, () => { }));
+        Save();
+        layersDirty = true;
+    }
+
+    public static void SetCanvasHidden(OvCanvas canvas, bool hidden) {
+        if (canvas?.Config == null || canvas.Config.Enabled.UseFx) {
+            return;
+        }
+        void Set(bool hide) {
+            canvas.Config.Enabled.StaticValue = !hide;
+            canvas.ApplyConfig();
+            if (hide) {
+                selection.RemoveAll(e => ReferenceEquals(e.Canvas, canvas));
+            }
+            Save();
+            Recollect();
+            RefreshPanel();
+            layersDirty = true;
+        }
+        Set(hidden);
+        undo.Push(new ActionCommand(() => Set(!hidden), () => Set(hidden)));
+    }
+
+    private static void BeginRenameCanvas(LayerRow row) {
+        var canvas = row.Canvas;
+        renameField = O5Factory.Input(O5KitAdapters.Ctx, row.Rect, "plus_hud_rename", new O5InputOptions {
+            Value = canvas.Config.Name.Value,
+            OnEndEdit = value => {
+                string before = canvas.Config.Name.Value;
+                string after = string.IsNullOrWhiteSpace(value) ? before : value.Trim();
+                var field = renameField;
+                renameField = null;
+                MainThread.Enqueue(() => field?.Dispose());
+                if (after == before) {
+                    layersDirty = true;
+                    return;
+                }
+                void Set(string from, string to) {
+                    canvas.Config.Name.Value = to;
+                    canvas.ApplyConfig();
+                    RenameLocks(from, to);
+                    // The main canvas setting follows its canvas.
+                    if (MainCore.Conf.HudMainCanvas.Value == from) {
+                        MainCore.Conf.HudMainCanvas.Value = to;
+                        MainCore.ConfMgr.RequestSave();
+                    }
+                    Save();
+                    layersDirty = true;
+                    RefreshPanel();
+                }
+                Set(before, after);
+                undo.Push(new ActionCommand(() => Set(after, before), () => Set(before, after)));
+            },
+        });
+        renameField.Rect.anchorMin = Vector2.zero;
+        renameField.Rect.anchorMax = Vector2.one;
+        renameField.Rect.offsetMin = new Vector2(20f, 1f);
+        renameField.Rect.offsetMax = new Vector2(-50f, -1f);
+        renameField.InputField.ActivateInputField();
+        renameField.InputField.Select();
+    }
+
+    // Locks are stored as "canvas name/object path".
+    private static void RenameLocks(string from, string to) {
+        var list = MainCore.Conf.HudLocked.Value;
+        if (list == null || list.Count == 0) {
+            return;
+        }
+        string prefix = from + "/";
+        bool changed = false;
+        for (int i = 0; i < list.Count; i++) {
+            if (list[i].StartsWith(prefix, StringComparison.Ordinal)) {
+                list[i] = to + "/" + list[i].Substring(prefix.Length);
+                changed = true;
+            }
+        }
+        if (changed) {
+            MainCore.Conf.HudLocked.Value = list;
+            MainCore.ConfMgr.RequestSave();
+        }
     }
 
     // ---- drag to move ----
