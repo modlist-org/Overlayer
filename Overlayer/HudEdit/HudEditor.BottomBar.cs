@@ -11,7 +11,7 @@ internal static partial class HudEditor {
     // Room the shortcut hints keep above the bottom bar.
     private const float HintBottom = Margin * 2f + ToolbarHeight + 4f;
 
-    private static RectTransform bottomArea;
+    private static RectTransform bottomArea, bottomBar;
     private static CanvasGroup bottomGroup;
     private static readonly List<(O5Button Button, Func<bool> Enabled)> bottomTools = [];
 
@@ -22,7 +22,7 @@ internal static partial class HudEditor {
         area.anchorMax = new Vector2(1f, 0f);
         area.offsetMin = Vector2.zero;
         area.offsetMax = new Vector2(0f, 1f);
-        var bar = UiStyle.Rounded("BottomBar", area, UiStyle.Surface).rectTransform;
+        var bar = bottomBar = UiStyle.Rounded("BottomBar", area, UiStyle.Surface).rectTransform;
         bar.anchorMin = bar.anchorMax = new Vector2(0.5f, 0f);
         bar.pivot = new Vector2(0.5f, 0f);
         bar.anchoredPosition = new Vector2(0f, Margin);

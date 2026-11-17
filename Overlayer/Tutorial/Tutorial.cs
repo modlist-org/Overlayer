@@ -1,3 +1,4 @@
+using O5Kit.Behaviour;
 using O5Kit.Factory;
 using Overlayer.Compat;
 using Overlayer.Core;
@@ -6,6 +7,7 @@ using Overlayer.Resource;
 using Overlayer.Tutorial.Olly;
 using Overlayer.UI.Utility;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 #if ML && IL2CPP
@@ -25,9 +27,9 @@ namespace Overlayer.Tutorial;
 internal static class Tutorial {
     private const float BubbleWidth = 420f;
     private const float OllyScale = 0.8f;
-    private const float OllyGap = 4f;
-    private const float AdvanceDelay = 0.6f;
-    private const float LettersPerSecond = 45f;
+    private const float OllyGap = 8f;
+    private const float AdvanceDelay = 1.0f;
+    private const float LettersPerSecond = 40f;
 
     private static readonly Color Accent = new(0.569f, 0.604f, 1f, 1f);
     private static readonly Color Dim = new(0f, 0f, 0f, 0.28f);
@@ -57,10 +59,9 @@ internal static class Tutorial {
     private static float typed;
     private static int letters;
     private static float pause;
-    // [[face]] marks: from this letter on, this face.
-    private static readonly List<(int Letter, Face Face)> faceMarks = [];
     private static float shownAt;
     private static bool nudged;
+    private static bool langHooked;
 
     // Demo.
     private static TutorialDemo demo;
@@ -71,6 +72,7 @@ internal static class Tutorial {
     internal static bool PointerShown;
 
     public static bool IsRunning => chapter != null;
+    internal static bool Owns(Transform t) => t != null && ((root != null && t.IsChildOf(root)) || (canvasObj != null && t.IsChildOf(canvasObj.transform)));
     /// <summary>Going through every chapter in one go (the first time, or "Start / continue").</summary>
     public static bool InCourse => course;
     /// <summary>Head pats Olly got in this run.</summary>
@@ -83,7 +85,7 @@ internal static class Tutorial {
 
     /// <param name="asCourse">Go on to the next chapter not done yet when this one ends.</param>
     public static void Start(TutorialChapter c, int step = 0, bool asCourse = false) {
-        Stop();
+        Stop(false);
         if (c == null || c.Steps.Count == 0) {
             return;
         }
@@ -91,11 +93,23 @@ internal static class Tutorial {
         course = asCourse;
         Build();
         Show(step);
+        UI.UISound.PlayOpen();
         Changed?.Invoke();
     }
 
-    public static void Stop() {
+    public static void Stop() => Stop(true);
+
+    private static void Stop(bool playSound) {
+        if (playSound && chapter != null) {
+            UI.UISound.PlayClose();
+        }
+        O5KitAdapters.Ctx?.Tooltip?.Hide();
         LeaveStep();
+        if (langHooked) {
+            MainCore.Tr.OnLanguageChanged -= OnLanguageChanged;
+            MainCore.Tr.OnLoadEnd -= OnLangLoadEnd;
+            langHooked = false;
+        }
         chapter = null;
         course = false;
         index = -1;
@@ -182,13 +196,12 @@ internal static class Tutorial {
         if (step.Done != null && doneAt < 0f && Safe(step.Done)) {
             doneAt = Time.unscaledTime;
             waiting.text = "<color=#7CFF8A>✓</color> " + Tr("TUTORIAL_NICE", "Nice!");
-            olly.Face = Face.Happy;
+            olly.Face = new Face(olly.Face.Eye, olly.Face.Brow, Mouth.Smile, olly.Face.Shut, olly.Face.Mark, olly.Face.Front);
         }
         // Waiting a long while: Olly checks in.
         if (step.Done != null && doneAt < 0f && !nudged && Time.unscaledTime - shownAt > 20f) {
             nudged = true;
-            waiting.text = Tr("TUTORIAL_NUDGE", "...Still there? Stuck? <b>Skip step</b> works too.");
-            faceMarks.Add((0, Face.Curious));
+            waiting.text = Styled(Tr("TUTORIAL_NUDGE", "...Still there? Stuck? <b>Skip step</b> works too."));
         }
         if (doneAt >= 0f && Time.unscaledTime - doneAt >= AdvanceDelay) {
             Next();
@@ -227,9 +240,10 @@ internal static class Tutorial {
             if (pause > 0f) {
                 pause -= dt;
             } else {
+                int prevVisible = body.maxVisibleCharacters;
                 typed += dt * LettersPerSecond;
                 int to = Mathf.Min(letters, Mathf.FloorToInt(typed));
-                for (int i = body.maxVisibleCharacters; i < to; i++) {
+                for (int i = prevVisible; i < to; i++) {
                     char c = i < body.textInfo.characterInfo.Length ? body.textInfo.characterInfo[i].character : ' ';
                     // A breath after a sentence or a line.
                     char after = i + 1 < letters ? body.textInfo.characterInfo[i + 1].character : ' ';
@@ -241,10 +255,16 @@ internal static class Tutorial {
                     }
                 }
                 body.maxVisibleCharacters = to;
+                if (to > prevVisible) {
+                    for (int i = prevVisible; i < to && i < body.textInfo.characterInfo.Length; i++) {
+                        char ch = body.textInfo.characterInfo[i].character;
+                        if (!char.IsWhiteSpace(ch) && !char.IsPunctuation(ch)) {
+                            UI.UISound.PlayOllyVoice();
+                            break;
+                        }
+                    }
+                }
             }
-        }
-        if (doneAt < 0f) {
-            olly.Face = FaceAt(body.maxVisibleCharacters);
         }
         noteGroup.alpha = Mathf.MoveTowards(noteGroup.alpha, typing ? 0f : 1f, dt * 4f);
     }
@@ -302,8 +322,8 @@ internal static class Tutorial {
         pointer.anchoredPosition = ToLocal(PointerAt);
         pointer.SetAsLastSibling();
         float p = Mathf.Clamp01(PointerPress);
-        pointerRing.rectTransform.localScale = Vector3.one * (1f + p * 0.7f);
-        pointerRing.color = new Color(Accent.r, Accent.g, Accent.b, 0.95f - p * 0.6f);
+        pointerRing.rectTransform.localScale = Vector3.one * (0.4f + p * 0.9f);
+        pointerRing.color = new Color(Accent.r, Accent.g, Accent.b, p * 0.85f);
     }
 
     private static bool Safe(Func<bool> check) {
@@ -373,49 +393,22 @@ internal static class Tutorial {
             MainCore.Log.Wrn($"[Tutorial] Step '{step.Key}' setup failed: {e.Message}");
         }
         int count = chapter.Steps.Count;
-        caption.text = $"{Tr("TUTORIAL_CH_" + chapter.Id, chapter.Title).ToUpperInvariant()}   {i + 1} / {count}";
-        title.text = Styled(Tr($"TUTORIAL_{step.Key}_TITLE", step.Title));
-        var marks = new List<(int At, Face Face)>();
-        body.text = TakeFaces(Styled(Tr($"TUTORIAL_{step.Key}", step.Text)), marks);
-        body.maxVisibleCharacters = 0;
-        body.ForceMeshUpdate();
-        letters = body.textInfo.characterCount;
-        // Where in the shown letters each mark lands.
-        faceMarks.Clear();
-        foreach (var (at, face) in marks) {
-            int letter = letters;
-            for (int c = 0; c < letters; c++) {
-                if (body.textInfo.characterInfo[c].index >= at) {
-                    letter = c;
-                    break;
-                }
-            }
-            faceMarks.Add((letter, face));
-        }
         shownAt = Time.unscaledTime;
         nudged = false;
         typed = 0f;
         pause = 0.15f;
 
-        string noteText = step.Note != null ? Tr($"TUTORIAL_{step.Key}_NOTE", step.Note) : null;
-        noteBox.gameObject.SetActive(!string.IsNullOrEmpty(noteText));
-        note.text = Styled(noteText ?? string.Empty);
-        noteGroup.alpha = 0f;
-
-        // The line's expression from the first moment, not something that builds with the typing.
-        olly.Face = FaceAt(0);
+        // Expression is fixed per dialogue line, set only at line start.
+        olly.Face = step.Face;
         bool waits = step.Done != null;
         bool asks = step.Choices is { Count: > 0 };
-        waiting.text = step.Demo != null
-            ? Tr("TUTORIAL_WATCH", "Watch me first.")
-            : Tr("TUTORIAL_YOUR_TURN", "Your turn: do it and this moves on by itself.");
         waiting.gameObject.SetActive(waits || step.Demo != null);
-        nextButton.Text = i == count - 1 && !course ? Tr("TUTORIAL_FINISH", "Finish") : Tr("TUTORIAL_NEXT", "Next");
         nextButton.Rect.parent.gameObject.SetActive(!waits && !asks);
         skipButton.Rect.parent.gameObject.SetActive(waits);
         replayButton.Rect.parent.gameObject.SetActive(false);
         backButton.SetBlocked(i == 0, true);
-        BuildChoices(step);
+        ApplyTexts(step, i, count, keepTyped: false);
+        noteGroup.alpha = 0f;
 
         demo = step.Demo;
         beat = 0;
@@ -423,13 +416,71 @@ internal static class Tutorial {
         PointerPress = 0f;
         PointerShown = false;
         if (demo != null) {
-            // The pointer comes in from Olly.
-            PointerAt = TutorialDemo.Center(olly.Rect) ?? new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
+            // The pointer enters from just outside the screen.
+            PointerAt = new Vector2(-48f, Screen.height * 0.42f);
             StartBeat();
         }
 
         LayoutRebuilder.ForceRebuildLayoutImmediate(bubble);
         replace = true;
+        userPlaced = false;
+        dragging = false;
+        PlaceAround(Target(step));
+    }
+
+    private static void ApplyTexts(TutorialStep step, int i, int count, bool keepTyped) {
+        bool wasFinished = keepTyped && (letters <= 0 || body.maxVisibleCharacters >= letters);
+        caption.text = $"{Tr("TUTORIAL_CH_" + chapter.Id, chapter.Title).ToUpperInvariant()}   {i + 1} / {count}";
+        title.text = Styled(Tr($"TUTORIAL_{step.Key}_TITLE", step.Title));
+        body.text = Styled(Tr($"TUTORIAL_{step.Key}", step.Text));
+        body.ForceMeshUpdate();
+        letters = body.textInfo.characterCount;
+        if (!keepTyped) {
+            body.maxVisibleCharacters = 0;
+        } else if (wasFinished) {
+            body.maxVisibleCharacters = letters;
+            typed = letters;
+        } else {
+            body.maxVisibleCharacters = Mathf.Min(body.maxVisibleCharacters, letters);
+        }
+
+        string noteText = step.Note != null ? Tr($"TUTORIAL_{step.Key}_NOTE", step.Note) : null;
+        noteBox.gameObject.SetActive(!string.IsNullOrEmpty(noteText));
+        note.text = Styled(noteText ?? string.Empty);
+
+        if (doneAt >= 0f) {
+            waiting.text = "<color=#7CFF8A>✓</color> " + Tr("TUTORIAL_NICE", "Nice!");
+        } else if (nudged) {
+            waiting.text = Styled(Tr("TUTORIAL_NUDGE", "...Still there? Stuck? <b>Skip step</b> works too."));
+        } else {
+            waiting.text = step.Demo != null
+                ? Tr("TUTORIAL_WATCH", "Watch me first.")
+                : Tr("TUTORIAL_YOUR_TURN", "Your turn: do it and this moves on by itself.");
+        }
+
+        backButton.Text = Tr("TUTORIAL_BACK", "Back");
+        closeButton.Text = Tr("TUTORIAL_CLOSE", "Close");
+        replayButton.Text = Tr("TUTORIAL_REPLAY", "Show again");
+        skipButton.Text = Tr("TUTORIAL_SKIP", "Skip step");
+        nextButton.Text = i == count - 1 && !course ? Tr("TUTORIAL_FINISH", "Finish") : Tr("TUTORIAL_NEXT", "Next");
+        BuildChoices(step);
+    }
+
+    private static void OnLanguageChanged(string _) => RefreshLanguage();
+
+    private static void OnLangLoadEnd(Overlayer.Localization.TranslationFailState state) {
+        if (state == Overlayer.Localization.TranslationFailState.Success) {
+            RefreshLanguage();
+        }
+    }
+
+    private static void RefreshLanguage() {
+        if (chapter == null || root == null || index < 0 || index >= chapter.Steps.Count) {
+            return;
+        }
+        var step = chapter.Steps[index];
+        ApplyTexts(step, index, chapter.Steps.Count, keepTyped: true);
+        LayoutRebuilder.ForceRebuildLayoutImmediate(bubble);
         PlaceAround(Target(step));
     }
 
@@ -486,39 +537,17 @@ internal static class Tutorial {
 
     private static readonly System.Text.RegularExpressions.Regex CodeMark = new("«([^»]*)»");
     private static readonly System.Text.RegularExpressions.Regex FaceMark = new(@"\[\[(\w+)\]\]");
+    private static readonly System.Text.RegularExpressions.Regex BoldMark = new(@"<b>(.*?)</b>");
 
-    // Takes the [[face]] marks out of a line, keeping where each was.
-    private static string TakeFaces(string text, List<(int At, Face Face)> marks) {
+    // «code» shows as code, as typed (tags and formatting not run); <b> highlights without TMP boldSpacing bloat.
+    internal static string Styled(string text) {
         if (string.IsNullOrEmpty(text)) {
             return text;
         }
-        var sb = new System.Text.StringBuilder();
-        int from = 0;
-        foreach (System.Text.RegularExpressions.Match m in FaceMark.Matches(text)) {
-            sb.Append(text, from, m.Index - from);
-            from = m.Index + m.Length;
-            if (Face.TryNamed(m.Groups[1].Value, out var face)) {
-                marks.Add((sb.Length, face));
-            }
-        }
-        sb.Append(text, from, text.Length - from);
-        return sb.ToString();
+        text = FaceMark.Replace(text, string.Empty);
+        text = CodeMark.Replace(text, m => $"<color=#AEB3FF><noparse>{m.Groups[1].Value}</noparse></color>");
+        return BoldMark.Replace(text, m => $"<color=#FFFFFF>{m.Groups[1].Value}</color>");
     }
-
-    // The step's face, changed by every mark the typing has passed.
-    private static Face FaceAt(int shown) {
-        var face = chapter.Steps[index].Face;
-        foreach (var (letter, f) in faceMarks) {
-            if (letter <= shown) {
-                face = f;
-            }
-        }
-        return face;
-    }
-
-    // «code» shows as code, as typed (tags and formatting not run).
-    internal static string Styled(string text) => string.IsNullOrEmpty(text) ? text
-        : CodeMark.Replace(text, m => $"<color=#AEB3FF><noparse>{m.Groups[1].Value}</noparse></color>");
 
     // ---- view ----
 
@@ -540,6 +569,7 @@ internal static class Tutorial {
         appear = 0f;
         placed = null;
         snap = true;
+        dragging = userPlaced = false;
         PickLayer();
 
         // Shade around the target (doesn't take clicks), and a frame on it.
@@ -574,6 +604,26 @@ internal static class Tutorial {
         accent.rectTransform.pivot = new Vector2(0f, 0.5f);
         accent.rectTransform.sizeDelta = new Vector2(4f, -24f);
 
+        // Faint 2x3 grip dots in the top-right corner to show the bubble itself is draggable.
+        var grip = UiStyle.NewRect("Grip", bubble);
+        grip.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
+        grip.anchorMin = grip.anchorMax = grip.pivot = Vector2.one;
+        grip.anchoredPosition = new Vector2(-14f, -14f);
+        grip.sizeDelta = new Vector2(11f, 18f);
+        var dotSprite = MainCore.Spr.Get(UISprite.Circle256);
+        var dotColor = new Color(1f, 1f, 1f, 0.22f);
+        for (int row = 0; row < 3; row++) {
+            for (int col = 0; col < 2; col++) {
+                var dot = Plain($"Dot{row}_{col}", grip, dotColor);
+                dot.sprite = dotSprite;
+                dot.rectTransform.anchorMin = dot.rectTransform.anchorMax = new Vector2(0f, 1f);
+                dot.rectTransform.pivot = new Vector2(0f, 1f);
+                dot.rectTransform.anchoredPosition = new Vector2(col * 7f, -row * 7f);
+                dot.rectTransform.sizeDelta = new Vector2(3.5f, 3.5f);
+            }
+        }
+        AttachDrag(bubble.gameObject, pe => pe.pointerPressRaycast.gameObject?.GetComponentInParent<Button>() == null);
+
         // Olly stands at the bubble's lower left, outside it.
         olly = new OllyView(bubble);
         olly.Rect.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
@@ -581,12 +631,14 @@ internal static class Tutorial {
         olly.Rect.pivot = new Vector2(1f, 0f);
         olly.Rect.anchoredPosition = new Vector2(-OllyGap, 0f);
         olly.Rect.localScale = Vector3.one * OllyScale;
+        AttachDrag(olly.Rect.gameObject, pe => !olly.IsHead(pe.pressPosition));
 
         caption = Line(ctx, bubble, 12f, UiStyle.Caption, BubbleWidth - 40f);
-        caption.characterSpacing = 4f;
+        caption.characterSpacing = -3f;
         title = Line(ctx, bubble, 20f, Color.white, BubbleWidth - 40f);
-        title.fontStyle = FontStyles.Bold;
-        body = Line(ctx, bubble, 17f, new Color(1f, 1f, 1f, 0.92f), BubbleWidth - 40f);
+        title.font = ctx.Fonts.Medium;
+        title.characterSpacing = -3f;
+        body = Line(ctx, bubble, 17f, new Color(1f, 1f, 1f, 0.86f), BubbleWidth - 40f);
         body.lineSpacing = 6f;
 
         var noteImage = UiStyle.Rounded("Note", bubble, new Color(1f, 1f, 1f, 0.05f));
@@ -594,7 +646,7 @@ internal static class Tutorial {
         noteGroup = noteBox.gameObject.AddComponent<CanvasGroup>();
         var noteLayout = UiStyle.Vertical(noteBox.gameObject, 0f, new RectOffset(12, 12, 10, 10));
         noteLayout.childForceExpandHeight = false;
-        note = Line(ctx, noteBox, 15f, new Color(1f, 1f, 1f, 0.8f), BubbleWidth - 40f - 24f);
+        note = Line(ctx, noteBox, 15f, new Color(1f, 1f, 1f, 0.74f), BubbleWidth - 40f - 24f);
         note.lineSpacing = 4f;
 
         waiting = Line(ctx, bubble, 14f, Accent, BubbleWidth - 40f);
@@ -604,24 +656,36 @@ internal static class Tutorial {
         var buttons = UiStyle.HRow(bubble, 6f, 34f);
         backButton = Track(UiStyle.Button(UiStyle.Cell(buttons, 70f), "tutorial_back", Tr("TUTORIAL_BACK", "Back"), Back));
         closeButton = Track(UiStyle.Button(UiStyle.Cell(buttons, 70f), "tutorial_close", Tr("TUTORIAL_CLOSE", "Close"), Stop));
-        UiStyle.Tooltip(closeButton, Tr("TUTORIAL_CLOSE_TIP", "Stop the tutorial (you can pick it up again on the Tutorial page)"));
+        closeButton.Rect.AddToolTip(ctx, () => Tr("TUTORIAL_CLOSE_TIP", "Stop the tutorial (you can pick it up again on the Tutorial page)"));
         UiStyle.Cell(buttons, 0f);
         replayButton = Track(UiStyle.Button(UiStyle.Cell(buttons, 96f), "tutorial_replay", Tr("TUTORIAL_REPLAY", "Show again"), Replay));
         skipButton = Track(UiStyle.Button(UiStyle.Cell(buttons, 96f), "tutorial_skip", Tr("TUTORIAL_SKIP", "Skip step"), Next));
         nextButton = Track(UiStyle.Button(UiStyle.Cell(buttons, 96f), "tutorial_next", Tr("TUTORIAL_NEXT", "Next"), Next, primary: true));
 
-        // The demo pointer: a ring that gives a squeeze when it "clicks".
+        if (!langHooked && MainCore.Tr != null) {
+            MainCore.Tr.OnLanguageChanged += OnLanguageChanged;
+            MainCore.Tr.OnLoadEnd += OnLangLoadEnd;
+            langHooked = true;
+        }
+
+        // The demo pointer: Olly's cursor with tip at (0, 1) and a subtle click ring.
         pointer = UiStyle.NewRect("Pointer", root);
         pointer.anchorMin = pointer.anchorMax = Vector2.zero;
-        pointer.sizeDelta = new Vector2(40f, 40f);
+        pointer.pivot = new Vector2(0f, 1f);
+        pointer.sizeDelta = new Vector2(36f, 36f);
+
         pointerRing = Plain("Ring", pointer, Accent);
         pointerRing.sprite = MainCore.Spr.Get(Asset.CircleOutline256O32);
-        pointerRing.rectTransform.anchorMin = Vector2.zero;
-        pointerRing.rectTransform.anchorMax = Vector2.one;
-        pointerRing.rectTransform.offsetMin = pointerRing.rectTransform.offsetMax = Vector2.zero;
-        var dot = Plain("Dot", pointer, Color.white);
-        dot.sprite = pointerRing.sprite;
-        dot.rectTransform.sizeDelta = new Vector2(10f, 10f);
+        pointerRing.rectTransform.anchorMin = pointerRing.rectTransform.anchorMax = new Vector2(0f, 1f);
+        pointerRing.rectTransform.pivot = new Vector2(0.5f, 0.5f);
+        pointerRing.rectTransform.anchoredPosition = Vector2.zero;
+        pointerRing.rectTransform.sizeDelta = new Vector2(34f, 34f);
+
+        var cursor = Plain("Cursor", pointer, Color.white);
+        cursor.sprite = MainCore.Spr.Get(Asset.OllyMouse);
+        cursor.rectTransform.anchorMin = Vector2.zero;
+        cursor.rectTransform.anchorMax = Vector2.one;
+        cursor.rectTransform.offsetMin = cursor.rectTransform.offsetMax = Vector2.zero;
         pointer.gameObject.SetActive(false);
     }
 
@@ -664,6 +728,32 @@ internal static class Tutorial {
         image.color = color;
         image.raycastTarget = false;
         return image;
+    }
+
+    private static void AttachDrag(GameObject target, Func<PointerEventData, bool> canStart = null) {
+        UnityUtils.AddEvents(target.AddComponent<EventTrigger>(),
+            (EventTriggerType.BeginDrag, e => {
+                if (e is PointerEventData pe && pe.button == PointerEventData.InputButton.Left && (canStart == null || canStart(pe))) {
+                    dragging = true;
+                    glide = Vector2.zero;
+                }
+            }),
+            (EventTriggerType.Drag, e => {
+                if (dragging && e is PointerEventData pe && bubble != null) {
+                    var canvas = root != null ? root.GetComponentInParent<Canvas>()?.rootCanvas : null;
+                    float scale = canvas != null && canvas.scaleFactor > 0f ? canvas.scaleFactor : 1f;
+                    bubble.anchoredPosition += pe.delta / scale;
+                    placed = bubble.anchoredPosition;
+                    userPlaced = true;
+                }
+            }),
+            (EventTriggerType.EndDrag, _ => {
+                if (dragging) {
+                    dragging = false;
+                    // PlaceAround clamps placed into screen bounds and SmoothDamp eases it back in.
+                    placed = bubble != null ? bubble.anchoredPosition : placed;
+                }
+            }));
     }
 
     private static TextMeshProUGUI Line(O5Kit.Core.O5Context ctx, Transform parent, float size, Color color, float width) {
@@ -745,16 +835,20 @@ internal static class Tutorial {
         }
         at = Clamp(at, size, bubbleHeight, above);
 
+        if (dragging) {
+            bubble.SetAsLastSibling();
+            return;
+        }
         // Stay put while it still works (a target that grows as Olly types into it would
         // otherwise push the bubble along letter by letter); move only when the step changed,
         // the target changed, or where it is now covers the target or leaves the screen.
         bool keep = placed.HasValue && !replace && ReferenceEquals(placedFor, target);
         if (keep) {
             Vector2 now = Clamp(placed.Value, size, bubbleHeight, above);
-            keep = now == placed.Value && (!has || !Covers(now, bubbleHeight, above, targetMin, targetMax));
+            keep = userPlaced ? now == placed.Value : (now == placed.Value && (!has || !Covers(now, bubbleHeight, above, targetMin, targetMax)));
         }
         if (!keep) {
-            placed = at;
+            placed = userPlaced ? Clamp(placed ?? at, size, bubbleHeight, above) : at;
             placedFor = target;
             replace = false;
         }
@@ -770,7 +864,7 @@ internal static class Tutorial {
 
     private static Vector2? placed;
     private static RectTransform placedFor;
-    private static bool replace, snap = true;
+    private static bool replace, snap = true, dragging, userPlaced;
     private static Vector2 glide, targetMin, targetMax;
 
     private static Vector2 Clamp(Vector2 at, Vector2 size, float bubbleHeight, float above) => new(

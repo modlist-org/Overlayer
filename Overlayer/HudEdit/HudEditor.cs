@@ -74,11 +74,11 @@ internal static partial class HudEditor {
         }
         uiWasOpen = UICore.CanvasObj.activeSelf;
         UICore.Open(true);
-        if (UICore.Panel != null) {
-            UICore.Panel.gameObject.SetActive(false);
-        }
+        UICore.HidePanelForHudEditor(immediate: !uiWasOpen);
         BuildView();
+        isClosing = false;
         IsOpen = true;
+        UI.UISound.PlayOpen();
         Tag.Compile.Compiler.ShowBlockedLive = true;
         collectedFrame = -1000;
         selection.Clear();
@@ -86,6 +86,7 @@ internal static partial class HudEditor {
         drag = DragMode.None;
         undo.Clear();
         RefreshPanel();
+        AnimateView(opening: true);
     }
 
     public static void Close() {
@@ -97,23 +98,36 @@ internal static partial class HudEditor {
         EndDrag();
         CommitPanelEdit();
         FlushSave();
-        DestroyView();
         selection.Clear();
         hovered = null;
         elements.Clear();
         undo.Clear();
         pendingPlace.Clear();
         EmptyTrash();
-        // At quit the UI is already being torn down.
-        if (UICore.CanvasObj == null) {
+
+        // At quit or when canvas was already hidden externally, tear down immediately.
+        if (UICore.CanvasObj == null || !UICore.CanvasObj.activeInHierarchy || root == null) {
+            DestroyView();
             return;
         }
-        if (UICore.Panel != null) {
-            UICore.Panel.gameObject.SetActive(true);
+
+        isClosing = true;
+        UI.UISound.PlayClose();
+        bool restorePanel = uiWasOpen;
+        if (restorePanel) {
+            UICore.ShowPanelFromHudEditor();
         }
-        if (!uiWasOpen) {
-            UICore.Close(true);
-        }
+        AnimateView(opening: false, onDone: () => {
+            if (!isClosing || IsOpen) {
+                return;
+            }
+            isClosing = false;
+            DestroyView();
+            if (UICore.CanvasObj != null && !restorePanel) {
+                UICore.ShowPanelFromHudEditor(immediate: true);
+                UICore.Close(true);
+            }
+        });
     }
 
     public static void Tick() {

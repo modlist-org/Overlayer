@@ -1,4 +1,5 @@
 using Overlayer.Core;
+using Overlayer.Resource;
 using Overlayer.UI.Utility;
 using UnityEngine;
 using UnityEngine.UI;
@@ -19,13 +20,15 @@ internal sealed class OllyView {
     public Vector2? LookTarget;
     /// <summary>True while her head is being patted.</summary>
     public bool Patted => patting;
+    public bool IsHead(Vector2 screen) => OllyAnchors.Head.Contains(ToPortrait(screen));
 
+    private readonly RectTransform mask;
     private readonly Image bg, hairBg, body, patArea, mouth, nose, eyeRight, eyeLeft, lidDown, lidBg, lidUp, shineLeft, shineRight, shut, brow, hair;
     private readonly Image[] marks = new Image[3];
     private readonly Image[] fronts = new Image[4];
 
     private float blinkTimer, blinkInterval = 2.5f;
-    private Vector2 eyeOffset, eyeVelocity, hairOffset, hairVelocity;
+    private Vector2 eyeOffset, eyeVelocity, hairOffset, hairVelocity, headOffset, headVelocity, patAnchor;
     private bool patting;
     private float patTime;
     private float flusteredUntil;
@@ -35,6 +38,20 @@ internal sealed class OllyView {
     public OllyView(Transform parent) {
         Rect = UiStyle.NewRect("Olly", parent);
         Rect.sizeDelta = new Vector2(Size, Size);
+
+        var frameBg = Stretch("FrameBg", Rect).gameObject.AddComponent<Image>();
+        frameBg.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P1024);
+        frameBg.type = Image.Type.Sliced;
+        frameBg.color = new Color(0.08f, 0.08f, 0.11f, 0.97f);
+        frameBg.raycastTarget = true;
+
+        mask = Stretch("PortraitMask", Rect);
+        var maskImage = mask.gameObject.AddComponent<Image>();
+        maskImage.sprite = frameBg.sprite;
+        maskImage.type = Image.Type.Sliced;
+        maskImage.raycastTarget = false;
+        mask.gameObject.AddComponent<Mask>().showMaskGraphic = false;
+
         bg = Part("Bg", "BG");
         hairBg = Part("HairBg", "HAIRBG");
         body = Part("Base", "BASE");
@@ -59,7 +76,14 @@ internal sealed class OllyView {
             fronts[i] = Part("Front" + i, "FXF_" + (MarkFront)(1 << i));
         }
         hair = Part("Hair", "HAIR");
-        patArea = Part("PatArea", null);
+
+        var border = Stretch("FrameBorder", Rect).gameObject.AddComponent<Image>();
+        border.sprite = MainCore.Spr.Get(UISliceSprite.CircleOutline256O32P1024);
+        border.type = Image.Type.Sliced;
+        border.color = new Color(0.569f, 0.604f, 1f, 0.75f);
+        border.raycastTarget = false;
+
+        patArea = Part("PatArea", null, Rect);
         patArea.color = Color.clear;
         patArea.raycastTarget = true;
         patArea.rectTransform.sizeDelta = OllyAnchors.Head.size;
@@ -69,8 +93,16 @@ internal sealed class OllyView {
         Tick(0f);
     }
 
-    private Image Part(string name, string file) {
-        var r = UiStyle.NewRect(name, Rect);
+    private static RectTransform Stretch(string name, Transform parent) {
+        var r = UiStyle.NewRect(name, parent);
+        r.anchorMin = Vector2.zero;
+        r.anchorMax = Vector2.one;
+        r.offsetMin = r.offsetMax = Vector2.zero;
+        return r;
+    }
+
+    private Image Part(string name, string file, Transform host = null) {
+        var r = UiStyle.NewRect(name, host ?? mask);
         r.anchorMin = r.anchorMax = r.pivot = new Vector2(0f, 1f);
         var image = r.gameObject.AddComponent<Image>();
         image.raycastTarget = false;
@@ -129,12 +161,14 @@ internal sealed class OllyView {
         if (Input.GetMouseButtonDown(0) && OllyAnchors.Head.Contains(pointer) && Rect.gameObject.activeInHierarchy) {
             patting = true;
             patTime = 0f;
+            patAnchor = pointer;
         } else if (patting && !Input.GetMouseButton(0)) {
             patting = false;
             blinkTimer = 0f;
             Pats++;
             flusteredUntil = Time.unscaledTime + 1.6f;
         }
+        Vector2 headTarget = Vector2.zero;
         if (patting) {
             patTime += dt;
             mouthState = Mouth.OpenMicro;
@@ -142,6 +176,10 @@ internal sealed class OllyView {
             if (patTime > 0.3f) {
                 shutState = EyeShut.Down;
             }
+            // Follow/lean along with the mouse as if pushed, plus subtle trailing stroke inertia.
+            patAnchor = Vector2.Lerp(patAnchor, pointer, 1f - Mathf.Exp(-dt * 4f));
+            Vector2 follow = Lean(OllyAnchors.Head.center, pointer, 10f) + Lean(patAnchor, pointer, 6f);
+            headTarget = new Vector2(Mathf.Clamp(follow.x, -14f, 14f), Mathf.Clamp(follow.y, -7f, 12f));
         }
 
         // Blink now and then: lids slide in, eyes shut for a moment.
@@ -169,15 +207,21 @@ internal sealed class OllyView {
             eyeTarget.y *= eyeTarget.y < 0f ? 0.8f : 2f;
             hairTarget = Lean(OllyAnchors.Hair + new Vector2(112f, 106f), portraitFocus, 1.7f);
         }
-        eyeOffset = Vector2.SmoothDamp(eyeOffset, eyeTarget, ref eyeVelocity, 0.2f, Mathf.Infinity, Mathf.Max(dt, 0.0001f));
-        hairOffset = Vector2.SmoothDamp(hairOffset, hairTarget, ref hairVelocity, 0.2f, Mathf.Infinity, Mathf.Max(dt, 0.0001f));
+        float safeDt = Mathf.Max(dt, 0.0001f);
+        eyeOffset = Vector2.SmoothDamp(eyeOffset, eyeTarget, ref eyeVelocity, 0.2f, Mathf.Infinity, safeDt);
+        hairOffset = Vector2.SmoothDamp(hairOffset, hairTarget, ref hairVelocity, 0.2f, Mathf.Infinity, safeDt);
+        headOffset = Vector2.SmoothDamp(headOffset, headTarget, ref headVelocity, patting ? 0.09f : 0.18f, Mathf.Infinity, safeDt);
         // Breathing.
         float breath = Mathf.Sin(Time.unscaledTime * 1.7f);
         Vector2 sway = new(0f, breath * 0.6f);
 
-        Vector2 faceOffset = eyeOffset * 0.5f;
-        Put(hairBg, OllyAnchors.HairBg + hairOffset + sway);
-        Put(hair, OllyAnchors.Hair + hairOffset + sway);
+        Vector2 bodyOffset = headOffset * 0.65f;
+        Vector2 hairFollow = headOffset * 1.15f;
+        Vector2 faceOffset = headOffset + eyeOffset * 0.5f;
+        Vector2 eyeTotalOffset = headOffset + eyeOffset;
+        Put(body, bodyOffset);
+        Put(hairBg, OllyAnchors.HairBg + hairFollow + hairOffset + sway);
+        Put(hair, OllyAnchors.Hair + hairFollow + hairOffset + sway);
 
         Show(mouth, mouthState != Mouth.None);
         if (mouthState != Mouth.None) {
@@ -194,11 +238,11 @@ internal sealed class OllyView {
             var at = OllyAnchors.Eyes[(int)eye - 1];
             SetSprite(eyeLeft, "EL_" + eye);
             SetSprite(eyeRight, "ER_" + eye);
-            Put(eyeLeft, at.Left + eyeOffset);
-            Put(eyeRight, at.Right + eyeOffset);
+            Put(eyeLeft, at.Left + eyeTotalOffset);
+            Put(eyeRight, at.Right + eyeTotalOffset);
         }
 
-        Vector2 lidOffset = eyeOffset * 0.4f;
+        Vector2 lidOffset = headOffset + eyeOffset * 0.4f;
         Show(lidDown, open);
         Show(lidBg, open);
         Show(lidUp, open);
@@ -210,13 +254,13 @@ internal sealed class OllyView {
             Put(lidBg, OllyAnchors.LidBg + lidOffset + new Vector2(0f, closing * 22f));
             Put(lidUp, OllyAnchors.LidUp + lidOffset + new Vector2(0f, closing * 22f));
             bool small = eye == Eye.Small;
-            Put(shineLeft, OllyAnchors.ShineLeft + eyeOffset + (small ? new Vector2(4f, 6f) : Vector2.zero));
-            Put(shineRight, OllyAnchors.ShineRight + eyeOffset + (small ? new Vector2(0f, 5f) : Vector2.zero));
+            Put(shineLeft, OllyAnchors.ShineLeft + eyeTotalOffset + (small ? new Vector2(4f, 6f) : Vector2.zero));
+            Put(shineRight, OllyAnchors.ShineRight + eyeTotalOffset + (small ? new Vector2(0f, 5f) : Vector2.zero));
         }
         Show(shut, !open);
         if (!open) {
             SetSprite(shut, "ES_" + shutState);
-            Put(shut, OllyAnchors.Shut[(int)shutState - 1] + eyeOffset * 0.5f);
+            Put(shut, OllyAnchors.Shut[(int)shutState - 1] + faceOffset);
         }
 
         for (int i = 0; i < marks.Length; i++) {
@@ -232,7 +276,7 @@ internal sealed class OllyView {
         Show(brow, face.Brow != Brow.None);
         if (face.Brow != Brow.None) {
             SetSprite(brow, "B_" + face.Brow);
-            Put(brow, OllyAnchors.Brows[(int)face.Brow - 1] + eyeOffset * 0.23f);
+            Put(brow, OllyAnchors.Brows[(int)face.Brow - 1] + headOffset + eyeOffset * 0.23f);
         }
 
         for (int i = 0; i < fronts.Length; i++) {
@@ -241,9 +285,9 @@ internal sealed class OllyView {
             Show(fronts[i], on);
             if (on) {
                 Vector2 offset = f switch {
-                    MarkFront.Tremble or MarkFront.Tendon => hairOffset,
+                    MarkFront.Tremble or MarkFront.Tendon => hairFollow + hairOffset,
                     MarkFront.BlushBig => faceOffset,
-                    _ => Vector2.zero,
+                    _ => headOffset,
                 };
                 Put(fronts[i], OllyAnchors.Fronts[i] + offset);
             }

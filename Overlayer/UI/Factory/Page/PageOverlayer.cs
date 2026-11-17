@@ -10,6 +10,7 @@ using Overlayer.Resource;
 using O5Kit.Factory;
 using O5Kit.Control;
 using Overlayer.UI.Overlay;
+using Overlayer.UI.Utility;
 using O5Kit.Behaviour;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -372,33 +373,12 @@ internal static class PageOverlayer {
         tileControls.Add(cloneRect.gameObject);
         tileControls.Add(toggleGo);
 
-        OvCanvas armedDeleteFor = null;
-        DateTime armedDeleteAt = default;
         var delBtn = TileButton(bg.transform, BuiltinIcon(UISprite.X128), "X",
             $"tile_del_{canvas.GetHashCode()}", () => { });
-        delBtn.OnClick = () => {
-            if (ShiftSkipConfirm()) {
-                OverlayCore.DeleteOvCanvas(canvas);
-                onChanged?.Invoke();
-                return;
-            }
-            if (!ReferenceEquals(armedDeleteFor, canvas)
-                || (DateTime.Now - armedDeleteAt).TotalSeconds > 5) {
-                armedDeleteFor = canvas;
-                armedDeleteAt = DateTime.Now;
-                delBtn.NormalColor = UIColors.SoftRed;
-                if (delBtn.Icon != null) {
-                    delBtn.Icon.color = UIColors.SoftRed;
-                }
-                if (delBtn.Label != null) {
-                    delBtn.Label.text = "!";
-                }
-                delBtn.UpdateVisual();
-                return;
-            }
+        HoldToConfirm.Attach(delBtn, () => {
             OverlayCore.DeleteOvCanvas(canvas);
             onChanged?.Invoke();
-        };
+        });
         var delRect = delBtn.Rect;
         delRect.anchorMin = new Vector2(0f, 0f);
         delRect.anchorMax = new Vector2(0f, 0f);
@@ -578,30 +558,9 @@ internal static class PageOverlayer {
         copyRect.anchoredPosition = new Vector2(10f, 10f);
         copyRect.sizeDelta = new Vector2(110f, 34f);
 
-        bool confirmDelete = false;
-        DateTime pkgArmedAt = default;
         var deleteBtn = TileButton(bg.transform, BuiltinIcon(UISprite.X128), "X",
             $"tile_pkgdel_{entry.Id}", () => { });
-        deleteBtn.OnClick = () => {
-            if (ShiftSkipConfirm()) {
-                PackageStore.Remove(entry.Id);
-                return;
-            }
-            if (!confirmDelete || (DateTime.Now - pkgArmedAt).TotalSeconds > 5) {
-                confirmDelete = true;
-                pkgArmedAt = DateTime.Now;
-                if (deleteBtn.Label != null) {
-                    deleteBtn.Label.text = "!";
-                }
-                if (deleteBtn.Icon != null) {
-                    deleteBtn.Icon.color = UIColors.SoftRed;
-                }
-                deleteBtn.NormalColor = UIColors.SoftRed;
-                deleteBtn.UpdateVisual();
-                return;
-            }
-            PackageStore.Remove(entry.Id);
-        };
+        HoldToConfirm.Attach(deleteBtn, () => PackageStore.Remove(entry.Id));
         var deleteRect = deleteBtn.Rect;
         deleteRect.anchorMin = new Vector2(0f, 0f);
         deleteRect.anchorMax = new Vector2(0f, 0f);
@@ -692,33 +651,12 @@ internal static class PageOverlayer {
             settingPage?.OpenObject(obj);
         };
 
-        OvObject armedDeleteFor = null;
-        DateTime armedDeleteAt = default;
         var delBtn = TileButton(bg.transform, BuiltinIcon(UISprite.X128), "X",
             $"tile_objdel_{obj.GetHashCode()}", () => { });
-        delBtn.OnClick = () => {
-            if (ShiftSkipConfirm()) {
-                OverlayCore.DeleteObject(obj);
-                onChanged?.Invoke();
-                return;
-            }
-            if (!ReferenceEquals(armedDeleteFor, obj)
-                || (DateTime.Now - armedDeleteAt).TotalSeconds > 5) {
-                armedDeleteFor = obj;
-                armedDeleteAt = DateTime.Now;
-                delBtn.NormalColor = UIColors.SoftRed;
-                if (delBtn.Icon != null) {
-                    delBtn.Icon.color = UIColors.SoftRed;
-                }
-                if (delBtn.Label != null) {
-                    delBtn.Label.text = "!";
-                }
-                delBtn.UpdateVisual();
-                return;
-            }
+        HoldToConfirm.Attach(delBtn, () => {
             OverlayCore.DeleteObject(obj);
             onChanged?.Invoke();
-        };
+        });
         var delRect = delBtn.Rect;
         delRect.anchorMin = new Vector2(0f, 0f);
         delRect.anchorMax = new Vector2(0f, 0f);
@@ -780,9 +718,6 @@ internal static class PageOverlayer {
         }
         return string.Join("\n", lines);
     }
-
-    private static bool ShiftSkipConfirm()
-        => O5Input.GetKey(KeyCode.LeftShift) || O5Input.GetKey(KeyCode.RightShift);
 
     private static void BeginPromote(PackageEntry entry) {
         if (entry == null) {
@@ -1025,6 +960,9 @@ internal static class PageOverlayer {
                 return;
             }
             active = next;
+            if (next >= 0) {
+                UISound.PlayHover();
+            }
             left.color = next == 0 ? UIColors.ObjectActiveLightBright : UIColors.ObjectButton;
             presetZone.color = next == 1 ? UIColors.ObjectActiveLightBright : UIColors.ObjectButton;
             importZone.color = next == 2 ? UIColors.ObjectActiveLightBright : UIColors.ObjectButton;

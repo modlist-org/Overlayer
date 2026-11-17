@@ -24,14 +24,25 @@ internal sealed class TutorialDemo {
 
     public TutorialDemo Do(Action action) => Add(0f, action, null);
 
-    /// <summary>The pointer glides to a screen point (stays put on null).</summary>
+    public static readonly HumanMouse Mouse = new() { Speed = 1.4f };
+    public static readonly HumanKeyboard Keyboard = new();
+
+    /// <summary>The pointer glides to a screen point like a human hand (stays put on null).</summary>
     public TutorialDemo PointAt(Func<Vector2?> screen, float seconds = 0.7f) {
-        Vector2 from = default, to = default;
+        HumanMouse.Trajectory path = null;
         return Add(seconds, () => {
             Tutorial.PointerShown = true;
-            from = Tutorial.PointerAt;
-            to = Safe(screen) ?? from;
-        }, t => Tutorial.PointerAt = Vector2.Lerp(from, to, 1f - Mathf.Pow(1f - t, 3f)));
+            var from = Tutorial.PointerAt;
+            var to = Safe(screen) ?? from;
+            path = Mouse.Move(from, to);
+        }, t => {
+            if (path == null) {
+                return;
+            }
+            float moveTime = Mathf.Min(path.Duration, seconds);
+            float mt = moveTime > 0f ? Mathf.Clamp01((t * seconds) / moveTime) : 1f;
+            Tutorial.PointerAt = path.Sample(mt);
+        });
     }
 
     public TutorialDemo Point(Func<RectTransform> target, float seconds = 0.7f) => PointAt(() => Center(target()), seconds);
@@ -43,33 +54,77 @@ internal sealed class TutorialDemo {
 
     public TutorialDemo DoubleClick(Action action = null) => Click().Click(action);
 
-    public TutorialDemo HidePointer() => Do(() => Tutorial.PointerShown = false);
-
-    /// <summary>Holds and drags from one point to another; <paramref name="during"/> gets 0..1 on the way.</summary>
-    public TutorialDemo Drag(Func<Vector2?> from, Func<Vector2?> to, float seconds, Action<float> during) {
-        Vector2 a = default, b = default;
-        return PointAt(from, 0.6f).Add(seconds, () => {
-            a = Tutorial.PointerAt;
-            b = Safe(to) ?? a;
-            Tutorial.PointerPress = 0.6f;
+    /// <summary>Moves the cursor off-screen before hiding it (no-op if already hidden, e.g. after slider drag).</summary>
+    public TutorialDemo HidePointer() {
+        HumanMouse.Trajectory path = null;
+        return Add(0.26f, () => {
+            if (!Tutorial.PointerShown) {
+                path = null;
+                return;
+            }
+            var from = Tutorial.PointerAt;
+            path = Mouse.Move(from, OffscreenExit(from), speed: 1.6f);
         }, t => {
-            float e = t * t * (3f - 2f * t);
-            Tutorial.PointerAt = Vector2.Lerp(a, b, e);
-            Tutorial.PointerPress = t < 1f ? 0.6f : 0f;
-            during?.Invoke(e);
+            if (path == null) {
+                return;
+            }
+            Tutorial.PointerAt = path.Sample(t);
+            if (t >= 1f) {
+                Tutorial.PointerShown = false;
+            }
         });
     }
 
-    /// <summary>Types into a text letter by letter, with a caret.</summary>
-    public TutorialDemo Type(Func<OvObject> target, string text, float perLetter = 0.09f) {
+    private static Vector2 OffscreenExit(Vector2 p) {
+        float w = Screen.width, h = Screen.height;
+        float dLeft = p.x, dRight = w - p.x, dBottom = p.y, dTop = h - p.y;
+        float min = Mathf.Min(Mathf.Min(dLeft, dRight), Mathf.Min(dBottom, dTop));
+        if (min == dRight) {
+            return new Vector2(w + 24f, Mathf.Clamp(p.y - 60f, -48f, h + 24f));
+        }
+        if (min == dBottom) {
+            return new Vector2(Mathf.Clamp(p.x + 60f, -48f, w + 24f), -56f);
+        }
+        if (min == dLeft) {
+            return new Vector2(-56f, Mathf.Clamp(p.y - 60f, -48f, h + 24f));
+        }
+        return new Vector2(Mathf.Clamp(p.x + 60f, -48f, w + 24f), h + 48f);
+    }
+
+    /// <summary>Holds an infinite slider at <paramref name="at"/>: hides cursor while dragging and restores it in place when done.</summary>
+    public TutorialDemo Drag(Func<Vector2?> at, float seconds, Action<float> during) {
+        Vector2 anchor = default;
+        return PointAt(at, 0.6f).Add(seconds, () => {
+            anchor = Tutorial.PointerAt;
+            Tutorial.PointerShown = false;
+            Tutorial.PointerPress = 0f;
+        }, t => {
+            float s = Mathf.Pow(Mathf.Clamp01(t), 0.9f);
+            float e = s * s * (3f - 2f * s);
+            Tutorial.PointerAt = anchor;
+            during?.Invoke(e);
+            if (t >= 1f) {
+                Tutorial.PointerShown = true;
+            }
+        });
+    }
+
+    /// <summary>Types into a text with human-like cadence; speed is controlled by <see cref="Keyboard"/>.Wpm or <paramref name="wpm"/>.</summary>
+    public TutorialDemo Type(Func<OvObject> target, string text, float? wpm = null) {
+        var times = Keyboard.Schedule(text, wpm);
+        float total = times.Length > 0 ? times[times.Length - 1] : 0f;
         int shown = -1;
-        return Add(text.Length * perLetter + 0.4f, () => shown = -1, t => {
-            int n = Mathf.Min(text.Length, Mathf.FloorToInt(t * (text.Length + 4)));
+        return Add(total + 0.35f, () => shown = -1, t => {
+            float elapsed = t * (total + 0.35f);
+            int n = 0;
+            while (n < times.Length && elapsed >= times[n]) {
+                n++;
+            }
             if (n == shown) {
                 return;
             }
             shown = n;
-            string caret = n < text.Length ? "<color=#FFFFFF88>|</color>" : string.Empty;
+            string caret = n < text.Length ? "|" : string.Empty;
             HudEditor.DemoSetText(target(), text.Substring(0, n) + caret);
         });
     }

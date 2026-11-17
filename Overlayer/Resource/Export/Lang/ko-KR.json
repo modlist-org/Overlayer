@@ -296,6 +296,7 @@
     "SYSTEM_FONT_FALLBACKS": "시스템 서체 폴백",
     "TEXTURE_SETTINGS_APPLIED": "텍스처 설정이 적용되었습니다.",
     "UI_SCALE": "화면 배율",
+    "UI_SOUND_VOLUME": "UI 효과음 음량",
     "UNSUPPORTED_FONT_FORMAT": "지원되지 않는 서체 형식입니다.",
     "UNSUPPORTED_IMAGE_FORMAT": "지원되지 않는 사진 형식입니다.",
     "DESC_UPDATE_BETA": "GitHub의 시험판(Pre-release) 버전도 함께 제공합니다.",

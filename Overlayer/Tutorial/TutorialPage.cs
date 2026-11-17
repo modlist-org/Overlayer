@@ -42,12 +42,17 @@ internal static class TutorialPage {
         var layout = UiStyle.Vertical(list.gameObject, 10f);
         layout.childForceExpandHeight = false;
         list.gameObject.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-        Tutorial.Changed += Refresh;
-        // Texts follow a language change.
-        Core.MainCore.Tr.OnLoadEnd += _ => Refresh();
+        if (!hooked) {
+            hooked = true;
+            Tutorial.Changed += Refresh;
+            // Texts follow a language change or reload immediately.
+            Core.MainCore.Tr.OnLanguageChanged += _ => Refresh();
+            Core.MainCore.Tr.OnLoadEnd += _ => Refresh();
+        }
         Refresh();
     }
 
+    private static bool hooked;
     private static readonly List<O5Kit.Core.O5Object> rowControls = [];
 
     private static void Refresh() {
@@ -74,17 +79,32 @@ internal static class TutorialPage {
             var card = UiStyle.Rounded("Chapter_" + chapter.Id, list, new Color(1f, 1f, 1f, done ? 0.03f : 0.06f)).rectTransform;
             card.gameObject.AddComponent<LayoutElement>().preferredHeight = 92f;
 
-            var text = O5Factory.ControlText(ctx, card, 17f, true);
-            text.rectTransform.anchorMin = Vector2.zero;
-            text.rectTransform.anchorMax = Vector2.one;
-            text.rectTransform.offsetMin = new Vector2(20f, 10f);
-            text.rectTransform.offsetMax = new Vector2(-150f, -10f);
-            text.alignment = TextAlignmentOptions.MidlineLeft;
-            text.enableWordWrapping = true;
-            text.raycastTarget = false;
+            var textCol = UiStyle.NewRect("Text", card);
+            textCol.anchorMin = Vector2.zero;
+            textCol.anchorMax = Vector2.one;
+            textCol.offsetMin = new Vector2(20f, 12f);
+            textCol.offsetMax = new Vector2(-150f, -12f);
+            var colLayout = UiStyle.Vertical(textCol.gameObject, 4f);
+            colLayout.childAlignment = TextAnchor.MiddleLeft;
+
             string mark = done ? "<color=#7CFF8A>✓</color>  " : $"<alpha=#66>{n}.<alpha=#FF>  ";
-            text.text = $"{mark}<b>{Tutorial.Tr("TUTORIAL_CH_" + chapter.Id, chapter.Title)}</b>"
-                + $"\n<size=80%><alpha=#99>{Tutorial.Tr("TUTORIAL_CH_" + chapter.Id + "_SUM", chapter.Summary)}</size>";
+            var title = O5Factory.ControlText(ctx, UiStyle.NewRect("Title", textCol), 17f, true);
+            title.font = ctx.Fonts.Medium;
+            title.characterSpacing = -3f;
+            title.alignment = TextAlignmentOptions.MidlineLeft;
+            title.enableWordWrapping = true;
+            title.raycastTarget = false;
+            title.text = $"{mark}{chapter.Title}";
+            title.transform.parent.gameObject.AddComponent<LayoutElement>().preferredHeight = 26f;
+
+            var summary = O5Factory.ControlText(ctx, UiStyle.NewRect("Summary", textCol), 14f, true);
+            summary.characterSpacing = -3f;
+            summary.color = new Color(1f, 1f, 1f, 0.58f);
+            summary.alignment = TextAlignmentOptions.MidlineLeft;
+            summary.enableWordWrapping = true;
+            summary.raycastTarget = false;
+            summary.text = Tutorial.Tr("TUTORIAL_CH_" + chapter.Id + "_SUM", chapter.Summary);
+            summary.transform.parent.gameObject.AddComponent<LayoutElement>().preferredHeight = 22f;
 
             var cell = UiStyle.NewRect("Start", card);
             cell.anchorMin = cell.anchorMax = cell.pivot = new Vector2(1f, 0.5f);

@@ -869,12 +869,10 @@ internal static class PageResources {
         PlaceRight(remove.Rect, 100f, 54f, 16f);
         remove.Label.fontSize = 15f;
         remove.Label.gameObject.AddComponent<TextLocalization>().Init("REMOVE", "Remove");
-        bool confirm = false;
         bool editing = false;
         rename.OnClick = () => {
             if (!editing) {
                 editing = true;
-                confirm = false;
                 name.gameObject.SetActive(false);
                 renameInput.Set(FullName(folders, key), false);
                 renameInput.Rect.gameObject.SetActive(true);
@@ -903,27 +901,15 @@ internal static class PageResources {
                 BuildList();
             }
         };
-        remove.OnClick = () => {
-            if (editing) {
-                editing = false;
-                renameInput.Rect.gameObject.SetActive(false);
-                name.gameObject.SetActive(true);
-                rename.Label.text = T("RENAME", "Rename");
-                rename.NormalColor = UIColors.ObjectButton;
-                rename.UpdateVisual();
-                remove.Label.text = T("REMOVE", "Remove");
-                return;
-            }
-
-            if (!confirm) {
-                confirm = true;
-                remove.Label.text = T("CONFIRM", "Confirm");
-                remove.NormalColor = UIColors.SoftRed;
-                remove.UpdateVisual();
-                return;
-            }
-            Remove(key);
-        };
+        HoldToConfirm.Attach(remove, () => Remove(key), canConfirm: () => !editing, onBlockedClick: () => {
+            editing = false;
+            renameInput.Rect.gameObject.SetActive(false);
+            name.gameObject.SetActive(true);
+            rename.Label.text = T("RENAME", "Rename");
+            rename.NormalColor = UIColors.ObjectButton;
+            rename.UpdateVisual();
+            remove.Label.text = T("REMOVE", "Remove");
+        });
 
         O5Effects.HoverOutline(O5KitAdapters.Ctx, cardObject, cardObject.AddComponent<EventTrigger>());
     }
@@ -990,12 +976,10 @@ internal static class PageResources {
         PlaceRight(remove.Rect, 100f, 54f);
         remove.Label.fontSize = 15f;
         remove.Label.gameObject.AddComponent<TextLocalization>().Init("REMOVE", "Remove");
-        bool confirm = false;
         bool editing = false;
         rename.OnClick = () => {
             if (!editing) {
                 editing = true;
-                confirm = false;
                 name.gameObject.SetActive(false);
                 renameInput.Set(FullName(folders, key), false);
                 renameInput.Rect.gameObject.SetActive(true);
@@ -1037,26 +1021,7 @@ internal static class PageResources {
             SetStatus("RENAMED_RESOURCE_TO", "Renamed {0} to {1}.", UIColors.ObjectActiveMathOk, key, newKey);
             BuildList();
         };
-        remove.OnClick = () => {
-            if (editing) {
-                editing = false;
-                renameInput.Rect.gameObject.SetActive(false);
-                name.gameObject.SetActive(true);
-                rename.Label.text = T("RENAME", "Rename");
-                rename.NormalColor = UIColors.ObjectButton;
-                rename.UpdateVisual();
-                remove.Label.text = T("REMOVE", "Remove");
-                return;
-            }
-
-            if (!confirm) {
-                confirm = true;
-                remove.Label.text = T("CONFIRM", "Confirm");
-                remove.NormalColor = UIColors.SoftRed;
-                remove.UpdateVisual();
-                return;
-            }
-
+        HoldToConfirm.Attach(remove, () => {
             string filePath = path;
             UserResourceManager.Fnt.Remove(key);
             O5KitAdapters.RefreshFonts();
@@ -1073,7 +1038,15 @@ internal static class PageResources {
                     } catch { }
                 });
             }
-        };
+        }, canConfirm: () => !editing, onBlockedClick: () => {
+            editing = false;
+            renameInput.Rect.gameObject.SetActive(false);
+            name.gameObject.SetActive(true);
+            rename.Label.text = T("RENAME", "Rename");
+            rename.NormalColor = UIColors.ObjectButton;
+            rename.UpdateVisual();
+            remove.Label.text = T("REMOVE", "Remove");
+        });
 
         O5Effects.HoverOutline(O5KitAdapters.Ctx, cardObject, cardObject.AddComponent<EventTrigger>());
     }

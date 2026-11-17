@@ -296,6 +296,7 @@
     "SYSTEM_FONT_FALLBACKS": "系统字体回退",
     "TEXTURE_SETTINGS_APPLIED": "纹理设置已应用。",
     "UI_SCALE": "UI 缩放",
+    "UI_SOUND_VOLUME": "UI 音效音量",
     "UNSUPPORTED_FONT_FORMAT": "不支持的字体格式。",
     "UNSUPPORTED_IMAGE_FORMAT": "不支持的图片格式。",
     "O5CP_EXPORT_TITLE": "导出包",

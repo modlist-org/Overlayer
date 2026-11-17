@@ -218,14 +218,15 @@ internal static class CurveEditor {
             nameField.Set(entry.Name, false);
             graph.Select(-1);
         }, null, 90f);
-        Button(loadRow, "delete", "Delete", () => {
+        var delBtn = Button(loadRow, "delete", "Delete", null, null, 90f);
+        Utility.HoldToConfirm.Attach(delBtn, () => {
             var entry = savedDropdown.Value;
             if (entry == null) {
                 return;
             }
             EaseLibrary.Remove(entry);
             RefreshSaved(null);
-        }, null, 90f);
+        }, canConfirm: () => savedDropdown.Value != null);
         if (EaseLibrary.Entries.Count > 0) {
             savedDropdown.Set(EaseLibrary.Entries[0], false);
         }

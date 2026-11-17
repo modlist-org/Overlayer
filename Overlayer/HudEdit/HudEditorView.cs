@@ -4,6 +4,7 @@ using O5Kit.Factory;
 using Overlayer.Compat;
 using Overlayer.Core;
 using Overlayer.Resource;
+using Overlayer.Tween;
 using Overlayer.UI;
 using Overlayer.UI.Utility;
 using System;
@@ -145,9 +146,9 @@ internal static partial class HudEditor {
         root = NewRect("OverlayerPlus.HudEditor", UICore.CanvasObj.transform);
         Stretch(root);
         root.SetAsLastSibling();
-        var dim = root.gameObject.AddComponent<Image>();
-        dim.color = DimColor;
-        dim.raycastTarget = true; // swallow clicks meant for the game / other UI
+        dimImg = root.gameObject.AddComponent<Image>();
+        dimImg.color = DimColor;
+        dimImg.raycastTarget = true; // swallow clicks meant for the game / other UI
 
         if (MainCore.Conf.HudShowHints.Value) {
             var hint = O5Factory.ControlText(ctx, root, 14f, true);
@@ -241,7 +242,8 @@ internal static partial class HudEditor {
         rulersButton = DrawnButton(toolbar, "rulers", DrawRuler, ToggleRulers, "Rulers and guides: drag out of a ruler to add a guide, drag it back to remove it");
         UiStyle.Separator(toolbar, true);
         Icon(toolbar, "duplicate", UISprite.Clone128, DuplicateSelection, "Duplicate  Ctrl+D");
-        Icon(toolbar, "delete", UISprite.X128, DeleteSelection, "Delete  Del");
+        var delBtn = Icon(toolbar, "delete", UISprite.X128, null, "Delete (Hold)  ·  Del");
+        HoldToConfirm.Attach(delBtn, DeleteSelection, canConfirm: () => selection.Count > 0);
         UiStyle.Separator(toolbar, true);
         DrawnButton(toolbar, "undo", icon => DrawUndo(icon, false), () => AfterHistory(undo.Undo()), "Undo  Ctrl+Z");
         DrawnButton(toolbar, "redo", icon => DrawUndo(icon, true), () => AfterHistory(undo.Redo()), "Redo  Ctrl+Y");
@@ -1086,7 +1088,87 @@ internal static partial class HudEditor {
         return guides[index];
     }
 
+    private static Image dimImg;
+    private static bool isClosing;
+    private static readonly List<O5Kit.Core.ITweenHandle> viewAnimTweens = [];
+    private const float WallAnimDuration = 0.3f;
+
+    private static void KillViewAnims() {
+        foreach (var t in viewAnimTweens) {
+            t?.Kill();
+        }
+        viewAnimTweens.Clear();
+    }
+
+    private static void AnimateView(bool opening, Action onDone = null) {
+        KillViewAnims();
+        if (dimImg != null) {
+            dimImg.raycastTarget = opening;
+            if (opening) {
+                dimImg.color = new Color(DimColor.r, DimColor.g, DimColor.b, 0f);
+            }
+            viewAnimTweens.Add(dimImg.TColor(opening ? DimColor : new Color(DimColor.r, DimColor.g, DimColor.b, 0f), WallAnimDuration, O5Kit.Core.O5Ease.OutExpo));
+        }
+
+        void Slide(RectTransform r, Vector2 wallPos, Vector2 restingPos, Action done = null) {
+            if (r == null || !r.gameObject.activeSelf) {
+                done?.Invoke();
+                return;
+            }
+            if (opening) {
+                r.anchoredPosition = wallPos;
+                viewAnimTweens.Add(r.TAnchorPos(restingPos, WallAnimDuration, O5Kit.Core.O5Ease.OutExpo, done));
+            } else {
+                viewAnimTweens.Add(r.TAnchorPos(wallPos, WallAnimDuration, O5Kit.Core.O5Ease.OutExpo, done));
+            }
+        }
+
+        Slide(toolbar, new Vector2(0f, ToolbarHeight + Margin + 28f), new Vector2(0f, -Margin));
+        Slide(bottomBar, new Vector2(0f, -(ToolbarHeight + Margin + 28f)), new Vector2(0f, Margin));
+        Slide(panel, new Vector2(PanelWidth + Margin + 28f, -Margin), new Vector2(-Margin, -Margin));
+        Slide(layersPanel, new Vector2(-(LayersWidth + Margin + 28f), -Margin), new Vector2(Margin, -Margin));
+        Slide(pullTab, new Vector2(TabWidth + 24f, 0f), new Vector2(10f, 0f));
+
+        if (hintRect != null) {
+            Vector2 restHint = hintRect.anchoredPosition;
+            Slide(hintRect, restHint + new Vector2(0f, -(HintBottom + 36f)), restHint);
+            var hintGraphic = hintRect.GetComponent<Graphic>();
+            if (hintGraphic != null) {
+                if (opening) {
+                    var hc = hintGraphic.color;
+                    hintGraphic.color = new Color(hc.r, hc.g, hc.b, 0f);
+                }
+                viewAnimTweens.Add(hintGraphic.TAlpha(opening ? UiStyle.Caption.a : 0f, WallAnimDuration, O5Kit.Core.O5Ease.OutExpo));
+            }
+        }
+
+        if (rulerLayer != null && rulerLayer.gameObject.activeSelf) {
+            if (rulerTop != null) {
+                Vector2 restTop = rulerTop.anchoredPosition;
+                Slide(rulerTop, restTop + new Vector2(0f, RulerPx + 20f), restTop);
+            }
+            if (rulerLeft != null) {
+                Vector2 restLeft = rulerLeft.anchoredPosition;
+                float leftPush = LayersShown ? LayersWidth + Margin + 28f : RulerPx + 20f;
+                Slide(rulerLeft, restLeft + new Vector2(-leftPush, 0f), restLeft);
+            }
+            var rulerCg = rulerLayer.GetComponent<CanvasGroup>() ?? rulerLayer.gameObject.AddComponent<CanvasGroup>();
+            if (opening) {
+                rulerCg.alpha = 0f;
+            }
+            viewAnimTweens.Add(rulerCg.TFade(opening ? 1f : 0f, WallAnimDuration, O5Kit.Core.O5Ease.OutExpo));
+        }
+
+        if (onDone != null) {
+            viewAnimTweens.Add(O5KitAdapters.Ctx.Tween.TweenFloat(() => 0f, _ => { }, 1f, WallAnimDuration, onDone));
+        }
+    }
+
     private static void DestroyView() {
+        KillViewAnims();
+        isClosing = false;
+        dimImg = null;
+        bottomBar = null;
         EndInlineEdit();
         CommitQuickEdit();
         O5KitAdapters.Ctx.Tooltip.Hide();

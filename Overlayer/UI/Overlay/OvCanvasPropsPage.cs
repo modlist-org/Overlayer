@@ -125,7 +125,8 @@ public sealed class OvCanvasPropsPage : IDisposable {
         browseBtn.Rect.anchoredPosition = new Vector2(236f, 0f);
         browseBtn.Rect.sizeDelta = new Vector2(140f, 40f);
 
-        var clearBtn = O5Factory.Button(O5KitAdapters.Ctx, thumbRow, "props_thumb_clear", new O5ButtonOptions { Text = T("REMOVE", "Remove"), OnClick = () => SetThumbnail(null), Height = 40f });
+        var clearBtn = O5Factory.Button(O5KitAdapters.Ctx, thumbRow, "props_thumb_clear", new O5ButtonOptions { Text = T("REMOVE", "Remove"), Height = 40f });
+        Utility.HoldToConfirm.Attach(clearBtn, () => SetThumbnail(null));
         clearBtn.Rect.anchorMin = new Vector2(0f, 1f);
         clearBtn.Rect.anchorMax = new Vector2(0f, 1f);
         clearBtn.Rect.pivot = new Vector2(0f, 1f);
@@ -232,10 +233,11 @@ public sealed class OvCanvasPropsPage : IDisposable {
             label.alignment = TextAlignmentOptions.Left;
             var labelLe = label.gameObject.AddComponent<LayoutElement>();
             labelLe.flexibleWidth = 1f;
-            var del = O5Factory.Button(O5KitAdapters.Ctx, row, $"props_script_del_{local.GetHashCode()}", new O5ButtonOptions { Text = "X", OnClick = () => {
+            var del = O5Factory.Button(O5KitAdapters.Ctx, row, $"props_script_del_{local.GetHashCode()}", new O5ButtonOptions { Text = "X", OnClick = () => { }, Height = 36f });
+            Utility.HoldToConfirm.Attach(del, () => {
                 draft.ExtraScripts.Remove(local);
                 RefreshScripts();
-            }, Height = 36f });
+            });
             var delLe = del.Rect.gameObject.AddComponent<LayoutElement>();
             delLe.minWidth = 64f;
             delLe.preferredWidth = 64f;

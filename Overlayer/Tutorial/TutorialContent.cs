@@ -1,7 +1,7 @@
+using O5Kit.Control;
 using Overlayer.HudEdit;
 using Overlayer.Localization;
 using Overlayer.Overlay;
-using Overlayer.Tag.Core;
 using Overlayer.Tutorial.Olly;
 using Overlayer.UI;
 using Overlayer.UI.Factory;
@@ -11,9 +11,7 @@ namespace Overlayer.Tutorial;
 
 // Every chapter of the tutorial, told by Olly. Steps point at the real UI and, where it makes
 // sense, she does the thing first and then waits for the user to do it.
-// «code» in a text is shown as code, [[face]] changes her face from there on (see Tutorial).
-// Chapters that need the HUD editor come one after another, so the course doesn't keep
-// opening and closing it; in the course, steps that only get you somewhere are done for you.
+// «code» in a text is shown as code; each step sets one expression at line start via .Looks(...).
 internal static class TutorialContent {
     // ---- where things are ----
 
@@ -46,10 +44,6 @@ internal static class TutorialContent {
         return label != null ? (RectTransform)label.transform : null;
     }
 
-    private static bool HasTag(string name) => TagManager.TryGet(name, out _);
-
-    private static bool Game => HasTag("XAccuracyPercent");
-
     private static IEnumerable<OvObject> AllObjects() {
         static IEnumerable<OvObject> Walk(OvObject o) => new[] { o }.Concat(o.Children.SelectMany(Walk));
         return OverlayCore.Canvases.Where(c => c != null).SelectMany(c => c.OvObjects).SelectMany(Walk);
@@ -61,7 +55,7 @@ internal static class TutorialContent {
 
     private static int CountObjects() => UserObjects().Count();
 
-    private static bool AnyText(string part) => AllObjects().Any(o => o.Config?.TextEngineConfig?.Text.StaticValue?.Contains(part) == true);
+    private static string SampleText() => Alive(sample) ? sample.Config?.TextEngineConfig?.Text.StaticValue : null;
 
     // ---- getting somewhere (done for you in the course) ----
 
@@ -122,7 +116,7 @@ internal static class TutorialContent {
     }
 
     // Shows a sample text: one line per example.
-    private static TutorialDemo Showing(string text) => new TutorialDemo().Wait(0.3f).Do(() => Sample(text)).Wait(0.6f);
+    private static TutorialDemo Showing(string text) => new TutorialDemo().Wait(0.4f).Do(() => Sample(text)).Wait(1.2f);
 
     // Olly writes into the sample herself: double-click, type.
     private static TutorialDemo Typing(string text) => new TutorialDemo()
@@ -138,25 +132,28 @@ internal static class TutorialContent {
 
     // "Go to this page" (open the menu first if needed).
     private static TutorialStep GoTo(string key, OriginalMenuState page, string name) => new TutorialStep(key, $"Open {name}",
-        $"Open the menu (the logo at the top left) and click <b>{name}</b>.")
+        $"Open the menu (top-left logo) and click <b>{name}</b>.")
+        .Looks(Face.Talk)
         .At(() => WindowOpen ? MenuTarget(page) : null)
         .Until(() => On(page))
         .Only(() => !On(page))
         .AutoInCourse(() => ToPage(page));
 
     private static TutorialStep OpenWindow(string key) => new TutorialStep(key, "Open Overlayer",
-        "Open the Overlayer window first: «Alt + `» (the key left of 1).")
+        "Press «Alt + `» (the key left of 1) to open the Overlayer window.")
+        .Looks(Face.Talk)
         .Until(() => WindowOpen)
         .Only(() => !WindowOpen)
         .AutoInCourse(ToWindow);
 
     private static TutorialStep OpenEditor(string key) => new TutorialStep(key, "Open the HUD editor",
-        "We need the HUD editor for this. Press «Alt + H». It works anywhere: the menu, level select, a paused game.")
+        "Press «Alt + H» to open the HUD editor.")
+        .Looks(Face.Talk)
         .Until(() => HudEditor.IsOpen)
         .Only(() => !HudEditor.IsOpen)
         .AutoInCourse(ToEditor);
 
-    private static int textsAtStart, objectsAtStart, patsAtStart;
+    private static int textsAtStart, objectsAtStart;
     private static OvObject moved;
     private static OvObject[] demoRow = [];
     private static Vector2 movedFrom;
@@ -166,73 +163,85 @@ internal static class TutorialContent {
     /// <summary>After one chapter on its own: where the rest is.</summary>
     public static readonly TutorialChapter ChapterEnd = new("end", "Chapter done", string.Empty,
         new TutorialStep("END", "Chapter done!",
-            "[[happy]]Chapter done! [[smile]]Every other chapter is on the <b>Tutorial</b> page in the menu. Come back any time."));
+            "All other chapters are available on the <b>Tutorial</b> page in the menu.")
+            .Looks(Face.Happy));
 
     public static readonly List<TutorialChapter> Chapters = [
-        new("hello", "Meet Olly", "Who I am, and what Overlayer is",
+        new("hello", "Meet Olly", "What Overlayer is, and how to get started",
             new TutorialStep("HELLO_HI", "Hello!",
-                "[[surprised]]Oh! You opened it.\n[[shy]]...Ahem. [[smile]]Hi. I'm Olly. I live in Overlayer, "
-                + "[[sigh]]and apparently I'm the one showing you around."),
+                "Hi, I'm Olly. Let me walk you through how Overlayer works.")
+                .Looks(Face.Smile),
             new TutorialStep("HELLO_WHAT", "What is Overlayer?",
-                "[[proud]]Overlayer puts your own HUD on the game screen: texts and images that show live values. "
-                + "[[happy]]You place them yourself, right on the screen, and they show what you want, how you want.",
-                "FPS, the time, keys per second, and with a game module: combo, accuracy, judgments, progress, BPM...\n"
-                + "Make one from scratch, start from a ready-made preset, or import someone else's."),
-            new TutorialStep("HELLO_ASK", "Shall we?",
-                "[[curious]]So. Want me to show you how it all works? I'll do things first, then you try, all in one go. "
-                + "[[smug]]It's faster than poking around, promise.")
+                "Overlayer lets you place custom texts and images anywhere on the screen to display live values.",
+                "FPS, frame time, clock, keys per second, and custom JS tags.\n"
+                + "Build from scratch, pick a preset, or import someone else's package.")
+                .Looks(new(Eye.Normal, Brow.Normal, Mouth.Caret)),
+            new TutorialStep("HELLO_ASK", "Start the guide?",
+                "Want a quick walkthrough? I'll demonstrate the main features and let you try them step by step.")
+                .Looks(new(Eye.Normal, Brow.NormalHigh, Mouth.SadSmall))
                 .Ask(
-                    new TutorialChoice("SHOW_ME", "Show me", Tutorial.IntoCourse, primary: true),
+                    new TutorialChoice("SHOW_ME", "Start", Tutorial.IntoCourse, primary: true),
                     new TutorialChoice("LATER", "Later", null)),
-            new TutorialStep("HELLO_LATER", "Later, then",
-                "[[annoyed]]Tch. Fine.\n[[pout]]When you change your mind, it's all on the <b>Tutorial</b> page in the menu. [[smile]]I'll be there.")
+            new TutorialStep("HELLO_LATER", "Anytime",
+                "Got it. You can start any chapter anytime from the <b>Tutorial</b> page in the menu.")
+                .Looks(Face.Smile)
                 .At(() => PanelPart("TopBar/Logo"))),
 
-        new("basics", "The Overlayer window", "Opening it, moving it, the menu and its pages",
+        new("basics", "The Overlayer window", "Opening, moving, menu and pages",
             OpenWindow("BASICS_OPEN"),
             new TutorialStep("BASICS_MOVE", "Move and resize",
-                "[[talk]]First, this window. Drag the top bar to move it, drag an edge to resize it.",
-                "Double-click the top bar: big / small.\nLost it off screen? <b>Hold</b> «Alt + `» for a moment: size and spot reset.")
+                "Drag the top bar to move the window, or drag any edge to resize it.",
+                "Double-click the top bar: maximize / restore.\nOff-screen? <b>Hold</b> «Alt + `» to reset position and size.")
+                .Looks(Face.Surprised)
                 .At(() => PanelPart("TopBar")),
-            new TutorialStep("BASICS_MENU", "The menu", "Now click the logo. [[deadpan]]Yes, that one. [[smile]]It opens the menu.")
+            new TutorialStep("BASICS_MENU", "The menu",
+                "Click the top-left logo to open the navigation menu.")
+                .Looks(Face.Curious)
                 .At(() => PanelPart("TopBar/Logo"))
-                .Until(() => MenuOpen),
-            new TutorialStep("BASICS_PAGES", "Pages", "[[proud]]These are all the pages. Quick tour:",
-                "<b>Overlayer</b>: your canvases (groups of HUD pieces) and packages\n"
-                + "<b>Tutorial</b>: me\n"
-                + "<b>Resources</b>: your own fonts and images\n"
-                + "<b>JS</b>: scripts that add your own tags\n"
-                + "<b>Easing</b>: draw motion curves for animated numbers\n"
-                + "<b>Settings</b>: language, keys, the HUD editor and more\n"
-                + "Game modules can add a page of their own too (like <b>ADOFAI</b>).")
+                .Until(() => MenuOpen)
+                .Only(() => !MenuOpen),
+            new TutorialStep("BASICS_PAGES", "Pages",
+                "Here is what each page in the menu does:",
+                "<b>Overlayer</b>: canvases and imported packages\n"
+                + "<b>Tutorial</b>: interactive guide\n"
+                + "<b>Resources</b>: custom fonts and images\n"
+                + "<b>JS</b>: custom tag scripts\n"
+                + "<b>Easing</b>: custom animation curves\n"
+                + "<b>Settings</b>: language, shortcuts, HUD editor and more")
+                .Looks(new(Eye.Normal, Brow.NormalHigh, Mouth.Shift))
                 .At(() => MenuOpen ? UICore.MenuContent : PanelPart("TopBar/Logo")),
-            new TutorialStep("BASICS_POWER", "The power button",
-                "This switches all of Overlayer off: every HUD piece hides and nothing runs. [[worried]]If a level acts weird, try this first.")
+            new TutorialStep("BASICS_POWER", "Power toggle",
+                "Turns Overlayer completely on or off. When off, all HUD elements hide and stop updating.")
+                .Looks(Face.Talk)
                 .At(() => UICore.Menu != null ? UICore.Menu.Find("Power") as RectTransform : null),
             GoTo("BASICS_SETTINGS", OriginalMenuState.Settings, "Settings"),
             new TutorialStep("BASICS_LANGUAGE", "Language",
-                "[[smile]]Language is here. Pick one and I'll speak it right away. [[sigh]]Well, if someone translated me.")
+                "Change the UI language here. Changes apply immediately.")
+                .Looks(Face.Smile)
                 .At(() => RowOf("LANGUAGE")),
             new TutorialStep("BASICS_CLOSE", "Closing",
-                "«Alt + `» again, or the X, closes the window. While it's open the game ignores your keys, so close it before you play.\n"
-                + "[[smug]]Don't blame me for missed tiles.")
+                "Press «Alt + `» or click X to close. While the window is open, the game ignores keyboard input, so close it before playing.")
+                .Looks(Face.Talk)
                 .At(() => PanelPart("TopBar/Close"))),
 
-        new("first", "Your first HUD text", "Watch Olly make one, then make your own",
+        new("first", "Your first HUD text", "Create, tag, move, and style a HUD text",
             new TutorialStep("FIRST_OPEN", "Open the HUD editor",
-                "[[excited]]Now the real thing: the HUD editor! Press «Alt + H». [[talk]]It works anywhere: the menu, level select, a paused game.")
+                "Press «Alt + H» to open the HUD editor directly on the game screen.")
+                .Looks(new(Eye.Normal, Brow.Normal, Mouth.OpenMicro))
                 .Until(() => HudEditor.IsOpen)
                 .Only(() => !HudEditor.IsOpen),
-            new TutorialStep("FIRST_SCREEN", "This is the HUD editor",
-                "[[proud]]This is the HUD editor. You edit right on the game screen, so what you see is what you get.",
-                "<b>Top bar</b>: add things, presets, grid, rulers, undo, done\n"
-                + "<b>Left</b>: your canvases and everything in them\n"
-                + "<b>Right</b>: settings of what you selected\n"
+            new TutorialStep("FIRST_SCREEN", "HUD editor layout",
+                "You edit directly on the game screen, so what you see is what you get.",
+                "<b>Top bar</b>: add objects, presets, grid, rulers, undo, done\n"
+                + "<b>Left</b>: canvas and object list\n"
+                + "<b>Right</b>: properties of the selection\n"
                 + "<b>Bottom bar</b>: align, group, order, lock, hide")
+                .Looks(Face.Smile)
                 .At(() => HudEditor.Part("ToolbarArea/Toolbar")),
-            new TutorialStep("FIRST_DEMO", "Watch me",
-                "[[proud]]Let me do one first. I click <b>A</b>, double-click the new text, and type a tag.",
-                "Anything in «{ }» is a <b>tag</b>: it's replaced by a live value.\n«{Fps:0}» is your frame rate with no decimals.")
+            new TutorialStep("FIRST_DEMO", "Watch an example",
+                "Click <b>A</b> to add a text, double-click it, and enter a tag.",
+                "Anything in «{ }» is a <b>tag</b> replaced by a live value.\n«{Fps:0}» shows frame rate with no decimals.")
+                .Looks(Face.Talk)
                 .At(() => SampleRect ?? HudEditor.Control("add_text"))
                 .Shows(new TutorialDemo()
                     .Wait(0.5f)
@@ -242,41 +251,52 @@ internal static class TutorialContent {
                     .Point(() => SampleRect)
                     .DoubleClick()
                     .Type(() => sample, "FPS {Fps:0}")
-                    .Wait(0.5f)
+                    .Wait(0.6f)
                     .HidePointer())
                 .OnExit(PutSampleAway),
-            new TutorialStep("FIRST_ADD", "Your turn: add a text", "[[smile]]Your turn. Click the <b>A</b> button. (Right-clicking the screen works too.)")
+            new TutorialStep("FIRST_ADD", "Add a text",
+                "Your turn. Click the <b>A</b> button on the top bar (or right-click the screen).")
+                .Looks(Face.Smile)
                 .At(() => HudEditor.Control("add_text"))
                 .OnEnter(() => textsAtStart = CountTexts())
                 .Until(() => CountTexts() > textsAtStart),
-            new TutorialStep("FIRST_TYPE", "Your turn: a live value",
-                "[[talk]]Now <b>double-click</b> it and type «FPS {Fps:0}», then click somewhere else.",
-                "Or type it in the <b>Text</b> box in the right panel: same thing.\n"
-                + "Typing «{» opens a list of every tag. Names are case-sensitive: «{fps}» shows nothing.")
-                .Until(() => UserObjects().Any(o => o.Config?.TextEngineConfig?.Text.StaticValue?.Contains("{Fps") == true)),
+            new TutorialStep("FIRST_TYPE", "Enter a live tag",
+                "<b>Double-click</b> the text, type «FPS {Fps:0}», then click outside to finish.",
+                "You can also type in the <b>Text</b> box on the right.\n"
+                + "Typing «{» lists all tags. Names are case-sensitive.")
+                .Looks(Face.Talk)
+                .Until(() => !O5InputBlocker.IsEditing
+                    && UserObjects().Any(o => o.Config?.TextEngineConfig?.Text.StaticValue?.Contains("{Fps") == true)),
             new TutorialStep("FIRST_MOVE", "Move it",
-                "[[happy]]Nice! [[talk]]Now drag it somewhere else. Pink lines show up when it lines up with the screen or other things.")
+                "Nice! Now drag the text somewhere else. Pink lines show alignment with the screen or other objects.")
+                .Looks(Face.Happy)
                 .OnEnter(() => {
                     moved = HudEditor.SelectedObject;
                     movedFrom = moved?.RectTransform != null ? (Vector2)moved.RectTransform.position : Vector2.zero;
                 })
                 .Until(() => {
                     moved ??= HudEditor.SelectedObject;
-                    return moved?.RectTransform != null && ((Vector2)moved.RectTransform.position - movedFrom).sqrMagnitude > 400f;
+                    return !Input.GetMouseButton(0)
+                        && moved?.RectTransform != null
+                        && ((Vector2)moved.RectTransform.position - movedFrom).sqrMagnitude > 400f;
                 }),
-            new TutorialStep("FIRST_HANDLES", "Handles", "[[talk]]A selected thing has handles. Here's what they do:",
-                "<b>Corners</b>: scale (the opposite corner stays; Alt: from the middle)\n"
+            new TutorialStep("FIRST_HANDLES", "Selection handles",
+                "Selected objects show handles around them:",
+                "<b>Corners</b>: scale (Alt: from center)\n"
                 + "<b>Edge bars</b>: width or height\n"
-                + "<b>Circle on top</b>: rotate (Shift: 15° steps)\n"
-                + "<b>Arrow keys</b>: nudge by a pixel (Shift: 10)\n"
-                + "Hold <b>Alt</b> while dragging: no snapping, and distances to the things around are shown."),
-            new TutorialStep("FIRST_PANEL", "The right panel",
-                "[[talk]]Everything about the selected thing is on the right: position, size, rotation, then its look: opacity, text, font size, alignment, color.",
-                "<b>All properties…</b> at the bottom opens every setting there is.")
+                + "<b>Top circle</b>: rotate (Shift: 15° steps)\n"
+                + "<b>Arrow keys</b>: nudge 1 px (Shift: 10 px)\n"
+                + "Hold <b>Alt</b> while dragging: disable snap & show distances.")
+                .Looks(Face.Normal),
+            new TutorialStep("FIRST_PANEL", "Inspector panel",
+                "The right panel holds position, size, rotation, opacity, text, font size, alignment, and color.",
+                "<b>All properties…</b> at the bottom opens every setting.")
+                .Looks(Face.Talk)
                 .At(() => HudEditor.Part("Panel")),
             new TutorialStep("FIRST_TEXTBOX", "The Text box",
-                "[[talk]]Double-clicking is one way to write. The <b>Text</b> box on the right is the other: same text, more room. [[proud]]Watch.",
-                "Whatever you type there shows on the screen right away, tags and all.")
+                "You can also edit text in the right panel's <b>Text</b> box—useful for longer expressions.",
+                "Edits update live on screen as you type.")
+                .Looks(Face.Talk)
                 .At(() => HudEditor.Control("text"))
                 .Shows(new TutorialDemo()
                     .Wait(0.4f)
@@ -284,28 +304,29 @@ internal static class TutorialContent {
                     .Point(() => HudEditor.Control("text"))
                     .Click()
                     .Type(() => sample, "{Hour:00}:{Minute:00}:{Second:00}")
-                    .Wait(0.4f)
+                    .Wait(0.5f)
                     .HidePointer()),
             new TutorialStep("FIRST_OPACITY", "Opacity",
-                "[[talk]]<b>Opacity</b> is right above it. Drag it left and the text fades.",
-                "100: solid. 0: invisible (still there, just not shown).")
+                "Drag the <b>Opacity</b> slider right above it to adjust transparency.",
+                "100: opaque · 0: invisible")
+                .Looks(Face.Talk)
                 .At(() => HudEditor.Control("opacity"))
                 .Shows(new TutorialDemo()
                     .Wait(0.3f)
                     .Do(() => PlainSample("{Hour:00}:{Minute:00}:{Second:00}"))
-                    .Drag(() => TutorialDemo.Inside(HudEditor.Control("opacity"), 0.97f, 0.5f),
-                        () => TutorialDemo.Inside(HudEditor.Control("opacity"), 0.25f, 0.5f), 1.2f,
+                    .Drag(() => TutorialDemo.Inside(HudEditor.Control("opacity"), 0.97f, 0.5f), 1.2f,
                         t => HudEditor.DemoSetAlpha(sample, 1f - 0.75f * t))
                     .Wait(0.6f)
-                    .Drag(() => TutorialDemo.Inside(HudEditor.Control("opacity"), 0.25f, 0.5f),
-                        () => TutorialDemo.Inside(HudEditor.Control("opacity"), 0.97f, 0.5f), 1f,
+                    .Drag(() => TutorialDemo.Inside(HudEditor.Control("opacity"), 0.97f, 0.5f), 1f,
                         t => HudEditor.DemoSetAlpha(sample, 0.25f + 0.75f * t))
                     .HidePointer()),
-            new TutorialStep("FIRST_FX", "A formula instead of a number",
-                "[[excited]]Now the fun part. A setting like opacity can be a <b>formula</b> instead of a number. [[smug]]Look, I made it breathe.",
-                "In <b>All properties…</b>, find the setting and click its <b>ƒ</b>, then write JavaScript. Every tag is a function in it:\n"
-                + "«0.55 + 0.45 * Math.sin(Time() * 4)»  what you see now\n«IsPlaying() ? 1 : 0»  only while playing\n"
-                + "«Math.min(1, Fps() / 60)»  fades under 60 FPS\nThe ƒ chapter has more.")
+            new TutorialStep("FIRST_FX", "Formulas (ƒ)",
+                "Properties can use a JavaScript formula instead of a fixed value—like this pulsing opacity.",
+                "In <b>All properties…</b>, click <b>ƒ</b> next to a setting and write JS:\n"
+                + "«0.55 + 0.45 * Math.sin(Time() * 4)»  pulsing\n"
+                + "«IsKeyHeld('Space') ? 1 : 0.2»  bright while holding Space\n"
+                + "«Math.min(1, Fps() / 60)»  dims below 60 FPS")
+                .Looks(new(Eye.Normal, Brow.NormalHigh, Mouth.Normal))
                 .At(() => SampleRect)
                 .Shows(new TutorialDemo()
                     .Wait(0.3f)
@@ -314,138 +335,143 @@ internal static class TutorialContent {
                         HudEditor.DemoSetAlphaFx(sample, "0.55 + 0.45 * Math.sin(Time() * 4)");
                     })
                     .Point(() => HudEditor.Control("allprops"))
-                    .Wait(0.8f)
+                    .Wait(0.9f)
                     .HidePointer()),
             new TutorialStep("FIRST_PIN", "Pin to",
-                "[[thinking]]The 3×3 dots pick which corner or edge of the screen it sticks to. [[talk]]Pin a top-right counter to the top right "
-                + "and it stays there on any screen size. Clicking a dot doesn't move it.")
+                "The 3×3 grid sets which screen corner or edge an object anchors to, keeping its spot across resolutions.",
+                "Clicking a dot updates the anchor without moving the object.")
+                .Looks(Face.Surprised)
                 .At(() => HudEditor.Control("pin") ?? HudEditor.Part("Panel"))
                 .OnEnter(() => PlainSample("{Hour:00}:{Minute:00}:{Second:00}"))
                 .OnExit(PutSampleAway),
-            new TutorialStep("FIRST_DONE", "Done",
-                "[[excited]]That's a HUD! [[talk]]Click the check mark to finish. Everything saves as you go, there's no save button.")
+            new TutorialStep("FIRST_DONE", "Finish",
+                "Click the check mark on the top bar to close the editor. Changes save automatically.")
+                .Looks(Face.Happy)
                 .At(() => HudEditor.Control("close"))
                 .Until(() => !HudEditor.IsOpen)
                 .Only(() => !Tutorial.InCourse),
-            new TutorialStep("FIRST_DONE_COURSE", "That's a HUD!",
-                "[[excited]]That's a HUD! [[talk]]The check mark up there closes the editor, and everything saves as you go. "
-                + "[[smile]]But stay: there's more to do in here.")
+            new TutorialStep("FIRST_DONE_COURSE", "Basics complete",
+                "The check mark closes the editor and saves automatically. Stay here for the next chapters.")
+                .Looks(Face.Smile)
                 .At(() => HudEditor.Control("close"))
                 .Only(() => Tutorial.InCourse)),
 
         new("format", "Numbers: decimals and formats", "0, #, commas, percent, padding, rounding",
             OpenEditor("FMT_OPEN"),
-            new TutorialStep("FMT_RAW", "A bare number",
-                "Here's a plain «{Fps}». [[disgust]]Ugh, look at all those digits.",
-                "With no format, a number shows every digit it has.")
+            new TutorialStep("FMT_RAW", "Unformatted numbers",
+                "Without a format, «{Fps}» prints every trailing decimal digit.",
+                "Add a colon and format after the tag name to control how it displays.")
+                .Looks(new(Eye.Small, Brow.NormalHigh, Mouth.Normal))
                 .At(() => SampleRect)
                 .Shows(Typing("{Fps}")),
-            new TutorialStep("FMT_COLON", "A format",
-                "[[smile]]Put a colon and a format after the name. «0» means: one digit here, always. No dot, so no decimals.",
-                "«{Fps:0}»  =  60\nIt rounds: 59.6 becomes 60.")
+            new TutorialStep("FMT_COLON", "Integer format",
+                "«0» means one digit here. With no decimal point, it rounds to a whole number.",
+                "«{Fps:0}»  =  60  (59.6 rounds to 60)")
+                .Looks(Face.Normal)
                 .At(() => SampleRect)
                 .Shows(Typing("{Fps:0}")),
             new TutorialStep("FMT_DECIMALS", "Decimal places",
-                "[[talk]]Every «0» after the dot is one decimal place, and it's always shown, even when it's a zero.",
+                "Each «0» after the dot adds one fixed decimal place, even if it's zero.",
                 "«{Fps:0.0}»  =  59.9\n«{Fps:0.00}»  =  59.94\n«{Fps:0.000}»  =  59.940")
+                .Looks(Face.Talk)
                 .At(() => SampleRect)
                 .Shows(Showing("0.0  =  {Fps:0.0}\n0.00  =  {Fps:0.00}\n0.000  =  {Fps:0.000}")),
-            new TutorialStep("FMT_HASH", "0 or #",
-                "[[thinking]]«#» is a digit that only shows up when it's needed. [[talk]]So «0.##» keeps up to two decimals, but drops zeros at the end.",
-                "<b>0</b>: always shown (a zero if there's nothing)\n<b>#</b>: only if it isn't a zero at the end\n"
-                + "«{1.5:0.00}»  =  1.50\n«{1.5:0.##}»  =  1.5\n«{2:0.##}»  =  2")
+            new TutorialStep("FMT_HASH", "0 vs #",
+                "«#» shows a digit only when needed, dropping trailing zeros.",
+                "<b>0</b>: always shown · <b>#</b>: drops trailing zeros\n"
+                + "«{1.5:0.00}» = 1.50  |  «{1.5:0.##}» = 1.5  |  «{2:0.##}» = 2")
+                .Looks(new(Eye.Normal, Brow.NormalHigh, Mouth.Shift))
                 .At(() => SampleRect)
                 .Shows(Showing("1.5 / 0.00  =  {1.5:0.00}\n1.5 / 0.##  =  {1.5:0.##}\n2 / 0.##  =  {2:0.##}")),
             new TutorialStep("FMT_PAD", "Leading zeros",
-                "[[talk]]Zeros before the dot pad the number to that many digits. [[grin]]Clocks love this.",
+                "Extra «0»s before the dot pad with leading zeros—useful for clocks.",
                 "«{7:000}»  =  007\n«{Hour:00}:{Minute:00}»  =  09:05")
+                .Looks(new(Eye.Normal, Brow.Normal, Mouth.Smile))
                 .At(() => SampleRect)
                 .Shows(Showing("7 / 000  =  {7:000}\n{Hour:00}:{Minute:00}:{Second:00}")),
             new TutorialStep("FMT_GROUP", "Thousands",
-                "[[talk]]A comma in the format turns on thousands separators.",
+                "Include a comma in the format to add thousands separators.",
                 "«{1234567:#,##0}»  =  1,234,567\n«{1234567.891:#,##0.00}»  =  1,234,567.89")
+                .Looks(Face.Talk)
                 .At(() => SampleRect)
                 .Shows(Showing("#,##0  =  {1234567:#,##0}\n#,##0.00  =  {1234567.891:#,##0.00}")),
             new TutorialStep("FMT_PERCENT", "Percent",
-                "[[talk]]«%» multiplies by 100 and adds the sign. [[worried]]Only for values from 0 to 1.",
+                "«%» multiplies a 0–1 value by 100 and adds the % sign. For 0–100 values, type % outside.",
                 "«{0.856:0.0%}»  =  85.6%")
+                .Looks(new(Eye.Normal, Brow.Normal, Mouth.OpenMicro))
                 .At(() => SampleRect)
-                .Shows(Showing("0.856 / 0.0%  =  {0.856:0.0%}"))
-                .Only(() => !Game),
-            new TutorialStep("FMT_PERCENT_GAME", "Percent",
-                "[[talk]]«%» multiplies by 100 and adds the sign. [[worried]]Only for values from 0 to 1, like «XAccuracy». "
-                + "[[talk]]«XAccuracyPercent» is already 0 to 100, so type the % yourself.",
-                "«{XAccuracy:0.00%}»  =  99.12%\n«{XAccuracyPercent:0.00}%»  =  99.12%  (same)")
-                .At(() => SampleRect)
-                .Shows(Showing("0.856 / 0.0%  =  {0.856:0.0%}"))
-                .Only(() => Game),
-            new TutorialStep("FMT_LETTERS", "Shortcuts",
-                "[[smug]]There are letter shortcuts too. Same thing, shorter.",
-                "«F2» = «0.00»   (F + how many decimals)\n«N0» = «#,##0»   «N2» = «#,##0.00»\n«P1» = «0.0%»\n"
-                + "«D3» = «000», but only for whole-number tags. On a decimal one (FPS, accuracy) it fails: use «000».")
+                .Shows(Showing("0.856 / 0.0%  =  {0.856:0.0%}")),
+            new TutorialStep("FMT_LETTERS", "Standard codes",
+                "Short letter codes work too:",
+                "«F2» = «0.00» · «N0» = «#,##0» · «N2» = «#,##0.00» · «P1» = «0.0%»\n"
+                + "«D3» = «000» (integers only; use «000» for decimal tags like FPS)")
+                .Looks(new(Eye.Normal, Brow.NormalHigh, Mouth.OpenSmallHarf))
                 .At(() => SampleRect)
                 .Shows(Showing("F2  =  {Fps:F2}\nN2  =  {1234567.891:N2}\nP1  =  {0.856:P1}")),
-            new TutorialStep("FMT_ROUND", "Rounding",
-                "[[talk]]Formats round: half goes up. [[thinking]]If you want to cut off instead, do it with math.",
-                "«{Math.floor(Fps * 10) / 10:0.0}»: 59.99 shows as 59.9, not 60.0")
+            new TutorialStep("FMT_ROUND", "Rounding vs truncating",
+                "Formats round half-up. Use «Math.floor» inside braces to truncate instead.",
+                "«{Math.floor(Fps * 10) / 10:0.0}»  (59.99 → 59.9)")
+                .Looks(new(Eye.Normal, Brow.NormalHigh, Mouth.Shift))
                 .At(() => SampleRect)
-                .Shows(Showing("0.0  =  {Fps:0.0}\nfloor  =  {Math.floor(Fps * 10) / 10:0.0}"))
-                .Only(() => !Game),
-            new TutorialStep("FMT_ROUND_GAME", "Rounding",
-                "[[talk]]Formats round: half goes up. So 99.996% shows as 100.00%... [[mad]]and it wasn't! "
-                + "[[annoyed]]If that annoys you too, cut it off with math.",
-                "«{Math.floor(XAccuracyPercent * 100) / 100:0.00}»: 99.996 shows as 99.99")
-                .At(() => SampleRect)
-                .Shows(Showing("0.0  =  {Fps:0.0}\nfloor  =  {Math.floor(Fps * 10) / 10:0.0}"))
-                .Only(() => Game),
+                .Shows(Showing("0.0  =  {Fps:0.0}\nfloor  =  {Math.floor(Fps * 10) / 10:0.0}")),
             new TutorialStep("FMT_UNITS", "Units go outside",
-                "[[talk]]Units and words go <b>outside</b> the braces. [[deadpan]]Inside the format they aren't guaranteed to show, so outside is the safe spot.",
-                "«{Fps:0} FPS»  always works\nTags that give text (like a song title) take no format at all.")
+                "Write units and labels <b>outside</b> the braces so they aren't treated as format codes.",
+                "«{Fps:0} FPS»  (text tags like DayOfWeek ignore formats)")
+                .Looks(Face.Talk)
                 .At(() => SampleRect)
                 .Shows(Showing("{Fps:0} FPS")),
             new TutorialStep("FMT_TRY", "Your turn",
-                "[[smug]]Your turn. Double-click my sample and make it show FPS with <b>one</b> decimal.",
-                "Hint: one «0» after the dot.")
+                "Double-click the sample and make it show FPS with <b>one</b> decimal place.",
+                "Hint: «{Fps:0.0}»")
+                .Looks(new(Eye.Normal, Brow.Curious, Mouth.Smile))
                 .At(() => SampleRect)
                 .OnEnter(() => Sample("{Fps}"))
-                .Until(() => AnyText("{Fps:0.0}") && !AnyText("{Fps:0.00")),
-            new TutorialStep("FMT_DONE", "Formats: done",
-                "[[happy]]Perfect. That's all there is to numbers. [[talk]]I'll put my sample away.")
+                .Until(() => !O5InputBlocker.IsEditing
+                    && SampleText() is { } s && s.Contains("{Fps:0.0}") && !s.Contains("{Fps:0.00")),
+            new TutorialStep("FMT_DONE", "Formats done",
+                "Perfect! That covers number formatting.")
+                .Looks(Face.Happy)
                 .OnExit(PutSampleAway)),
 
-        new("editor", "HUD editor tools", "Selecting, the canvas list, both bars, rulers, auto layout, shortcuts",
+        new("editor", "HUD editor tools", "Selection, canvas list, toolbars, guides, auto layout, shortcuts",
             OpenEditor("EDITOR_OPEN"),
-            new TutorialStep("EDITOR_SELECT", "Selecting", "[[thinking]]Selecting has a few tricks. Groups first, then what's inside:",
-                "<b>Click</b>: a whole group (a preset card, say)\n"
-                + "<b>Double-click</b>: one level into the group\n"
-                + "<b>Ctrl + click</b>: the innermost thing right away\n"
-                + "<b>Shift + click</b>: add to the selection\n"
-                + "<b>Drag on empty space</b>: box select\n"
-                + "<b>Right-click</b>: a menu that also lists everything under the pointer"),
+            new TutorialStep("EDITOR_SELECT", "Selecting",
+                "Selection works from groups down to inner items:",
+                "<b>Click</b>: whole group\n"
+                + "<b>Double-click</b>: enter one level into a group\n"
+                + "<b>Ctrl + click</b>: innermost object directly\n"
+                + "<b>Shift + click</b>: add/remove from selection\n"
+                + "<b>Drag empty space</b>: box select\n"
+                + "<b>Right-click</b>: context menu & objects under cursor")
+                .Looks(Face.Grin),
             new TutorialStep("EDITOR_CANVASES", "The canvas list",
-                "[[talk]]A <b>canvas</b> is a layer of HUD pieces. Here they all are, as a tree.",
-                "Click a row: select. Double-click: rename. Drag rows: reorder, or put one inside another.\n"
-                + "The dot shows / hides, the square locks (locked things can't be clicked on screen).\n"
-                + "<b>+</b> makes a canvas; the X deletes one (Ctrl+Z brings it back).")
+                "A <b>canvas</b> is a layer of HUD objects, shown here as a tree.",
+                "Click: select · Double-click: rename · Drag: reorder or nest\n"
+                + "Dot: show / hide · Square: lock\n"
+                + "<b>+</b>: new canvas · X: delete (Ctrl+Z undoes)")
+                .Looks(Face.Talk)
                 .At(() => HudEditor.Part("Layers")),
-            new TutorialStep("EDITOR_TOP", "The top bar", "[[talk]]The top bar. Hover any button and it tells you its name.",
-                "Canvas list · text · image · presets · <b>where new things go</b> (main canvas, a new canvas, next to / inside / around "
-                + "the selection) · grid · rulers · duplicate · delete · undo · redo · done")
+            new TutorialStep("EDITOR_TOP", "The top bar",
+                "Hover any button on the top bar to see its name.",
+                "Canvas list · text · image · presets · <b>placement mode</b> · grid · rulers · duplicate · delete · undo · redo · done")
+                .Looks(new(Eye.Normal, Brow.Normal, Mouth.SadSmall))
                 .At(() => HudEditor.Part("ToolbarArea/Toolbar")),
             new TutorialStep("EDITOR_BOTTOM", "The bottom bar",
-                "[[talk]]The bottom bar lines things up. [[deadpan]]Greyed out means it can't do anything with what's selected.",
-                "<b>Align</b> left / center / right / top / middle / bottom. One thing selected: to what it's in, or the screen.\n"
-                + "<b>Even gaps</b> across or down (3 or more)\n<b>Group / Ungroup</b>, <b>Front / Back</b>, <b>Lock</b>, <b>Hide</b>")
+                "The bottom bar aligns, distributes, groups, orders, locks, and hides.",
+                "<b>Align</b>: to selection, parent, or screen\n"
+                + "<b>Distribute</b>: even gaps (3+ objects)\n"
+                + "<b>Group / Ungroup</b>, <b>Front / Back</b>, <b>Lock</b>, <b>Hide</b>")
+                .Looks(Face.Talk)
                 .At(() => HudEditor.Part("BottomBarArea/BottomBar")),
             new TutorialStep("EDITOR_GRID", "Grid, rulers and guides",
-                "[[talk]]Turn on the grid and things snap to it. With rulers on, drag out of a ruler to make a guide line.",
-                "Drag a guide back onto the ruler to remove it. Things snap to guides too. Guides are kept per screen ratio, "
-                + "so they stay put on another resolution.")
+                "Turn on the grid to snap objects. With rulers on, drag out from a ruler to place a guide line.",
+                "Drag a guide back onto the ruler to delete it. Guides are stored per aspect ratio.")
+                .Looks(new(Eye.Normal, Brow.Normal, Mouth.OpenSmallHarf))
                 .At(() => HudEditor.Control("rulers")),
             new TutorialStep("EDITOR_LAYOUT", "Auto layout",
-                "Lining up a row of numbers by hand? [[disgust]]Don't. [[smug]]Watch: three messy texts, <b>Group as row</b>, done.",
-                "Select several things and press <b>Group as row / column</b> in the right panel. Or select a group and set <b>Auto layout</b> to Row or Column.\n"
-                + "Children line up with an even gap and the group hugs them. Gap and padding are right there in the panel.")
+                "Select multiple objects and click <b>Group as row</b> in the right panel to line them up automatically.",
+                "Or select a group and set <b>Auto layout</b> to Row or Column. Gap and padding are adjustable in the panel.")
+                .Looks(new(Eye.Small, Brow.NormalHigh, Mouth.Clenched))
                 .At(() => HudEditor.PartNamed("Dock_layout") ?? SampleRect)
                 .Shows(new TutorialDemo()
                     .Wait(0.3f)
@@ -461,108 +487,113 @@ internal static class TutorialContent {
                     .Wait(0.5f)
                     .Point(() => HudEditor.Control("group_row"))
                     .Click(() => sample = HudEditor.DemoGroupAsRow(demoRow.Where(o => o != null)))
-                    .Wait(0.6f)
+                    .Wait(0.8f)
                     .HidePointer())
                 .OnExit(PutSampleAway),
-            new TutorialStep("EDITOR_TEAR", "Take the panel apart",
-                "[[grin]]Drag a section title in the right panel (like <b>Look</b>), or a card in All properties, <b>out</b> of the panel: "
-                + "it becomes its own window. [[talk]]Drag it back to put it back.")
+            new TutorialStep("EDITOR_TEAR", "Detachable panels",
+                "Drag any section header in the right panel (like <b>Look</b>) out of the panel to pop it into its own window.",
+                "Drag it back over the panel to dock it again.")
+                .Looks(new(Eye.Normal, Brow.NormalHigh, Mouth.OpenSmall))
                 .At(() => HudEditor.PartNamed("Dock_look") ?? HudEditor.Part("Panel"))
                 .OnEnter(() => PlainSample("{Fps:0} FPS"))
                 .OnExit(PutSampleAway),
-            new TutorialStep("EDITOR_KEYS", "Shortcuts", "[[sigh]]And the shortcuts. You don't have to learn them, [[smile]]but they're nice.",
-                "Ctrl+C / Ctrl+V copy, paste (Ctrl+Shift+V: same spot)\n"
-                + "Ctrl+Alt+C / Ctrl+Alt+V copy, paste the <b>look</b> only\n"
-                + "Ctrl+D duplicate · Del delete · Ctrl+G group · Ctrl+Shift+G ungroup\n"
-                + "Ctrl+] / Ctrl+[ forward / backward (Shift: to the front / back)\n"
-                + "Ctrl+Shift+L lock · Ctrl+Shift+H hide · Ctrl+A all · Ctrl+Z / Ctrl+Y")),
+            new TutorialStep("EDITOR_KEYS", "Shortcuts",
+                "Useful keyboard shortcuts in the HUD editor:",
+                "Ctrl+C / Ctrl+V copy, paste (Ctrl+Shift+V: in place)\n"
+                + "Ctrl+Alt+C / Ctrl+Alt+V copy, paste <b>look</b> only\n"
+                + "Ctrl+D duplicate · Del delete · Ctrl+G / Ctrl+Shift+G group, ungroup\n"
+                + "Ctrl+] / Ctrl+[ order · Ctrl+Shift+L lock · Ctrl+Shift+H hide · Ctrl+Z / Ctrl+Y undo, redo")
+                .Looks(Face.Smile)),
 
-        new("presets", "Presets and the preview", "Ready-made HUDs, and seeing them as in a real play",
+        new("presets", "Presets and the preview", "Ready-made presets and live preview",
             OpenEditor("PRESETS_OPEN"),
-            new TutorialStep("PRESETS_MENU", "Presets", "[[pout]]Don't feel like building it all? [[smile]]Click the star.")
+            new TutorialStep("PRESETS_MENU", "Presets",
+                "Click the star button to insert ready-made presets.")
+                .Looks(Face.Surprised)
                 .At(() => HudEditor.Control("presets"))
-                .Until(() => HudEditor.PresetMenuOpen),
-            new TutorialStep("PRESETS_PICK", "Pick one",
-                "[[talk]]<b>Elements</b> are single pieces, <b>Layouts</b> are whole HUDs. Pick any one.",
-                "They go in as normal objects: change anything you like about them.")
+                .Until(() => HudEditor.PresetMenuOpen)
+                .Only(() => !HudEditor.PresetMenuOpen),
+            new TutorialStep("PRESETS_PICK", "Insert a preset",
+                "Pick any preset from the list.",
+                "Presets are added as normal objects, so you can customize anything about them.")
+                .Looks(Face.Talk)
                 .OnEnter(() => objectsAtStart = CountObjects())
                 .Until(() => CountObjects() > objectsAtStart),
-            new TutorialStep("PRESETS_PLAY", "They show while playing",
-                "[[talk]]Game presets only show while you play, and while this editor is open, so you can edit them. [[deadpan]]In a menu, most values are 0.")
-                .Only(() => Game),
-            new TutorialStep("PRESETS_PREVIEW", "See it in a play",
-                "[[curious]]Want to see it move? [[talk]]<b>Right-click</b> any text (inside a preset is fine) and pick <b>Preview in game</b>.")
+            new TutorialStep("PRESETS_PREVIEW", "Preview window",
+                "<b>Right-click</b> any text and choose <b>Preview in game</b> to test it in a dedicated preview window.")
+                .Looks(new(Eye.Normal, Brow.NormalHigh, Mouth.Shift))
                 .Until(() => HudPreview.IsOpen),
             new TutorialStep("PRESETS_PREVIEW_WINDOW", "The preview",
-                "[[excited]]A pretend game screen with made-up judgments, so you see how your text behaves. [[talk]]Edits show up live.",
-                "<b>Both</b> switches between a menu and a play, or pick one. Move it by its title, resize from the corner.")
+                "Edits update live in this window.",
+                "Drag the title bar to move it, or resize from the bottom-right corner.")
+                .Looks(Face.Smile)
                 .Only(() => HudEditor.IsOpen)),
 
-        new("tags", "Tags: the useful tricks", "Arguments, math, colors, size, animated numbers",
+        new("tags", "Tags: the useful tricks", "Arguments, math, styling, colors, animated numbers",
             OpenEditor("TAGS_OPEN"),
-            new TutorialStep("TAGS_ARGS", "Tags that take values",
-                "[[talk]]Some tags take settings, after the colon or in parentheses. Fps can average over a time, for example.",
-                "«{Fps:500,0}» = FPS averaged over 500 ms, 0 decimals\n«{Fps(500,0)}» = the same\n"
-                + "Careful: «{Fps:500}» reads 500 as a <b>format</b>. Give the decimals too.")
+            new TutorialStep("TAGS_ARGS", "Tag arguments",
+                "Some tags accept options after a colon or in parentheses—for example, averaging FPS over a time window.",
+                "«{Fps:500,0}» = 500 ms average, 0 decimals\n«{Fps(500,0)}» = same\n"
+                + "Note: «{Fps:500}» reads 500 as a <b>format</b>. Include decimals too.")
+                .Looks(Face.Talk)
                 .At(() => SampleRect)
                 .Shows(Showing("{Fps:500,0}")),
-            new TutorialStep("TAGS_MATH", "Math",
-                "[[thinking]]Braces do math, too. [[talk]]And «? :» picks one of two things.",
+            new TutorialStep("TAGS_MATH", "Math & conditions",
+                "You can write math and «? :» conditions directly inside braces.",
                 "«{Fps * 2:0}»\n«{Fps < 30 ? 'slow' : 'smooth'}»\n"
-                + "Inside math, tags that give yes/no or text need «()»: «IsPlaying()», «Title()». Without them a condition is always true.")
+                + "Tags returning true/false or text need «()» inside math: «IsKeyHeld('Space')», «DayOfWeek()».")
+                .Looks(new(Eye.Normal, Brow.NormalHigh, Mouth.Shift))
                 .At(() => SampleRect)
                 .Shows(Showing("{Fps * 2:0}\n{Fps < 30 ? 'slow' : 'smooth'}")),
             new TutorialStep("TAGS_RICH", "Color, size, bold",
-                "[[talk]]Texts understand formatting tags. [[smile]]A big number with a small unit looks nice, right?",
+                "Texts support rich text tags for color, size, and style.",
                 "«<color=#FF5050>red</color>»  «<b>bold</b>»  «<i>italic</i>»\n«{Fps:0}<size=50%> FPS</size>»")
+                .Looks(Face.Smile)
                 .At(() => SampleRect)
                 .Shows(Showing("<color=#FF5050>red</color> <b>bold</b> <i>italic</i>\n{Fps:0}<size=50%> FPS</size>")),
             new TutorialStep("TAGS_COLORRANGE", "Color by value",
-                "[[talk]]«ColorRange» picks a color by value: here red at 0 seconds, green at 59.",
+                "«ColorRange» interpolates a hex color from a value—here red at 0 s to green at 59 s.",
                 "«<color=#{ColorRange(Second,0,59,FF4040,40FF40)}>{Second}</color>»\n"
-                + "Tag, from, to, color at «from», color at «to». Swap Second for any number tag.")
+                + "Arguments: tag, min, max, start color, end color.")
+                .Looks(Face.Talk)
                 .At(() => SampleRect)
                 .Shows(Showing("<color=#{ColorRange(Second,0,59,FF4040,40FF40)}>{Second:00}</color>")),
-            new TutorialStep("TAGS_ANIM", "Smooth and bouncy numbers",
-                "[[excited]]And my favorite: numbers that move! [[talk]]Watch the seconds.",
-                "«{EasedValue(Second,2,500,OutBack)}»: slides to each new value in 500 ms\n"
-                + "«<size={MovingMan(Second,60,36,36,300)}>{Second}</size>»: pops bigger on each change\n"
-                + "The last value of EasedValue is the motion: a preset name, or a curve from the <b>Easing</b> page.")
+            new TutorialStep("TAGS_ANIM", "Animated numbers",
+                "Numbers can smoothly ease or pop when their value changes:",
+                "«{EasedValue(Second,2,500,OutBack)}»: eases over 500 ms\n"
+                + "«<size={MovingMan(Second,60,36,36,300)}>{Second}</size>»: pulses size on change\n"
+                + "Use a preset name or a custom curve from the <b>Easing</b> page.")
+                .Looks(new(Eye.Small, Brow.NormalHigh, Mouth.OpenMicro))
                 .At(() => SampleRect)
                 .Shows(Showing("{EasedValue(Second,2,500,OutBack)}\n<size={MovingMan(Second,60,36,36,300)}>{Second}</size>")),
             new TutorialStep("TAGS_TRY", "Your turn",
-                "[[smug]]Your turn. Make my sample show FPS averaged over <b>one second</b>, with no decimals.",
-                "Settings go after the colon: the time in ms, then the format.")
+                "Set the sample to show FPS averaged over <b>1 second</b> (1000 ms) with 0 decimals.",
+                "Hint: «{Fps:1000,0}» or «{Fps(1000,0)}»")
+                .Looks(Face.Smile)
                 .At(() => SampleRect)
                 .OnEnter(() => Sample("{Fps}"))
-                .Until(() => AnyText("{Fps:1000,0}") || AnyText("{Fps(1000,0)}")),
-            new TutorialStep("TAGS_PLAYING", "Values outside a play",
-                "[[talk]]Game values only change while you play. In a menu they keep the last play's value; "
-                + "[[thinking]]before the first play the text shows the tag itself.",
-                "Different text in and out of a play:\n«{IsPlaying() ? 'Combo ' + Combo() : 'Ready'}»")
-                .Only(() => HasTag("IsPlaying")),
-            new TutorialStep("TAGS_GAME", "Handy game tags", "[[proud]]The game tags people use the most:",
-                "«{Combo}» «{MaxCombo}» · «{XAccuracyPercent:0.00}» «{AccuracyPercent:0.00}»\n"
-                + "«{P}» all perfects · «{EP}» «{LP}» «{VE}» «{VL}» «{TE}» «{TL}» · «{Miss}» «{Overload}»\n"
-                + "«{ActualProgressPercent:0.0}» progress · «{CurBpm:0}» BPM · «{TimingMs:0}» last hit timing\n"
-                + "«{Attempts}» · «{Title}» «{Artist}» · «{MarginCombo:XP}» current XPerfect streak")
-                .Only(() => Game),
-            new TutorialStep("TAGS_CORE", "Handy everywhere", "[[talk]]And ones that work in any game:",
-                "«{Hour:00}:{Minute:00}» clock · «{AmPm}» · «{DayOfWeek}»\n«{Fps:500,0}» FPS · «{FrameTime:500,0.00}» ms per frame\n"
-                + "«{Kps:500,0}» key presses per second · «{IsKeyHeld:Space}» True while Space is held")
+                .Until(() => !O5InputBlocker.IsEditing
+                    && SampleText() is { } s && (s.Contains("{Fps:1000,0}") || s.Contains("{Fps(1000,0)}"))),
+            new TutorialStep("TAGS_CORE", "Useful built-in tags",
+                "Common built-in tags available everywhere:",
+                "«{Hour:00}:{Minute:00}» clock · «{AmPm}» · «{DayOfWeek}»\n"
+                + "«{Fps:500,0}» FPS · «{FrameTime:500,0.00}» ms/frame\n"
+                + "«{Kps:500,0}» keys/sec · «{IsKeyHeld:Space}» Space held state")
+                .Looks(new(Eye.Normal, Brow.NormalHigh, Mouth.SadSmall))
                 .OnExit(PutSampleAway)),
 
-        new("fx", "ƒ: settings that follow the game", "Make opacity, position or the text itself depend on what's happening",
+        new("fx", "ƒ: dynamic properties", "Drive opacity, position, or text with formulas",
             OpenEditor("FX_OPEN"),
             new TutorialStep("FX_WHAT", "The ƒ button",
-                "[[talk]]Remember the breathing text? Any setting with an <b>ƒ</b> button in <b>All properties</b> can do that: "
-                + "a small formula instead of a fixed value.",
-                "It's JavaScript, and every tag is a function in it: «Fps()», «Second()». Two or more numbers go in «[ ]».")
+                "Any property with an <b>ƒ</b> button in <b>All properties</b> can run a JavaScript formula instead of a fixed value.",
+                "Every tag works as a function: «Fps()», «Second()». Vectors and colors use «[ ]».")
+                .Looks(Face.Talk)
                 .At(() => HudEditor.Control("allprops"))
                 .OnEnter(() => PlainSample("{Fps:0} FPS")),
-            new TutorialStep("FX_POSITION", "Moving it",
-                "[[grin]]Position, for example. Two numbers, x and y, and I add a sine wave to x.",
-                "«[x + Math.sin(Time() * 3) * 40, y]»\nx and y are where it was. «Time()» is seconds since the game started.")
+            new TutorialStep("FX_POSITION", "Dynamic position",
+                "Position takes two numbers «[x, y]»—here adding a sine wave to x.",
+                "«[x + Math.sin(Time() * 3) * 40, y]»\nx and y are the base position; «Time()» is elapsed seconds.")
+                .Looks(Face.Grin)
                 .At(() => SampleRect)
                 .Shows(new TutorialDemo()
                     .Wait(0.3f)
@@ -570,12 +601,12 @@ internal static class TutorialContent {
                         PlainSample("{Fps:0} FPS");
                         HudEditor.DemoWobble(sample, true);
                     })
-                    .Wait(0.5f)),
-            new TutorialStep("FX_TEXT", "A text's ƒ",
-                "[[thinking]]On the Text itself, the formula's result <b>is</b> the text, tags and all. "
-                + "[[talk]]Here it says something different depending on your FPS.",
+                    .Wait(0.8f)),
+            new TutorialStep("FX_TEXT", "Dynamic text",
+                "On the Text property itself, the returned string is evaluated with tags included.",
                 "«Fps() < 60 ? 'slow... {Fps:0}' : 'smooth! {Fps:0}'»\n"
-                + "If a formula breaks, the normal value is used, and the box under it says what's wrong.")
+                + "If a formula fails, the static value is used and the error appears below.")
+                .Looks(new(Eye.Normal, Brow.NormalHigh, Mouth.Shift))
                 .At(() => SampleRect)
                 .Shows(new TutorialDemo()
                     .Wait(0.3f)
@@ -583,100 +614,108 @@ internal static class TutorialContent {
                         PlainSample("{Fps:0} FPS");
                         HudEditor.DemoTextFx(sample, "Fps() < 60 ? 'slow... {Fps:0}' : 'smooth! {Fps:0}'");
                     })
-                    .Wait(0.5f)),
-            new TutorialStep("FX_EXAMPLES", "More to steal", "[[smug]]A few more to steal:",
-                "Opacity, only while playing: «IsPlaying() ? 1 : 0»\n"
-                + "Fades out under 60 FPS: «Math.min(1, Fps() / 60)»\n"
-                + "Color (red, green, blue, alpha, 0 to 1): «[1, Fps() / 144, 0, 1]»\n"
-                + "Several lines are fine: the last one is the value.")
+                    .Wait(0.8f)),
+            new TutorialStep("FX_EXAMPLES", "Formula examples",
+                "Common ƒ patterns:",
+                "Show while holding Space: «IsKeyHeld('Space') ? 1 : 0»\n"
+                + "Fade below 60 FPS: «Math.min(1, Fps() / 60)»\n"
+                + "Color RGBA (0–1): «[1, Fps() / 144, 0, 1]»\n"
+                + "Multi-line scripts are supported; the last expression is returned.")
+                .Looks(Face.Smile)
                 .OnExit(PutSampleAway)),
 
-        new("canvases", "Canvases, sharing and packages", "The canvas list page, the canvas editor, export and import",
+        new("canvases", "Canvases, sharing and packages", "Managing canvases, packages, export and import",
             OpenWindow("CANVAS_OPEN"),
             GoTo("CANVAS_GOTO", OriginalMenuState.Overlayer, "Overlayer"),
             new TutorialStep("CANVAS_TILES", "Your canvases",
-                "[[talk]]Back in the window. Each tile here is a canvas. Click one to open the canvas editor: "
-                + "the same objects as a list, every setting on the right.",
-                "The toggle turns a canvas on or off. The small buttons copy, export, delete (click twice; Shift + click: at once).\n"
-                + "<b>…</b> opens its info: author, picture, scripts to bundle.")
+                "Each tile is a canvas. Click one to open the canvas editor, showing its object tree and full inspector.",
+                "Toggle: enable/disable · Small buttons: copy, export, delete (click twice, or Shift+click)\n"
+                + "<b>…</b>: package metadata, thumbnail, and bundled scripts.")
+                .Looks(Face.Talk)
                 .At(() => PagePart(OriginalMenuState.Overlayer, "ScrollView/Viewport/Content/Grid")),
             new TutorialStep("CANVAS_NEW", "New, preset, import",
-                "[[talk]]The last tile does three things: left makes an empty canvas, top right adds a preset, bottom right imports a file.")
+                "The last tile creates an empty canvas (left), adds a preset (top right), or imports a file (bottom right).")
+                .Looks(new(Eye.Normal, Brow.NormalHigh, Mouth.Normal))
                 .At(() => {
                     var grid = PagePart(OriginalMenuState.Overlayer, "ScrollView/Viewport/Content/Grid");
                     return grid != null && grid.childCount > 0 ? grid.GetChild(grid.childCount - 1) as RectTransform : grid;
                 }),
             new TutorialStep("CANVAS_SHARE", "Sharing",
-                "[[proud]]<b>Export</b> saves a canvas as an <b>.o5cp</b> package, fonts, images and scripts included. Send it to anyone.",
-                "An imported package works but can't be edited, so the author's updates stay clean. "
-                + "To change it, press its <b>Copy</b>: you get an editable canvas, and its fonts and images are added to yours."),
+                "<b>Export</b> bundles a canvas with its fonts, images, and scripts into an <b>.o5cp</b> package.",
+                "Imported packages stay read-only so updates remain clean. Press <b>Copy</b> to make an editable copy.")
+                .Looks(new(Eye.Small, Brow.Normal, Mouth.Smile)),
             new TutorialStep("CANVAS_VS_EDITOR", "Which editor?",
-                "[[thinking]]The HUD editor is for placing things on the screen; the canvas editor is for when you know exactly which setting you want. "
-                + "[[smile]]Same objects either way. Use whichever.")),
+                "Use the HUD editor for visual layout on screen, and the canvas editor for direct property editing.",
+                "Both edit the exact same canvases and objects.")
+                .Looks(new(Eye.Normal, Brow.NormalHigh, Mouth.OpenSmall))),
 
-        new("resources", "Fonts and images", "Bringing your own files in and using them",
+        new("resources", "Fonts and images", "Importing and using custom files",
             OpenWindow("RES_OPEN"),
             GoTo("RES_GOTO", OriginalMenuState.Resources, "Resources"),
-            new TutorialStep("RES_ADD", "Adding a file",
-                "[[talk]]Your own fonts and images go here. Pick a file with <b>Browse</b> (or paste its path), give it a name, press <b>Add</b>.",
-                "The button at the top switches between images and fonts.")
+            new TutorialStep("RES_ADD", "Adding files",
+                "Import custom fonts and images here. Use <b>Browse</b> (or paste a path), enter a name, and click <b>Add</b>.",
+                "The top toggle switches between images and fonts.")
+                .Looks(new(Eye.Small, Brow.Normal, Mouth.Caret))
                 .At(() => PagePart(OriginalMenuState.Resources, "ResourcesRoot")),
-            new TutorialStep("RES_USE", "Using them",
-                "[[talk]]Fonts: a text's <b>Font</b> setting. Images: add an image (the mountain button in the HUD editor) and pick it under <b>Sprite</b>.",
-                "An image card's <b>Sprite Editor</b> sets nine-slice borders, so a frame or a rounded box stretches without stretching its corners.")),
+            new TutorialStep("RES_USE", "Using resources",
+                "Select custom fonts under a text's <b>Font</b> setting, or add an image object and pick it under <b>Sprite</b>.",
+                "Use <b>Sprite Editor</b> on an image card to configure 9-slice borders for clean stretching.")
+                .Looks(new(Eye.Normal, Brow.Normal, Mouth.OpenSmallHarf))),
 
-        new("js", "Your own tags with JavaScript", "Scripts, RegisterTag, tags that live in one text",
+        new("js", "Custom tags with JavaScript", "Scripts, RegisterTag, per-text tags",
             OpenWindow("JS_OPEN"),
             GoTo("JS_GOTO", OriginalMenuState.JS, "JS"),
-            new TutorialStep("JS_FOLDER", "The script folder",
-                "[[talk]]Every .js file in the scripts folder runs when Overlayer starts. The list shows each file's tags and any errors.",
-                "<b>Open Folder</b> opens it. <b>Reload All</b> runs them again; <b>Auto Reload</b> does it whenever a file changes.")
+            new TutorialStep("JS_FOLDER", "Script folder",
+                "Every .js file in the scripts folder runs at startup. The list shows registered tags and any script errors.",
+                "<b>Open Folder</b> opens it · <b>Reload All</b> reruns scripts · <b>Auto Reload</b> watches file changes.")
+                .Looks(new(Eye.Normal, Brow.Normal, Mouth.Shift))
                 .At(() => PagePart(OriginalMenuState.JS, "JSRoot")),
-            new TutorialStep("JS_REGISTER", "Making a tag",
-                "[[smug]]Making a tag is one line. [[deadpan]]Really.",
-                "«RegisterTag('Double', () => Combo() * 2);»\nAfter a reload, «{Double}» works in any text.\n"
-                + "With arguments: «RegisterTag('Greet', (name) => 'hi ' + name);» then «{Greet('you')}»\n"
-                + "The <b>Example</b> folder next to it has more. Copy a file into the scripts folder to try it."),
-            new TutorialStep("JS_LOCAL", "A tag for one text only",
-                "[[grin]]No file needed, even: write RegisterTag right in a text, in braces. [[talk]]It shows nothing itself, and the tag only lives in that text.",
-                "«{RegisterTag('Half', () => Fps() / 2)}FPS/2: {Half:0}»")),
+            new TutorialStep("JS_REGISTER", "Creating a tag",
+                "Registering a global tag takes one line:",
+                "«RegisterTag('DoubleFps', () => Fps() * 2);»  →  use «{DoubleFps:0}» anywhere\n"
+                + "With arguments: «RegisterTag('Greet', (name) => 'hi ' + name);»  →  «{Greet('you')}»\n"
+                + "Check the <b>Example</b> folder for sample scripts.")
+                .Looks(Face.Smile),
+            new TutorialStep("JS_LOCAL", "Per-text tags",
+                "You can also define a tag inline inside a single text without a separate file. It renders nothing itself.",
+                "«{RegisterTag('Half', () => Fps() / 2)}FPS/2: {Half:0}»")
+                .Looks(Face.Grin)),
 
-        new("easing", "Custom easing", "Draw the motion of animated numbers",
+        new("easing", "Custom easing", "Draw motion curves for animated numbers",
             OpenWindow("EASE_OPEN"),
             GoTo("EASE_GOTO", OriginalMenuState.Easing, "Easing"),
-            new TutorialStep("EASE_GRAPH", "Draw a curve",
-                "[[talk]]Left to right is time, bottom to top is how far the number has moved. "
-                + "[[excited]]Go above the top line and it overshoots and comes back: a bounce.",
-                "<b>Click</b>: add a point · <b>Drag</b>: move it · <b>Right-click</b> or Del: remove · Shift: snap")
+            new TutorialStep("EASE_GRAPH", "Drawing a curve",
+                "Horizontal is time, vertical is progress. Going above the top line creates an overshoot bounce.",
+                "<b>Click</b>: add point · <b>Drag</b>: move · <b>Right-click</b> / Del: remove · Shift: snap")
+                .Looks(new(Eye.Small, Brow.Normal, Mouth.OpenSmall))
                 .At(() => PagePart(OriginalMenuState.Easing, null)),
-            new TutorialStep("EASE_USE", "Use it",
-                "[[talk]]<b>Copy example tag</b> gives you a tag with your curve in it. <b>Preview in game</b> shows it on a pretend counter.",
-                "«{EasedValue(Combo,0,300,curve(0,0;0.4,1.1;1,1))}»\n<b>Save</b> keeps curves for later; the dropdown starts from a preset.")),
+            new TutorialStep("EASE_USE", "Using a curve",
+                "<b>Copy example tag</b> copies a tag with your curve; <b>Preview in game</b> tests it on a sample counter.",
+                "«{EasedValue(Second,0,300,curve(0,0;0.4,1.1;1,1))}»\n<b>Save</b> stores curves for reuse.")
+                .Looks(Face.Talk)),
 
-        new("settings", "Settings worth knowing", "Startup, tooltips, scale, fonts, the HUD editor",
+        new("settings", "Settings worth knowing", "Scale, tooltips, fonts, HUD editor options",
             OpenWindow("SET_OPEN"),
             GoTo("SET_GOTO", OriginalMenuState.Settings, "Settings"),
-            new TutorialStep("SET_OVERLAYER", "Overlayer",
-                "[[talk]]If this window is too small or too big for you, <b>UI Scale</b> is here. So are tooltips, startup and fonts.",
-                "<b>Find</b> at the top filters the settings by name.")
+            new TutorialStep("SET_OVERLAYER", "Overlayer settings",
+                "Adjust <b>UI Scale</b>, tooltips, startup behavior, and system/code fonts here.",
+                "Use <b>Find</b> at the top to filter settings by name.")
+                .Looks(Face.Talk)
                 .At(() => RowOf("OVERLAYER")),
-            new TutorialStep("SET_HUD", "HUD Editor",
-                "[[talk]]The HUD editor's key, snapping, hints, and <b>Main Canvas</b>: which canvas new things go into.",
-                "Under Advanced: snap distance, grid size, and whether it may open while playing. During <b>autoplay</b> it always may.")
+            new TutorialStep("SET_HUD", "HUD Editor settings",
+                "Configure the HUD editor shortcut, snapping, hints, and <b>Main Canvas</b> for new objects.",
+                "Under Advanced: snap distance, grid size, and opening while playing.")
+                .Looks(new(Eye.Normal, Brow.Normal, Mouth.OpenSmallHarf))
                 .At(() => RowOf("HUD_EDITOR"))),
 
-        new("outro", "Wrapping up", "Where the tutorial lives, and goodbye",
-            new TutorialStep("OUTRO_PAGE", "Any time again",
-                "[[happy]]...And that's everything. You know all of Overlayer now. "
-                + "[[talk]]Forgot something? This is the <b>Tutorial</b> page: do it all again, or just one chapter.",
-                "Menu → <b>Tutorial</b>. <b>Start / continue</b> goes through what you haven't done; each chapter has its own button too.")
+        new("outro", "Wrapping up", "Where to find chapters anytime",
+            new TutorialStep("OUTRO_PAGE", "Revisit anytime",
+                "That covers the core features. Come back to the <b>Tutorial</b> page anytime to replay the full guide or any chapter.")
+                .Looks(new(Eye.Small, Brow.NormalHigh, Mouth.Smile))
                 .OnEnter(() => ToPage(OriginalMenuState.Tutorial))
                 .At(() => PagePart(OriginalMenuState.Tutorial, null)),
-            new TutorialStep("OUTRO_PAT", "One more thing",
-                "[[shy]]Oh, and... you can pat my head. Click and hold on it. [[pout]]Not that I asked or anything.")
-                .OnEnter(() => patsAtStart = Tutorial.Pats)
-                .Until(() => Tutorial.Pats > patsAtStart),
-            new TutorialStep("OUTRO_BYE", "Bye!",
-                "[[cry]]...That's it, then. [[flustered]]I-it's not like I'll miss you. [[happy]]Have fun with Overlayer!")),
+            new TutorialStep("OUTRO_BYE", "All set!",
+                "Have fun customizing your HUD with Overlayer!")
+                .Looks(Face.Happy)),
     ];
 }

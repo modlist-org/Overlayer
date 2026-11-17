@@ -212,7 +212,13 @@ public static class O5KitAdapters {
         SyncConfig();
 
         O5ShortcutManager.IsSuspended = () => O5Kit.Control.O5InputBlocker.IsEditing;
-        O5Kit.Behaviour.UIScrollController.ShouldConsumeParentScroll = () => UICodeInputField.ShouldConsumeParentScroll;
+        O5Kit.Control.O5Slider.EnableWheelAdjust = () => HudEdit.HudEditor.IsOpen;
+        O5Kit.Control.O5Slider.OnAnyWheelChanged = s => UI.UISound.PlaySliderTick((float)s.Normalize());
+        O5Kit.Control.O5UiEvents.OnDropdownToggled = UI.UISound.PlayDropdownToggle;
+        O5Kit.Control.O5UiEvents.OnDropdownPicked = UI.UISound.PlayDropdownPick;
+        O5Kit.Control.O5UiEvents.OnToggleChanged = UI.UISound.PlayToggle;
+        O5Kit.Behaviour.UIScrollController.ShouldConsumeParentScroll = () =>
+            UICodeInputField.ShouldConsumeParentScroll || (HudEdit.HudEditor.IsOpen && O5Kit.Control.O5Slider.AnyHovered);
         if (!_wired) {
             _wired = true;
             _enabledHandler = (enabled, _) => Ctx.NotifyEnabledChanged(enabled);

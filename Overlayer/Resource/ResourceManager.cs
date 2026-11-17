@@ -39,6 +39,7 @@ public enum Asset {
     Expand128,
     Upload128,
     Download128,
+    OllyMouse,
 }
 
 public sealed class ResourceManager(Assembly assembly, string resourcePath) : IDisposable {
@@ -98,6 +99,7 @@ public sealed class ResourceManager(Assembly assembly, string resourcePath) : ID
         }
 
         texture.filterMode = filter;
+        texture.wrapMode = TextureWrapMode.Clamp;
         cache[path] = texture;
         return texture;
     }
@@ -361,5 +363,6 @@ public sealed class ResourceManager(Assembly assembly, string resourcePath) : ID
         [Asset.Expand128] = "Image.Expand128.png",
         [Asset.Upload128] = "Image.Upload128.png",
         [Asset.Download128] = "Image.Download128.png",
+        [Asset.OllyMouse] = "Image.OllyMouse.png",
     };
 }

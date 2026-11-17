@@ -1945,6 +1945,7 @@ internal sealed class OvInspectorBuilder(
                 .Join(done => editor.TScale(new Vector3(0.985f, 0.985f, 1f), 0.1f, O5Ease.InQuad, done))
                 .OnComplete(() => {
                     fx.UseFx = !fx.UseFx;
+                    UISound.PlayFxToggle(fx.UseFx);
                     if (fx.UseFx) fx.EnsureEngine();
                     ApplyAndSave();
                     transitioningFx = (fx, previousHeight);

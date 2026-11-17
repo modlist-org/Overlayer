@@ -293,6 +293,16 @@ internal static class PageSettings {
         var animationSpeedTr = animationSpeed.Label.gameObject.AddComponent<TextLocalization>().Init("ANIMATION_SPEED", "Animation Speed");
         objects[animationSpeedTr] = (overlayerText.gameObject, animationSpeedRow.gameObject);
 
+        var soundVolRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
+        var soundVol = O5Factory.Slider(O5KitAdapters.Ctx, soundVolRow, "ui_sound_volume", new O5SliderOptions { DefaultValue = defSet.UISoundVolume, Min = 0.0f, Max = 1.0f, Value = MainCore.Conf.UISoundVolume, Format = "F2", Label = "UI Sound Volume", ClampDrag = true, ClampInput = true, DragFilter = value => Math.Round(value, 2), InputFilter = value => Math.Round(value, 2), OnChanged = value => {
+                MainCore.Conf.UISoundVolume = Mathf.Clamp01((float)value);
+            }, OnComplete = value => {
+                MainCore.Conf.UISoundVolume = Mathf.Clamp01((float)value);
+                MainCore.ConfMgr.RequestSave();
+            } });
+        var soundVolTr = soundVol.Label.gameObject.AddComponent<TextLocalization>().Init("UI_SOUND_VOLUME", "UI Sound Volume");
+        objects[soundVolTr] = (overlayerText.gameObject, soundVolRow.gameObject);
+
         BuildFontPickers(content, objects, overlayerText);
 
         BuildHudEditor(content, defSet);
@@ -622,7 +632,8 @@ internal static class PageSettings {
             dropLe.flexibleWidth = 1f;
             list.Controls.Add(IconButton(row, MainCore.Spr.Get(UISprite.Triangle128), 180f, $"fallback_up_{index}", () => MoveFallback(list, fallbacks, index, -1, primaryKey)));
             list.Controls.Add(IconButton(row, MainCore.Spr.Get(UISprite.Triangle128), 0f, $"fallback_down_{index}", () => MoveFallback(list, fallbacks, index, 1, primaryKey)));
-            list.Controls.Add(IconButton(row, MainCore.Spr.Get(UISprite.X128), 0f, $"fallback_del_{index}", () => {
+            var delBtn = IconButton(row, MainCore.Spr.Get(UISprite.X128), 0f, $"fallback_del_{index}", () => { });
+            HoldToConfirm.Attach(delBtn, () => {
                 var next = fallbacks.Value ?? [];
                 if (index < next.Count) {
                     next.RemoveAt(index);
@@ -632,7 +643,8 @@ internal static class PageSettings {
                     TextLocalization.RefreshAll();
                     RefreshFallbackRows(list, fallbacks, primaryKey);
                 }
-            }));
+            });
+            list.Controls.Add(delBtn);
         }
     }
 

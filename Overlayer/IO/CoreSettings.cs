@@ -17,6 +17,7 @@ public sealed class CoreSettings : ISettingsFile {
     public FxValue<float> UIScale = new(1.0f);
     public FxValue<float> SliderSensitivity = new(1.0f);
     public FxValue<float> AnimationSpeed = new(1.0f);
+    public FxValue<float> UISoundVolume = new(0.4f);
     public FxValue<bool> EnableJSScriptWatcher = new(true);
     public FxValue<bool> AutoUpdate = new(false);
     public FxValue<bool> UpdateBeta = new(false);
@@ -61,6 +62,7 @@ public sealed class CoreSettings : ISettingsFile {
             [nameof(UIScale)] = IOUtils.WriteFx(UIScale),
             [nameof(SliderSensitivity)] = IOUtils.WriteFx(SliderSensitivity),
             [nameof(AnimationSpeed)] = IOUtils.WriteFx(AnimationSpeed),
+            [nameof(UISoundVolume)] = IOUtils.WriteFx(UISoundVolume),
             [nameof(EnableJSScriptWatcher)] = IOUtils.WriteFx(EnableJSScriptWatcher),
             [nameof(AutoUpdate)] = IOUtils.WriteFx(AutoUpdate),
             [nameof(UpdateBeta)] = IOUtils.WriteFx(UpdateBeta),
@@ -106,6 +108,7 @@ public sealed class CoreSettings : ISettingsFile {
         UIScale = IOUtils.ReadFx(token, nameof(UIScale), UIScale);
         SliderSensitivity = IOUtils.ReadFx(token, nameof(SliderSensitivity), SliderSensitivity);
         AnimationSpeed = IOUtils.ReadFx(token, nameof(AnimationSpeed), AnimationSpeed);
+        UISoundVolume = IOUtils.ReadFx(token, nameof(UISoundVolume), UISoundVolume);
         EnableJSScriptWatcher = IOUtils.ReadFx(token, nameof(EnableJSScriptWatcher), EnableJSScriptWatcher);
         AutoUpdate = IOUtils.ReadFx(token, nameof(AutoUpdate), AutoUpdate);
         UpdateBeta = IOUtils.ReadFx(token, nameof(UpdateBeta), UpdateBeta);

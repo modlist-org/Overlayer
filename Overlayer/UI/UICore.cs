@@ -887,6 +887,9 @@ public static class UICore {
         LastPanelPosition = ClampPanelPosition(LastPanelPosition);
 
         isOpen = true;
+        if (!noAnimate) {
+            UISound.PlayOpen();
+        }
 
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
@@ -903,11 +906,18 @@ public static class UICore {
         }
 
         if (noAnimate) {
+            if (Panel != null && !Panel.gameObject.activeSelf) {
+                Panel.gameObject.SetActive(true);
+            }
             Panel.anchoredPosition = LastPanelPosition;
             Panel.sizeDelta = LastPanelSize;
 
             CanvasObj.SetActive(true);
             return;
+        }
+
+        if (Panel != null && !Panel.gameObject.activeSelf) {
+            Panel.gameObject.SetActive(true);
         }
 
         Vector2 startPos = GetRandomOffscreenPosition();
@@ -931,6 +941,9 @@ public static class UICore {
         }
 
         isOpen = false;
+        if (!noAnimate) {
+            UISound.PlayClose();
+        }
 
         ReleaseEventSystem();
 
@@ -953,13 +966,62 @@ public static class UICore {
         }
 
         if (noAnimate) {
+            if (Panel != null) {
+                Panel.gameObject.SetActive(true);
+            }
             CanvasObj.SetActive(false);
             return;
         }
 
+        if (Panel != null && !Panel.gameObject.activeSelf) {
+            Panel.gameObject.SetActive(true);
+        }
         Vector2 targetPos = GetRandomOffscreenPosition();
 
         panelTweener = Panel.TAnchorPos(targetPos, 0.1f, O5Ease.OutExpo, () => CanvasObj.SetActive(false));
+    }
+
+    public static void HidePanelForHudEditor(bool immediate = false) {
+        if (Panel == null) {
+            return;
+        }
+        panelTweener?.Kill();
+        resetSequence?.Kill();
+        if (immediate) {
+            Panel.gameObject.SetActive(false);
+            return;
+        }
+        LastPanelPosition = ClampPanelPosition(Panel.anchoredPosition);
+        LastPanelSize = Panel.sizeDelta;
+        Vector2 offscreen = GetRandomOffscreenPosition();
+        panelTweener = Panel.TAnchorPos(offscreen, 0.3f, O5Ease.OutExpo, () => {
+            if (Panel != null) {
+                Panel.gameObject.SetActive(false);
+            }
+        });
+    }
+
+    public static void ShowPanelFromHudEditor(bool immediate = false) {
+        if (Panel == null) {
+            return;
+        }
+        panelTweener?.Kill();
+        resetSequence?.Kill();
+        Panel.gameObject.SetActive(true);
+        if (immediate) {
+            Panel.anchoredPosition = LastPanelPosition;
+            Panel.sizeDelta = LastPanelSize;
+            return;
+        }
+        if (!Panel.gameObject.activeInHierarchy) {
+            Panel.anchoredPosition = LastPanelPosition;
+            return;
+        }
+        if (Vector2.Distance(Panel.anchoredPosition, LastPanelPosition) < 4f) {
+            Panel.anchoredPosition = GetRandomOffscreenPosition();
+        }
+        Panel.sizeDelta = LastPanelSize;
+        panelTweener = Panel.TAnchorPos(LastPanelPosition, 0.3f, O5Ease.OutExpo);
     }
 
     public static void Toggle(bool noAnimate = false) {
@@ -1001,6 +1063,7 @@ public static class UICore {
         menuSequence?.Kill();
 
         isMenuOpen = true;
+        UISound.PlayMenuOpen();
 
         Menu.anchoredPosition = new(-MENU_WIDTH, 0);
         menuCanvasGroup.interactable = true;
@@ -1020,6 +1083,9 @@ public static class UICore {
 
         menuCanvasGroup.interactable = false;
         menuCanvasGroup.blocksRaycasts = false;
+        if (isMenuOpen) {
+            UISound.PlayMenuClose();
+        }
 
         menuSequence = O5Seq.New()
             .Join(done => Menu.TAnchorPos(new Vector2(-MENU_WIDTH, 0), 0.4f, O5Ease.OutExpo, done))

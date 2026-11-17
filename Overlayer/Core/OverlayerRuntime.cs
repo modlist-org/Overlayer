@@ -132,10 +132,12 @@ public sealed class OverlayerRuntime {
         UI.Easing.CurveEditor.Tick();
         HudEdit.HudPreview.Tick();
         Tutorial.Tutorial.Tick();
+        UI.UISound.Tick();
     }
 
     public void Dispose() {
         _disposed = true;
+        UI.UISound.Dispose();
         Native.OvRawInput.Stop();
         Compat.O5KitAdapters.Teardown();
         SetModEnabledLate(false, true);

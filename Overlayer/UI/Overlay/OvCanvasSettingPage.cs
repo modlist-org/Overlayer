@@ -52,9 +52,6 @@ public partial class OvCanvasSettingPage : IDisposable {
     private float canvasTabDragWidth;
     private bool canvasTabDragReordered;
     private bool suppressCanvasTabClick;
-    private O5Button deleteButton;
-    private OvCanvas armedDeleteCanvas;
-    private DateTime armedDeleteTime;
 
     private RectTransform hierarchyContent;
     private RectTransform inspectorContent;
@@ -414,46 +411,21 @@ public partial class OvCanvasSettingPage : IDisposable {
         btnClone.Rect.offsetMax = Vector2.zero;
         permanentUiObjects.Add(btnClone);
 
-        // Delete
-        var btnDel = O5Factory.Button(O5KitAdapters.Ctx, hierCtrlToolbar.transform, "btn_hier_del", new O5ButtonOptions { Icon = MainCore.Spr.Get(UISprite.X128), OnClick = () => {
+        // Delete (hold to confirm)
+        var btnDel = O5Factory.Button(O5KitAdapters.Ctx, hierCtrlToolbar.transform, "btn_hier_del", new O5ButtonOptions { Icon = MainCore.Spr.Get(UISprite.X128), OnClick = () => { }, Height = 36f });
+        Utility.HoldToConfirm.Attach(btnDel, () => {
             if (selectedObject == null) {
                 if (currentCanvas == null) {
                     return;
                 }
-
-                if (O5Input.GetKey(KeyCode.LeftShift) || O5Input.GetKey(KeyCode.RightShift)) {
-                    DisarmDeleteButton();
-                    var skippedDelete = currentCanvas;
-
-                    if (OverlayCore.DeleteOvCanvas(skippedDelete)) {
-                        CloseCanvasTab(activeTab);
-                    }
-
-                    return;
-                }
-
-                if (armedDeleteCanvas != currentCanvas ||
-                    (DateTime.Now - armedDeleteTime).TotalSeconds > 5) {
-                    armedDeleteCanvas = currentCanvas;
-                    armedDeleteTime = DateTime.Now;
-                    if (deleteButton != null && deleteButton.Icon != null) {
-                        deleteButton.Icon.color = UIColors.SoftRed;
-                    }
-                    return;
-                }
-
-                DisarmDeleteButton();
                 var canvasToDelete = currentCanvas;
-
                 if (OverlayCore.DeleteOvCanvas(canvasToDelete)) {
                     CloseCanvasTab(activeTab);
                 }
-
                 return;
             }
 
             var toDelete = selectedObject;
-
             OvObject nextSelect = null;
 
             if (toDelete.Parent != null) {
@@ -477,7 +449,6 @@ public partial class OvCanvasSettingPage : IDisposable {
                     nextSelect = rootObjects[index + 1];
                 }
             }
-            // ------------------------------------------
 
             if (toDelete == rootObject && currentCanvas == null) {
                 OverlayCore.DeleteObject(toDelete);
@@ -494,17 +465,15 @@ public partial class OvCanvasSettingPage : IDisposable {
 
             toDelete.Dispose();
 
-            // Switch selection to the browsed object
             selectedObject = nextSelect;
             SaveActiveTabState();
 
             RebuildHierarchy();
             RebuildInspector();
             SaveConfig();
-        }, Height = 36f });
+        }, canConfirm: () => selectedObject != null || currentCanvas != null);
 
         btnDel.Rect.offsetMax = Vector2.zero;
-        deleteButton = btnDel;
         permanentUiObjects.Add(btnDel);
 
         // ==================== 2. Inspector Column ====================
@@ -579,13 +548,6 @@ public partial class OvCanvasSettingPage : IDisposable {
         }
     }
 
-    private void DisarmDeleteButton() {
-        armedDeleteCanvas = null;
-        if (deleteButton != null && deleteButton.Icon != null) {
-            deleteButton.Icon.color = Color.white;
-        }
-    }
-
     public void Open(OvCanvas canvas, bool noAnimate = false) {
         if (canvas == null || !canvas.Config.Enabled.Value) {
             return;
@@ -618,7 +580,6 @@ public partial class OvCanvasSettingPage : IDisposable {
         selectedObject = null;
         collapsedObjects.Clear();
         multiSelected.Clear();
-        DisarmDeleteButton();
 
         RebuildHierarchy();
         RebuildInspector();
@@ -678,7 +639,6 @@ public partial class OvCanvasSettingPage : IDisposable {
         collapsedObjects.UnionWith(tab.CollapsedObjects);
         multiSelected.Clear();
         foldoutAnimTarget = null;
-        DisarmDeleteButton();
 
         RebuildHierarchy();
         RebuildInspector();
@@ -722,7 +682,6 @@ public partial class OvCanvasSettingPage : IDisposable {
         selectedObject = null;
         collapsedObjects.Clear();
         multiSelected.Clear();
-        DisarmDeleteButton();
         RebuildCanvasTabs();
     }
 
@@ -1090,7 +1049,6 @@ e as PointerEventData;
         selectedObject = obj;
         multiSelected.Clear();
         if (obj != null) {
-            DisarmDeleteButton();
             for (OvObject parent = obj.Parent; parent != null; parent = parent.Parent) {
                 collapsedObjects.Remove(parent);
             }
