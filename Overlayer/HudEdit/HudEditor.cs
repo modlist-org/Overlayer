@@ -66,6 +66,8 @@ internal static partial class HudEditor {
         if (IsOpen || !Core.MainCore.IsModEnabled || UICore.CanvasObj == null) {
             return;
         }
+        // KeyViewer keys, while the KeyViewer module is installed.
+        HudKeyViewer.Sync();
         // While playing it needs a pause, unless the game plays itself (autoplay) or Settings allow it.
         if (ModuleAPI.PlaybackState.IsPlaying && !ModuleAPI.PlaybackState.IsPaused
             && !ModuleAPI.PlaybackState.IsAutoplay && !MainCore.Conf.HudEditorInPlay.Value) {

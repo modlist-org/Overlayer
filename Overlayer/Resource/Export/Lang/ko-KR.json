@@ -342,6 +342,19 @@
     "O5CP_PRESETS_TITLE": "프리셋",
     "O5CP_PRESET_IMPORT": "가져오기",
     "O5CP_PRESET_EMPTY": "프리셋 없음.",
-    "O5CP_PRESET_FILE": "파일"
+    "O5CP_PRESET_FILE": "파일",
+    "HUD_KV_INFO": "보여 주는 것: <b>{0}</b>",
+    "HUD_KV_BIND": "키: <b>{0}</b>   (누른 다음 원하는 키를 누르세요)",
+    "HUD_KV_LISTEN": "키를 누르세요...   (Esc: 취소)",
+    "HUD_KV_LABEL_PH": "표시할 글자 (비우면: {0})",
+    "HUD_KV_COUNT": "누른 횟수 보이기",
+    "HUD_KV_OUTLINE": "테두리",
+    "HUD_KV_BOX": "상자",
+    "HUD_KV_BOX_HELD": "누르는 동안 상자",
+    "HUD_KV_TEXT": "글자",
+    "HUD_KV_TEXT_HELD": "누르는 동안 글자",
+    "HUD_KV_PRESS": "누르는 동안 크기 (%)",
+    "HUD_KV_SPEED": "애니메이션 (ms)",
+    "HUD_KV_NOTE": "다른 것처럼 옮기고 크기를 바꾸면 돼요. 가져온 KeyViewer 프로필의 키는 KeyViewer 페이지에서 설정해요."
   }
 }
