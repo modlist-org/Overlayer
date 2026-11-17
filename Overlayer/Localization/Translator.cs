@@ -162,7 +162,8 @@ public class Translator {
         string[] files;
 
         try {
-            files = Directory.GetFiles(baseLangFolderPath, "*.json");
+            // Subfolders too: big parts (the tutorial) keep their text in files of their own.
+            files = Directory.GetFiles(baseLangFolderPath, "*.json", SearchOption.AllDirectories);
         } catch (Exception e) {
             FailState = TranslationFailState.ErrorReadingDirectory;
             Log($"{LOG_PREFIX_ERROR}Error reading directory: {baseLangFolderPath}");
@@ -215,12 +216,25 @@ public class Translator {
                         }
                     }
 
+                    // Several files may fill the same language.
                     if (stringDict.Count > 0) {
-                        translations[property.Name] = stringDict;
+                        if (translations.TryGetValue(property.Name, out var known)) {
+                            foreach (var kv in stringDict) {
+                                known[kv.Key] = kv.Value;
+                            }
+                        } else {
+                            translations[property.Name] = stringDict;
+                        }
                     }
 
                     if (arrayDict.Count > 0) {
-                        translationsArr[property.Name] = arrayDict;
+                        if (translationsArr.TryGetValue(property.Name, out var knownArr)) {
+                            foreach (var kv in arrayDict) {
+                                knownArr[kv.Key] = kv.Value;
+                            }
+                        } else {
+                            translationsArr[property.Name] = arrayDict;
+                        }
                     }
                 }
             } catch (Exception e) {

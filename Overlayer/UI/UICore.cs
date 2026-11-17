@@ -193,7 +193,8 @@ public static class UICore {
         MainCore.Conf.IsFirstRun = false;
         if (!MainCore.Conf.TutorialOffered.Value) {
             MainCore.Conf.TutorialOffered.Value = true;
-            Factory.MenuFactory.GoTo((int)OriginalMenuState.Tutorial);
+            // Olly says hello and offers the tutorial.
+            Tutorial.Tutorial.Start(Tutorial.TutorialContent.Hello);
         }
         MainCore.ConfMgr.Save();
 
