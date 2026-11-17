@@ -29,6 +29,8 @@ internal sealed class TutorialStep {
     /// <summary>Skipped (as if done) when this is false, e.g. a step about a game module that isn't there.</summary>
     public Func<bool> When;
     public TutorialDemo Demo;
+    /// <summary>In the course, the step is done for the user with this (getting to a page, say) and skipped.</summary>
+    public Action Auto;
     /// <summary>Buttons instead of Next. A choice that doesn't start something else moves on.</summary>
     public List<TutorialChoice> Choices;
 
@@ -66,6 +68,11 @@ internal sealed class TutorialStep {
 
     public TutorialStep Looks(Face face) {
         Face = face;
+        return this;
+    }
+
+    public TutorialStep AutoInCourse(Action auto) {
+        Auto = auto;
         return this;
     }
 

@@ -409,7 +409,7 @@ internal sealed class CurveGraph {
 
         int samples = Mathf.Clamp((int)plot.width / 6, 40, 160);
         string text = Model.Text;
-        curve.Set(Sample(t => EaseMath.Evaluate(text, t), samples));
+        curve.Set(Sample(t => EaseMath.Evaluate(text, t), samples, Model.Points));
         string preset = ComparePreset?.Invoke();
         compare.Set(string.IsNullOrEmpty(preset) ? [] : Sample(t => EaseMath.Evaluate(preset, t), samples));
 
@@ -451,12 +451,26 @@ internal sealed class CurveGraph {
         progressDot.SetAsLastSibling();
     }
 
-    private List<Vector2> Sample(Func<float, float> f, int samples) {
+    // Evenly spaced samples miss a sharp turn between them (points close together), and the
+    // line then cuts past the point. With keys, each segment between two keys gets samples of
+    // its own and the keys themselves are always on the line.
+    private List<Vector2> Sample(Func<float, float> f, int samples, IReadOnlyList<Vector2> keys = null) {
         var points = new List<Vector2>(samples + 1);
-        for (int i = 0; i <= samples; i++) {
-            float t = i / (float)samples;
-            points.Add(ToLocal(new Vector2(t, Mathf.Clamp(f(t), CurveModel.MinY, CurveModel.MaxY))));
+        void Add(float t) => points.Add(ToLocal(new Vector2(t, Mathf.Clamp(f(t), CurveModel.MinY, CurveModel.MaxY))));
+        if (keys == null || keys.Count < 2) {
+            for (int i = 0; i <= samples; i++) {
+                Add(i / (float)samples);
+            }
+            return points;
         }
+        for (int k = 0; k + 1 < keys.Count; k++) {
+            float from = keys[k].x, to = keys[k + 1].x;
+            int steps = Mathf.Max(8, Mathf.CeilToInt((to - from) * samples));
+            for (int i = 0; i < steps; i++) {
+                Add(Mathf.Lerp(from, to, i / (float)steps));
+            }
+        }
+        Add(keys[keys.Count - 1].x);
         return points;
     }
 

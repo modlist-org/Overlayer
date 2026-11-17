@@ -79,6 +79,68 @@ internal static partial class HudEditor {
         }
     }
 
+    /// <summary>Position from a formula: sways sideways around where it is (false: back to still).</summary>
+    internal static void DemoWobble(OvObject obj, bool on) {
+        var pos = obj?.Config.RectTransformConfig?.AnchoredPosition;
+        if (pos == null || obj.GameObject == null) {
+            return;
+        }
+        if (on) {
+            var p = pos.StaticValue;
+            pos.Expression = string.Format(System.Globalization.CultureInfo.InvariantCulture,
+                "[{0:0.##} + Math.sin(Time() * 3) * 40, {1:0.##}]", p.x, p.y);
+        }
+        pos.UseFx = on;
+        obj.ApplyConfig();
+        if (IsOpen) {
+            RefreshPanel();
+        }
+    }
+
+    /// <summary>The text from a formula (null: back to the plain text).</summary>
+    internal static void DemoTextFx(OvObject obj, string expression) {
+        var text = obj?.Config.TextEngineConfig?.Text;
+        if (text == null || obj.GameObject == null) {
+            return;
+        }
+        if (expression != null) {
+            text.Expression = expression;
+        }
+        text.UseFx = expression != null;
+        obj.ApplyConfig();
+        if (IsOpen) {
+            RefreshPanel();
+        }
+    }
+
+    internal static void DemoSelectAll(IEnumerable<OvObject> objects) {
+        if (IsOpen) {
+            SetSelection(elements.Where(e => objects.Any(o => ReferenceEquals(o, e.Object))));
+        }
+    }
+
+    /// <summary>Groups these as a row (auto layout), like "Group as row" does; the group is a sample too, and stays out of undo.</summary>
+    internal static OvObject DemoGroupAsRow(IEnumerable<OvObject> objects) {
+        if (!IsOpen) {
+            return null;
+        }
+        int mark = undo.Mark;
+        SetSelection(elements.Where(e => objects.Any(o => ReferenceEquals(o, e.Object))));
+        GroupAs(Flow.Row);
+        undo.DropSince(mark);
+        var group = Primary?.Object;
+        if (group != null && group.Children.Count > 0) {
+            group.Config.Name.Value = DemoName;
+            layersDirty = true;
+            RefreshPanel();
+        }
+        return group;
+    }
+
+    /// <summary>A piece of the editor anywhere under it, by name ("Dock_layout" ...).</summary>
+    internal static RectTransform PartNamed(string name)
+        => root != null ? root.GetComponentsInChildren<RectTransform>(false).FirstOrDefault(r => r.name == name) : null;
+
     internal static void DemoSelect(OvObject obj) {
         if (IsOpen) {
             Select(ElementOf(obj));

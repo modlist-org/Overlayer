@@ -995,6 +995,8 @@ public static class UICore {
     private static bool isMenuOpen = false;
     private static ITweenHandle menuSequence;
 
+    public static bool IsMenuOpen => isMenuOpen;
+
     public static void OpenMenu() {
         menuSequence?.Kill();
 

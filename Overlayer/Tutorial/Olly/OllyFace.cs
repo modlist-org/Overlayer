@@ -48,6 +48,25 @@ internal readonly struct Face(Eye eye, Brow brow, Mouth mouth, EyeShut shut = Ey
     public static readonly Face Shy = new(Eye.Normal, Brow.Sad, Mouth.Caret, mark: Mark.Blush);
     public static readonly Face Flustered = new(Eye.Normal, Brow.NormalHigh, Mouth.OpenCaret, front: MarkFront.BlushBig);
     public static readonly Face Gloomy = new(Eye.Small, Brow.Sad, Mouth.Disgust, front: MarkFront.Cloud);
+    public static readonly Face Cry = new(Eye.Normal, Brow.Sad, Mouth.SadSmall, mark: Mark.Tear);
+    public static readonly Face Scared = new(Eye.Small, Brow.Sad, Mouth.SurpriseSmall, mark: Mark.Sweat, front: MarkFront.Tremble);
+    public static readonly Face Pout = new(Eye.Small, Brow.Twist, Mouth.HalfChewed);
+    public static readonly Face Disgust = new(Eye.Small, Brow.Angry, Mouth.Disgust);
+    public static readonly Face Grin = new(Eye.Normal, Brow.NormalHigh, Mouth.CaretWide);
+    public static readonly Face Excited = new(Eye.Normal, Brow.NormalHigh, Mouth.Open, EyeShut.Up, Mark.Blush);
+    public static readonly Face Thinking = new(Eye.Small, Brow.Curious, Mouth.Shift);
+    public static readonly Face Deadpan = new(Eye.Small, Brow.Normal, Mouth.Normal);
+
+    private static readonly Dictionary<string, Face> names = new(StringComparer.OrdinalIgnoreCase) {
+        ["normal"] = Normal, ["talk"] = Talk, ["smile"] = Smile, ["happy"] = Happy, ["proud"] = Proud, ["smug"] = Smug,
+        ["curious"] = Curious, ["surprised"] = Surprised, ["shocked"] = Shocked, ["annoyed"] = Annoyed, ["mad"] = Mad,
+        ["sigh"] = Sigh, ["sad"] = Sad, ["worried"] = Worried, ["shy"] = Shy, ["flustered"] = Flustered, ["gloomy"] = Gloomy,
+        ["cry"] = Cry, ["scared"] = Scared, ["pout"] = Pout, ["disgust"] = Disgust, ["grin"] = Grin, ["excited"] = Excited,
+        ["thinking"] = Thinking, ["deadpan"] = Deadpan,
+    };
+
+    /// <summary>A face by name, for [[name]] marks in lines.</summary>
+    public static bool TryNamed(string name, out Face face) => names.TryGetValue(name, out face);
 }
 
 // Where each part sits on the 240×240 portrait, in pixels from the top left (from Overlayer 4's Olly).

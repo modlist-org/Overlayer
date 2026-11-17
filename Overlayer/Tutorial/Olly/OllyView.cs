@@ -27,6 +27,9 @@ internal sealed class OllyView {
     private Vector2 eyeOffset, eyeVelocity, hairOffset, hairVelocity;
     private bool patting;
     private float patTime;
+    private float flusteredUntil;
+    /// <summary>How many times she's been patted.</summary>
+    public int Pats { get; private set; }
     private float talkTimer;
     private bool talkOpen;
 
@@ -107,7 +110,8 @@ internal sealed class OllyView {
 
     public void Tick(float dt) {
         Vector2 pointer = Pointer();
-        var face = Face;
+        // Flustered for a moment after a pat.
+        var face = !patting && Time.unscaledTime < flusteredUntil ? Face.Flustered : Face;
         var eye = face.Eye;
         var shutState = face.Shut;
         var mouthState = face.Mouth;
@@ -120,6 +124,8 @@ internal sealed class OllyView {
         } else if (patting && !Input.GetMouseButton(0)) {
             patting = false;
             blinkTimer = 0f;
+            Pats++;
+            flusteredUntil = Time.unscaledTime + 1.6f;
         }
         if (patting) {
             patTime += dt;

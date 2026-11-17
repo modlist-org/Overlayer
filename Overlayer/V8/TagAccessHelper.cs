@@ -8,6 +8,15 @@ public class TagAccessHelper {
     public object Get(string tagName, params object[] args) {
         if (TagManager.TryGet(tagName, out var tag)) {
             Patch.Lazy.LazyPatchController.Touch(tagName);
+            // The generated JS wrappers pass every parameter on (`Fps(windowMs)`), so `Fps()`
+            // arrives as an undefined argument; left off, it takes the parameter's default.
+            int count = args?.Length ?? 0;
+            while (count > 0 && args[count - 1] is Microsoft.ClearScript.Undefined) {
+                count--;
+            }
+            if (args != null && count < args.Length) {
+                args = args.Take(count).ToArray();
+            }
             try {
                 var result = tag.Invoke(args);
                 return result;

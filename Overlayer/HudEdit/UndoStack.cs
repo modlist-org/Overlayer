@@ -74,6 +74,17 @@ internal sealed class UndoStack {
         }
     }
 
+    /// <summary>Where the history ends now; with <see cref="DropSince"/>, steps taken for a demo are forgotten again.</summary>
+    public int Mark => entries.Count;
+
+    public void DropSince(int mark) {
+        if (mark < 0 || mark >= entries.Count) {
+            return;
+        }
+        entries.RemoveRange(mark, entries.Count - mark);
+        cursor = Math.Min(cursor, entries.Count);
+    }
+
     public void Clear() {
         entries.Clear();
         cursor = 0;

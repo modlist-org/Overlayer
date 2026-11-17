@@ -57,6 +57,10 @@ internal static class Tutorial {
     private static float typed;
     private static int letters;
     private static float pause;
+    // [[face]] marks: from this letter on, this face.
+    private static readonly List<(int Letter, Face Face)> faceMarks = [];
+    private static float shownAt;
+    private static bool nudged;
 
     // Demo.
     private static TutorialDemo demo;
@@ -67,6 +71,10 @@ internal static class Tutorial {
     internal static bool PointerShown;
 
     public static bool IsRunning => chapter != null;
+    /// <summary>Going through every chapter in one go (the first time, or "Start / continue").</summary>
+    public static bool InCourse => course;
+    /// <summary>Head pats Olly got in this run.</summary>
+    public static int Pats => olly?.Pats ?? 0;
     public static event Action Changed;
 
     public static IReadOnlyList<TutorialChapter> Chapters => TutorialContent.Chapters;
@@ -176,6 +184,12 @@ internal static class Tutorial {
             waiting.text = "<color=#7CFF8A>✓</color> " + Tr("TUTORIAL_NICE", "Nice!");
             olly.Face = Face.Happy;
         }
+        // Waiting a long while: Olly checks in.
+        if (step.Done != null && doneAt < 0f && !nudged && Time.unscaledTime - shownAt > 20f) {
+            nudged = true;
+            waiting.text = Tr("TUTORIAL_NUDGE", "...Still there? Stuck? <b>Skip step</b> works too.");
+            faceMarks.Add((0, Face.Curious));
+        }
         if (doneAt >= 0f && Time.unscaledTime - doneAt >= AdvanceDelay) {
             Next();
             return;
@@ -213,6 +227,9 @@ internal static class Tutorial {
             }
         }
         olly.Talking = typing && pause <= 0f;
+        if (doneAt < 0f) {
+            olly.Face = FaceAt(body.maxVisibleCharacters);
+        }
         noteGroup.alpha = Mathf.MoveTowards(noteGroup.alpha, typing ? 0f : 1f, dt * 4f);
     }
 
@@ -308,9 +325,24 @@ internal static class Tutorial {
 
     private static void Show(int i) {
         LeaveStep();
-        // Steps that don't apply here (no game module, say) are passed over.
-        while (i < chapter.Steps.Count && chapter.Steps[i].When != null && !Safe(chapter.Steps[i].When)) {
-            i++;
+        // Steps that don't apply here (no game module, say) are passed over; in the course,
+        // steps that just get you somewhere are done for you.
+        while (i < chapter.Steps.Count) {
+            var s = chapter.Steps[i];
+            if (s.When != null && !Safe(s.When)) {
+                i++;
+                continue;
+            }
+            if (course && s.Auto != null) {
+                try {
+                    s.Auto();
+                } catch (Exception e) {
+                    MainCore.Log.Wrn($"[Tutorial] Step '{s.Key}' couldn't do itself: {e.Message}");
+                }
+                i++;
+                continue;
+            }
+            break;
         }
         if (i >= chapter.Steps.Count) {
             Finish();
@@ -327,10 +359,25 @@ internal static class Tutorial {
         int count = chapter.Steps.Count;
         caption.text = $"{Tr("TUTORIAL_CH_" + chapter.Id, chapter.Title).ToUpperInvariant()}   {i + 1} / {count}";
         title.text = Styled(Tr($"TUTORIAL_{step.Key}_TITLE", step.Title));
-        body.text = Styled(Tr($"TUTORIAL_{step.Key}", step.Text));
+        var marks = new List<(int At, Face Face)>();
+        body.text = TakeFaces(Styled(Tr($"TUTORIAL_{step.Key}", step.Text)), marks);
         body.maxVisibleCharacters = 0;
         body.ForceMeshUpdate();
         letters = body.textInfo.characterCount;
+        // Where in the shown letters each mark lands.
+        faceMarks.Clear();
+        foreach (var (at, face) in marks) {
+            int letter = letters;
+            for (int c = 0; c < letters; c++) {
+                if (body.textInfo.characterInfo[c].index >= at) {
+                    letter = c;
+                    break;
+                }
+            }
+            faceMarks.Add((letter, face));
+        }
+        shownAt = Time.unscaledTime;
+        nudged = false;
         typed = 0f;
         pause = 0.15f;
 
@@ -388,7 +435,7 @@ internal static class Tutorial {
         var done = chapter;
         bool goOn = course;
         var list = MainCore.Conf.TutorialDone.Value ?? [];
-        if (!list.Contains(done.Id)) {
+        if (Chapters.Contains(done) && !list.Contains(done.Id)) {
             list.Add(done.Id);
             MainCore.Conf.TutorialDone.Value = list;
             MainCore.ConfMgr.RequestSave();
@@ -396,6 +443,9 @@ internal static class Tutorial {
         var next = goOn ? Chapters.SkipWhile(c => c != done).Skip(1).FirstOrDefault(c => !IsDone(c)) : null;
         if (next != null) {
             Start(next, 0, true);
+        } else if (!goOn && Chapters.Contains(done) && done != TutorialContent.Hello && done != Chapters[Chapters.Count - 1]) {
+            // One chapter on its own: Olly says where the rest is.
+            Start(TutorialContent.ChapterEnd);
         } else {
             Stop();
         }
@@ -418,6 +468,36 @@ internal static class Tutorial {
     public static string Tr(string key, string fallback) => MainCore.Tr != null ? MainCore.Tr.Get(key, fallback) : fallback;
 
     private static readonly System.Text.RegularExpressions.Regex CodeMark = new("«([^»]*)»");
+    private static readonly System.Text.RegularExpressions.Regex FaceMark = new(@"\[\[(\w+)\]\]");
+
+    // Takes the [[face]] marks out of a line, keeping where each was.
+    private static string TakeFaces(string text, List<(int At, Face Face)> marks) {
+        if (string.IsNullOrEmpty(text)) {
+            return text;
+        }
+        var sb = new System.Text.StringBuilder();
+        int from = 0;
+        foreach (System.Text.RegularExpressions.Match m in FaceMark.Matches(text)) {
+            sb.Append(text, from, m.Index - from);
+            from = m.Index + m.Length;
+            if (Face.TryNamed(m.Groups[1].Value, out var face)) {
+                marks.Add((sb.Length, face));
+            }
+        }
+        sb.Append(text, from, text.Length - from);
+        return sb.ToString();
+    }
+
+    // The step's face, changed by every mark the typing has passed.
+    private static Face FaceAt(int shown) {
+        var face = chapter.Steps[index].Face;
+        foreach (var (letter, f) in faceMarks) {
+            if (letter <= shown) {
+                face = f;
+            }
+        }
+        return face;
+    }
 
     // «code» shows as code, as typed (tags and formatting not run).
     internal static string Styled(string text) => string.IsNullOrEmpty(text) ? text
