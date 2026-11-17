@@ -6,20 +6,21 @@ using UnityEngine.UI;
 namespace Overlayer.Tutorial.Olly;
 
 // Olly's portrait made of plain Images, one per part, each placed by hand at its pixel
-// anchor. Moving a few of them a little (eyes and hair toward the pointer, eyelids for a
-// blink, the mouth while talking) is enough to make her feel alive.
+// anchor. Moving a few of them a little (eyes and hair toward what she's looking at, eyelids
+// for a blink) is enough to make her feel alive. Her expressions are fixed until the line
+// changes; the mouth doesn't flap along with the typing.
 internal sealed class OllyView {
     public const float Size = 240f;
     private const string Prefix = "Image.Olly.";
 
     public readonly RectTransform Rect;
     public Face Face = Face.Normal;
-    /// <summary>Mouth moves while true.</summary>
-    public bool Talking;
+    /// <summary>Where she looks in screen pixels; null looks straight ahead.</summary>
+    public Vector2? LookTarget;
     /// <summary>True while her head is being patted.</summary>
     public bool Patted => patting;
 
-    private readonly Image bg, hairBg, body, mouth, nose, eyeRight, eyeLeft, lidDown, lidBg, lidUp, shineLeft, shineRight, shut, brow, hair;
+    private readonly Image bg, hairBg, body, patArea, mouth, nose, eyeRight, eyeLeft, lidDown, lidBg, lidUp, shineLeft, shineRight, shut, brow, hair;
     private readonly Image[] marks = new Image[3];
     private readonly Image[] fronts = new Image[4];
 
@@ -30,8 +31,6 @@ internal sealed class OllyView {
     private float flusteredUntil;
     /// <summary>How many times she's been patted.</summary>
     public int Pats { get; private set; }
-    private float talkTimer;
-    private bool talkOpen;
 
     public OllyView(Transform parent) {
         Rect = UiStyle.NewRect("Olly", parent);
@@ -39,8 +38,9 @@ internal sealed class OllyView {
         bg = Part("Bg", "BG");
         hairBg = Part("HairBg", "HAIRBG");
         body = Part("Base", "BASE");
-        // The portrait takes clicks (patting) so they don't fall through to the UI behind.
-        body.raycastTarget = true;
+        // Only the head takes clicks (patting); the rest of the portrait is transparent there
+        // and must not swallow clicks meant for the UI behind it.
+        body.raycastTarget = false;
         mouth = Part("Mouth", null);
         nose = Part("Nose", "NOSE");
         eyeRight = Part("EyeRight", null);
@@ -59,6 +59,11 @@ internal sealed class OllyView {
             fronts[i] = Part("Front" + i, "FXF_" + (MarkFront)(1 << i));
         }
         hair = Part("Hair", "HAIR");
+        patArea = Part("PatArea", null);
+        patArea.color = Color.clear;
+        patArea.raycastTarget = true;
+        patArea.rectTransform.sizeDelta = OllyAnchors.Head.size;
+        Put(patArea, OllyAnchors.Head.position);
         Put(bg, OllyAnchors.Bg);
         Put(body, Vector2.zero);
         Tick(0f);
@@ -95,13 +100,16 @@ internal sealed class OllyView {
     }
 
     // The pointer in portrait pixels (top left origin, y down).
-    private Vector2 Pointer() {
-        RectTransformUtility.ScreenPointToLocalPointInRectangle(Rect, Input.mousePosition, null, out var local);
+    private Vector2 Pointer() => ToPortrait(Input.mousePosition);
+
+    // A screen point in portrait pixels (top left origin, y down).
+    private Vector2 ToPortrait(Vector2 screen) {
+        RectTransformUtility.ScreenPointToLocalPointInRectangle(Rect, screen, null, out var local);
         var r = Rect.rect;
         return new Vector2(local.x - r.xMin, r.yMax - local.y);
     }
 
-    // Toward the pointer: up to max pixels, eased in over the first 100.
+    // Toward a point: up to max pixels, eased in over the first 100.
     private static Vector2 Lean(Vector2 from, Vector2 to, float max) {
         Vector2 d = to - from;
         float t = Mathf.Clamp01(d.magnitude / 100f);
@@ -147,37 +155,21 @@ internal sealed class OllyView {
             blinkInterval = UnityEngine.Random.Range(2.5f, 7f);
         }
 
-        // Talking: the mouth opens and closes.
-        if (Talking && !patting) {
-            talkTimer -= dt;
-            if (talkTimer <= 0f) {
-                talkOpen = !talkOpen;
-                talkTimer = talkOpen ? UnityEngine.Random.Range(0.06f, 0.11f) : UnityEngine.Random.Range(0.05f, 0.09f);
-            }
-            if (talkOpen) {
-                mouthState = mouthState switch {
-                    Mouth.Smile or Mouth.Clenched or Mouth.Joker => Mouth.OpenSmall,
-                    Mouth.Surprise or Mouth.SurpriseSmall or Mouth.Open => Mouth.Open,
-                    Mouth.WideStretch or Mouth.Mad or Mouth.Disgust => Mouth.OpenDisgust,
-                    Mouth.Caret or Mouth.SadSmall => Mouth.OpenCaret,
-                    _ => Mouth.OpenSmallHarf,
-                };
-            }
-        } else {
-            talkOpen = false;
-        }
-
-        // Eyes and hair lean toward the pointer.
+        // Eyes and hair lean toward what she's looking at (a highlighted part, or the
+        // player's mouse while they do their turn); otherwise straight ahead.
+        Vector2? focus = patting ? null : LookTarget;
         var eyes = OllyAnchors.Eyes[0];
         Vector2 eyeMid = (eyes.Left + eyes.Right) * 0.5f + new Vector2(14f, 14f);
-        Vector2 eyeTarget = Lean(eyeMid, pointer, 3.6f);
-        eyeTarget.x *= eyeTarget.x < 0f ? (patting ? 1.2f : 2.6f) : 0.8f;
-        eyeTarget.y *= eyeTarget.y < 0f ? 0.8f : 2f;
-        if (patting) {
-            eyeTarget = Vector2.zero;
+        Vector2 eyeTarget = Vector2.zero;
+        Vector2 hairTarget = Vector2.zero;
+        if (focus.HasValue) {
+            Vector2 portraitFocus = ToPortrait(focus.Value);
+            eyeTarget = Lean(eyeMid, portraitFocus, 3.6f);
+            eyeTarget.x *= eyeTarget.x < 0f ? 2.6f : 0.8f;
+            eyeTarget.y *= eyeTarget.y < 0f ? 0.8f : 2f;
+            hairTarget = Lean(OllyAnchors.Hair + new Vector2(112f, 106f), portraitFocus, 1.7f);
         }
         eyeOffset = Vector2.SmoothDamp(eyeOffset, eyeTarget, ref eyeVelocity, 0.2f, Mathf.Infinity, Mathf.Max(dt, 0.0001f));
-        Vector2 hairTarget = Lean(OllyAnchors.Hair + new Vector2(112f, 106f), pointer, 1.7f);
         hairOffset = Vector2.SmoothDamp(hairOffset, hairTarget, ref hairVelocity, 0.2f, Mathf.Infinity, Mathf.Max(dt, 0.0001f));
         // Breathing.
         float breath = Mathf.Sin(Time.unscaledTime * 1.7f);

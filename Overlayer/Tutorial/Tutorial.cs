@@ -194,9 +194,26 @@ internal static class Tutorial {
             Next();
             return;
         }
+        var target = Target(step);
+        olly.LookTarget = Gaze(step, target);
         olly.Tick(dt);
-        PlaceAround(Target(step));
+        PlaceAround(target);
         TickPointer();
+    }
+
+    // Straight ahead while she talks; the highlighted part while she explains it; the
+    // player's mouse while it's their turn; straight ahead again once they're done.
+    private static Vector2? Gaze(TutorialStep step, RectTransform target) {
+        if (doneAt >= 0f) {
+            return null;
+        }
+        if (PointerShown && demo != null) {
+            return PointerAt;
+        }
+        if (step.Done != null || step.Choices is { Count: > 0 }) {
+            return Input.mousePosition;
+        }
+        return target != null ? TutorialDemo.Center(target) : null;
     }
 
     private static void TickTyping(float dt) {
@@ -226,7 +243,6 @@ internal static class Tutorial {
                 body.maxVisibleCharacters = to;
             }
         }
-        olly.Talking = typing && pause <= 0f;
         if (doneAt < 0f) {
             olly.Face = FaceAt(body.maxVisibleCharacters);
         }
@@ -386,7 +402,8 @@ internal static class Tutorial {
         note.text = Styled(noteText ?? string.Empty);
         noteGroup.alpha = 0f;
 
-        olly.Face = step.Face;
+        // The line's expression from the first moment, not something that builds with the typing.
+        olly.Face = FaceAt(0);
         bool waits = step.Done != null;
         bool asks = step.Choices is { Count: > 0 };
         waiting.text = step.Demo != null
