@@ -3,6 +3,7 @@ using O5Kit.Control;
 using O5Kit.Factory;
 using Overlayer.Compat;
 using Overlayer.Core;
+using Overlayer.ModuleAPI;
 using Overlayer.Resource;
 using Overlayer.UI;
 using Overlayer.UI.Utility;
@@ -236,6 +237,17 @@ internal static partial class HudEditor {
             presetsButton.Rect.GetWorldCorners(c);
             OpenPresetMenu(new Vector2(c[0].x, c[0].y - 6f), null);
         }, "Presets: ready-made HUD pieces and layouts");
+        // Things modules can make (a KeyViewer key ...); only there when a module offers some.
+        addMoreButton = Icon(toolbar, "add_more", UISprite.Plus128, () => {
+            if (contextMenu != null && contextMenu.name == "AddMenu") {
+                CloseContextMenu();
+                return;
+            }
+            var c = new Vector3[4];
+            addMoreButton.Rect.GetWorldCorners(c);
+            OpenAddMenu(new Vector2(c[0].x, c[0].y - 6f));
+        }, "More to add (from modules)");
+        UpdateAddMoreButton();
         placementButton = Button(Cell(toolbar, 170f), "placement", string.Empty, CyclePlacement, "Where new objects go. Click to change.");
         gridButton = DrawnButton(toolbar, "grid", DrawGrid, ToggleGrid, "Grid: show it and snap to it");
         rulersButton = DrawnButton(toolbar, "rulers", DrawRuler, ToggleRulers, "Rulers and guides: drag out of a ruler to add a guide, drag it back to remove it");
@@ -275,6 +287,9 @@ internal static partial class HudEditor {
         content.offsetMax = new Vector2(-18f, -16f);
         UiStyle.Vertical(content.gameObject, 8f);
 
+        // Module tabs (KeyViewer ...) next to the normal one; only shown when one applies.
+        tabStrip = UiStyle.HRow(content, 4f, 34f);
+        tabStrip.gameObject.SetActive(false);
         titleText = O5Factory.ControlTextH1(ctx, O5Factory.Row(ctx, content, 34f));
         infoText = O5Factory.ControlText(ctx, O5Factory.Row(ctx, content, 36f), 14f);
         infoText.color = UiStyle.Muted;
@@ -285,7 +300,9 @@ internal static partial class HudEditor {
 
         // Everything below scrolls together.
         var (_, scrollContent, _) = O5Factory.ScrollView(ctx, content, 10f, expandLayout: true);
-        var body = VerticalGroup("Body", scrollContent);
+        var body = panelBody = VerticalGroup("Body", scrollContent);
+        tabHost = VerticalGroup("ModuleTab", scrollContent);
+        tabHost.gameObject.SetActive(false);
 
         // One object: the common things first, everything else folded under "All properties".
         singleRows = VerticalGroup("Single", body).gameObject;
@@ -484,6 +501,7 @@ internal static partial class HudEditor {
         if (!ReferenceEquals(target, inspectedObject)) {
             RebuildInspector(target);
         }
+        RefreshTabs();
     }
 
     private static void RebuildInspector(object target) {
@@ -521,15 +539,6 @@ internal static partial class HudEditor {
     private static bool ContextMenuOpen => contextMenu != null;
 
     private static void OpenContextMenu(Vector2 mouse, HudElement target) {
-        CloseContextMenu();
-        contextMenu = UiStyle.Rounded("ContextMenu", root, UiStyle.Surface).rectTransform;
-        contextMenu.anchorMin = contextMenu.anchorMax = Vector2.zero;
-        contextMenu.pivot = new Vector2(0f, 1f);
-        UiStyle.Vertical(contextMenu.gameObject, 2f, new RectOffset(6, 6, 6, 6));
-        var fitter = contextMenu.gameObject.AddComponent<ContentSizeFitter>();
-        fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-        contextMenu.sizeDelta = new Vector2(MenuWidth, 0f);
-
         // null = separator
         var items = new List<(string Text, string Shortcut, Action Run, bool Danger)?>();
         if (target == null || target.Locked) {
@@ -537,6 +546,11 @@ internal static partial class HudEditor {
             Placement where = CurrentPlacement is Placement.NewCanvas ? Placement.NewCanvas : Placement.MainCanvas;
             items.Add(("Add text here", null, () => Create(NewKind.Text, where, mouse), false));
             items.Add(("Add image here", null, () => Create(NewKind.Image, where, mouse), false));
+            // What modules can make (a KeyViewer key ...).
+            foreach (var creator in HudEditorApi.Creators) {
+                var c = creator;
+                items.Add(($"Add {c.Name} here", null, () => CreateFrom(c, where, mouse), false));
+            }
             items.Add(("Add preset here…", null, () => OpenPresetMenu(mouse, mouse), false));
             items.Add(("Paste", "Ctrl+V", () => Paste(false), false));
             if (selection.Count > 0) {
@@ -569,6 +583,10 @@ internal static partial class HudEditor {
             if (single) {
                 items.Add(("Add text inside", null, () => Create(NewKind.Text, Placement.Child, mouse), false));
                 items.Add(("Add text next to it", null, () => Create(NewKind.Text, Placement.Sibling, mouse), false));
+                foreach (var creator in HudEditorApi.Creators) {
+                    var c = creator;
+                    items.Add(($"Add {c.Name} next to it", null, () => CreateFrom(c, Placement.Sibling, mouse), false));
+                }
                 items.Add(null);
                 items.Add(("Bring to front", "Ctrl+Shift+]", () => MoveToEnd(true), false));
                 items.Add(("Bring forward", "Ctrl+]", () => MoveOrder(1), false));
@@ -593,6 +611,19 @@ internal static partial class HudEditor {
             items.Add(null);
             items.Add(("Delete", "Del", DeleteSelection, true));
         }
+        ShowMenu("ContextMenu", mouse, items);
+    }
+
+    // A list of buttons at a screen point (null items are separators), kept on screen.
+    private static void ShowMenu(string name, Vector2 mouse, List<(string Text, string Shortcut, Action Run, bool Danger)?> items) {
+        CloseContextMenu();
+        contextMenu = UiStyle.Rounded(name, root, UiStyle.Surface).rectTransform;
+        contextMenu.anchorMin = contextMenu.anchorMax = Vector2.zero;
+        contextMenu.pivot = new Vector2(0f, 1f);
+        UiStyle.Vertical(contextMenu.gameObject, 2f, new RectOffset(6, 6, 6, 6));
+        var fitter = contextMenu.gameObject.AddComponent<ContentSizeFitter>();
+        fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        contextMenu.sizeDelta = new Vector2(MenuWidth, 0f);
         for (int i = 0; i < items.Count; i++) {
             if (items[i] is not { } item) {
                 var gap = NewRect("Gap", contextMenu);
@@ -689,6 +720,7 @@ internal static partial class HudEditor {
                 inspector.Rebuild();
             }
         }
+        TickTabs();
 
         // While moving / scaling / rotating / resizing only what's selected keeps its outline.
         bool dragging = dragChanged && drag is DragMode.Move or DragMode.Scale or DragMode.Rotate or DragMode.Resize;
@@ -1092,6 +1124,7 @@ internal static partial class HudEditor {
         O5KitAdapters.Ctx.Tooltip.Hide();
         pullTab = null;
         pullingPanel = false;
+        ForgetTabs();
         bottomArea = null;
         docks.Clear();
         grabbable.Clear();

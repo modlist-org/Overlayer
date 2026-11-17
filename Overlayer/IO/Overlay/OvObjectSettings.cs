@@ -37,6 +37,8 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
     public OutlineSettings OutlineConfig = null;
     public FxValue<bool> HasRectMask2D = new(false);
     public FxValue<bool> RectMask2DEnabled = new(true);
+    /// <summary>Data a module keeps on the object (a KeyViewer key's settings, say); saved and copied with it.</summary>
+    public Dictionary<string, string> Meta = null;
 #if !IL2CPP
     public BoxCollider2DSettings BoxCollider2DConfig = null;
     public Rigidbody2DSettings Rigidbody2DConfig = null;
@@ -175,6 +177,9 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
                 obj[nameof(RectMask2DEnabled)] = IOUtils.WriteFx(RectMask2DEnabled);
             }
         }
+        if (Meta is { Count: > 0 }) {
+            obj[nameof(Meta)] = JObject.FromObject(Meta);
+        }
         return obj;
     }
 
@@ -237,6 +242,7 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
         LightConfig = ReadConfig<LightSettings>(obj, nameof(LightConfig));
         HasRectMask2D = IOUtils.ReadFx(obj, nameof(HasRectMask2D), HasRectMask2D);
         RectMask2DEnabled = IOUtils.ReadFx(obj, nameof(RectMask2DEnabled), RectMask2DEnabled);
+        Meta = obj[nameof(Meta)] is JObject meta ? meta.Properties().ToDictionary(p => p.Name, p => p.Value?.ToString() ?? string.Empty) : null;
     }
 
     public OvObjectSettings Copy() {
@@ -274,7 +280,8 @@ public sealed class OvObjectSettings : ISettingsFile, ICopyable<OvObjectSettings
             RigidbodyConfig = RigidbodyConfig?.Copy(),
             LightConfig = LightConfig?.Copy(),
             HasRectMask2D = HasRectMask2D?.Copy(),
-            RectMask2DEnabled = RectMask2DEnabled?.Copy()
+            RectMask2DEnabled = RectMask2DEnabled?.Copy(),
+            Meta = Meta != null ? new Dictionary<string, string>(Meta) : null
         };
     }
 
