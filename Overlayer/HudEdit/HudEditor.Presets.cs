@@ -23,20 +23,42 @@ internal static partial class HudEditor {
     private const float PresetMenuWidth = 240f;
     private const float PresetMenuMaxHeight = 380f;
 
-    /// <summary>Inserts a preset. <paramref name="screen"/>: put a single-object preset there.</summary>
-    public static void InsertPreset(PackagePreset preset, Vector2? screen) {
+    private static bool TryLoadPreset(PackagePreset preset, out List<JToken> objects) {
+        objects = [];
         byte[] data;
         try {
             data = preset.ReadBytes();
         } catch (Exception e) {
             MainCore.Log.Err($"[HudEditor] Preset '{preset.Name}' failed to load: {e.Message}");
-            return;
+            return false;
         }
-        if (!TryReadObjects(data, out var objects, out bool hasResources)) {
+        if (!TryReadObjects(data, out objects, out bool hasResources)) {
             MainCore.Log.Err($"[HudEditor] Preset '{preset.Name}' isn't a valid package.");
-            return;
+            return false;
         }
-        if (hasResources && !TryMakeResourcesOwn(preset, data, out objects)) {
+        return !hasResources || TryMakeResourcesOwn(preset, data, out objects);
+    }
+
+    /// <summary>Adds a preset to the main canvas as editable objects, with the editor closed.</summary>
+    internal static bool AddPresetToMainCanvas(PackagePreset preset) {
+        if (!TryLoadPreset(preset, out var objects)) {
+            return false;
+        }
+        var canvas = MainCanvas(true);
+        foreach (var token in objects) {
+            var obj = new OvObject(bare: token["Config"]?["RectTransformConfig"] == null);
+            obj.Deserialize(token);
+            obj.ApplyComponent();
+            canvas.Attach(obj);
+            obj.ApplyConfig();
+        }
+        OverlayCore.SaveAllCanvases();
+        return true;
+    }
+
+    /// <summary>Inserts a preset. <paramref name="screen"/>: put a single-object preset there.</summary>
+    public static void InsertPreset(PackagePreset preset, Vector2? screen) {
+        if (!TryLoadPreset(preset, out var objects)) {
             return;
         }
 

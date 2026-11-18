@@ -193,8 +193,8 @@ public static class UICore {
         MainCore.Conf.IsFirstRun = false;
         if (!MainCore.Conf.TutorialOffered.Value) {
             MainCore.Conf.TutorialOffered.Value = true;
-            // Olly says hello and offers the tutorial.
-            Tutorial.Tutorial.Start(Tutorial.TutorialContent.Hello);
+            // The setup wizard opens over the window; it offers the tutorial at its end.
+            MainCore.Conf.SetupPending.Value = true;
         }
         MainCore.ConfMgr.Save();
 
@@ -224,6 +224,33 @@ public static class UICore {
                 }
             })
             .Play();
+    }
+
+    private static ITweenHandle uiScaleSequence;
+
+    /// <summary>Eases the window to a UI scale and its default size for that scale.</summary>
+    public static void AnimateUiScale(float value) {
+        uiScaleSequence?.Kill();
+
+        float scaleStart = PanelScale;
+
+        Vector2 targetSize = DefaultPanelSize;
+        LastPanelSize = targetSize;
+
+        uiScaleSequence = O5Seq.New()
+            .Append(done =>
+                O5KitAdapters.Ctx.Tween.TweenFloat(
+                    () => scaleStart,
+                    x => PanelScale = x,
+                    value,
+                    0.4f,
+                    done,
+                    O5Ease.OutExpo
+                )
+            )
+            .Join(done =>
+                Panel.TSizeDelta(targetSize, 0.4f, O5Ease.OutExpo, done)
+            ).Play();
     }
 
     public static RectTransform Panel;

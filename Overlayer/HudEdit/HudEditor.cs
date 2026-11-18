@@ -63,7 +63,7 @@ internal static partial class HudEditor {
     }
 
     public static void Open() {
-        if (IsOpen || !Core.MainCore.IsModEnabled || UICore.CanvasObj == null) {
+        if (IsOpen || !Core.MainCore.IsModEnabled || UICore.CanvasObj == null || Setup.SetupWizard.IsOpen) {
             return;
         }
         // While playing it needs a pause, unless the game plays itself (autoplay) or Settings allow it.

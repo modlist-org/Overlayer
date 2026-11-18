@@ -38,6 +38,15 @@ internal static class PageSettings {
     private static bool fontRefreshHooked;
     private static readonly Dictionary<TextLocalization, (GameObject LabelRow, GameObject MainRow)> objects = [];
     private static O5Dropdown<string> languageDropdown;
+    private static O5Slider uiScaleSlider;
+    private static Action refreshHudKey;
+
+    /// <summary>Shows values changed elsewhere (the setup wizard).</summary>
+    internal static void SyncValues() {
+        languageDropdown?.Set(MainCore.Tr.Language, false);
+        uiScaleSlider?.Set(MainCore.Conf.UIScale, false);
+        refreshHudKey?.Invoke();
+    }
 
     public static void Create(RectTransform parent) {
         objects.Clear();
@@ -161,6 +170,11 @@ internal static class PageSettings {
         var startupToggleTr = startupToggle.Label.gameObject.AddComponent<TextLocalization>().Init("SHOW_OVERLAYER_PANEL_AT_STARTUP", "Show Overlayer Panel at Startup");
         objects[startupToggleTr] = (overlayerText.gameObject, startupRow.gameObject);
 
+        var setupRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
+        var setupButton = O5Factory.Button(O5KitAdapters.Ctx, setupRow, "run_setup", new O5ButtonOptions { Text = "Run Setup Again", OnClick = Setup.SetupWizard.Open });
+        var setupButtonTr = setupButton.Label.gameObject.AddComponent<TextLocalization>().Init("SETUP_RUN_AGAIN", "Run Setup Again");
+        objects[setupButtonTr] = (overlayerText.gameObject, setupRow.gameObject);
+
         var tooltipRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
         var tooltipToggle = O5Factory.Toggle(O5KitAdapters.Ctx, tooltipRow, "show_tooltip", new O5ToggleOptions { DefaultValue = defSet.Tooltip, Value = MainCore.Conf.Tooltip, Text = "Show Tooltip" });
         var advTooltipRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
@@ -232,7 +246,6 @@ internal static class PageSettings {
         var rawInputToggleTr = rawInputToggle.Label.gameObject.AddComponent<TextLocalization>().Init("USE_RAW_INPUT", "Use OS Raw Input");
         objects[rawInputToggleTr] = (overlayerText.gameObject, rawInputRow.gameObject);
 
-        ITweenHandle scaleSeq = null;
 
         var uiScaleRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
         var uiScale = O5Factory.Slider(O5KitAdapters.Ctx, uiScaleRow, "ui_scale", new O5SliderOptions { DefaultValue = defSet.UIScale, Min = 0.8f, Max = 1.6f, Value = MainCore.Conf.UIScale, Format = "0.00x", Label = "UI Scale", ClampDrag = true, ClampInput = true, DragFilter = value => Math.Round(value, 2), InputFilter = value => Math.Round(value, 2), OnChanged = value => {
@@ -242,29 +255,9 @@ internal static class PageSettings {
                 MainCore.Conf.UIScale = (float)value;
                 O5KitAdapters.SyncConfig();
                 MainCore.ConfMgr.RequestSave();
-
-                scaleSeq?.Kill();
-
-                float scaleStart = UICore.PanelScale;
-
-                Vector2 targetSize = UICore.DefaultPanelSize;
-                UICore.LastPanelSize = targetSize;
-
-                scaleSeq = O5Seq.New()
-                    .Append(done =>
-                        O5KitAdapters.Ctx.Tween.TweenFloat(
-                            () => scaleStart,
-                            x => UICore.PanelScale = x,
-                            (float)value,
-                            0.4f,
-                            done,
-                            O5Ease.OutExpo
-                        )
-                    )
-                    .Join(done =>
-                        UICore.Panel.TSizeDelta(targetSize, 0.4f, O5Ease.OutExpo, done)
-                    ).Play();
+                UICore.AnimateUiScale((float)value);
             } });
+        uiScaleSlider = uiScale;
         var targetSize = UICore.DefaultPanelSize;
         var uiScaleTr = uiScale.Label.gameObject.AddComponent<TextLocalization>().Init("UI_SCALE", "UI Scale");
         objects[uiScaleTr] = (overlayerText.gameObject, uiScaleRow.gameObject);
@@ -339,6 +332,7 @@ internal static class PageSettings {
                 }
                 keyButton.Text = KeyCaption();
             }) });
+        refreshHudKey = () => keyButton.Text = KeyCaption();
         keyButton.Rect.AddToolTip(ctx, () => MainCore.Tr.Get("DESC_HUD_EDITOR_KEY",
             "Click, then press a key (hold Ctrl / Shift / Alt for a combination). Esc cancels."));
 

@@ -132,6 +132,7 @@ public sealed class OverlayerRuntime {
         UI.Easing.CurveEditor.Tick();
         HudEdit.HudPreview.Tick();
         Tutorial.Tutorial.Tick();
+        Setup.SetupWizard.Tick();
         UI.UISound.Tick();
     }
 
