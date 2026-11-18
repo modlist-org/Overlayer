@@ -25,6 +25,8 @@ namespace Overlayer.Setup;
 // The first-run wizard: a fresh install opens the Overlayer window with this on top, and it walks
 // through language, UI scale, keys, a starting HUD and importing, one page at a time. The last
 // page suggests the tutorial. Settings can open it again.
+// Motion follows osu!lazer's first-run wizard (WizardOverlay / WizardScreen): pages slide 100 units
+// over 500 ms with OutQuint and fade in 100 ms, the card settles from 0.99 scale over 400 ms.
 internal static class SetupWizard {
     private enum Step { Welcome, Scale, Keys, Hud, Import, Finish }
 
@@ -35,18 +37,45 @@ internal static class SetupWizard {
     private const float KeyUnit = 40f;
     private const float KeyGap = 4f;
 
+    private const float SlideOffset = 100f;
+    private const float SlideSeconds = 0.5f;
+    private const float FadeSeconds = 0.1f;
+    private const float OpenSeconds = 0.4f;
+    private const float CloseFadeSeconds = 0.5f;
+    private const float CloseScaleSeconds = 0.4f;
+    private const float RestingScale = 0.99f;
+
     private static readonly Color Accent = new(0.569f, 0.604f, 1f, 1f);
     private static readonly Color KeyColor = new(1f, 1f, 1f, 0.07f);
 
     private static readonly int StepCount = Enum.GetValues(typeof(Step)).Length;
 
-    private static RectTransform root, stepHost;
-    private static CanvasGroup rootGroup, stepGroup;
-    private static TextMeshProUGUI caption, title, say;
+    // One step's content. Leaving pages stay around until they've faded out.
+    private sealed class Page {
+        public RectTransform Rect, Host;
+        public CanvasGroup Group;
+        public TextMeshProUGUI Title, Say;
+        public readonly List<O5Kit.Core.O5Object> Controls = [];
+        public float Time, FromX, ToX, FromAlpha, ToAlpha = 1f;
+    }
+
+    private static RectTransform root, card, stage;
+    private static CanvasGroup rootGroup;
+    private static TextMeshProUGUI caption;
     private static O5Button backButton, skipButton, nextButton;
     private static readonly List<O5Kit.Core.O5Object> frameControls = [];
-    private static readonly List<O5Kit.Core.O5Object> stepControls = [];
     private static readonly List<Image> litKeys = [];
+    private static Page page;
+    private static readonly List<Page> leaving = [];
+    private static float openTime;
+
+    // The closing card keeps animating after the wizard itself is done.
+    private static RectTransform closingRoot, closingCard;
+    private static CanvasGroup closingGroup;
+    private static float closingTime, closingAlpha, closingScale;
+    private static readonly List<O5Kit.Core.O5Object> closingControls = [];
+
+    private static RectTransform stepHost => page.Host;
 
     private static Step step;
     private static PackagePreset pickedPreset;
@@ -57,6 +86,8 @@ internal static class SetupWizard {
     public static bool IsOpen => root != null;
 
     private static string T(string key, string fallback) => MainCore.Tr.Get(key, fallback);
+
+    private static float OutQuint(float t) => 1f - Mathf.Pow(1f - Mathf.Clamp01(t), 5f);
 
     private static KeyBind WindowKey => new(KeyCode.BackQuote,
         Application.platform == RuntimePlatform.LinuxPlayer ? KeyBind.Mods.Ctrl : KeyBind.Mods.Alt);
@@ -70,9 +101,12 @@ internal static class SetupWizard {
             return;
         }
         Tutorial.Tutorial.Stop();
+        FinishClosing();
         pickedPreset = null;
         importStatus = null;
         showHudKey = false;
+        step = Step.Welcome;
+        openTime = 0f;
         Build();
         Show(Step.Welcome);
         UISound.PlayOpen();
@@ -83,7 +117,7 @@ internal static class SetupWizard {
         MainCore.Conf.SetupPending.Value = false;
         var preset = pickedPreset;
         pickedPreset = null;
-        Teardown();
+        BeginClosing();
         if (preset != null) {
             HudEditor.AddPresetToMainCanvas(preset);
         }
@@ -95,7 +129,12 @@ internal static class SetupWizard {
     }
 
     private static void Teardown() {
-        ClearStep();
+        DropPage(page);
+        page = null;
+        foreach (var old in leaving) {
+            DropPage(old);
+        }
+        leaving.Clear();
         foreach (var control in frameControls) {
             control.Dispose();
         }
@@ -103,7 +142,55 @@ internal static class SetupWizard {
         if (root != null) {
             UnityEngine.Object.Destroy(root.gameObject);
         }
-        root = stepHost = null;
+        root = card = stage = null;
+    }
+
+    // Hands the view over to the closing animation; the wizard counts as closed from here on.
+    private static void BeginClosing() {
+        rootGroup.interactable = false;
+        rootGroup.blocksRaycasts = false;
+        closingControls.AddRange(frameControls);
+        frameControls.Clear();
+        foreach (var old in leaving.Append(page)) {
+            closingControls.AddRange(old.Controls);
+        }
+        leaving.Clear();
+        page = null;
+        litKeys.Clear();
+        closingRoot = root;
+        closingCard = card;
+        closingGroup = rootGroup;
+        closingTime = 0f;
+        closingAlpha = rootGroup.alpha;
+        closingScale = card.localScale.x;
+        root = card = stage = null;
+    }
+
+    private static void TickClosing(float dt) {
+        if (closingRoot == null) {
+            if (closingControls.Count > 0) {
+                FinishClosing();
+            }
+            return;
+        }
+        closingTime += dt;
+        closingGroup.alpha = Mathf.Lerp(closingAlpha, 0f, OutQuint(closingTime / CloseFadeSeconds));
+        float scale = Mathf.Lerp(closingScale, RestingScale, OutQuint(closingTime / CloseScaleSeconds));
+        closingCard.localScale = new Vector3(scale, scale, 1f);
+        if (closingTime >= CloseFadeSeconds) {
+            FinishClosing();
+        }
+    }
+
+    private static void FinishClosing() {
+        foreach (var control in closingControls) {
+            control.Dispose();
+        }
+        closingControls.Clear();
+        if (closingRoot != null) {
+            UnityEngine.Object.Destroy(closingRoot.gameObject);
+        }
+        closingRoot = closingCard = null;
     }
 
     private static void TickPending() {
@@ -123,6 +210,7 @@ internal static class SetupWizard {
     }
 
     public static void Tick() {
+        TickClosing(Mathf.Min(Time.unscaledDeltaTime, 0.1f));
         if (root == null) {
             // Destroyed along with the window layer.
             if (frameControls.Count > 0) {
@@ -138,8 +226,19 @@ internal static class SetupWizard {
             root.SetAsLastSibling();
         }
         float dt = Mathf.Min(Time.unscaledDeltaTime, 0.1f);
-        rootGroup.alpha = Mathf.MoveTowards(rootGroup.alpha, 1f, dt * 5f);
-        stepGroup.alpha = Mathf.MoveTowards(stepGroup.alpha, 1f, dt * 6f);
+        openTime += dt;
+        float opened = OutQuint(openTime / OpenSeconds);
+        rootGroup.alpha = opened;
+        float cardScale = Mathf.Lerp(RestingScale, 1f, opened);
+        card.localScale = new Vector3(cardScale, cardScale, 1f);
+        Advance(page, dt);
+        for (int i = leaving.Count - 1; i >= 0; i--) {
+            Advance(leaving[i], dt);
+            if (leaving[i].Time >= FadeSeconds) {
+                DropPage(leaving[i]);
+                leaving.RemoveAt(i);
+            }
+        }
         // The keys to press pulse on the keyboard.
         float pulse = 0.7f + 0.3f * Mathf.Abs(Mathf.Sin(Time.unscaledTime * 2.5f));
         foreach (var key in litKeys) {
@@ -164,10 +263,13 @@ internal static class SetupWizard {
 
         var cardImage = UiStyle.Rounded("Card", root, new Color(0.08f, 0.08f, 0.11f, 0.98f));
         cardImage.raycastTarget = true;
-        var card = cardImage.rectTransform;
+        card = cardImage.rectTransform;
         card.anchorMin = card.anchorMax = card.pivot = new Vector2(0.5f, 0.5f);
         card.anchoredPosition = Vector2.zero;
         card.sizeDelta = new Vector2(CardWidth, CardHeight);
+        card.localScale = new Vector3(RestingScale, RestingScale, 1f);
+        // Sliding pages stay inside the card.
+        card.gameObject.AddComponent<RectMask2D>();
 
         var column = UiStyle.NewRect("Column", card);
         column.anchorMin = Vector2.zero;
@@ -179,16 +281,9 @@ internal static class SetupWizard {
 
         caption = FrameText(ctx, column, 22f, 13f, UiStyle.Caption);
         caption.characterSpacing = 4f;
-        title = FrameText(ctx, column, 44f, 30f, Color.white);
-        title.fontStyle = FontStyles.Bold;
-        say = FrameText(ctx, column, 64f, 18f, new Color(1f, 1f, 1f, 0.82f));
-        say.lineSpacing = 6f;
 
-        stepHost = UiStyle.NewRect("Step", column);
-        stepHost.gameObject.AddComponent<LayoutElement>().flexibleHeight = 1f;
-        var stepLayout = UiStyle.Vertical(stepHost.gameObject, 8f);
-        stepLayout.childForceExpandHeight = false;
-        stepGroup = stepHost.gameObject.AddComponent<CanvasGroup>();
+        stage = UiStyle.NewRect("Stage", column);
+        stage.gameObject.AddComponent<LayoutElement>().flexibleHeight = 1f;
 
         var bar = UiStyle.HRow(column, 8f, 44f);
         backButton = Frame(UiStyle.Button(UiStyle.Cell(bar, 110f), "setup_back", string.Empty, () => Show(step - 1)));
@@ -223,34 +318,86 @@ internal static class SetupWizard {
     }
 
     private static T2 Track<T2>(T2 control) where T2 : O5Kit.Core.O5Object {
-        stepControls.Add(control);
+        page.Controls.Add(control);
         return control;
-    }
-
-    private static void ClearStep() {
-        foreach (var control in stepControls) {
-            control.Dispose();
-        }
-        stepControls.Clear();
-        litKeys.Clear();
-        if (stepHost == null) {
-            return;
-        }
-        for (int i = stepHost.childCount - 1; i >= 0; i--) {
-            var child = stepHost.GetChild(i).gameObject;
-            child.SetActive(false);
-            UnityEngine.Object.Destroy(child);
-        }
     }
 
     // ---- pages ----
 
-    private static void Show(Step next, bool fade = true) {
+    private static Page NewPage() {
+        var ctx = O5KitAdapters.Ctx;
+        var made = new Page { Rect = UiStyle.NewRect("Page", stage) };
+        made.Rect.anchorMin = Vector2.zero;
+        made.Rect.anchorMax = Vector2.one;
+        made.Rect.offsetMin = made.Rect.offsetMax = Vector2.zero;
+        made.Group = made.Rect.gameObject.AddComponent<CanvasGroup>();
+        var layout = UiStyle.Vertical(made.Rect.gameObject, 8f);
+        layout.childForceExpandHeight = false;
+        made.Title = FrameText(ctx, made.Rect, 44f, 30f, Color.white);
+        made.Title.fontStyle = FontStyles.Bold;
+        made.Say = FrameText(ctx, made.Rect, 64f, 18f, new Color(1f, 1f, 1f, 0.82f));
+        made.Say.lineSpacing = 6f;
+        made.Host = UiStyle.NewRect("Step", made.Rect);
+        made.Host.gameObject.AddComponent<LayoutElement>().flexibleHeight = 1f;
+        var hostLayout = UiStyle.Vertical(made.Host.gameObject, 8f);
+        hostLayout.childForceExpandHeight = false;
+        return made;
+    }
+
+    private static void Advance(Page target, float dt) {
+        target.Time += dt;
+        float x = Mathf.Lerp(target.FromX, target.ToX, OutQuint(target.Time / SlideSeconds));
+        target.Rect.anchoredPosition = new Vector2(x, 0f);
+        target.Group.alpha = Mathf.Lerp(target.FromAlpha, target.ToAlpha, Mathf.Clamp01(target.Time / FadeSeconds));
+    }
+
+    private static void Leave(Page target, float toX) {
+        target.Time = 0f;
+        target.FromX = target.Rect.anchoredPosition.x;
+        target.ToX = toX;
+        target.FromAlpha = target.Group.alpha;
+        target.ToAlpha = 0f;
+        target.Group.interactable = false;
+        target.Group.blocksRaycasts = false;
+        leaving.Add(target);
+    }
+
+    private static void DropPage(Page target) {
+        if (target == null) {
+            return;
+        }
+        foreach (var control in target.Controls) {
+            control.Dispose();
+        }
+        target.Controls.Clear();
+        if (target.Rect != null) {
+            target.Rect.gameObject.SetActive(false);
+            UnityEngine.Object.Destroy(target.Rect.gameObject);
+        }
+    }
+
+    // animate: going to another step. Without it the page is rebuilt where it is (a choice was made on it).
+    private static void Show(Step next, bool animate = true) {
         KeyCapture.Cancel();
+        float direction = next >= step ? 1f : -1f;
         step = next;
-        ClearStep();
-        if (fade) {
-            stepGroup.alpha = 0f;
+        litKeys.Clear();
+        if (page != null) {
+            if (animate) {
+                Leave(page, -direction * SlideOffset);
+            } else {
+                DropPage(page);
+            }
+        }
+        page = NewPage();
+        if (animate) {
+            page.FromX = direction * SlideOffset;
+            page.FromAlpha = 0f;
+            page.Rect.anchoredPosition = new Vector2(page.FromX, 0f);
+            page.Group.alpha = 0f;
+        } else {
+            page.Time = SlideSeconds;
+            page.FromAlpha = 1f;
         }
         caption.text = string.Format(T("SETUP_STEP", "SETUP   {0} / {1}"), (int)step + 1, StepCount);
         backButton.Text = T("SETUP_BACK", "Back");
@@ -271,8 +418,8 @@ internal static class SetupWizard {
     }
 
     private static void Header(string key, string heading, string line) {
-        title.text = T($"SETUP_{key}_TITLE", heading);
-        say.text = T($"SETUP_{key}", line);
+        page.Title.text = T($"SETUP_{key}_TITLE", heading);
+        page.Say.text = T($"SETUP_{key}", line);
     }
 
     private static void ShowWelcome() {
@@ -296,7 +443,8 @@ internal static class SetupWizard {
     }
 
     private static void ShowScale() {
-        Header("SCALE", "UI size", "Drag the slider to a comfortable size. This screen and the Overlayer window change with it.");
+        // Named like the setting itself.
+        Header("SCALE", T("UI_SCALE", "UI Scale"), "Drag the slider to a comfortable scale. This screen and the Overlayer window change with it.");
         var ctx = O5KitAdapters.Ctx;
         var slider = Track(O5Factory.Slider(ctx, O5Factory.Row(ctx, stepHost), "setup_scale", new O5SliderOptions {
             DefaultValue = 1f,
