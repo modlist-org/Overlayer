@@ -22,16 +22,17 @@ using TMPro;
 
 namespace Overlayer.Setup;
 
-// The first-run wizard: a fresh install opens the Overlayer window with this on top, and it walks
-// through language, UI scale, keys, a starting HUD and importing, one page at a time. The last
-// page suggests the tutorial. Settings can open it again.
+// The first-run wizard: fills the Overlayer window under its top bar (a fresh install opens the
+// window for it) and walks through language, UI scale, keys, a starting HUD and importing, one
+// page at a time. The last page suggests the tutorial. Settings can open it again.
 // Motion follows osu!lazer's first-run wizard (WizardOverlay / WizardScreen): pages slide 100 units
-// over 500 ms with OutQuint and fade in 100 ms, the card settles from 0.99 scale over 400 ms.
+// over 500 ms with OutQuint and fade in 100 ms, the content settles from 0.99 scale over 400 ms.
 internal static class SetupWizard {
     private enum Step { Welcome, Scale, Keys, Hud, Import, Finish }
 
-    private const float CardWidth = 860f;
-    private const float CardHeight = 640f;
+    private const float TopBarHeight = 60f;
+    private const float MaxColumnWidth = 900f;
+    private const float ColumnMargin = 32f;
     private const float StartDelay = 4f;
     private const int MaxLayouts = 5;
     private const float KeyUnit = 40f;
@@ -59,7 +60,7 @@ internal static class SetupWizard {
         public float Time, FromX, ToX, FromAlpha, ToAlpha = 1f;
     }
 
-    private static RectTransform root, card, stage;
+    private static RectTransform root, card, column, stage, keyboard;
     private static CanvasGroup rootGroup;
     private static TextMeshProUGUI caption;
     private static O5Button backButton, skipButton, nextButton;
@@ -102,6 +103,9 @@ internal static class SetupWizard {
         }
         Tutorial.Tutorial.Stop();
         FinishClosing();
+        if (UICore.IsMenuOpen) {
+            UICore.CloseMenu();
+        }
         pickedPreset = null;
         importStatus = null;
         showHudKey = false;
@@ -142,7 +146,7 @@ internal static class SetupWizard {
         if (root != null) {
             UnityEngine.Object.Destroy(root.gameObject);
         }
-        root = card = stage = null;
+        root = card = column = stage = keyboard = null;
     }
 
     // Hands the view over to the closing animation; the wizard counts as closed from here on.
@@ -163,7 +167,7 @@ internal static class SetupWizard {
         closingTime = 0f;
         closingAlpha = rootGroup.alpha;
         closingScale = card.localScale.x;
-        root = card = stage = null;
+        root = card = column = stage = keyboard = null;
     }
 
     private static void TickClosing(float dt) {
@@ -231,6 +235,12 @@ internal static class SetupWizard {
         rootGroup.alpha = opened;
         float cardScale = Mathf.Lerp(RestingScale, 1f, opened);
         card.localScale = new Vector3(cardScale, cardScale, 1f);
+        // The window can be resized at any time.
+        column.sizeDelta = new Vector2(Mathf.Min(MaxColumnWidth, root.rect.width - ColumnMargin * 2f), column.sizeDelta.y);
+        if (keyboard != null) {
+            float fit = Mathf.Min(1f, page.Host.rect.width / (KeyUnit * 15f));
+            keyboard.localScale = new Vector3(fit, fit, 1f);
+        }
         Advance(page, dt);
         for (int i = leaving.Count - 1; i >= 0; i--) {
             Advance(leaving[i], dt);
@@ -250,32 +260,32 @@ internal static class SetupWizard {
 
     private static void Build() {
         var ctx = O5KitAdapters.Ctx;
-        root = UiStyle.NewRect("OverlayerSetup", UICore.CanvasObj.transform);
+        root = UiStyle.NewRect("OverlayerSetup", UICore.MenuPanel);
         root.anchorMin = Vector2.zero;
         root.anchorMax = Vector2.one;
-        root.offsetMin = root.offsetMax = Vector2.zero;
+        root.offsetMin = Vector2.zero;
+        root.offsetMax = new Vector2(0f, -TopBarHeight);
         rootGroup = root.gameObject.AddComponent<CanvasGroup>();
         rootGroup.alpha = 0f;
-        // Keeps clicks away from the window underneath.
-        var dim = root.gameObject.AddComponent<Image>();
-        dim.color = new Color(0f, 0f, 0f, 0.62f);
-        dim.raycastTarget = true;
+        // Covers the window's pages and keeps clicks away from them.
+        var background = root.gameObject.AddComponent<Image>();
+        background.color = UIColors.PanelBG;
+        background.raycastTarget = true;
+        // Sliding pages stay inside the window.
+        root.gameObject.AddComponent<RectMask2D>();
 
-        var cardImage = UiStyle.Rounded("Card", root, new Color(0.08f, 0.08f, 0.11f, 0.98f));
-        cardImage.raycastTarget = true;
-        card = cardImage.rectTransform;
-        card.anchorMin = card.anchorMax = card.pivot = new Vector2(0.5f, 0.5f);
-        card.anchoredPosition = Vector2.zero;
-        card.sizeDelta = new Vector2(CardWidth, CardHeight);
+        card = UiStyle.NewRect("Content", root);
+        card.anchorMin = Vector2.zero;
+        card.anchorMax = Vector2.one;
+        card.offsetMin = card.offsetMax = Vector2.zero;
         card.localScale = new Vector3(RestingScale, RestingScale, 1f);
-        // Sliding pages stay inside the card.
-        card.gameObject.AddComponent<RectMask2D>();
 
-        var column = UiStyle.NewRect("Column", card);
-        column.anchorMin = Vector2.zero;
-        column.anchorMax = Vector2.one;
-        column.offsetMin = new Vector2(36f, 28f);
-        column.offsetMax = new Vector2(-36f, -28f);
+        column = UiStyle.NewRect("Column", card);
+        column.anchorMin = new Vector2(0.5f, 0f);
+        column.anchorMax = new Vector2(0.5f, 1f);
+        column.pivot = new Vector2(0.5f, 0.5f);
+        column.anchoredPosition = Vector2.zero;
+        column.sizeDelta = new Vector2(MaxColumnWidth, -48f);
         var layout = UiStyle.Vertical(column.gameObject, 8f);
         layout.childForceExpandHeight = false;
 
@@ -331,16 +341,13 @@ internal static class SetupWizard {
         made.Rect.anchorMax = Vector2.one;
         made.Rect.offsetMin = made.Rect.offsetMax = Vector2.zero;
         made.Group = made.Rect.gameObject.AddComponent<CanvasGroup>();
-        var layout = UiStyle.Vertical(made.Rect.gameObject, 8f);
-        layout.childForceExpandHeight = false;
-        made.Title = FrameText(ctx, made.Rect, 44f, 30f, Color.white);
+        // Scrolls when the window is small or the UI scale is high.
+        var (_, content, _) = O5Factory.ScrollView(ctx, made.Rect, 8f);
+        made.Host = content;
+        made.Title = FrameText(ctx, content, 44f, 30f, Color.white);
         made.Title.fontStyle = FontStyles.Bold;
-        made.Say = FrameText(ctx, made.Rect, 64f, 18f, new Color(1f, 1f, 1f, 0.82f));
+        made.Say = FrameText(ctx, content, 64f, 18f, new Color(1f, 1f, 1f, 0.82f));
         made.Say.lineSpacing = 6f;
-        made.Host = UiStyle.NewRect("Step", made.Rect);
-        made.Host.gameObject.AddComponent<LayoutElement>().flexibleHeight = 1f;
-        var hostLayout = UiStyle.Vertical(made.Host.gameObject, 8f);
-        hostLayout.childForceExpandHeight = false;
         return made;
     }
 
@@ -382,6 +389,7 @@ internal static class SetupWizard {
         float direction = next >= step ? 1f : -1f;
         step = next;
         litKeys.Clear();
+        keyboard = null;
         if (page != null) {
             if (animate) {
                 Leave(page, -direction * SlideOffset);
@@ -549,7 +557,7 @@ internal static class SetupWizard {
     private static void BuildKeyboard(KeyBind bind) {
         var ctx = O5KitAdapters.Ctx;
         var row = O5Factory.Row(ctx, stepHost, KeyUnit * KeyRows.Length);
-        var board = UiStyle.NewRect("Keyboard", row);
+        var board = keyboard = UiStyle.NewRect("Keyboard", row);
         board.anchorMin = board.anchorMax = board.pivot = new Vector2(0.5f, 0.5f);
         board.anchoredPosition = Vector2.zero;
         board.sizeDelta = new Vector2(KeyUnit * 15f, KeyUnit * KeyRows.Length);

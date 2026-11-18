@@ -192,7 +192,7 @@ public static class UICore {
             GameObject menuPanel = new("MenuPanel");
             menuPanel.transform.SetParent(panel.transform, false);
 
-            var menuPanelRect = menuPanel.AddComponent<RectTransform>();
+            var menuPanelRect = MenuPanel = menuPanel.AddComponent<RectTransform>();
             menuPanelRect.anchorMin = Vector2.zero;
             menuPanelRect.anchorMax = new(1, 1);
             menuPanelRect.pivot = new(0.5f, 0.5f);
@@ -1005,6 +1005,10 @@ public static class UICore {
     }
 
     public static void ToggleMenu() {
+        // The setup wizard takes over the window's content.
+        if (Setup.SetupWizard.IsOpen) {
+            return;
+        }
         if (isMenuOpen) {
             CloseMenu();
         } else {
