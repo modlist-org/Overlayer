@@ -181,11 +181,13 @@ internal static class TutorialContent {
                 .Looks(new(Eye.Normal, Brow.NormalHigh, Mouth.SadSmall))
                 .Ask(
                     new TutorialChoice("SHOW_ME", "Start", Tutorial.IntoCourse, primary: true),
-                    new TutorialChoice("LATER", "Later", null)),
+                    new TutorialChoice("LATER", "Later", null))
+                .Only(() => !Tutorial.InCourse),
             new TutorialStep("HELLO_LATER", "Anytime",
                 "Got it. You can start any chapter anytime from the <b>Tutorial</b> page in the menu.")
                 .Looks(Face.Smile)
-                .At(() => PanelPart("TopBar/Logo"))),
+                .At(() => PanelPart("TopBar/Logo"))
+                .Only(() => !Tutorial.InCourse)),
 
         new("basics", "The Overlayer window", "Opening, moving, menu and pages",
             OpenWindow("BASICS_OPEN"),

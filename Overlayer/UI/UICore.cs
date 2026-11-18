@@ -100,130 +100,16 @@ public static class UICore {
         TextLocalization.RefreshAll();
 
         if (MainCore.Conf.IsFirstRun) {
-            MakeFirstRunHelper();
+            // A fresh install starts with the setup wizard.
+            MainCore.Conf.IsFirstRun = false;
+            MainCore.Conf.TutorialOffered.Value = true;
+            MainCore.Conf.SetupPending.Value = true;
+            MainCore.ConfMgr.Save();
         }
 
         if (MainCore.Conf.ShowOnStartup) {
             Open(true);
         }
-    }
-
-    private static bool firstRunHelperActivated = false;
-
-    private static GameObject firstRunCanvasObj;
-    private static Image firstRunHelperImage;
-    private static TextMeshProUGUI firstRunHelperText;
-    private static ITweenHandle firstRunHelperImageSequence;
-    private static ITweenHandle secondRunHelperTextSequence;
-
-    private static void MakeFirstRunHelper() {
-        Task.Run(async () => {
-            await Task.Delay(4000);
-            MainThread.Enqueue(() => {
-                firstRunHelperActivated = true;
-
-                firstRunCanvasObj = new GameObject("FirstRunHelperCanvas");
-                firstRunCanvasObj.transform.SetParent(MainCore.Root.transform, false);
-
-                firstRunCanvasObj.AddComponent<RectTransform>();
-
-                var canvas = firstRunCanvasObj.AddComponent<Canvas>();
-                canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-                canvas.sortingOrder = 32767;
-
-                var scaler = firstRunCanvasObj.AddComponent<CanvasScaler>();
-                scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-                scaler.referenceResolution = new Vector2(1920, 1080);
-                scaler.matchWidthOrHeight = 0.5f;
-
-                var frh = new GameObject("FirstRunHelper");
-                var frhRect = frh.AddComponent<RectTransform>();
-                frh.transform.SetParent(firstRunCanvasObj.transform, false);
-
-                frhRect.anchorMin = new Vector2(0f, 0f);
-                frhRect.anchorMax = new Vector2(1f, 0f);
-                frhRect.pivot = new Vector2(0.5f, 0f);
-                frhRect.offsetMin = new Vector2(0f, 0f);
-                frhRect.offsetMax = new Vector2(0f, 4f);
-
-                firstRunHelperImage = frh.AddComponent<Image>();
-                firstRunHelperImage.raycastTarget = false;
-                firstRunHelperImage.color = new Color(1f, 1f, 1f, 0f);
-
-                var frhTextObj = new GameObject("Text");
-                var frhTextRect = frhTextObj.AddComponent<RectTransform>();
-                frhTextObj.transform.SetParent(frh.transform, false);
-
-                var tmp = frhTextObj.AddComponent<TextMeshProUGUI>();
-                tmp.fontSize = 22f;
-                tmp.color = Color.white;
-                tmp.alignment = TextAlignmentOptions.Bottom;
-                tmp.text = "";
-                tmp.font = MainCore.Res.Get<TMP_FontAsset>(Asset.SUIT_Medium);
-
-                frhTextRect.anchorMin = new Vector2(0.5f, 0.5f);
-                frhTextRect.anchorMax = new Vector2(0.5f, 0.5f);
-                frhTextRect.anchoredPosition = new Vector2(0f, 6f);
-                frhTextRect.sizeDelta = new Vector2(1000f, 50f);
-                frhTextRect.pivot = new Vector2(0.5f, 0f);
-
-                firstRunHelperText = tmp;
-                firstRunHelperImageSequence = O5Seq.New()
-                    .Append(done => firstRunHelperImage.TAlpha(1.6f, 0.1f, O5Ease.OutSine, done))
-                    .Append(done => firstRunHelperImage.TAlpha(0.04f, 1f, O5Ease.OutSine, done))
-                    .SetLoops()
-                    .Play();
-
-                string fullText = Application.platform == RuntimePlatform.LinuxPlayer
-                    ? "Press Ctrl + ` (BackQuote, left of 1 key)"
-                    : "Press Alt + ` (BackQuote, left of 1 key)";
-                secondRunHelperTextSequence = O5KitAdapters.Ctx.Tween.TweenFloat(
-                    () => 0f,
-                    x => firstRunHelperText.text = fullText[..(int)x],
-                    fullText.Length,
-                    1.4f,
-                    null,
-                    O5Ease.OutSine
-                );
-            });
-        });
-    }
-
-    private static void EndFirstRunHelper() {
-        MainCore.Conf.IsFirstRun = false;
-        if (!MainCore.Conf.TutorialOffered.Value) {
-            MainCore.Conf.TutorialOffered.Value = true;
-            // The setup wizard opens over the window; it offers the tutorial at its end.
-            MainCore.Conf.SetupPending.Value = true;
-        }
-        MainCore.ConfMgr.Save();
-
-        firstRunHelperImageSequence?.Kill();
-        secondRunHelperTextSequence?.Kill();
-
-        firstRunHelperText.text = "";
-        const string endText = "Great Job!";
-
-        O5Seq.New()
-            .Append(done => firstRunHelperImage.TAlpha(1.0f, 0.2f, O5Ease.OutSine, done))
-            .Join(done => O5KitAdapters.Ctx.Tween.TweenFloat(
-                () => 0f,
-                x => firstRunHelperText.text = endText[..(int)x],
-                endText.Length,
-                0.8f,
-                done,
-                O5Ease.Linear
-            ))
-            .AppendTime(3.0f)
-            .Append(done => firstRunHelperImage.TAlpha(0f, 2.0f, O5Ease.Linear, done))
-            .Join(done => firstRunHelperText.TAlpha(0f, 2.0f, O5Ease.Linear, done))
-
-            .AppendCallback(() => {
-                if (!firstRunCanvasObj) {
-                    UnityEngine.Object.Destroy(firstRunCanvasObj);
-                }
-            })
-            .Play();
     }
 
     private static ITweenHandle uiScaleSequence;
@@ -955,11 +841,6 @@ public static class UICore {
         CanvasObj.SetActive(true);
 
         panelTweener = Panel.TAnchorPos(LastPanelPosition, 0.1f, O5Ease.OutExpo);
-
-        if (firstRunHelperActivated) {
-            firstRunHelperActivated = false;
-            EndFirstRunHelper();
-        }
     }
 
     public static void Close(bool noAnimate = false) {
@@ -1177,20 +1058,7 @@ public static class UICore {
         panelTweener = null;
         resetSequence = null;
         menuSequence = null;
-        try {
-            firstRunHelperImageSequence?.Kill();
-        } catch {
-        }
-        try {
-            secondRunHelperTextSequence?.Kill();
-        } catch {
-        }
-        firstRunHelperImageSequence = null;
-        secondRunHelperTextSequence = null;
-        firstRunHelperActivated = false;
-        firstRunCanvasObj = null;
-        firstRunHelperImage = null;
-        firstRunHelperText = null;
+
         wasCanvasActive = false;
         isOpen = false;
         isMenuOpen = false;

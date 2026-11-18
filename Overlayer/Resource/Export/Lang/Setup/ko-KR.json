@@ -8,33 +8,34 @@
     "SETUP_SKIP": "건너뛰기",
     "SETUP_NEXT": "다음",
 
-    "SETUP_WELCOME_TITLE": "Overlayer에 오신 걸 환영해요",
-    "SETUP_WELCOME": "안녕하세요, 저는 올리예요. 시작하기 전에 몇 가지만 정해 볼게요. 금방 끝나요.\n어떤 언어가 편하세요?",
+    "SETUP_WELCOME_TITLE": "Overlayer에 오신 것을 환영합니다",
+    "SETUP_WELCOME": "시작하기 전에 몇 가지를 설정합니다. 먼저 사용할 언어를 선택합니다.",
 
     "SETUP_SCALE_TITLE": "UI 크기",
-    "SETUP_SCALE": "너무 작거나 크면 편한 크기로 끌어 보세요. 이 화면과 Overlayer 창이 같이 바뀌어요.",
+    "SETUP_SCALE": "슬라이더를 끌어 보기 편한 크기로 맞춥니다. 이 화면과 Overlayer 창의 크기가 함께 바뀝니다.",
 
-    "SETUP_KEYS_TITLE": "기억할 키 두 개",
-    "SETUP_KEYS": "이 두 개만 알면 다 열 수 있어요. HUD 편집기 키는 여기서 바꿀 수 있어요.",
+    "SETUP_KEYS_TITLE": "기억할 단축키",
+    "SETUP_KEYS": "키보드에 표시된 키를 함께 누릅니다.",
     "SETUP_KEY_WINDOW": "Overlayer 창",
     "SETUP_KEY_HUD": "HUD 편집기",
-    "SETUP_KEY_PRESS": "키를 누르세요...   (Esc: 취소)",
-    "SETUP_KEY_NOTE": "HUD 편집기 버튼을 누른 다음 원하는 키를 누르세요. Ctrl, Shift, Alt를 같이 눌러도 돼요.",
+    "SETUP_KEY_WINDOW_NOTE": "Overlayer 창을 열고 닫는 키입니다. 눌러 보다가 이 화면이 닫히면 같은 키를 다시 누르면 돌아옵니다.",
+    "SETUP_KEY_CHANGE": "키 변경",
+    "SETUP_KEY_PRESS": "변경할 키를 누릅니다...   (Esc: 취소)",
 
-    "SETUP_HUD_TITLE": "시작할 HUD 고르기",
-    "SETUP_HUD": "만들어진 레이아웃으로 시작하거나 빈 화면으로 시작할 수 있어요. 고른 건 나중에 전부 고칠 수 있어요.",
+    "SETUP_HUD_TITLE": "시작할 HUD 선택",
+    "SETUP_HUD": "만들어진 레이아웃이나 빈 화면으로 시작합니다. 선택한 HUD는 나중에 모두 수정할 수 있습니다.",
     "SETUP_HUD_EMPTY": "빈 화면",
 
-    "SETUP_IMPORT_TITLE": "갖고 있는 HUD가 있나요?",
-    "SETUP_IMPORT": "누가 공유해 준 패키지가 있으면 여기서 가져오세요. 없으면 그냥 넘어가도 돼요.",
-    "SETUP_IMPORT_PICK": "파일 고르기 (.o5cp, .json)",
-    "SETUP_IMPORT_DONE": "{0}을(를) 가져왔어요.",
-    "SETUP_IMPORT_FAILED": "{0}을(를) 가져오지 못했어요. 자세한 내용은 로그에 있어요.",
+    "SETUP_IMPORT_TITLE": "HUD 가져오기",
+    "SETUP_IMPORT": "공유받은 패키지가 있으면 여기서 가져옵니다. 없으면 다음 단계로 넘어갑니다.",
+    "SETUP_IMPORT_PICK": "파일 선택 (.o5cp, .json)",
+    "SETUP_IMPORT_DONE": "{0} 파일을 가져왔습니다.",
+    "SETUP_IMPORT_FAILED": "{0} 파일을 가져오지 못했습니다. 자세한 내용은 로그를 확인합니다.",
 
-    "SETUP_FINISH_TITLE": "준비 끝!",
-    "SETUP_FINISH": "이제 다 됐어요. 여기서 정한 건 나중에 설정에서 언제든 바꿀 수 있어요.",
-    "SETUP_FINISH_TUTORIAL": "<b>Overlayer가 처음이신가요?</b> 그렇다면 튜토리얼을 한번 해 보시는 걸 추천해요. 제가 먼저 보여 드리고, 하나씩 따라 해 보는 식이에요.\n지금 안 하셔도 괜찮아요. 메뉴의 <b>튜토리얼</b> 페이지에서 언제든 할 수 있어요.",
-    "SETUP_FINISH_YES": "튜토리얼 해 보기",
-    "SETUP_FINISH_NO": "바로 시작하기"
+    "SETUP_FINISH_TITLE": "설정 완료",
+    "SETUP_FINISH": "초기 설정이 끝났습니다. 여기서 정한 내용은 설정에서 언제든지 바꿀 수 있습니다.",
+    "SETUP_FINISH_TUTORIAL": "<b>Overlayer가 처음이신가요?</b> 튜토리얼을 한번 진행해 보는 것을 추천합니다. 기능을 직접 보여 주고 하나씩 따라 해 볼 수 있습니다.\n나중에 메뉴의 <b>튜토리얼</b> 페이지에서 시작할 수도 있습니다.",
+    "SETUP_FINISH_YES": "튜토리얼 시작",
+    "SETUP_FINISH_NO": "바로 시작"
   }
 }

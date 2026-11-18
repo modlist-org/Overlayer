@@ -5,9 +5,9 @@ using Overlayer.Compat;
 using Overlayer.Core;
 using Overlayer.HudEdit;
 using Overlayer.Localization;
+using Overlayer.ModuleAPI;
 using Overlayer.Overlay;
 using Overlayer.Package;
-using Overlayer.Tutorial.Olly;
 using Overlayer.UI;
 using Overlayer.UI.Factory.Page;
 using Overlayer.UI.Utility;
@@ -22,33 +22,46 @@ using TMPro;
 
 namespace Overlayer.Setup;
 
-// The first-run wizard: opens over the Overlayer window the first time it's opened and walks
+// The first-run wizard: a fresh install opens the Overlayer window with this on top, and it walks
 // through language, UI scale, keys, a starting HUD and importing, one page at a time. The last
 // page suggests the tutorial. Settings can open it again.
 internal static class SetupWizard {
     private enum Step { Welcome, Scale, Keys, Hud, Import, Finish }
 
-    private const float CardWidth = 1040f;
+    private const float CardWidth = 860f;
     private const float CardHeight = 640f;
+    private const float StartDelay = 4f;
     private const int MaxLayouts = 5;
+    private const float KeyUnit = 40f;
+    private const float KeyGap = 4f;
+
+    private static readonly Color Accent = new(0.569f, 0.604f, 1f, 1f);
+    private static readonly Color KeyColor = new(1f, 1f, 1f, 0.07f);
 
     private static readonly int StepCount = Enum.GetValues(typeof(Step)).Length;
 
-    private static RectTransform root, card, stepHost;
+    private static RectTransform root, stepHost;
     private static CanvasGroup rootGroup, stepGroup;
     private static TextMeshProUGUI caption, title, say;
     private static O5Button backButton, skipButton, nextButton;
-    private static OllyView olly;
     private static readonly List<O5Kit.Core.O5Object> frameControls = [];
     private static readonly List<O5Kit.Core.O5Object> stepControls = [];
+    private static readonly List<Image> litKeys = [];
 
     private static Step step;
     private static PackagePreset pickedPreset;
     private static string importStatus;
+    private static bool showHudKey;
+    private static float pendingSince = -1f;
 
     public static bool IsOpen => root != null;
 
     private static string T(string key, string fallback) => MainCore.Tr.Get(key, fallback);
+
+    private static KeyBind WindowKey => new(KeyCode.BackQuote,
+        Application.platform == RuntimePlatform.LinuxPlayer ? KeyBind.Mods.Ctrl : KeyBind.Mods.Alt);
+
+    private static string WindowKeyText => Application.platform == RuntimePlatform.LinuxPlayer ? "Ctrl + `" : "Alt + `";
 
     // ---- opening and closing ----
 
@@ -59,6 +72,7 @@ internal static class SetupWizard {
         Tutorial.Tutorial.Stop();
         pickedPreset = null;
         importStatus = null;
+        showHudKey = false;
         Build();
         Show(Step.Welcome);
         UISound.PlayOpen();
@@ -75,12 +89,6 @@ internal static class SetupWizard {
         }
         PageSettings.SyncValues();
         if (startTutorial) {
-            // Olly already said hello here, so the course starts at the first real chapter.
-            var done = MainCore.Conf.TutorialDone.Value ?? [];
-            if (!done.Contains(Tutorial.TutorialContent.Hello.Id)) {
-                done.Add(Tutorial.TutorialContent.Hello.Id);
-                MainCore.Conf.TutorialDone.Value = done;
-            }
             Tutorial.Tutorial.Continue();
         }
         MainCore.ConfMgr.RequestSave();
@@ -95,8 +103,23 @@ internal static class SetupWizard {
         if (root != null) {
             UnityEngine.Object.Destroy(root.gameObject);
         }
-        root = card = stepHost = null;
-        olly = null;
+        root = stepHost = null;
+    }
+
+    private static void TickPending() {
+        if (!MainCore.Conf.SetupPending.Value || !MainCore.IsModEnabled || UICore.CanvasObj == null) {
+            return;
+        }
+        // Lets the game finish starting up first.
+        if (pendingSince < 0f) {
+            pendingSince = Time.realtimeSinceStartup;
+        }
+        if (Time.realtimeSinceStartup - pendingSince < StartDelay || PlaybackState.IsPlaying
+            || HudEditor.IsOpen || Tutorial.Tutorial.IsRunning) {
+            return;
+        }
+        UICore.Open();
+        Open();
     }
 
     public static void Tick() {
@@ -105,10 +128,7 @@ internal static class SetupWizard {
             if (frameControls.Count > 0) {
                 Teardown();
             }
-            if (MainCore.Conf.SetupPending.Value && MainCore.IsModEnabled && UICore.CanvasObj != null && UICore.CanvasObj.activeInHierarchy
-                && !HudEditor.IsOpen && !Tutorial.Tutorial.IsRunning) {
-                Open();
-            }
+            TickPending();
             return;
         }
         if (!root.gameObject.activeInHierarchy) {
@@ -120,7 +140,11 @@ internal static class SetupWizard {
         float dt = Mathf.Min(Time.unscaledDeltaTime, 0.1f);
         rootGroup.alpha = Mathf.MoveTowards(rootGroup.alpha, 1f, dt * 5f);
         stepGroup.alpha = Mathf.MoveTowards(stepGroup.alpha, 1f, dt * 6f);
-        olly.Tick(dt);
+        // The keys to press pulse on the keyboard.
+        float pulse = 0.7f + 0.3f * Mathf.Abs(Mathf.Sin(Time.unscaledTime * 2.5f));
+        foreach (var key in litKeys) {
+            key.color = new Color(Accent.r, Accent.g, Accent.b, pulse);
+        }
     }
 
     // ---- frame ----
@@ -140,19 +164,15 @@ internal static class SetupWizard {
 
         var cardImage = UiStyle.Rounded("Card", root, new Color(0.08f, 0.08f, 0.11f, 0.98f));
         cardImage.raycastTarget = true;
-        card = cardImage.rectTransform;
+        var card = cardImage.rectTransform;
         card.anchorMin = card.anchorMax = card.pivot = new Vector2(0.5f, 0.5f);
         card.anchoredPosition = Vector2.zero;
         card.sizeDelta = new Vector2(CardWidth, CardHeight);
 
-        olly = new OllyView(card);
-        olly.Rect.anchorMin = olly.Rect.anchorMax = olly.Rect.pivot = Vector2.zero;
-        olly.Rect.anchoredPosition = new Vector2(28f, 28f);
-
         var column = UiStyle.NewRect("Column", card);
         column.anchorMin = Vector2.zero;
         column.anchorMax = Vector2.one;
-        column.offsetMin = new Vector2(292f, 28f);
+        column.offsetMin = new Vector2(36f, 28f);
         column.offsetMax = new Vector2(-36f, -28f);
         var layout = UiStyle.Vertical(column.gameObject, 8f);
         layout.childForceExpandHeight = false;
@@ -161,7 +181,7 @@ internal static class SetupWizard {
         caption.characterSpacing = 4f;
         title = FrameText(ctx, column, 44f, 30f, Color.white);
         title.fontStyle = FontStyles.Bold;
-        say = FrameText(ctx, column, 80f, 18f, new Color(1f, 1f, 1f, 0.82f));
+        say = FrameText(ctx, column, 64f, 18f, new Color(1f, 1f, 1f, 0.82f));
         say.lineSpacing = 6f;
 
         stepHost = UiStyle.NewRect("Step", column);
@@ -212,6 +232,7 @@ internal static class SetupWizard {
             control.Dispose();
         }
         stepControls.Clear();
+        litKeys.Clear();
         if (stepHost == null) {
             return;
         }
@@ -249,15 +270,13 @@ internal static class SetupWizard {
         }
     }
 
-    private static void Header(string key, string heading, string line, Face face) {
+    private static void Header(string key, string heading, string line) {
         title.text = T($"SETUP_{key}_TITLE", heading);
         say.text = T($"SETUP_{key}", line);
-        olly.Face = face;
     }
 
     private static void ShowWelcome() {
-        Header("WELCOME", "Welcome to Overlayer",
-            "Hi, I'm Olly. Let's get a few things set up first. It only takes a minute.\nWhich language do you prefer?", Face.Smile);
+        Header("WELCOME", "Welcome to Overlayer", "A few quick settings before you start. First, choose a language.");
         var ctx = O5KitAdapters.Ctx;
         foreach (string language in MainCore.Tr.GetLanguages().Where(l => l != Translator.FALLBACK_LANGUAGE).OrderBy(l => l, StringComparer.OrdinalIgnoreCase)) {
             string captured = language;
@@ -277,7 +296,7 @@ internal static class SetupWizard {
     }
 
     private static void ShowScale() {
-        Header("SCALE", "UI size", "Too small? Too big? Drag this until it feels right. This card and the window follow along.", Face.Curious);
+        Header("SCALE", "UI size", "Drag the slider to a comfortable size. This screen and the Overlayer window change with it.");
         var ctx = O5KitAdapters.Ctx;
         var slider = Track(O5Factory.Slider(ctx, O5Factory.Row(ctx, stepHost), "setup_scale", new O5SliderOptions {
             DefaultValue = 1f,
@@ -301,45 +320,135 @@ internal static class SetupWizard {
     }
 
     private static void ShowKeys() {
-        Header("KEYS", "Two keys to remember", "These two open everything. You can change the HUD editor's key here.", Face.Proud);
+        Header("KEYS", "Keys to remember", "Press the highlighted keys together.");
         var ctx = O5KitAdapters.Ctx;
-        string windowKey = Application.platform == RuntimePlatform.LinuxPlayer ? "Ctrl + `" : "Alt + `";
-        var row = UiStyle.Rounded("WindowKey", O5Factory.Row(ctx, stepHost, 50f), UiStyle.Ghost).rectTransform;
-        row.anchorMin = Vector2.zero;
-        row.anchorMax = Vector2.one;
-        row.offsetMin = row.offsetMax = Vector2.zero;
-        var label = O5Factory.ControlText(ctx, row, 18f, true);
-        label.alignment = TextAlignmentOptions.Center;
-        label.raycastTarget = false;
-        label.text = $"{T("SETUP_KEY_WINDOW", "Overlayer window")}:  <b>{windowKey}</b>";
+        var tabs = UiStyle.HRow(stepHost, 8f, 44f);
+        Track(UiStyle.Button(UiStyle.Cell(tabs, 0f), "setup_key_window", $"{T("SETUP_KEY_WINDOW", "Overlayer window")}:  <b>{WindowKeyText}</b>",
+            () => ShowKeyOf(false), primary: !showHudKey));
+        Track(UiStyle.Button(UiStyle.Cell(tabs, 0f), "setup_key_hud", $"{T("SETUP_KEY_HUD", "HUD editor")}:  <b>{HudEditor.Key}</b>",
+            () => ShowKeyOf(true), primary: showHudKey));
 
-        O5Button keyButton = null;
-        string Caption() => $"{T("SETUP_KEY_HUD", "HUD editor")}:  <b>{HudEditor.Key}</b>";
-        keyButton = Track(UiStyle.Button(O5Factory.Row(ctx, stepHost, 50f), "setup_hud_key", Caption(), () => KeyCapture.Begin(
-            () => keyButton.Text = T("SETUP_KEY_PRESS", "Press a key...   (Esc: cancel)"),
+        BuildKeyboard(showHudKey ? HudEditor.Key : WindowKey);
+
+        if (!showHudKey) {
+            Note(T("SETUP_KEY_WINDOW_NOTE", "Opens and closes the Overlayer window. If this screen closes when you try it, press the keys again to come back."), 44f);
+            return;
+        }
+        O5Button change = null;
+        string Caption() => T("SETUP_KEY_CHANGE", "Change key");
+        change = Track(UiStyle.Button(O5Factory.Row(ctx, stepHost, 44f), "setup_hud_key", Caption(), () => KeyCapture.Begin(
+            () => change.Text = T("SETUP_KEY_PRESS", "Press a key...   (Esc: cancel)"),
             bind => {
                 if (bind is { IsNone: false } b) {
                     MainCore.Conf.HudEditorKey = b.ToString();
                     MainCore.ConfMgr.RequestSave();
                     HudEditor.RegisterShortcut();
                     PageSettings.SyncValues();
-                }
-                if (step == Step.Keys && root != null) {
-                    keyButton.Text = Caption();
+                    Show(Step.Keys, false);
+                } else if (root != null && step == Step.Keys) {
+                    change.Text = Caption();
                 }
             })));
-        Note(T("SETUP_KEY_NOTE", "Click the HUD editor button, then press a key. Hold Ctrl, Shift or Alt for a combination."), 50f);
     }
 
+    private static void ShowKeyOf(bool hudKey) {
+        showHudKey = hudKey;
+        Show(Step.Keys, false);
+    }
+
+    // ---- keyboard ----
+
+    private readonly struct KeyCap(string label, float width, KeyCode code) {
+        public readonly string Label = label;
+        public readonly float Width = width;
+        public readonly KeyCode Code = code;
+    }
+
+    private static KeyCap Cap(string label, KeyCode code, float width = 1f) => new(label, width, code);
+
+    private static KeyCap Gap(float width) => new(null, width, KeyCode.None);
+
+    private static IEnumerable<KeyCap> Letters(string letters) => letters.Select(c => {
+        string name = c.ToString();
+        return Cap(name, (KeyCode)Enum.Parse(typeof(KeyCode), char.IsDigit(c) ? "Alpha" + name : name));
+    });
+
+    private static IEnumerable<KeyCap> FKeys(int from, int to) => Enumerable.Range(from, to - from + 1)
+        .Select(n => Cap("F" + n, (KeyCode)Enum.Parse(typeof(KeyCode), "F" + n)));
+
+    private static readonly KeyCap[][] KeyRows = [
+        [Cap("Esc", KeyCode.Escape), Gap(1f), .. FKeys(1, 4), Gap(0.5f), .. FKeys(5, 8), Gap(0.5f), .. FKeys(9, 12)],
+        [Cap("`", KeyCode.BackQuote), .. Letters("1234567890"), Cap("-", KeyCode.Minus), Cap("=", KeyCode.Equals), Cap("Back", KeyCode.Backspace, 2f)],
+        [Cap("Tab", KeyCode.Tab, 1.5f), .. Letters("QWERTYUIOP"), Cap("[", KeyCode.LeftBracket), Cap("]", KeyCode.RightBracket), Cap("\\", KeyCode.Backslash, 1.5f)],
+        [Cap("Caps", KeyCode.CapsLock, 1.75f), .. Letters("ASDFGHJKL"), Cap(";", KeyCode.Semicolon), Cap("'", KeyCode.Quote), Cap("Enter", KeyCode.Return, 2.25f)],
+        [Cap("Shift", KeyCode.LeftShift, 2.25f), .. Letters("ZXCVBNM"), Cap(",", KeyCode.Comma), Cap(".", KeyCode.Period), Cap("/", KeyCode.Slash), Cap("Shift", KeyCode.RightShift, 2.75f)],
+        [Cap("Ctrl", KeyCode.LeftControl, 1.25f), Cap("Win", KeyCode.LeftWindows, 1.25f), Cap("Alt", KeyCode.LeftAlt, 1.25f), Cap("Space", KeyCode.Space, 6.25f),
+            Cap("Alt", KeyCode.RightAlt, 1.25f), Cap("Win", KeyCode.RightWindows, 1.25f), Cap("Menu", KeyCode.Menu, 1.25f), Cap("Ctrl", KeyCode.RightControl, 1.25f)],
+    ];
+
+    private static bool IsPartOf(KeyCode code, KeyBind bind) {
+        if (code == bind.Key) {
+            return true;
+        }
+        return code switch {
+            KeyCode.LeftControl or KeyCode.RightControl => (bind.Modifiers & KeyBind.Mods.Ctrl) != 0,
+            KeyCode.LeftShift or KeyCode.RightShift => (bind.Modifiers & KeyBind.Mods.Shift) != 0,
+            KeyCode.LeftAlt or KeyCode.RightAlt => (bind.Modifiers & KeyBind.Mods.Alt) != 0,
+            _ => false,
+        };
+    }
+
+    private static void BuildKeyboard(KeyBind bind) {
+        var ctx = O5KitAdapters.Ctx;
+        var row = O5Factory.Row(ctx, stepHost, KeyUnit * KeyRows.Length);
+        var board = UiStyle.NewRect("Keyboard", row);
+        board.anchorMin = board.anchorMax = board.pivot = new Vector2(0.5f, 0.5f);
+        board.anchoredPosition = Vector2.zero;
+        board.sizeDelta = new Vector2(KeyUnit * 15f, KeyUnit * KeyRows.Length);
+        for (int y = 0; y < KeyRows.Length; y++) {
+            float x = 0f;
+            foreach (var cap in KeyRows[y]) {
+                float width = cap.Width * KeyUnit;
+                if (cap.Label != null) {
+                    AddKey(ctx, board, cap, new Vector2(x, -y * KeyUnit), new Vector2(width - KeyGap, KeyUnit - KeyGap), IsPartOf(cap.Code, bind));
+                }
+                x += width;
+            }
+        }
+    }
+
+    private static void AddKey(O5Kit.Core.O5Context ctx, RectTransform board, KeyCap cap, Vector2 position, Vector2 size, bool lit) {
+        var image = UiStyle.Rounded("Key_" + cap.Label, board, lit ? Accent : KeyColor);
+        image.raycastTarget = false;
+        var rect = image.rectTransform;
+        rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0f, 1f);
+        rect.anchoredPosition = position;
+        rect.sizeDelta = size;
+        var label = O5Factory.ControlText(ctx, rect, cap.Label.Length > 2 ? 11f : 14f, true);
+        label.rectTransform.anchorMin = Vector2.zero;
+        label.rectTransform.anchorMax = Vector2.one;
+        label.rectTransform.offsetMin = label.rectTransform.offsetMax = Vector2.zero;
+        label.alignment = TextAlignmentOptions.Center;
+        label.raycastTarget = false;
+        label.color = lit ? Color.white : UiStyle.Muted;
+        label.fontStyle = lit ? FontStyles.Bold : FontStyles.Normal;
+        label.text = $"<noparse>{cap.Label}</noparse>";
+        if (lit) {
+            litKeys.Add(image);
+        }
+    }
+
+    // ---- the rest ----
+
     private static void ShowHud() {
-        Header("HUD", "Pick a starting HUD", "Start from a ready-made layout, or from an empty screen. Everything stays editable.", Face.Happy);
+        Header("HUD", "Choose a starting HUD", "Start from a ready-made layout or an empty screen. You can edit everything later.");
         var ctx = O5KitAdapters.Ctx;
         Track(UiStyle.Button(O5Factory.Row(ctx, stepHost, 44f), "setup_hud_empty", T("SETUP_HUD_EMPTY", "Empty screen"),
             () => PickPreset(null), primary: pickedPreset == null));
         foreach (var preset in PresetStore.Presets.Where(p => p.Category == HudPreset.LayoutCategory).Take(MaxLayouts)) {
             var captured = preset;
             Track(UiStyle.Button(O5Factory.Row(ctx, stepHost, 44f), "setup_hud_" + preset.Id, preset.Name,
-                () => PickPreset(captured), primary: ReferenceEquals(pickedPreset, preset) || pickedPreset?.Id == preset.Id));
+                () => PickPreset(captured), primary: pickedPreset?.Id == preset.Id));
         }
     }
 
@@ -349,7 +458,7 @@ internal static class SetupWizard {
     }
 
     private static void ShowImport() {
-        Header("IMPORT", "Got a HUD already?", "If someone shared a package with you, bring it in here. No file? Just move on.", Face.Curious);
+        Header("IMPORT", "Import a HUD", "If you have a shared package, import it here. Otherwise, continue to the next step.");
         var ctx = O5KitAdapters.Ctx;
         Track(UiStyle.Button(O5Factory.Row(ctx, stepHost, 50f), "setup_import", T("SETUP_IMPORT_PICK", "Choose a file (.o5cp, .json)"), BeginImport));
         if (!string.IsNullOrEmpty(importStatus)) {
@@ -376,7 +485,7 @@ internal static class SetupWizard {
             bool imported = OverlayCore.ImportCanvas(path);
             importStatus = imported
                 ? string.Format(T("SETUP_IMPORT_DONE", "Imported {0}."), Path.GetFileName(path))
-                : string.Format(T("SETUP_IMPORT_FAILED", "Couldn't import {0}. The log has the details."), Path.GetFileName(path));
+                : string.Format(T("SETUP_IMPORT_FAILED", "Couldn't import {0}. See the log for details."), Path.GetFileName(path));
             if (IsOpen && step == Step.Import) {
                 Show(Step.Import, false);
             }
@@ -384,13 +493,15 @@ internal static class SetupWizard {
     }
 
     private static void ShowFinish() {
-        Header("FINISH", "All set!", "That's everything. You can change all of this later in Settings.", Face.Happy);
+        Header("FINISH", "All set", "Setup is complete. You can change these settings at any time in Settings.");
         var ctx = O5KitAdapters.Ctx;
-        var box = UiStyle.Rounded("Suggestion", O5Factory.Row(ctx, stepHost, 124f), new Color(0.569f, 0.604f, 1f, 0.12f)).rectTransform;
+        var box = UiStyle.Rounded("Suggestion", O5Factory.Row(ctx, stepHost, 124f), new Color(Accent.r, Accent.g, Accent.b, 0.12f)).rectTransform;
         box.anchorMin = Vector2.zero;
         box.anchorMax = Vector2.one;
         box.offsetMin = box.offsetMax = Vector2.zero;
         var text = O5Factory.ControlText(ctx, box, 17f, true);
+        text.rectTransform.anchorMin = Vector2.zero;
+        text.rectTransform.anchorMax = Vector2.one;
         text.rectTransform.offsetMin = new Vector2(18f, 12f);
         text.rectTransform.offsetMax = new Vector2(-18f, -12f);
         text.alignment = TextAlignmentOptions.MidlineLeft;
@@ -399,8 +510,8 @@ internal static class SetupWizard {
         text.raycastTarget = false;
         text.lineSpacing = 6f;
         text.text = T("SETUP_FINISH_TUTORIAL",
-            "<b>New to Overlayer?</b> The tutorial is worth a try: I'll show you each thing first, then you try it yourself.\n"
-            + "No rush, though. It's always on the <b>Tutorial</b> page in the menu.");
+            "<b>New to Overlayer?</b> We recommend trying the tutorial. It shows each feature and lets you try it yourself.\n"
+            + "You can also start it later from the <b>Tutorial</b> page in the menu.");
 
         var buttons = UiStyle.HRow(stepHost, 8f, 50f);
         Track(UiStyle.Button(UiStyle.Cell(buttons, 0f), "setup_finish_tutorial", T("SETUP_FINISH_YES", "Try the tutorial"), () => Close(true), primary: true));
