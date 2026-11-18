@@ -409,13 +409,27 @@ const Parser = struct {
                 return .num;
             }
         }
-        inline for (@typeInfo(Fn).@"enum".fields) |field| {
-            if (eql(name, field.name)) {
-                const f: Fn = @enumFromInt(field.value);
-                const arity: u32 = if (@intFromEnum(f) >= @intFromEnum(Fn.atan2)) 2 else 1;
-                if (argc != arity) return error.Reject;
-                try p.emit(.{ .code = if (arity == 1) .call1 else .call2, .n = field.value }, arity, 1);
-                return .num;
+        // Zig 0.17 calls these field_names/field_values again; 0.16 had fields.
+        const enum_info = @typeInfo(Fn).@"enum";
+        if (comptime @hasField(@TypeOf(enum_info), "field_names")) {
+            inline for (enum_info.field_names, enum_info.field_values) |fname, fvalue| {
+                if (eql(name, fname)) {
+                    const f: Fn = @enumFromInt(fvalue);
+                    const arity: u32 = if (@intFromEnum(f) >= @intFromEnum(Fn.atan2)) 2 else 1;
+                    if (argc != arity) return error.Reject;
+                    try p.emit(.{ .code = if (arity == 1) .call1 else .call2, .n = fvalue }, arity, 1);
+                    return .num;
+                }
+            }
+        } else {
+            inline for (enum_info.fields) |field| {
+                if (eql(name, field.name)) {
+                    const f: Fn = @enumFromInt(field.value);
+                    const arity: u32 = if (@intFromEnum(f) >= @intFromEnum(Fn.atan2)) 2 else 1;
+                    if (argc != arity) return error.Reject;
+                    try p.emit(.{ .code = if (arity == 1) .call1 else .call2, .n = field.value }, arity, 1);
+                    return .num;
+                }
             }
         }
         return error.Reject;
