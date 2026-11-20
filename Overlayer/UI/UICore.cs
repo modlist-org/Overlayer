@@ -9,6 +9,7 @@ using Overlayer.UI.Factory;
 using Overlayer.UI.Factory.Page;
 using O5Kit.Control;
 using O5Kit.Behaviour;
+using O5Kit.Factory;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -147,6 +148,7 @@ public static class UICore {
     public static RectTransform MenuContent;
     private static RectTransform Page;
     private static CanvasGroup menuCanvasGroup;
+    private static UIScrollController menuScroller;
 
     public static float PanelScale {
         get;
@@ -230,51 +232,17 @@ public static class UICore {
 
             menuCanvasGroup = Menu.gameObject.AddComponent<CanvasGroup>();
 
-            // Menu Scroll (menu items scroll when the window is small or the UI scale is high)
-            GameObject scrollHost = new("MenuScroll");
-            scrollHost.transform.SetParent(Menu, false);
-
-            var scrollHostRect = scrollHost.AddComponent<RectTransform>();
-            scrollHostRect.anchorMin = Vector2.zero;
-            scrollHostRect.anchorMax = Vector2.one;
-            scrollHostRect.offsetMin = new Vector2(0, 60);
-            scrollHostRect.offsetMax = new Vector2(0, -60);
-
-            scrollHost.AddComponent<RectMask2D>();
-
-            var scroll = scrollHost.AddComponent<ScrollRect>();
-            scroll.horizontal = false;
-
-            // Menu Content
-            GameObject content = new("Content");
-            content.transform.SetParent(scrollHost.transform, false);
-
-            MenuContent = content.AddComponent<RectTransform>();
-            MenuContent.anchorMin = new(0, 1);
-            MenuContent.anchorMax = new(1, 1);
-            MenuContent.pivot = new(0.5f, 1);
-
-            MenuContent.offsetMin = Vector2.zero;
-            MenuContent.offsetMax = Vector2.zero;
-
-            // Layout
-            var layout = content.AddComponent<VerticalLayoutGroup>();
-            layout.childControlWidth = true;
-            layout.childControlHeight = false;
-            layout.childForceExpandWidth = true;
-            layout.childForceExpandHeight = false;
-            layout.spacing = 0f;
-            layout.padding = new() {
-                left = 0,
-                right = 0,
-                top = 0,
-                bottom = 0
-            };
-
-            var fitter = content.AddComponent<ContentSizeFitter>();
-            fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-
-            scroll.content = MenuContent;
+            // Menu Scroll (scrollbar-less wheel + right-drag scroll region when tabs overflow)
+            (_, MenuContent, menuScroller) = O5Factory.ScrollView(
+                O5KitAdapters.Ctx,
+                Menu,
+                spacing: 0f,
+                viewportOffsetMin: new Vector2(0f, 60f),
+                viewportOffsetMax: new Vector2(0f, -60f)
+            );
+            // Menu items size themselves via RectTransform.sizeDelta.y (54px) without LayoutElement.
+            MenuContent.GetComponent<VerticalLayoutGroup>().childControlHeight = false;
+            menuScroller.enabled = false;
 
             MenuFactory.CreateMenu(MenuContent);
 
@@ -993,6 +961,9 @@ public static class UICore {
         Menu.anchoredPosition = new(-MENU_WIDTH, 0);
         menuCanvasGroup.interactable = true;
         menuCanvasGroup.blocksRaycasts = true;
+        if (menuScroller != null) {
+            menuScroller.enabled = true;
+        }
 
         menuSequence = O5Seq.New()
             .Join(done => Menu.TAnchorPos(Vector2.zero, 0.6f, O5Ease.OutExpo, done))
@@ -1008,6 +979,9 @@ public static class UICore {
 
         menuCanvasGroup.interactable = false;
         menuCanvasGroup.blocksRaycasts = false;
+        if (menuScroller != null) {
+            menuScroller.enabled = false;
+        }
         if (isMenuOpen) {
             UISound.PlayMenuClose();
         }
@@ -1048,6 +1022,7 @@ public static class UICore {
         }
         uiEventSystem = null;
         gameEventSystem = null;
+        menuScroller = null;
         UnityEngine.Object.Destroy(CanvasObj);
         CanvasObj = null;
     }
