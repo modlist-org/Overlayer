@@ -1,0 +1,30 @@
+{
+  "zh-CN": {
+    "0KTL": "DO_NOT_TRANSLATE_THIS_KEY!",
+
+    "SETUP_RUN_AGAIN": "重新运行初始设置",
+    "SETUP_STEP": "{0} / {1}",
+    "SETUP_BACK": "返回",
+    "SETUP_SKIP": "跳过",
+    "SETUP_NEXT": "下一步",
+
+    "SETUP_WELCOME_TITLE": "欢迎使用 Overlayer",
+    "SETUP_WELCOME": "先选择语言吧",
+    "SETUP_CHINESE_FONT_NOTE": "中文使用内置的 Overlayer SC（Noto Sans SC 子集）。想换字体的话，可以在设置里更换",
+
+    "SETUP_SCALE": "调整到你觉得舒服的缩放比例吧",
+
+    "SETUP_KEYS_TITLE": "需要记住的快捷键",
+    "SETUP_KEYS": "同时按下键盘上高亮的按键",
+    "SETUP_KEY_WINDOW": "Overlayer 窗口",
+    "SETUP_KEY_HUD": "HUD 编辑器",
+    "SETUP_KEY_CHANGE": "更改按键",
+    "SETUP_KEY_PRESS": "请按下要更改的按键...   (Esc: 取消)",
+
+    "SETUP_FINISH_TITLE": "设置完成",
+    "SETUP_FINISH": "这些设置以后随时都能修改",
+    "SETUP_FINISH_TUTORIAL": "<b>第一次使用 Overlayer？</b>推荐先体验一遍教程，它会逐一展示各项功能，你可以跟着亲手试一试。\n之后也可以从菜单的<b>教程</b>页面开始",
+    "SETUP_FINISH_YES": "开始教程",
+    "SETUP_FINISH_NO": "直接开始"
+  }
+}

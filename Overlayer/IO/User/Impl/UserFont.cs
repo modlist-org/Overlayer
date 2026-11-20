@@ -75,7 +75,7 @@ public class UserFont : UserResourceBase<TMP_FontAsset>, ISettingsFile {
 
             return Result.Success;
 #else
-            var font = TMP_FontAsset.CreateFontAsset(new Font(path));
+            var font = Overlayer.Resource.ResourceManager.CreateRuntimeFontAsset(new Font(path));
 
             Cache[key] = (path, font);
 

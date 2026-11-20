@@ -2,6 +2,7 @@ using Overlayer.Core;
 using Overlayer.IO.User.Impl;
 using System.Reflection;
 using UnityEngine;
+using UnityEngine.TextCore.LowLevel;
 using Object = UnityEngine.Object;
 using O5Kit.Compat;
 
@@ -16,6 +17,8 @@ namespace Overlayer.Resource;
 public enum Asset {
     SUIT_Regular,
     SUIT_Medium,
+    OverlayerSC_Regular,
+    OverlayerSC_Medium,
     JetBrainsMonoNL_Regular,
     JetBrainsMonoNL_Medium,
 
@@ -232,6 +235,12 @@ public sealed class ResourceManager(Assembly assembly, string resourcePath) : ID
         }
     }
 
+    // A 90pt/1024 atlas fills after a few dozen CJK glyphs; 48pt with a 2048 atlas
+    // keeps a full UI (and a normal HUD) on one Alpha8 texture. Multi-atlas stays on
+    // for unusually long user text.
+    internal static TMP_FontAsset CreateRuntimeFontAsset(Font font) =>
+        TMP_FontAsset.CreateFontAsset(font, 48, 8, GlyphRenderMode.SDFAA, 2048, 2048, AtlasPopulationMode.Dynamic, true);
+
     public TMP_FontAsset LoadFont(string path, string tempPath) {        if (cache.TryGetValue(path, out object cached)) {
             return cached as TMP_FontAsset;
         }
@@ -258,7 +267,7 @@ public sealed class ResourceManager(Assembly assembly, string resourcePath) : ID
         Font font = new(tempPath);
         TMP_FontAsset asset;
         try {
-            asset = TMP_FontAsset.CreateFontAsset(font);
+            asset = CreateRuntimeFontAsset(font);
         } catch {
             // Old/stripped games may lack the TMP shader CreateFontAsset needs.
             asset = StealGameFont();
@@ -283,6 +292,35 @@ public sealed class ResourceManager(Assembly assembly, string resourcePath) : ID
                     if (!asset.fallbackFontAssetTable.Contains(suitFont)) {
                         asset.fallbackFontAssetTable.Add(suitFont);
                     }
+                }
+            }
+        }
+
+        // The bundled Chinese font follows the SUIT weight, so every text that uses
+        // SUIT directly (titles, docs, credits) gets Chinese glyphs too.
+        // shortcut: OverlayerSC is a Noto Sans SC subset (GB2312 + current UI text);
+        // rare characters fall through to the game font. Rebuild the subset if that isn't enough.
+        bool suitMedium = path.Contains("SUIT-Medium");
+        if (suitMedium || path.Contains("SUIT-Regular")) {
+            Asset cjkAsset = suitMedium ? Asset.OverlayerSC_Medium : Asset.OverlayerSC_Regular;
+            string cjkPath = assetMap[cjkAsset];
+            string cjkTempPath = Path.Combine(MainCore.Paths.TempPath, cjkAsset + ".ttf");
+
+            TMP_FontAsset cjkFont = LoadFont(cjkPath, cjkTempPath);
+
+            if (cjkFont != null) {
+#pragma warning disable IDE0028
+                asset.fallbackFontAssetTable ??= new();
+#pragma warning restore IDE0028
+                if (!asset.fallbackFontAssetTable.Contains(cjkFont)) {
+                    asset.fallbackFontAssetTable.Add(cjkFont);
+                }
+
+                // Last resort for characters outside the bundled subset.
+                TMP_FontAsset gameFont = StealGameFont();
+                if (gameFont != null && gameFont != asset && gameFont != cjkFont
+                    && !asset.fallbackFontAssetTable.Contains(gameFont)) {
+                    asset.fallbackFontAssetTable.Add(gameFont);
                 }
             }
         }
@@ -341,6 +379,8 @@ public sealed class ResourceManager(Assembly assembly, string resourcePath) : ID
     private readonly Dictionary<Asset, string> assetMap = new() {
         [Asset.SUIT_Regular] = "Font.SUIT-Regular.otf",
         [Asset.SUIT_Medium] = "Font.SUIT-Medium.otf",
+        [Asset.OverlayerSC_Regular] = "Font.OverlayerSC-Regular.ttf",
+        [Asset.OverlayerSC_Medium] = "Font.OverlayerSC-Medium.ttf",
         [Asset.JetBrainsMonoNL_Regular] = "Font.JetBrainsMonoNL-Regular.ttf",
         [Asset.JetBrainsMonoNL_Medium] = "Font.JetBrainsMonoNL-Medium.ttf",
         [Asset.OV5LogoOutline256] = "Image.OV5LogoOutline256.png",

@@ -128,12 +128,19 @@ public sealed class OverlayerFontProvider : IFontProvider {
 
     private TMP_FontAsset ResolveSlot(string slot, Asset builtinAsset, string primaryKey, List<string> fallbackKeys) {
         TMP_FontAsset builtin = MainCore.Res.Get<TMP_FontAsset>(builtinAsset);
-        return _useUserResources
-            ? WithFallbacks(slot, primaryKey, fallbackKeys, () => builtin)
-            : builtin;
+        Asset? cjkAsset = slot switch {
+            "regular" => Asset.OverlayerSC_Regular,
+            "medium" => Asset.OverlayerSC_Medium,
+            _ => null
+        };
+        TMP_FontAsset cjk = cjkAsset.HasValue ? MainCore.Res.Get<TMP_FontAsset>(cjkAsset.Value) : null;
+        if (_useUserResources) {
+            return WithFallbacks(slot, primaryKey, fallbackKeys, () => builtin, cjk);
+        }
+        return builtin;
     }
 
-    private static TMP_FontAsset WithFallbacks(string slot, string primaryKey, List<string> fallbackKeys, Func<TMP_FontAsset> builtin) {
+    private static TMP_FontAsset WithFallbacks(string slot, string primaryKey, List<string> fallbackKeys, Func<TMP_FontAsset> builtin, TMP_FontAsset cjk) {
         TMP_FontAsset fallback = builtin();
         var chain = new List<TMP_FontAsset>();
         TMP_FontAsset primary = Resolve(primaryKey);
@@ -155,6 +162,16 @@ public sealed class OverlayerFontProvider : IFontProvider {
         if (!chain.Contains(fallback) && fallback != null) {
             chain.Add(fallback);
         }
+        if (cjk != null && !chain.Contains(cjk)) {
+            chain.Add(cjk);
+        }
+        // The builtin already carries the bundled CJK fallback (ResourceManager attaches
+        // it per weight). Instantiating it here would clone the dynamic atlas, and the
+        // clone's glyph packing would overlap the original's.
+        if (chain.Count == 2 && chain[0] == fallback && chain[1] == cjk
+            && fallback.fallbackFontAssetTable != null && fallback.fallbackFontAssetTable.Contains(cjk)) {
+            return fallback;
+        }
         if (chain.Count == 1) {
             return chain[0];
         }
@@ -162,7 +179,18 @@ public sealed class OverlayerFontProvider : IFontProvider {
         if (compositeCache.TryGetValue(sig, out var composite) && composite != null) {
             return composite;
         }
-        composite = UnityEngine.Object.Instantiate(chain[0]);
+        // Never clone a dynamic font asset: Instantiate shares its atlas texture, and
+        // both copies then pack glyphs into the same texture with separate free lists.
+        // Rebuild from the source font instead so the composite owns its atlas.
+        Font source = null;
+        try {
+            source = chain[0].sourceFontFile;
+        } catch {
+        }
+        composite = source != null ? ResourceManager.CreateRuntimeFontAsset(source) : null;
+        if (composite == null) {
+            composite = UnityEngine.Object.Instantiate(chain[0]);
+        }
         composite.name = chain[0].name + "_WithFallbacks";
 #if ML && IL2CPP
         var fallbackList = new Il2CppSystem.Collections.Generic.List<TMP_FontAsset>();
