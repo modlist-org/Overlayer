@@ -29,33 +29,43 @@ internal static class UISound {
     private const float PitchJitter = 0.035f;
     private const float ReverbWetMix = 0.20f;
 
+    private enum ClipId {
+        Hover,
+        Click,
+        Back,
+        Open,
+        Close,
+        MenuOpen,
+        MenuClose,
+        SliderTick,
+        OllyVoice,
+        KeyType,
+        Backspace,
+        InputSelect,
+        InputDeselect,
+        DdOpen,
+        DdClose,
+        DdPick,
+        Default,
+        FxOn,
+        FxOff,
+        ToggleOn,
+        ToggleOff,
+        Count,
+    }
+
     private static GameObject host;
     private static readonly AudioSource[] Sources = new AudioSource[4];
+    private static readonly AudioClip[] Clips = new AudioClip[(int)ClipId.Count];
     private static int sourceCursor;
-
-    private static AudioClip hoverClip;
-    private static AudioClip clickClip;
-    private static AudioClip backClip;
-    private static AudioClip openClip;
-    private static AudioClip closeClip;
-    private static AudioClip menuOpenClip;
-    private static AudioClip menuCloseClip;
-    private static AudioClip sliderTickClip;
-    private static AudioClip ollyVoiceClip;
-    private static AudioClip keyTypeClip;
-    private static AudioClip backspaceClip;
-    private static AudioClip inputSelectClip;
-    private static AudioClip inputDeselectClip;
-    private static AudioClip ddOpenClip;
-    private static AudioClip ddCloseClip;
-    private static AudioClip ddPickClip;
-    private static AudioClip fxOnClip;
-    private static AudioClip fxOffClip;
-    private static AudioClip toggleOnClip;
-    private static AudioClip toggleOffClip;
 
     private static bool ready;
     private static bool disposed;
+    private static AudioSettings.AudioConfigurationChangeHandler audioConfigHandler;
+    private static volatile bool audioConfigDirty;
+    private static float nextRetryAt;
+    private static ClipId lastTransitionClip;
+    private static float lastTransitionAt = -10f;
 
     private static EventSystem cachedEs;
     private static PointerEventData pointerData;
@@ -152,8 +162,13 @@ internal static class UISound {
                 && !HoldToConfirm.IsHoldTarget(current)
                 && !IsSpecializedClickTarget(current)) {
                 bool isBack = IsBackOrClose(current.name);
-                PlayOneShot(isBack ? backClip : clickClip, 0.85f, RandPitch(1f));
+                PlayOneShot(isBack ? ClipId.Back : ClipId.Click, 0.85f, RandPitch(1f));
             }
+        }
+
+        if (current != null && MainCore.Conf.MiddleClickToDefault.Value && O5Input.GetMouseButtonDown(2)
+            && !IsToggleTarget(current)) {
+            PlayDefault();
         }
     }
 
@@ -166,18 +181,19 @@ internal static class UISound {
             return;
         }
         lastHoverAt = now;
-        PlayOneShot(hoverClip, 0.50f, RandPitch(1f));
+        PlayOneShot(ClipId.Hover, 0.50f, RandPitch(1f));
     }
 
-    public static void PlayOpen() => PlayTransition(openClip, 0.78f);
-    public static void PlayClose() => PlayTransition(closeClip, 0.76f);
-    public static void PlayMenuOpen() => PlayTransition(menuOpenClip, 0.82f);
-    public static void PlayMenuClose() => PlayTransition(menuCloseClip, 0.80f);
-    public static void PlayConfirm() => PlayOneShot(clickClip, 0.85f, RandPitch(1f));
-    public static void PlayFxToggle(bool enabled) => PlayOneShot(enabled ? fxOnClip : fxOffClip, 0.78f, RandPitch(1f));
-    public static void PlayToggle(bool on) => PlayOneShot(on ? toggleOnClip : toggleOffClip, 0.80f, RandPitch(1f));
-    public static void PlayDropdownToggle(bool expanded) => PlayOneShot(expanded ? ddOpenClip : ddCloseClip, 0.78f, RandPitch(1f));
-    public static void PlayDropdownPick() => PlayOneShot(ddPickClip, 0.76f, RandPitch(1f));
+    public static void PlayOpen() => PlayTransition(ClipId.Open, 0.78f);
+    public static void PlayClose() => PlayTransition(ClipId.Close, 0.76f);
+    public static void PlayMenuOpen() => PlayTransition(ClipId.MenuOpen, 0.82f);
+    public static void PlayMenuClose() => PlayTransition(ClipId.MenuClose, 0.80f);
+    public static void PlayConfirm() => PlayOneShot(ClipId.Click, 0.85f, RandPitch(1f));
+    public static void PlayFxToggle(bool enabled) => PlayOneShot(enabled ? ClipId.FxOn : ClipId.FxOff, 0.78f, RandPitch(1f));
+    public static void PlayToggle(bool on) => PlayOneShot(on ? ClipId.ToggleOn : ClipId.ToggleOff, 0.80f, RandPitch(1f));
+    public static void PlayDropdownToggle(bool expanded) => PlayOneShot(expanded ? ClipId.DdOpen : ClipId.DdClose, 0.78f, RandPitch(1f));
+    public static void PlayDropdownPick() => PlayOneShot(ClipId.DdPick, 0.76f, RandPitch(1f));
+    public static void PlayDefault() => PlayOneShot(ClipId.Default, 0.78f, RandPitch(1f));
 
     /// <summary>Soft visual-novel style blip while Olly is typing dialogue.</summary>
     public static void PlayOllyVoice() {
@@ -189,7 +205,7 @@ internal static class UISound {
             return;
         }
         lastVoiceAt = now;
-        PlayOneShot(ollyVoiceClip, 0.68f, RandPitch(1.02f, 0.09f));
+        PlayOneShot(ClipId.OllyVoice, 0.68f, RandPitch(1.02f, 0.09f));
     }
 
     /// <summary>Plays a pitched slider notch tick (for wheel or external slider adjustments).</summary>
@@ -202,7 +218,7 @@ internal static class UISound {
             return;
         }
         lastSliderTickAt = now;
-        PlayOneShot(sliderTickClip, 0.55f, RandPitch(Mathf.Lerp(0.86f, 1.32f, Mathf.Clamp01(normalized))));
+        PlayOneShot(ClipId.SliderTick, 0.55f, RandPitch(Mathf.Lerp(0.86f, 1.32f, Mathf.Clamp01(normalized))));
     }
 
     /// <summary>Plays rising slider-tick pips while holding delete-confirm.</summary>
@@ -218,12 +234,23 @@ internal static class UISound {
         if (now - lastHoldTickAt >= HoldTickCooldown) {
             lastHoldTickAt = now;
             float p = Mathf.Clamp01(progress.Value);
-            PlayOneShot(sliderTickClip, 0.55f, RandPitch(Mathf.Lerp(0.86f, 1.32f, p)));
+            PlayOneShot(ClipId.SliderTick, 0.55f, RandPitch(Mathf.Lerp(0.86f, 1.32f, p)));
         }
     }
 
     public static void Dispose() {
         disposed = true;
+        if (audioConfigHandler != null) {
+            try {
+                AudioSettings.OnAudioConfigurationChanged -= audioConfigHandler;
+            } catch {
+            }
+            audioConfigHandler = null;
+        }
+        audioConfigDirty = false;
+        nextRetryAt = 0f;
+        lastTransitionAt = -10f;
+
         lastHover = null;
         ClearActiveSlider();
         HoldToConfirm.ClearAll();
@@ -231,26 +258,7 @@ internal static class UISound {
         pointerData = null;
         Hits.Clear();
 
-        DestroyClip(ref hoverClip);
-        DestroyClip(ref clickClip);
-        DestroyClip(ref backClip);
-        DestroyClip(ref openClip);
-        DestroyClip(ref closeClip);
-        DestroyClip(ref menuOpenClip);
-        DestroyClip(ref menuCloseClip);
-        DestroyClip(ref sliderTickClip);
-        DestroyClip(ref ollyVoiceClip);
-        DestroyClip(ref keyTypeClip);
-        DestroyClip(ref backspaceClip);
-        DestroyClip(ref inputSelectClip);
-        DestroyClip(ref inputDeselectClip);
-        DestroyClip(ref ddOpenClip);
-        DestroyClip(ref ddCloseClip);
-        DestroyClip(ref ddPickClip);
-        DestroyClip(ref fxOnClip);
-        DestroyClip(ref fxOffClip);
-        DestroyClip(ref toggleOnClip);
-        DestroyClip(ref toggleOffClip);
+        DestroyAllClips();
 
         if (host != null) {
             Object.Destroy(host);
@@ -274,10 +282,10 @@ internal static class UISound {
 
         if (!ReferenceEquals(cur, lastFocusedInput)) {
             if (lastFocusedInput != null) {
-                PlayOneShot(inputDeselectClip, 0.72f, RandPitch(1f));
+                PlayOneShot(ClipId.InputDeselect, 0.72f, RandPitch(1f));
             }
             if (cur != null) {
-                PlayOneShot(inputSelectClip, 0.76f, RandPitch(1f));
+                PlayOneShot(ClipId.InputSelect, 0.76f, RandPitch(1f));
             }
             lastFocusedInput = cur;
             lastInputText = cur != null ? cur.text : null;
@@ -297,13 +305,15 @@ internal static class UISound {
             lastInputText = txt;
             if (now - lastKeyAt >= KeyCooldown) {
                 lastKeyAt = now;
-                PlayOneShot(isErase ? backspaceClip : keyTypeClip, 0.78f, RandPitch(1f, 0.085f));
+                PlayOneShot(isErase ? ClipId.Backspace : ClipId.KeyType, 0.78f, RandPitch(1f, 0.085f));
             }
         } else if (O5Input.GetKeyDown(KeyCode.Backspace) && now - lastKeyAt >= KeyCooldown) {
             lastKeyAt = now;
-            PlayOneShot(backspaceClip, 0.55f, RandPitch(1f, 0.085f));
+            PlayOneShot(ClipId.Backspace, 0.55f, RandPitch(1f, 0.085f));
         }
     }
+
+    private static bool IsToggleTarget(GameObject go) => go != null && go.transform.Find("ToggleCircle") != null;
 
     private static bool IsSpecializedClickTarget(GameObject go) {
         if (go == null) {
@@ -320,11 +330,17 @@ internal static class UISound {
             || (go.name == "Row" && p.name == "List");
     }
 
-    private static void PlayTransition(AudioClip clip, float volumeScale) {
+    private static void PlayTransition(ClipId clip, float volumeScale) {
         if (disposed) {
             return;
         }
-        suppressHoverUntil = Time.unscaledTime + 0.14f;
+        float now = Time.unscaledTime;
+        if (lastTransitionClip == clip && now - lastTransitionAt < 0.04f) {
+            return;
+        }
+        lastTransitionClip = clip;
+        lastTransitionAt = now;
+        suppressHoverUntil = now + 0.14f;
         lastHover = null;
         PlayOneShot(clip, volumeScale, RandPitch(1f));
     }
@@ -365,7 +381,7 @@ internal static class UISound {
             if (Mathf.Abs(v - lastUnitySliderVal) > 0.002f) {
                 lastUnitySliderVal = v;
                 lastSliderTickAt = now;
-                PlayOneShot(sliderTickClip, 0.55f, RandPitch(Mathf.Lerp(0.86f, 1.32f, v)));
+                PlayOneShot(ClipId.SliderTick, 0.55f, RandPitch(Mathf.Lerp(0.86f, 1.32f, v)));
             }
             return;
         }
@@ -385,7 +401,7 @@ internal static class UISound {
         if (changed) {
             lastSliderFillX = fillX;
             lastSliderTickAt = now;
-            PlayOneShot(sliderTickClip, 0.55f, RandPitch(Mathf.Lerp(0.86f, 1.32f, fillX)));
+            PlayOneShot(ClipId.SliderTick, 0.55f, RandPitch(Mathf.Lerp(0.86f, 1.32f, fillX)));
         }
     }
 
@@ -397,24 +413,53 @@ internal static class UISound {
         lastSliderText = null;
     }
 
-    private static void DestroyClip(ref AudioClip clip) {
-        if (clip != null) {
-            Object.Destroy(clip);
-            clip = null;
+    private static void DestroyAllClips() {
+        for (int i = 0; i < Clips.Length; i++) {
+            if (Clips[i] != null) {
+                Object.Destroy(Clips[i]);
+                Clips[i] = null;
+            }
         }
     }
 
-    private static void PlayOneShot(AudioClip clip, float volumeScale, float pitch) {
+    private static void BuildAllClips() {
+        Clips[(int)ClipId.Hover] = BuildHoverClip();
+        Clips[(int)ClipId.Click] = BuildClickClip();
+        Clips[(int)ClipId.Back] = BuildBackClip();
+        Clips[(int)ClipId.Open] = BuildPanelClip("MSFS_Open", 0.195f, opening: true, includeChime: true);
+        Clips[(int)ClipId.Close] = BuildPanelClip("MSFS_Close", 0.160f, opening: false, includeChime: true);
+        Clips[(int)ClipId.MenuOpen] = BuildPanelClip("MSFS_MenuOpen", 0.180f, opening: true, includeChime: false);
+        Clips[(int)ClipId.MenuClose] = BuildPanelClip("MSFS_MenuClose", 0.150f, opening: false, includeChime: false);
+        Clips[(int)ClipId.SliderTick] = BuildSliderTickClip();
+        Clips[(int)ClipId.OllyVoice] = BuildOllyVoiceClip();
+        Clips[(int)ClipId.KeyType] = BuildKeyClip(backspace: false);
+        Clips[(int)ClipId.Backspace] = BuildKeyClip(backspace: true);
+        Clips[(int)ClipId.InputSelect] = BuildFocusClip(selected: true);
+        Clips[(int)ClipId.InputDeselect] = BuildFocusClip(selected: false);
+        Clips[(int)ClipId.DdOpen] = BuildDropdownToggleClip(opening: true);
+        Clips[(int)ClipId.DdClose] = BuildDropdownToggleClip(opening: false);
+        Clips[(int)ClipId.DdPick] = BuildDropdownPickClip();
+        Clips[(int)ClipId.Default] = BuildDefaultClip();
+        Clips[(int)ClipId.FxOn] = BuildFxToggleClip(enabled: true);
+        Clips[(int)ClipId.FxOff] = BuildFxToggleClip(enabled: false);
+        Clips[(int)ClipId.ToggleOn] = BuildToggleClip(on: true);
+        Clips[(int)ClipId.ToggleOff] = BuildToggleClip(on: false);
+    }
+
+    private static void OnAudioConfigurationChanged(bool deviceWasChanged) => audioConfigDirty = true;
+
+    private static void PlayOneShot(ClipId id, float volumeScale, float pitch) {
         float master = MasterVolume;
-        if (disposed || master <= 0.001f || clip == null && ready) {
+        if (disposed || master <= 0.001f) {
             return;
         }
         EnsureReady();
+        var clip = Clips[(int)id];
         if (clip == null) {
             return;
         }
         var s = Sources[sourceCursor++ & (Sources.Length - 1)];
-        if (s == null) {
+        if (s == null || !s.isActiveAndEnabled) {
             return;
         }
         s.pitch = pitch;
@@ -422,44 +467,113 @@ internal static class UISound {
     }
 
     private static void EnsureReady() {
-        if (ready || disposed || MasterVolume <= 0.001f) {
+        if (disposed || MasterVolume <= 0.001f) {
             return;
         }
+        bool configChanged = audioConfigDirty;
+        if (configChanged) {
+            audioConfigDirty = false;
+        }
+        bool hostAlive = !configChanged && host != null && host.activeInHierarchy;
+        if (hostAlive) {
+            for (int i = 0; i < Sources.Length; i++) {
+                if (Sources[i] == null || !Sources[i].enabled) {
+                    hostAlive = false;
+                    break;
+                }
+            }
+        }
+        bool clipsAlive = !configChanged;
+        if (clipsAlive) {
+            for (int i = 0; i < Clips.Length; i++) {
+                if (Clips[i] == null) {
+                    clipsAlive = false;
+                    break;
+                }
+            }
+        }
+        if (ready && hostAlive && clipsAlive) {
+            return;
+        }
+        float now = Time.unscaledTime;
+        if (!configChanged && now < nextRetryAt) {
+            return;
+        }
+        if (audioConfigHandler == null) {
+            try {
+#if ML && IL2CPP
+                audioConfigHandler = new Action<bool>(OnAudioConfigurationChanged);
+#else
+                audioConfigHandler = OnAudioConfigurationChanged;
+#endif
+                AudioSettings.OnAudioConfigurationChanged += audioConfigHandler;
+            } catch {
+                audioConfigHandler = null;
+            }
+        }
         ready = true;
+        try {
+            // A scene wipe, inactive root, or audio engine reset (AudioSettings.Reset at
+            // startup / device change) invalidates Sources or wipes procedural clip PCM data.
+            if (!hostAlive) {
+                if (host != null) {
+                    Object.Destroy(host);
+                    host = null;
+                }
+                Array.Clear(Sources, 0, Sources.Length);
 
-        var parent = MainCore.Runtime != null && MainCore.Root != null ? MainCore.Root.transform : null;
-        host = new GameObject("Overlayer.UISound");
-        if (parent != null) {
-            host.transform.SetParent(parent, false);
-        } else {
-            Object.DontDestroyOnLoad(host);
+                var parent = MainCore.Runtime != null && MainCore.Root != null && MainCore.Root.activeInHierarchy
+                    ? MainCore.Root.transform
+                    : null;
+                host = new GameObject("Overlayer.UISound");
+                if (parent != null) {
+                    host.transform.SetParent(parent, false);
+                } else {
+                    Object.DontDestroyOnLoad(host);
+                }
+                host.hideFlags = HideFlags.HideAndDontSave;
+
+                for (int i = 0; i < Sources.Length; i++) {
+                    Sources[i] = CreateSource(host, loop: false, volume: 1.0f);
+                }
+            }
+
+            if (!clipsAlive) {
+                DestroyAllClips();
+                BuildAllClips();
+            }
+
+            bool allOk = host != null && host.activeInHierarchy;
+            if (allOk) {
+                for (int i = 0; i < Sources.Length; i++) {
+                    if (Sources[i] == null || !Sources[i].enabled) {
+                        allOk = false;
+                        break;
+                    }
+                }
+            }
+            if (allOk) {
+                for (int i = 0; i < Clips.Length; i++) {
+                    if (Clips[i] == null) {
+                        allOk = false;
+                        break;
+                    }
+                }
+            }
+            if (allOk) {
+                nextRetryAt = 0f;
+            } else {
+                ready = false;
+                nextRetryAt = now + 1f;
+            }
+        } catch (Exception e) {
+            ready = false;
+            nextRetryAt = now + 1f;
+            try {
+                MainCore.Log.Wrn($"[UISound] Could not create UI audio: {e.Message}");
+            } catch {
+            }
         }
-        host.hideFlags = HideFlags.HideAndDontSave;
-
-        for (int i = 0; i < Sources.Length; i++) {
-            Sources[i] = CreateSource(host, loop: false, volume: 1.0f);
-        }
-
-        hoverClip = BuildHoverClip();
-        clickClip = BuildClickClip();
-        backClip = BuildBackClip();
-        openClip = BuildPanelClip("MSFS_Open", 0.195f, opening: true, includeChime: true);
-        closeClip = BuildPanelClip("MSFS_Close", 0.160f, opening: false, includeChime: true);
-        menuOpenClip = BuildPanelClip("MSFS_MenuOpen", 0.180f, opening: true, includeChime: false);
-        menuCloseClip = BuildPanelClip("MSFS_MenuClose", 0.150f, opening: false, includeChime: false);
-        sliderTickClip = BuildSliderTickClip();
-        ollyVoiceClip = BuildOllyVoiceClip();
-        keyTypeClip = BuildKeyClip(backspace: false);
-        backspaceClip = BuildKeyClip(backspace: true);
-        inputSelectClip = BuildFocusClip(selected: true);
-        inputDeselectClip = BuildFocusClip(selected: false);
-        ddOpenClip = BuildDropdownToggleClip(opening: true);
-        ddCloseClip = BuildDropdownToggleClip(opening: false);
-        ddPickClip = BuildDropdownPickClip();
-        fxOnClip = BuildFxToggleClip(enabled: true);
-        fxOffClip = BuildFxToggleClip(enabled: false);
-        toggleOnClip = BuildToggleClip(on: true);
-        toggleOffClip = BuildToggleClip(on: false);
     }
 
     private static AudioSource CreateSource(GameObject go, bool loop, float volume) {
@@ -720,6 +834,28 @@ internal static class UISound {
         return CreateClip("UI_DropdownPick", data);
     }
 
+    private static AudioClip BuildDefaultClip() {
+        // Soft two-note drop for "back to default" (middle click): D5 -> A4, dry and short.
+        const float duration = 0.058f;
+        int n = (int)(SampleRate * duration);
+        var data = new float[n];
+        double ph1 = 0.0, ph2 = 0.0;
+        for (int i = 0; i < n; i++) {
+            float t = (float)i / SampleRate;
+            float tB = t - 0.020f;
+            float e1 = (1f - Mathf.Exp(-t / 0.0012f)) * Mathf.Exp(-t / 0.010f);
+            float e2 = tB > 0f ? (1f - Mathf.Exp(-tB / 0.0012f)) * Mathf.Exp(-tB / 0.012f) : 0f;
+            ph1 += 2.0 * Math.PI * 587.33 / SampleRate;
+            if (tB > 0f) {
+                ph2 += 2.0 * Math.PI * 440.0 / SampleRate;
+            }
+            float s = Mathf.Sin((float)ph1) * e1 * 0.20f
+                + (tB > 0f ? Mathf.Sin((float)ph2) * e2 * 0.18f : 0f);
+            data[i] = FinishSample(s, i, n, 0.006f);
+        }
+        return CreateClip("UI_Default", data);
+    }
+
     private static AudioClip BuildFxToggleClip(bool enabled) {
         // Distinct crystalline fifth double-spark for Fx toggles (not wind).
         const float duration = 0.065f;
@@ -822,7 +958,14 @@ internal static class UISound {
     private static AudioClip CreateClip(string name, float[] dry, int sr = SampleRate) {
         float[] wet = ApplyWideRoomReverb(dry, sr, ReverbWetMix);
         var clip = AudioClip.Create(name, wet.Length, 1, sr, false);
-        clip.SetData(wet, 0);
+        if (clip == null) {
+            return null;
+        }
+        clip.hideFlags = HideFlags.HideAndDontSave;
+        if (!clip.SetData(wet, 0)) {
+            Object.Destroy(clip);
+            return null;
+        }
         return clip;
     }
 

@@ -230,9 +230,24 @@ public static class UICore {
 
             menuCanvasGroup = Menu.gameObject.AddComponent<CanvasGroup>();
 
+            // Menu Scroll (menu items scroll when the window is small or the UI scale is high)
+            GameObject scrollHost = new("MenuScroll");
+            scrollHost.transform.SetParent(Menu, false);
+
+            var scrollHostRect = scrollHost.AddComponent<RectTransform>();
+            scrollHostRect.anchorMin = Vector2.zero;
+            scrollHostRect.anchorMax = Vector2.one;
+            scrollHostRect.offsetMin = new Vector2(0, 60);
+            scrollHostRect.offsetMax = new Vector2(0, -60);
+
+            scrollHost.AddComponent<RectMask2D>();
+
+            var scroll = scrollHost.AddComponent<ScrollRect>();
+            scroll.horizontal = false;
+
             // Menu Content
             GameObject content = new("Content");
-            content.transform.SetParent(Menu, false);
+            content.transform.SetParent(scrollHost.transform, false);
 
             MenuContent = content.AddComponent<RectTransform>();
             MenuContent.anchorMin = new(0, 1);
@@ -240,7 +255,7 @@ public static class UICore {
             MenuContent.pivot = new(0.5f, 1);
 
             MenuContent.offsetMin = Vector2.zero;
-            MenuContent.offsetMax = new(0, -60);
+            MenuContent.offsetMax = Vector2.zero;
 
             // Layout
             var layout = content.AddComponent<VerticalLayoutGroup>();
@@ -258,6 +273,8 @@ public static class UICore {
 
             var fitter = content.AddComponent<ContentSizeFitter>();
             fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+            scroll.content = MenuContent;
 
             MenuFactory.CreateMenu(MenuContent);
 
