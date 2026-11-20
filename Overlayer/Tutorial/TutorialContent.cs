@@ -1,10 +1,12 @@
 using O5Kit.Control;
+using Overlayer.Core;
 using Overlayer.HudEdit;
 using Overlayer.Localization;
 using Overlayer.Overlay;
 using Overlayer.Tutorial.Olly;
 using Overlayer.UI;
 using Overlayer.UI.Factory;
+using Overlayer.UI.Factory.Page;
 using UnityEngine;
 
 namespace Overlayer.Tutorial;
@@ -59,7 +61,14 @@ internal static class TutorialContent {
 
     // ---- getting somewhere (done for you in the course) ----
 
+    private static void EnsureEnabled() {
+        if (!MainCore.IsModEnabled) {
+            MainCore.SetModEnabled(true);
+        }
+    }
+
     private static void ToEditor() {
+        EnsureEnabled();
         if (!HudEditor.IsOpen) {
             UICore.Close(true);
             HudEditor.Open();
@@ -73,17 +82,60 @@ internal static class TutorialContent {
         UICore.Open(true);
     }
 
-    private static void ToPage(OriginalMenuState page) {
+    private static void ToMenu() {
+        ToWindow();
+        if (!MenuOpen) {
+            UICore.OpenMenu();
+        }
+    }
+
+    private static void ToPage(OriginalMenuState page, bool needEnabled = false, bool closeSubpages = false) {
+        if (needEnabled) {
+            EnsureEnabled();
+        }
         ToWindow();
         MenuFactory.GoTo((int)page);
+        if (closeSubpages) {
+            PageOverlayer.CloseSubpages();
+        }
     }
+
+    // ---- context guards (resilience if the user closes/leaves the UI mid-tutorial) ----
+
+    private static (string Key, string Fallback)? LostEnabled() => !MainCore.IsModEnabled
+        ? ("TUTORIAL_LOST_POWER", "Overlayer is turned off. Click <b>Return</b> to turn it back on and continue.")
+        : null;
+
+    private static (string Key, string Fallback)? LostEditor() => LostEnabled() ?? (!HudEditor.IsOpen
+        ? ("TUTORIAL_LOST_EDITOR", "The HUD editor was closed. Press «Alt + H» or click <b>Return</b> to continue.")
+        : null);
+
+    private static (string Key, string Fallback)? LostWindow() => !WindowOpen
+        ? ("TUTORIAL_LOST_WINDOW", "The Overlayer window was closed. Press «Alt + `» or click <b>Return</b> to continue.")
+        : null;
+
+    private static (string Key, string Fallback)? LostMenu() => LostWindow() ?? (!MenuOpen
+        ? ("TUTORIAL_LOST_MENU", "The menu was closed. Open the top-left menu or click <b>Return</b> to continue.")
+        : null);
+
+    private static (string Key, string Fallback)? LostPage(OriginalMenuState page, bool needEnabled = false, bool closeSubpages = false)
+        => (needEnabled ? LostEnabled() : null) ?? LostWindow() ?? (!On(page) || (closeSubpages && PageOverlayer.IsSubpageOpen)
+            ? ("TUTORIAL_LOST_PAGE", "You moved to another screen. Click <b>Return</b> to go back and continue.")
+            : null);
+
+    private static TutorialStep NeedEnabled(this TutorialStep s) => s.Needs(LostEnabled, EnsureEnabled);
+    private static TutorialStep NeedEditor(this TutorialStep s) => s.Needs(LostEditor, ToEditor);
+    private static TutorialStep NeedWindow(this TutorialStep s) => s.Needs(LostWindow, ToWindow);
+    private static TutorialStep NeedMenu(this TutorialStep s) => s.Needs(LostMenu, ToMenu);
+    private static TutorialStep NeedPage(this TutorialStep s, OriginalMenuState page, bool needEnabled = false, bool closeSubpages = false)
+        => s.Needs(() => LostPage(page, needEnabled, closeSubpages), () => ToPage(page, needEnabled, closeSubpages));
 
     // ---- Olly's sample text ----
 
     private static OvObject sample;
 
     // Still on a canvas (a removed one lingers until the end of the frame).
-    private static bool Alive(OvObject o) => o?.GameObject != null && OverlayCore.Canvases.Any(c => c != null && c.OvObjects.Contains(o));
+    private static bool Alive(OvObject o) => o?.GameObject != null && AllObjects().Contains(o);
 
     private static Vector2 SamplePoint => new(Screen.width * 0.36f, Screen.height * 0.6f);
 
@@ -137,7 +189,8 @@ internal static class TutorialContent {
         .At(() => WindowOpen ? MenuTarget(page) : null)
         .Until(() => On(page))
         .Only(() => !On(page))
-        .AutoInCourse(() => ToPage(page));
+        .AutoInCourse(() => ToPage(page))
+        .NeedWindow();
 
     private static TutorialStep OpenWindow(string key) => new TutorialStep(key, "Open Overlayer",
         "Press «Alt + `» (the key left of 1) to open the Overlayer window.")
@@ -151,7 +204,8 @@ internal static class TutorialContent {
         .Looks(Face.Talk)
         .Until(() => HudEditor.IsOpen)
         .Only(() => !HudEditor.IsOpen)
-        .AutoInCourse(ToEditor);
+        .AutoInCourse(ToEditor)
+        .NeedEnabled();
 
     private static int textsAtStart, objectsAtStart;
     private static OvObject moved;
@@ -192,16 +246,18 @@ internal static class TutorialContent {
         new("basics", "The Overlayer window", "Opening, moving, menu and pages",
             OpenWindow("BASICS_OPEN"),
             new TutorialStep("BASICS_MOVE", "Move and resize",
-                "Drag the top bar to move the window, or drag any edge to resize it.",
-                "Double-click the top bar: maximize / restore.\nOff-screen? <b>Hold</b> «Alt + `» to reset position and size.")
+                "You can drag the top bar to move the window, or drag any edge to resize it.",
+                "Double-click the top bar: maximize / restore.\nIf it goes off-screen, you can <b>hold</b> «Alt + `» to reset position and size.")
                 .Looks(Face.Surprised)
-                .At(() => PanelPart("TopBar")),
+                .At(() => PanelPart("TopBar"))
+                .NeedWindow(),
             new TutorialStep("BASICS_MENU", "The menu",
                 "Click the top-left logo to open the navigation menu.")
                 .Looks(Face.Curious)
                 .At(() => PanelPart("TopBar/Logo"))
                 .Until(() => MenuOpen)
-                .Only(() => !MenuOpen),
+                .Only(() => !MenuOpen)
+                .NeedWindow(),
             new TutorialStep("BASICS_PAGES", "Pages",
                 "Here is what each page in the menu does:",
                 "<b>Overlayer</b>: canvases and imported packages\n"
@@ -211,27 +267,32 @@ internal static class TutorialContent {
                 + "<b>Easing</b>: custom animation curves\n"
                 + "<b>Settings</b>: language, shortcuts, HUD editor and more")
                 .Looks(new(Eye.Normal, Brow.NormalHigh, Mouth.Shift))
-                .At(() => MenuOpen ? UICore.MenuContent : PanelPart("TopBar/Logo")),
+                .At(() => MenuOpen ? UICore.MenuContent : PanelPart("TopBar/Logo"))
+                .NeedMenu(),
             new TutorialStep("BASICS_POWER", "Power toggle",
                 "Turns Overlayer completely on or off. When off, all HUD elements hide and stop updating.")
                 .Looks(Face.Talk)
-                .At(() => UICore.Menu != null ? UICore.Menu.Find("Power") as RectTransform : null),
+                .At(() => UICore.Menu != null ? UICore.Menu.Find("Power") as RectTransform : null)
+                .NeedMenu(),
             GoTo("BASICS_SETTINGS", OriginalMenuState.Settings, "Settings"),
             new TutorialStep("BASICS_LANGUAGE", "Language",
-                "Change the UI language here. Changes apply immediately.")
+                "You can change the UI language here. Changes apply immediately.")
                 .Looks(Face.Smile)
-                .At(() => RowOf("LANGUAGE")),
+                .At(() => RowOf("LANGUAGE"))
+                .NeedPage(OriginalMenuState.Settings),
             new TutorialStep("BASICS_CLOSE", "Closing",
-                "Press «Alt + `» or click X to close. While the window is open, the game ignores keyboard input, so close it before playing.")
+                "It can be closed with «Alt + `» or the X button. While the window is open, the game ignores keyboard input, so make sure it's closed before playing.")
                 .Looks(Face.Talk)
-                .At(() => PanelPart("TopBar/Close"))),
+                .At(() => PanelPart("TopBar/Close"))
+                .NeedWindow()),
 
         new("first", "Your first HUD text", "Create, tag, move, and style a HUD text",
             new TutorialStep("FIRST_OPEN", "Open the HUD editor",
                 "Press «Alt + H» to open the HUD editor directly on the game screen.")
                 .Looks(new(Eye.Normal, Brow.Normal, Mouth.OpenMicro))
                 .Until(() => HudEditor.IsOpen)
-                .Only(() => !HudEditor.IsOpen),
+                .Only(() => !HudEditor.IsOpen)
+                .NeedEnabled(),
             new TutorialStep("FIRST_SCREEN", "HUD editor layout",
                 "You edit directly on the game screen, so what you see is what you get.",
                 "<b>Top bar</b>: add objects, presets, grid, rulers, undo, done\n"
@@ -239,9 +300,10 @@ internal static class TutorialContent {
                 + "<b>Right</b>: properties of the selection\n"
                 + "<b>Bottom bar</b>: align, group, order, lock, hide")
                 .Looks(Face.Smile)
-                .At(() => HudEditor.Part("ToolbarArea/Toolbar")),
+                .At(() => HudEditor.Part("ToolbarArea/Toolbar"))
+                .NeedEditor(),
             new TutorialStep("FIRST_DEMO", "Watch an example",
-                "Click <b>A</b> to add a text, double-click it, and enter a tag.",
+                "You can click <b>A</b> to add a text, double-click it, and enter a tag.",
                 "Anything in «{ }» is a <b>tag</b> replaced by a live value.\n«{Fps:0}» shows frame rate with no decimals.")
                 .Looks(Face.Talk)
                 .At(() => SampleRect ?? HudEditor.Control("add_text"))
@@ -255,33 +317,45 @@ internal static class TutorialContent {
                     .Type(() => sample, "FPS {Fps:0}")
                     .Wait(0.6f)
                     .HidePointer())
-                .OnExit(PutSampleAway),
+                .OnExit(PutSampleAway)
+                .NeedEditor(),
             new TutorialStep("FIRST_ADD", "Add a text",
                 "Your turn. Click the <b>A</b> button on the top bar (or right-click the screen).")
                 .Looks(Face.Smile)
                 .At(() => HudEditor.Control("add_text"))
                 .OnEnter(() => textsAtStart = CountTexts())
-                .Until(() => CountTexts() > textsAtStart),
+                .Until(() => CountTexts() > textsAtStart)
+                .NeedEditor(),
             new TutorialStep("FIRST_TYPE", "Enter a live tag",
                 "<b>Double-click</b> the text, type «FPS {Fps:0}», then click outside to finish.",
                 "You can also type in the <b>Text</b> box on the right.\n"
                 + "Typing «{» lists all tags. Names are case-sensitive.")
                 .Looks(Face.Talk)
                 .Until(() => !O5InputBlocker.IsEditing
-                    && UserObjects().Any(o => o.Config?.TextEngineConfig?.Text.StaticValue?.Contains("{Fps") == true)),
+                    && UserObjects().Any(o => o.Config?.TextEngineConfig?.Text.StaticValue?.Contains("{Fps") == true))
+                .Keeping(() => { if (CountTexts() == 0) Tutorial.Jump("FIRST_ADD"); })
+                .NeedEditor(),
             new TutorialStep("FIRST_MOVE", "Move it",
                 "Nice! Now drag the text somewhere else. Pink lines show alignment with the screen or other objects.")
                 .Looks(Face.Happy)
                 .OnEnter(() => {
-                    moved = HudEditor.SelectedObject;
+                    moved = Alive(HudEditor.SelectedObject) ? HudEditor.SelectedObject : UserObjects().LastOrDefault();
                     movedFrom = moved?.RectTransform != null ? (Vector2)moved.RectTransform.position : Vector2.zero;
                 })
                 .Until(() => {
-                    moved ??= HudEditor.SelectedObject;
+                    if (!Alive(moved) || (HudEditor.SelectedObject != null && !ReferenceEquals(moved, HudEditor.SelectedObject) && Alive(HudEditor.SelectedObject))) {
+                        moved = Alive(HudEditor.SelectedObject) ? HudEditor.SelectedObject : UserObjects().LastOrDefault();
+                        if (moved?.RectTransform != null) {
+                            movedFrom = moved.RectTransform.position;
+                        }
+                        return false;
+                    }
                     return !Input.GetMouseButton(0)
                         && moved?.RectTransform != null
                         && ((Vector2)moved.RectTransform.position - movedFrom).sqrMagnitude > 400f;
-                }),
+                })
+                .Keeping(() => { if (CountObjects() == 0) Tutorial.Jump("FIRST_ADD"); })
+                .NeedEditor(),
             new TutorialStep("FIRST_HANDLES", "Selection handles",
                 "Selected objects show handles around them:",
                 "<b>Corners</b>: scale (Alt: from center)\n"
@@ -289,12 +363,14 @@ internal static class TutorialContent {
                 + "<b>Top circle</b>: rotate (Shift: 15° steps)\n"
                 + "<b>Arrow keys</b>: nudge 1 px (Shift: 10 px)\n"
                 + "Hold <b>Alt</b> while dragging: disable snap & show distances.")
-                .Looks(Face.Normal),
+                .Looks(Face.Normal)
+                .NeedEditor(),
             new TutorialStep("FIRST_PANEL", "Inspector panel",
                 "The right panel holds position, size, rotation, opacity, text, font size, alignment, and color.",
                 "<b>All properties…</b> at the bottom opens every setting.")
                 .Looks(Face.Talk)
-                .At(() => HudEditor.Part("Panel")),
+                .At(() => HudEditor.Part("Panel"))
+                .NeedEditor(),
             new TutorialStep("FIRST_TEXTBOX", "The Text box",
                 "You can also edit text in the right panel's <b>Text</b> box—useful for longer expressions.",
                 "Edits update live on screen as you type.")
@@ -307,9 +383,10 @@ internal static class TutorialContent {
                     .Click()
                     .Type(() => sample, "{Hour:00}:{Minute:00}:{Second:00}")
                     .Wait(0.5f)
-                    .HidePointer()),
+                    .HidePointer())
+                .NeedEditor(),
             new TutorialStep("FIRST_OPACITY", "Opacity",
-                "Drag the <b>Opacity</b> slider right above it to adjust transparency.",
+                "Transparency can be adjusted with the <b>Opacity</b> slider right above it.",
                 "100: opaque · 0: invisible")
                 .Looks(Face.Talk)
                 .At(() => HudEditor.Control("opacity"))
@@ -321,10 +398,11 @@ internal static class TutorialContent {
                     .Wait(0.6f)
                     .Drag(() => TutorialDemo.Inside(HudEditor.Control("opacity"), 0.97f, 0.5f), 1f,
                         t => HudEditor.DemoSetAlpha(sample, 0.25f + 0.75f * t))
-                    .HidePointer()),
+                    .HidePointer())
+                .NeedEditor(),
             new TutorialStep("FIRST_FX", "Formulas (ƒ)",
                 "Properties can use a JavaScript formula instead of a fixed value—like this pulsing opacity.",
-                "In <b>All properties…</b>, click <b>ƒ</b> next to a setting and write JS:\n"
+                "In <b>All properties…</b>, you can click <b>ƒ</b> next to a setting to enter a JS formula:\n"
                 + "«0.55 + 0.45 * Math.sin(Time() * 4)»  pulsing\n"
                 + "«IsKeyHeld('Space') ? 1 : 0.2»  bright while holding Space\n"
                 + "«Math.min(1, Fps() / 60)»  dims below 60 FPS")
@@ -338,14 +416,16 @@ internal static class TutorialContent {
                     })
                     .Point(() => HudEditor.Control("allprops"))
                     .Wait(0.9f)
-                    .HidePointer()),
+                    .HidePointer())
+                .NeedEditor(),
             new TutorialStep("FIRST_PIN", "Pin to",
                 "The 3×3 grid sets which screen corner or edge an object anchors to, keeping its spot across resolutions.",
                 "Clicking a dot updates the anchor without moving the object.")
                 .Looks(Face.Surprised)
                 .At(() => HudEditor.Control("pin") ?? HudEditor.Part("Panel"))
                 .OnEnter(() => PlainSample("{Hour:00}:{Minute:00}:{Second:00}"))
-                .OnExit(PutSampleAway),
+                .OnExit(PutSampleAway)
+                .NeedEditor(),
             new TutorialStep("FIRST_DONE", "Finish",
                 "Click the check mark on the top bar to close the editor. Changes save automatically.")
                 .Looks(Face.Happy)
@@ -353,75 +433,86 @@ internal static class TutorialContent {
                 .Until(() => !HudEditor.IsOpen)
                 .Only(() => !Tutorial.InCourse),
             new TutorialStep("FIRST_DONE_COURSE", "Basics complete",
-                "The check mark closes the editor and saves automatically. Stay here for the next chapters.")
+                "The check mark closes the editor and saves automatically. We'll stay here for the next chapters.")
                 .Looks(Face.Smile)
                 .At(() => HudEditor.Control("close"))
-                .Only(() => Tutorial.InCourse)),
+                .Only(() => Tutorial.InCourse)
+                .NeedEditor()),
 
         new("format", "Numbers: decimals and formats", "0, #, commas, percent, padding, rounding",
             OpenEditor("FMT_OPEN"),
             new TutorialStep("FMT_RAW", "Unformatted numbers",
                 "Without a format, «{Fps}» prints every trailing decimal digit.",
-                "Add a colon and format after the tag name to control how it displays.")
+                "A colon and format can be added after the tag name to control how it displays.")
                 .Looks(new(Eye.Small, Brow.NormalHigh, Mouth.Normal))
                 .At(() => SampleRect)
-                .Shows(Typing("{Fps}")),
+                .Shows(Typing("{Fps}"))
+                .NeedEditor(),
             new TutorialStep("FMT_COLON", "Integer format",
                 "«0» means one digit here. With no decimal point, it rounds to a whole number.",
                 "«{Fps:0}»  =  60  (59.6 rounds to 60)")
                 .Looks(Face.Normal)
                 .At(() => SampleRect)
-                .Shows(Typing("{Fps:0}")),
+                .Shows(Typing("{Fps:0}"))
+                .NeedEditor(),
             new TutorialStep("FMT_DECIMALS", "Decimal places",
                 "Each «0» after the dot adds one fixed decimal place, even if it's zero.",
                 "«{Fps:0.0}»  =  59.9\n«{Fps:0.00}»  =  59.94\n«{Fps:0.000}»  =  59.940")
                 .Looks(Face.Talk)
                 .At(() => SampleRect)
-                .Shows(Showing("0.0  =  {Fps:0.0}\n0.00  =  {Fps:0.00}\n0.000  =  {Fps:0.000}")),
+                .Shows(Showing("0.0  =  {Fps:0.0}\n0.00  =  {Fps:0.00}\n0.000  =  {Fps:0.000}"))
+                .NeedEditor(),
             new TutorialStep("FMT_HASH", "0 vs #",
                 "«#» shows a digit only when needed, dropping trailing zeros.",
                 "<b>0</b>: always shown · <b>#</b>: drops trailing zeros\n"
                 + "«{1.5:0.00}» = 1.50  |  «{1.5:0.##}» = 1.5  |  «{2:0.##}» = 2")
                 .Looks(new(Eye.Normal, Brow.NormalHigh, Mouth.Shift))
                 .At(() => SampleRect)
-                .Shows(Showing("1.5 / 0.00  =  {1.5:0.00}\n1.5 / 0.##  =  {1.5:0.##}\n2 / 0.##  =  {2:0.##}")),
+                .Shows(Showing("1.5 / 0.00  =  {1.5:0.00}\n1.5 / 0.##  =  {1.5:0.##}\n2 / 0.##  =  {2:0.##}"))
+                .NeedEditor(),
             new TutorialStep("FMT_PAD", "Leading zeros",
                 "Extra «0»s before the dot pad with leading zeros—useful for clocks.",
                 "«{7:000}»  =  007\n«{Hour:00}:{Minute:00}»  =  09:05")
                 .Looks(new(Eye.Normal, Brow.Normal, Mouth.Smile))
                 .At(() => SampleRect)
-                .Shows(Showing("7 / 000  =  {7:000}\n{Hour:00}:{Minute:00}:{Second:00}")),
+                .Shows(Showing("7 / 000  =  {7:000}\n{Hour:00}:{Minute:00}:{Second:00}"))
+                .NeedEditor(),
             new TutorialStep("FMT_GROUP", "Thousands",
-                "Include a comma in the format to add thousands separators.",
+                "A comma in the format adds thousands separators.",
                 "«{1234567:#,##0}»  =  1,234,567\n«{1234567.891:#,##0.00}»  =  1,234,567.89")
                 .Looks(Face.Talk)
                 .At(() => SampleRect)
-                .Shows(Showing("#,##0  =  {1234567:#,##0}\n#,##0.00  =  {1234567.891:#,##0.00}")),
+                .Shows(Showing("#,##0  =  {1234567:#,##0}\n#,##0.00  =  {1234567.891:#,##0.00}"))
+                .NeedEditor(),
             new TutorialStep("FMT_PERCENT", "Percent",
-                "«%» multiplies a 0–1 value by 100 and adds the % sign. For 0–100 values, type % outside.",
+                "«%» multiplies a 0–1 value by 100 and adds the % sign. For 0–100 values, % can be written outside the braces.",
                 "«{0.856:0.0%}»  =  85.6%")
                 .Looks(new(Eye.Normal, Brow.Normal, Mouth.OpenMicro))
                 .At(() => SampleRect)
-                .Shows(Showing("0.856 / 0.0%  =  {0.856:0.0%}")),
+                .Shows(Showing("0.856 / 0.0%  =  {0.856:0.0%}"))
+                .NeedEditor(),
             new TutorialStep("FMT_LETTERS", "Standard codes",
                 "Short letter codes work too:",
                 "«F2» = «0.00» · «N0» = «#,##0» · «N2» = «#,##0.00» · «P1» = «0.0%»\n"
                 + "«D3» = «000» (integers only; use «000» for decimal tags like FPS)")
                 .Looks(new(Eye.Normal, Brow.NormalHigh, Mouth.OpenSmallHarf))
                 .At(() => SampleRect)
-                .Shows(Showing("F2  =  {Fps:F2}\nN2  =  {1234567.891:N2}\nP1  =  {0.856:P1}")),
+                .Shows(Showing("F2  =  {Fps:F2}\nN2  =  {1234567.891:N2}\nP1  =  {0.856:P1}"))
+                .NeedEditor(),
             new TutorialStep("FMT_ROUND", "Rounding vs truncating",
-                "Formats round half-up. Use «Math.floor» inside braces to truncate instead.",
+                "Formats round half-up. «Math.floor» can be used inside braces to truncate instead.",
                 "«{Math.floor(Fps * 10) / 10:0.0}»  (59.99 → 59.9)")
                 .Looks(new(Eye.Normal, Brow.NormalHigh, Mouth.Shift))
                 .At(() => SampleRect)
-                .Shows(Showing("0.0  =  {Fps:0.0}\nfloor  =  {Math.floor(Fps * 10) / 10:0.0}")),
+                .Shows(Showing("0.0  =  {Fps:0.0}\nfloor  =  {Math.floor(Fps * 10) / 10:0.0}"))
+                .NeedEditor(),
             new TutorialStep("FMT_UNITS", "Units go outside",
-                "Write units and labels <b>outside</b> the braces so they aren't treated as format codes.",
+                "Units and labels should go <b>outside</b> the braces so they aren't treated as format codes.",
                 "«{Fps:0} FPS»  (text tags like DayOfWeek ignore formats)")
                 .Looks(Face.Talk)
                 .At(() => SampleRect)
-                .Shows(Showing("{Fps:0} FPS")),
+                .Shows(Showing("{Fps:0} FPS"))
+                .NeedEditor(),
             new TutorialStep("FMT_TRY", "Your turn",
                 "Double-click the sample and make it show FPS with <b>one</b> decimal place.",
                 "Hint: «{Fps:0.0}»")
@@ -429,11 +520,14 @@ internal static class TutorialContent {
                 .At(() => SampleRect)
                 .OnEnter(() => Sample("{Fps}"))
                 .Until(() => !O5InputBlocker.IsEditing
-                    && SampleText() is { } s && s.Contains("{Fps:0.0}") && !s.Contains("{Fps:0.00")),
+                    && SampleText() is { } s && s.Contains("{Fps:0.0}") && !s.Contains("{Fps:0.00"))
+                .Keeping(() => { if (!O5InputBlocker.IsEditing && !Alive(sample)) Sample("{Fps}"); })
+                .NeedEditor(),
             new TutorialStep("FMT_DONE", "Formats done",
                 "Perfect! That covers number formatting.")
                 .Looks(Face.Happy)
-                .OnExit(PutSampleAway)),
+                .OnExit(PutSampleAway)
+                .NeedEditor()),
 
         new("editor", "HUD editor tools", "Selection, canvas list, toolbars, guides, auto layout, shortcuts",
             OpenEditor("EDITOR_OPEN"),
@@ -445,34 +539,39 @@ internal static class TutorialContent {
                 + "<b>Shift + click</b>: add/remove from selection\n"
                 + "<b>Drag empty space</b>: box select\n"
                 + "<b>Right-click</b>: context menu & objects under cursor")
-                .Looks(Face.Grin),
+                .Looks(Face.Grin)
+                .NeedEditor(),
             new TutorialStep("EDITOR_CANVASES", "The canvas list",
                 "A <b>canvas</b> is a layer of HUD objects, shown here as a tree.",
                 "Click: select · Double-click: rename · Drag: reorder or nest\n"
                 + "Dot: show / hide · Square: lock\n"
                 + "<b>+</b>: new canvas · X: delete (Ctrl+Z undoes)")
                 .Looks(Face.Talk)
-                .At(() => HudEditor.Part("Layers")),
+                .At(() => HudEditor.Part("Layers"))
+                .NeedEditor(),
             new TutorialStep("EDITOR_TOP", "The top bar",
-                "Hover any button on the top bar to see its name.",
+                "Hovering any button on the top bar shows its name.",
                 "Canvas list · text · image · presets · <b>placement mode</b> · grid · rulers · duplicate · delete · undo · redo · done")
                 .Looks(new(Eye.Normal, Brow.Normal, Mouth.SadSmall))
-                .At(() => HudEditor.Part("ToolbarArea/Toolbar")),
+                .At(() => HudEditor.Part("ToolbarArea/Toolbar"))
+                .NeedEditor(),
             new TutorialStep("EDITOR_BOTTOM", "The bottom bar",
                 "The bottom bar aligns, distributes, groups, orders, locks, and hides.",
                 "<b>Align</b>: to selection, parent, or screen\n"
                 + "<b>Distribute</b>: even gaps (3+ objects)\n"
                 + "<b>Group / Ungroup</b>, <b>Front / Back</b>, <b>Lock</b>, <b>Hide</b>")
                 .Looks(Face.Talk)
-                .At(() => HudEditor.Part("BottomBarArea/BottomBar")),
+                .At(() => HudEditor.Part("BottomBarArea/BottomBar"))
+                .NeedEditor(),
             new TutorialStep("EDITOR_GRID", "Grid, rulers and guides",
-                "Turn on the grid to snap objects. With rulers on, drag out from a ruler to place a guide line.",
-                "Drag a guide back onto the ruler to delete it. Guides are stored per aspect ratio.")
+                "Turning on the grid snaps objects. With rulers on, guide lines can be dragged out from a ruler.",
+                "Guides can be deleted by dragging them back onto the ruler. They are stored per aspect ratio.")
                 .Looks(new(Eye.Normal, Brow.Normal, Mouth.OpenSmallHarf))
-                .At(() => HudEditor.Control("rulers")),
+                .At(() => HudEditor.Control("rulers"))
+                .NeedEditor(),
             new TutorialStep("EDITOR_LAYOUT", "Auto layout",
-                "Select multiple objects and click <b>Group as row</b> in the right panel to line them up automatically.",
-                "Or select a group and set <b>Auto layout</b> to Row or Column. Gap and padding are adjustable in the panel.")
+                "Multiple objects can be lined up automatically by selecting them and clicking <b>Group as row</b> in the right panel.",
+                "A group's <b>Auto layout</b> can also be set to Row or Column, with gap and padding adjustable in the panel.")
                 .Looks(new(Eye.Small, Brow.NormalHigh, Mouth.Clenched))
                 .At(() => HudEditor.PartNamed("Dock_layout") ?? SampleRect)
                 .Shows(new TutorialDemo()
@@ -491,21 +590,24 @@ internal static class TutorialContent {
                     .Click(() => sample = HudEditor.DemoGroupAsRow(demoRow.Where(o => o != null)))
                     .Wait(0.8f)
                     .HidePointer())
-                .OnExit(PutSampleAway),
+                .OnExit(PutSampleAway)
+                .NeedEditor(),
             new TutorialStep("EDITOR_TEAR", "Detachable panels",
-                "Drag any section header in the right panel (like <b>Look</b>) out of the panel to pop it into its own window.",
-                "Drag it back over the panel to dock it again.")
+                "Any section header in the right panel (like <b>Look</b>) can be dragged out into its own window.",
+                "Dragging it back over the panel docks it again.")
                 .Looks(new(Eye.Normal, Brow.NormalHigh, Mouth.OpenSmall))
                 .At(() => HudEditor.PartNamed("Dock_look") ?? HudEditor.Part("Panel"))
                 .OnEnter(() => PlainSample("{Fps:0} FPS"))
-                .OnExit(PutSampleAway),
+                .OnExit(PutSampleAway)
+                .NeedEditor(),
             new TutorialStep("EDITOR_KEYS", "Shortcuts",
                 "Useful keyboard shortcuts in the HUD editor:",
                 "Ctrl+C / Ctrl+V copy, paste (Ctrl+Shift+V: in place)\n"
                 + "Ctrl+Alt+C / Ctrl+Alt+V copy, paste <b>look</b> only\n"
                 + "Ctrl+D duplicate · Del delete · Ctrl+G / Ctrl+Shift+G group, ungroup\n"
                 + "Ctrl+] / Ctrl+[ order · Ctrl+Shift+L lock · Ctrl+Shift+H hide · Ctrl+Z / Ctrl+Y undo, redo")
-                .Looks(Face.Smile)),
+                .Looks(Face.Smile)
+                .NeedEditor()),
 
         new("presets", "Presets and the preview", "Ready-made presets and live preview",
             OpenEditor("PRESETS_OPEN"),
@@ -514,22 +616,30 @@ internal static class TutorialContent {
                 .Looks(Face.Surprised)
                 .At(() => HudEditor.Control("presets"))
                 .Until(() => HudEditor.PresetMenuOpen)
-                .Only(() => !HudEditor.PresetMenuOpen),
+                .Only(() => !HudEditor.PresetMenuOpen)
+                .NeedEditor(),
             new TutorialStep("PRESETS_PICK", "Insert a preset",
                 "Pick any preset from the list.",
                 "Presets are added as normal objects, so you can customize anything about them.")
                 .Looks(Face.Talk)
                 .OnEnter(() => objectsAtStart = CountObjects())
-                .Until(() => CountObjects() > objectsAtStart),
+                .Until(() => CountObjects() > objectsAtStart)
+                .Keeping(() => { if (!HudEditor.PresetMenuOpen) Tutorial.Jump("PRESETS_MENU"); })
+                .NeedEditor(),
             new TutorialStep("PRESETS_PREVIEW", "Preview window",
                 "<b>Right-click</b> any text and choose <b>Preview in game</b> to test it in a dedicated preview window.")
                 .Looks(new(Eye.Normal, Brow.NormalHigh, Mouth.Shift))
-                .Until(() => HudPreview.IsOpen),
+                .OnEnter(() => { if (CountTexts() == 0 && !Alive(sample)) PlainSample("FPS {Fps:0}"); })
+                .Keeping(() => { if (CountTexts() == 0 && !Alive(sample)) PlainSample("FPS {Fps:0}"); })
+                .Until(() => HudPreview.IsOpen)
+                .NeedEditor(),
             new TutorialStep("PRESETS_PREVIEW_WINDOW", "The preview",
                 "Edits update live in this window.",
-                "Drag the title bar to move it, or resize from the bottom-right corner.")
+                "It can be moved by dragging the title bar, and resized from the bottom-right corner.")
                 .Looks(Face.Smile)
-                .Only(() => HudEditor.IsOpen)),
+                .Only(() => HudEditor.IsOpen)
+                .OnExit(PutSampleAway)
+                .NeedEditor()),
 
         new("tags", "Tags: the useful tricks", "Arguments, math, styling, colors, animated numbers",
             OpenEditor("TAGS_OPEN"),
@@ -539,35 +649,40 @@ internal static class TutorialContent {
                 + "Note: «{Fps:500}» reads 500 as a <b>format</b>. Include decimals too.")
                 .Looks(Face.Talk)
                 .At(() => SampleRect)
-                .Shows(Showing("{Fps:500,0}")),
+                .Shows(Showing("{Fps:500,0}"))
+                .NeedEditor(),
             new TutorialStep("TAGS_MATH", "Math & conditions",
                 "You can write math and «? :» conditions directly inside braces.",
                 "«{Fps * 2:0}»\n«{Fps < 30 ? 'slow' : 'smooth'}»\n"
                 + "Tags returning true/false or text need «()» inside math: «IsKeyHeld('Space')», «DayOfWeek()».")
                 .Looks(new(Eye.Normal, Brow.NormalHigh, Mouth.Shift))
                 .At(() => SampleRect)
-                .Shows(Showing("{Fps * 2:0}\n{Fps < 30 ? 'slow' : 'smooth'}")),
+                .Shows(Showing("{Fps * 2:0}\n{Fps < 30 ? 'slow' : 'smooth'}"))
+                .NeedEditor(),
             new TutorialStep("TAGS_RICH", "Color, size, bold",
                 "Texts support rich text tags for color, size, and style.",
                 "«<color=#FF5050>red</color>»  «<b>bold</b>»  «<i>italic</i>»\n«{Fps:0}<size=50%> FPS</size>»")
                 .Looks(Face.Smile)
                 .At(() => SampleRect)
-                .Shows(Showing("<color=#FF5050>red</color> <b>bold</b> <i>italic</i>\n{Fps:0}<size=50%> FPS</size>")),
+                .Shows(Showing("<color=#FF5050>red</color> <b>bold</b> <i>italic</i>\n{Fps:0}<size=50%> FPS</size>"))
+                .NeedEditor(),
             new TutorialStep("TAGS_COLORRANGE", "Color by value",
                 "«ColorRange» interpolates a hex color from a value—here red at 0 s to green at 59 s.",
                 "«<color=#{ColorRange(Second,0,59,FF4040,40FF40)}>{Second}</color>»\n"
                 + "Arguments: tag, min, max, start color, end color.")
                 .Looks(Face.Talk)
                 .At(() => SampleRect)
-                .Shows(Showing("<color=#{ColorRange(Second,0,59,FF4040,40FF40)}>{Second:00}</color>")),
+                .Shows(Showing("<color=#{ColorRange(Second,0,59,FF4040,40FF40)}>{Second:00}</color>"))
+                .NeedEditor(),
             new TutorialStep("TAGS_ANIM", "Animated numbers",
                 "Numbers can smoothly ease or pop when their value changes:",
                 "«{EasedValue(Second,2,500,OutBack)}»: eases over 500 ms\n"
                 + "«<size={MovingMan(Second,60,36,36,300)}>{Second}</size>»: pulses size on change\n"
-                + "Use a preset name or a custom curve from the <b>Easing</b> page.")
+                + "A preset name or a custom curve from the <b>Easing</b> page can be used.")
                 .Looks(new(Eye.Small, Brow.NormalHigh, Mouth.OpenMicro))
                 .At(() => SampleRect)
-                .Shows(Showing("{EasedValue(Second,2,500,OutBack)}\n<size={MovingMan(Second,60,36,36,300)}>{Second}</size>")),
+                .Shows(Showing("{EasedValue(Second,2,500,OutBack)}\n<size={MovingMan(Second,60,36,36,300)}>{Second}</size>"))
+                .NeedEditor(),
             new TutorialStep("TAGS_TRY", "Your turn",
                 "Set the sample to show FPS averaged over <b>1 second</b> (1000 ms) with 0 decimals.",
                 "Hint: «{Fps:1000,0}» or «{Fps(1000,0)}»")
@@ -575,14 +690,17 @@ internal static class TutorialContent {
                 .At(() => SampleRect)
                 .OnEnter(() => Sample("{Fps}"))
                 .Until(() => !O5InputBlocker.IsEditing
-                    && SampleText() is { } s && (s.Contains("{Fps:1000,0}") || s.Contains("{Fps(1000,0)}"))),
+                    && SampleText() is { } s && (s.Contains("{Fps:1000,0}") || s.Contains("{Fps(1000,0)}")))
+                .Keeping(() => { if (!O5InputBlocker.IsEditing && !Alive(sample)) Sample("{Fps}"); })
+                .NeedEditor(),
             new TutorialStep("TAGS_CORE", "Useful built-in tags",
                 "Common built-in tags available everywhere:",
                 "«{Hour:00}:{Minute:00}» clock · «{AmPm}» · «{DayOfWeek}»\n"
                 + "«{Fps:500,0}» FPS · «{FrameTime:500,0.00}» ms/frame\n"
                 + "«{Kps:500,0}» keys/sec · «{IsKeyHeld:Space}» Space held state")
                 .Looks(new(Eye.Normal, Brow.NormalHigh, Mouth.SadSmall))
-                .OnExit(PutSampleAway)),
+                .OnExit(PutSampleAway)
+                .NeedEditor()),
 
         new("fx", "ƒ: dynamic properties", "Drive opacity, position, or text with formulas",
             OpenEditor("FX_OPEN"),
@@ -591,7 +709,8 @@ internal static class TutorialContent {
                 "Every tag works as a function: «Fps()», «Second()». Vectors and colors use «[ ]».")
                 .Looks(Face.Talk)
                 .At(() => HudEditor.Control("allprops"))
-                .OnEnter(() => PlainSample("{Fps:0} FPS")),
+                .OnEnter(() => PlainSample("{Fps:0} FPS"))
+                .NeedEditor(),
             new TutorialStep("FX_POSITION", "Dynamic position",
                 "Position takes two numbers «[x, y]»—here adding a sine wave to x.",
                 "«[x + Math.sin(Time() * 3) * 40, y]»\nx and y are the base position; «Time()» is elapsed seconds.")
@@ -603,7 +722,8 @@ internal static class TutorialContent {
                         PlainSample("{Fps:0} FPS");
                         HudEditor.DemoWobble(sample, true);
                     })
-                    .Wait(0.8f)),
+                    .Wait(0.8f))
+                .NeedEditor(),
             new TutorialStep("FX_TEXT", "Dynamic text",
                 "On the Text property itself, the returned string is evaluated with tags included.",
                 "«Fps() < 60 ? 'slow... {Fps:0}' : 'smooth! {Fps:0}'»\n"
@@ -616,7 +736,8 @@ internal static class TutorialContent {
                         PlainSample("{Fps:0} FPS");
                         HudEditor.DemoTextFx(sample, "Fps() < 60 ? 'slow... {Fps:0}' : 'smooth! {Fps:0}'");
                     })
-                    .Wait(0.8f)),
+                    .Wait(0.8f))
+                .NeedEditor(),
             new TutorialStep("FX_EXAMPLES", "Formula examples",
                 "Common ƒ patterns:",
                 "Show while holding Space: «IsKeyHeld('Space') ? 1 : 0»\n"
@@ -624,45 +745,52 @@ internal static class TutorialContent {
                 + "Color RGBA (0–1): «[1, Fps() / 144, 0, 1]»\n"
                 + "Multi-line scripts are supported; the last expression is returned.")
                 .Looks(Face.Smile)
-                .OnExit(PutSampleAway)),
+                .OnExit(PutSampleAway)
+                .NeedEditor()),
 
         new("canvases", "Canvases, sharing and packages", "Managing canvases, packages, export and import",
             OpenWindow("CANVAS_OPEN"),
             GoTo("CANVAS_GOTO", OriginalMenuState.Overlayer, "Overlayer"),
             new TutorialStep("CANVAS_TILES", "Your canvases",
-                "Each tile is a canvas. Click one to open the canvas editor, showing its object tree and full inspector.",
+                "Each tile is a canvas. Clicking one opens the canvas editor, showing its object tree and full inspector.",
                 "Toggle: enable/disable · Small buttons: copy, export, delete (click twice, or Shift+click)\n"
                 + "<b>…</b>: package metadata, thumbnail, and bundled scripts.")
                 .Looks(Face.Talk)
-                .At(() => PagePart(OriginalMenuState.Overlayer, "ScrollView/Viewport/Content/Grid")),
+                .At(() => PagePart(OriginalMenuState.Overlayer, "ScrollView/Viewport/Content/Grid"))
+                .NeedPage(OriginalMenuState.Overlayer, needEnabled: true, closeSubpages: true),
             new TutorialStep("CANVAS_NEW", "New, preset, import",
                 "The last tile creates an empty canvas (left), adds a preset (top right), or imports a file (bottom right).")
                 .Looks(new(Eye.Normal, Brow.NormalHigh, Mouth.Normal))
                 .At(() => {
                     var grid = PagePart(OriginalMenuState.Overlayer, "ScrollView/Viewport/Content/Grid");
                     return grid != null && grid.childCount > 0 ? grid.GetChild(grid.childCount - 1) as RectTransform : grid;
-                }),
+                })
+                .NeedPage(OriginalMenuState.Overlayer, needEnabled: true, closeSubpages: true),
             new TutorialStep("CANVAS_SHARE", "Sharing",
                 "<b>Export</b> bundles a canvas with its fonts, images, and scripts into an <b>.o5cp</b> package.",
-                "Imported packages stay read-only so updates remain clean. Press <b>Copy</b> to make an editable copy.")
-                .Looks(new(Eye.Small, Brow.Normal, Mouth.Smile)),
+                "Imported packages stay read-only so updates remain clean. <b>Copy</b> can be used to make an editable copy.")
+                .Looks(new(Eye.Small, Brow.Normal, Mouth.Smile))
+                .NeedPage(OriginalMenuState.Overlayer, needEnabled: true, closeSubpages: true),
             new TutorialStep("CANVAS_VS_EDITOR", "Which editor?",
-                "Use the HUD editor for visual layout on screen, and the canvas editor for direct property editing.",
+                "The HUD editor is great for visual layout on screen, while the canvas editor works well for direct property editing.",
                 "Both edit the exact same canvases and objects.")
-                .Looks(new(Eye.Normal, Brow.NormalHigh, Mouth.OpenSmall))),
+                .Looks(new(Eye.Normal, Brow.NormalHigh, Mouth.OpenSmall))
+                .NeedPage(OriginalMenuState.Overlayer, needEnabled: true, closeSubpages: true)),
 
         new("resources", "Fonts and images", "Importing and using custom files",
             OpenWindow("RES_OPEN"),
             GoTo("RES_GOTO", OriginalMenuState.Resources, "Resources"),
             new TutorialStep("RES_ADD", "Adding files",
-                "Import custom fonts and images here. Use <b>Browse</b> (or paste a path), enter a name, and click <b>Add</b>.",
+                "Custom fonts and images can be imported here using <b>Browse</b> (or pasting a path), entering a name, and clicking <b>Add</b>.",
                 "The top toggle switches between images and fonts.")
                 .Looks(new(Eye.Small, Brow.Normal, Mouth.Caret))
-                .At(() => PagePart(OriginalMenuState.Resources, "ResourcesRoot")),
+                .At(() => PagePart(OriginalMenuState.Resources, "ResourcesRoot"))
+                .NeedPage(OriginalMenuState.Resources),
             new TutorialStep("RES_USE", "Using resources",
-                "Select custom fonts under a text's <b>Font</b> setting, or add an image object and pick it under <b>Sprite</b>.",
-                "Use <b>Sprite Editor</b> on an image card to configure 9-slice borders for clean stretching.")
-                .Looks(new(Eye.Normal, Brow.Normal, Mouth.OpenSmallHarf))),
+                "Custom fonts can be picked under a text's <b>Font</b> setting, and images under an image object's <b>Sprite</b> setting.",
+                "<b>Sprite Editor</b> on an image card can be used to configure 9-slice borders for clean stretching.")
+                .Looks(new(Eye.Normal, Brow.Normal, Mouth.OpenSmallHarf))
+                .NeedPage(OriginalMenuState.Resources)),
 
         new("js", "Custom tags with JavaScript", "Scripts, RegisterTag, per-text tags",
             OpenWindow("JS_OPEN"),
@@ -671,17 +799,20 @@ internal static class TutorialContent {
                 "Every .js file in the scripts folder runs at startup. The list shows registered tags and any script errors.",
                 "<b>Open Folder</b> opens it · <b>Reload All</b> reruns scripts · <b>Auto Reload</b> watches file changes.")
                 .Looks(new(Eye.Normal, Brow.Normal, Mouth.Shift))
-                .At(() => PagePart(OriginalMenuState.JS, "JSRoot")),
+                .At(() => PagePart(OriginalMenuState.JS, "JSRoot"))
+                .NeedPage(OriginalMenuState.JS),
             new TutorialStep("JS_REGISTER", "Creating a tag",
                 "Registering a global tag takes one line:",
                 "«RegisterTag('DoubleFps', () => Fps() * 2);»  →  use «{DoubleFps:0}» anywhere\n"
                 + "With arguments: «RegisterTag('Greet', (name) => 'hi ' + name);»  →  «{Greet('you')}»\n"
-                + "Check the <b>Example</b> folder for sample scripts.")
-                .Looks(Face.Smile),
+                + "Sample scripts can also be found in the <b>Example</b> folder.")
+                .Looks(Face.Smile)
+                .NeedPage(OriginalMenuState.JS),
             new TutorialStep("JS_LOCAL", "Per-text tags",
                 "You can also define a tag inline inside a single text without a separate file. It renders nothing itself.",
                 "«{RegisterTag('Half', () => Fps() / 2)}FPS/2: {Half:0}»")
-                .Looks(Face.Grin)),
+                .Looks(Face.Grin)
+                .NeedPage(OriginalMenuState.JS)),
 
         new("easing", "Custom easing", "Draw motion curves for animated numbers",
             OpenWindow("EASE_OPEN"),
@@ -690,32 +821,37 @@ internal static class TutorialContent {
                 "Horizontal is time, vertical is progress. Going above the top line creates an overshoot bounce.",
                 "<b>Click</b>: add point · <b>Drag</b>: move · <b>Right-click</b> / Del: remove · Shift: snap")
                 .Looks(new(Eye.Small, Brow.Normal, Mouth.OpenSmall))
-                .At(() => PagePart(OriginalMenuState.Easing, null)),
+                .At(() => PagePart(OriginalMenuState.Easing, null))
+                .NeedPage(OriginalMenuState.Easing),
             new TutorialStep("EASE_USE", "Using a curve",
                 "<b>Copy example tag</b> copies a tag with your curve; <b>Preview in game</b> tests it on a sample counter.",
                 "«{EasedValue(Second,0,300,curve(0,0;0.4,1.1;1,1))}»\n<b>Save</b> stores curves for reuse.")
-                .Looks(Face.Talk)),
+                .Looks(Face.Talk)
+                .NeedPage(OriginalMenuState.Easing)),
 
         new("settings", "Settings worth knowing", "Scale, tooltips, fonts, HUD editor options",
             OpenWindow("SET_OPEN"),
             GoTo("SET_GOTO", OriginalMenuState.Settings, "Settings"),
             new TutorialStep("SET_OVERLAYER", "Overlayer settings",
-                "Adjust <b>UI Scale</b>, tooltips, startup behavior, and system/code fonts here.",
-                "Use <b>Find</b> at the top to filter settings by name.")
+                "<b>UI Scale</b>, tooltips, startup behavior, and system/code fonts can be adjusted here.",
+                "<b>Find</b> at the top can be used to filter settings by name.")
                 .Looks(Face.Talk)
-                .At(() => RowOf("OVERLAYER")),
+                .At(() => RowOf("OVERLAYER"))
+                .NeedPage(OriginalMenuState.Settings),
             new TutorialStep("SET_HUD", "HUD Editor settings",
-                "Configure the HUD editor shortcut, snapping, hints, and <b>Main Canvas</b> for new objects.",
+                "The HUD editor shortcut, snapping, hints, and <b>Main Canvas</b> for new objects can be configured here.",
                 "Under Advanced: snap distance, grid size, and opening while playing.")
                 .Looks(new(Eye.Normal, Brow.Normal, Mouth.OpenSmallHarf))
-                .At(() => RowOf("HUD_EDITOR"))),
+                .At(() => RowOf("HUD_EDITOR"))
+                .NeedPage(OriginalMenuState.Settings)),
 
         new("outro", "Wrapping up", "Where to find chapters anytime",
             new TutorialStep("OUTRO_PAGE", "Revisit anytime",
-                "That covers the core features. Come back to the <b>Tutorial</b> page anytime to replay the full guide or any chapter.")
+                "That covers the core features. The full guide or any chapter can be replayed anytime from the <b>Tutorial</b> page.")
                 .Looks(new(Eye.Small, Brow.NormalHigh, Mouth.Smile))
                 .OnEnter(() => ToPage(OriginalMenuState.Tutorial))
-                .At(() => PagePart(OriginalMenuState.Tutorial, null)),
+                .At(() => PagePart(OriginalMenuState.Tutorial, null))
+                .NeedPage(OriginalMenuState.Tutorial),
             new TutorialStep("OUTRO_BYE", "All set!",
                 "Have fun customizing your HUD with Overlayer!")
                 .Looks(Face.Happy)),

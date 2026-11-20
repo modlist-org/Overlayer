@@ -33,6 +33,12 @@ internal sealed class TutorialStep {
     public Action Auto;
     /// <summary>Buttons instead of Next. A choice that doesn't start something else moves on.</summary>
     public List<TutorialChoice> Choices;
+    /// <summary>Returns null when the required UI context is intact, or (langKey, fallback) describing what went missing.</summary>
+    public Func<(string Key, string Fallback)?> Lost;
+    /// <summary>Restores the UI context required by this step.</summary>
+    public Action Restore;
+    /// <summary>Per-frame safeguard while the required context is intact (e.g. recreate deleted sample or step back).</summary>
+    public Action Keep;
 
     public TutorialStep(string key, string title, string text, string note = null) {
         Key = key;
@@ -83,6 +89,17 @@ internal sealed class TutorialStep {
 
     public TutorialStep Ask(params TutorialChoice[] choices) {
         Choices = [.. choices];
+        return this;
+    }
+
+    public TutorialStep Needs(Func<(string Key, string Fallback)?> lost, Action restore) {
+        Lost = lost;
+        Restore = restore;
+        return this;
+    }
+
+    public TutorialStep Keeping(Action keep) {
+        Keep = keep;
         return this;
     }
 }

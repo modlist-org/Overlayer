@@ -47,6 +47,22 @@ internal static class PageOverlayer {
 
     public static void Tick() => settingPage?.Tick();
 
+    internal static bool IsSubpageOpen =>
+        (settingPage?.GameObject != null && settingPage.GameObject.activeInHierarchy)
+        || (propsPage?.GameObject != null && propsPage.GameObject.activeInHierarchy);
+
+    internal static void CloseSubpages() {
+        if (!IsSubpageOpen) {
+            return;
+        }
+        settingPage?.Close(true);
+        propsPage?.Close(true);
+        FadeCanvasGroup(viewportCanvasGroup, 1f, true);
+        if (gridRef != null && MainCore.IsModEnabled) {
+            BuildAllTiles(gridRef);
+        }
+    }
+
     public static void Create(RectTransform parent) {
         MainCore.Log.Msg("Creating Overlayer Page UI...");
         var (viewportRect, contentRect, _) = O5Factory.ScrollView(O5KitAdapters.Ctx, parent, 0f);

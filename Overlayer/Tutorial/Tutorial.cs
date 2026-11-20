@@ -26,10 +26,14 @@ namespace Overlayer.Tutorial;
 // under Overlayer's root. Only the bubble and Olly take clicks, so the UI underneath stays usable.
 internal static class Tutorial {
     private const float BubbleWidth = 420f;
+    private const float MaxBubbleWidth = 560f;
     private const float OllyScale = 0.8f;
     private const float OllyGap = 8f;
     private const float AdvanceDelay = 1.0f;
+    private const float CloseDuration = 0.3f;
     private const float LettersPerSecond = 40f;
+
+    private static float bubbleWidth = BubbleWidth;
 
     private static readonly Color Accent = new(0.569f, 0.604f, 1f, 1f);
     private static readonly Color Dim = new(0f, 0f, 0f, 0.28f);
@@ -44,7 +48,7 @@ internal static class Tutorial {
     private static readonly Image[] edges = new Image[4];
     private static readonly Image[] shades = new Image[4];
     private static TextMeshProUGUI caption, title, body, note, waiting;
-    private static O5Kit.Control.O5Button backButton, nextButton, skipButton, closeButton, replayButton;
+    private static O5Kit.Control.O5Button backButton, nextButton, skipButton, closeButton, replayButton, restoreButton;
     private static readonly List<O5Kit.Core.O5Object> controls = [];
     private static readonly List<O5Kit.Core.O5Object> choiceControls = [];
     private static OllyView olly;
@@ -54,6 +58,11 @@ internal static class Tutorial {
     private static float doneAt = -1f;
     private static bool course;
     private static float appear;
+    private static bool closing, interrupted;
+    private static float closeTime;
+    private static Vector3 closeStartScale = Vector3.one;
+    private static float closeStartAlpha = 1f;
+    private static string lostKey, lostFallback;
 
     // Typing.
     private static float typed;
@@ -113,6 +122,10 @@ internal static class Tutorial {
         chapter = null;
         course = false;
         index = -1;
+        closing = false;
+        closeTime = 0f;
+        interrupted = false;
+        lostKey = lostFallback = null;
         if (root != null) {
             UnityEngine.Object.Destroy(root.gameObject);
         }
@@ -177,11 +190,54 @@ internal static class Tutorial {
         }
     }
 
+    private static void BeginClose() {
+        if (chapter == null || root == null || closing) {
+            return;
+        }
+        closing = true;
+        closeTime = 0f;
+        closeStartScale = bubble != null ? bubble.localScale : Vector3.one;
+        closeStartAlpha = rootGroup != null ? rootGroup.alpha : 1f;
+        demo = null;
+        PointerShown = false;
+        if (pointer != null) {
+            pointer.gameObject.SetActive(false);
+        }
+        if (rootGroup != null) {
+            rootGroup.blocksRaycasts = false;
+            rootGroup.interactable = false;
+        }
+        if (olly != null) {
+            olly.ForceFace(Face.Shocked);
+            olly.Tick(0f, interactive: false);
+        }
+        UI.UISound.PlayClose();
+    }
+
     public static void Tick() {
         if (chapter == null || root == null || index < 0) {
             return;
         }
         float dt = Mathf.Min(Time.unscaledDeltaTime, 0.1f);
+        if (closing) {
+            PickLayer();
+            closeTime += dt;
+            float t = Mathf.Clamp01(closeTime / CloseDuration);
+            // Cubic ease-in-out (accelerate then decelerate smoothly to 0).
+            float ease = t < 0.5f ? 4f * t * t * t : 1f - Mathf.Pow(-2f * t + 2f, 3f) * 0.5f;
+            float s = 1f - ease;
+            if (bubble != null) {
+                bubble.localScale = closeStartScale * s;
+            }
+            if (rootGroup != null) {
+                rootGroup.alpha = closeStartAlpha * Mathf.Clamp01(s * 1.4f);
+            }
+            olly?.Tick(dt, interactive: false);
+            if (closeTime >= CloseDuration) {
+                Stop(false);
+            }
+            return;
+        }
         PickLayer();
         var step = chapter.Steps[index];
 
@@ -190,27 +246,59 @@ internal static class Tutorial {
         rootGroup.alpha = e;
         olly.Rect.localScale = Vector3.one * (OllyScale * (0.9f + 0.1f * e));
 
-        TickTyping(dt);
-        TickDemo(dt);
+        if (doneAt >= 0f) {
+            if (Time.unscaledTime - doneAt >= AdvanceDelay) {
+                Next();
+                return;
+            }
+        } else {
+            var lost = SafeLost(step);
+            if (lost.HasValue) {
+                if (!interrupted || lostKey != lost.Value.Key) {
+                    EnterInterrupted(step, lost.Value);
+                }
+                olly.LookTarget = Input.mousePosition;
+                olly.Tick(dt);
+                PlaceAround(null);
+                TickPointer();
+                return;
+            }
+            if (interrupted) {
+                interrupted = false;
+                lostKey = lostFallback = null;
+                Show(index);
+                return;
+            }
 
-        if (step.Done != null && doneAt < 0f && Safe(step.Done)) {
-            doneAt = Time.unscaledTime;
-            waiting.text = "<color=#7CFF8A>✓</color> " + Tr("TUTORIAL_NICE", "Nice!");
-            olly.Face = new Face(olly.Face.Eye, olly.Face.Brow, Mouth.Smile, olly.Face.Shut, olly.Face.Mark, olly.Face.Front);
-        }
-        // Waiting a long while: Olly checks in.
-        if (step.Done != null && doneAt < 0f && !nudged && Time.unscaledTime - shownAt > 20f) {
-            nudged = true;
-            waiting.text = Styled(Tr("TUTORIAL_NUDGE", "...Still there? Stuck? <b>Skip step</b> works too."));
-        }
-        if (doneAt >= 0f && Time.unscaledTime - doneAt >= AdvanceDelay) {
-            Next();
-            return;
+            TickTyping(dt);
+            TickDemo(dt);
+
+            if (step.Done != null && Safe(step.Done)) {
+                doneAt = Time.unscaledTime;
+                waiting.text = "<color=#7CFF8A>✓</color> " + Tr("TUTORIAL_NICE", "Nice!");
+                olly.Face = new Face(olly.Face.Eye, olly.Face.Brow, Mouth.Smile, olly.Face.Shut, olly.Face.Mark, olly.Face.Front);
+            }
+            // Waiting a long while: Olly checks in.
+            if (step.Done != null && doneAt < 0f && !nudged && Time.unscaledTime - shownAt > 20f) {
+                nudged = true;
+                waiting.text = TutorialWrap.Format(Tr("TUTORIAL_NUDGE", "...Still there? Stuck? <b>Skip step</b> works too."), bubbleWidth - 40f, s => MeasureWidth(waiting, s));
+            }
+            if (doneAt < 0f && step.Keep != null) {
+                int before = index;
+                try {
+                    step.Keep();
+                } catch (Exception ex) {
+                    MainCore.Log.Wrn($"[Tutorial] Step '{step.Key}' keep failed: {ex.Message}");
+                }
+                if (chapter == null || index != before) {
+                    return;
+                }
+            }
         }
         var target = Target(step);
+        PlaceAround(target);
         olly.LookTarget = Gaze(step, target);
         olly.Tick(dt);
-        PlaceAround(target);
         TickPointer();
     }
 
@@ -226,7 +314,7 @@ internal static class Tutorial {
         if (step.Done != null || step.Choices is { Count: > 0 }) {
             return Input.mousePosition;
         }
-        return target != null ? TutorialDemo.Center(target) : null;
+        return target != null ? TutorialDemo.ClosestPoint(target, olly.ScreenCenter()) : null;
     }
 
     private static void TickTyping(float dt) {
@@ -245,11 +333,11 @@ internal static class Tutorial {
                 int to = Mathf.Min(letters, Mathf.FloorToInt(typed));
                 for (int i = prevVisible; i < to; i++) {
                     char c = i < body.textInfo.characterInfo.Length ? body.textInfo.characterInfo[i].character : ' ';
-                    // A breath after a sentence or a line.
+                    // A breath after a sentence.
                     char after = i + 1 < letters ? body.textInfo.characterInfo[i + 1].character : ' ';
-                    if (c == '\n' || ((c == '.' || c == '?' || c == '!') && char.IsWhiteSpace(after))) {
+                    if ((c == '.' || c == '?' || c == '!') && char.IsWhiteSpace(after)) {
                         to = i + 1;
-                        pause = c == '\n' ? 0.18f : 0.12f;
+                        pause = 0.12f;
                         typed = to;
                         break;
                     }
@@ -343,6 +431,49 @@ internal static class Tutorial {
         }
     }
 
+    private static (string Key, string Fallback)? SafeLost(TutorialStep step) {
+        try {
+            return step.Lost?.Invoke();
+        } catch {
+            return null;
+        }
+    }
+
+    private static void RestoreStep() {
+        if (closing || chapter == null || index < 0 || index >= chapter.Steps.Count) {
+            return;
+        }
+        try {
+            chapter.Steps[index].Restore?.Invoke();
+        } catch (Exception e) {
+            MainCore.Log.Wrn($"[Tutorial] Step '{chapter.Steps[index].Key}' restore failed: {e.Message}");
+        }
+    }
+
+    private static void EnterInterrupted(TutorialStep step, (string Key, string Fallback) lost) {
+        interrupted = true;
+        lostKey = lost.Key;
+        lostFallback = lost.Fallback;
+        demo = null;
+        PointerShown = false;
+        if (olly != null) {
+            olly.Face = Face.Worried;
+        }
+        ApplyInterruptedUi(step);
+    }
+
+    private static void ApplyInterruptedUi(TutorialStep step) {
+        waiting.gameObject.SetActive(true);
+        waiting.text = TutorialWrap.Format(Tr(lostKey, lostFallback), bubbleWidth - 40f, s => MeasureWidth(waiting, s));
+        restoreButton.Rect.parent.gameObject.SetActive(step.Restore != null);
+        nextButton.Rect.parent.gameObject.SetActive(false);
+        skipButton.Rect.parent.gameObject.SetActive(false);
+        replayButton.Rect.parent.gameObject.SetActive(false);
+        choiceRow.gameObject.SetActive(false);
+        UpdateLineHeights();
+        LayoutRebuilder.ForceRebuildLayoutImmediate(bubble);
+    }
+
     // ---- moving through ----
 
     private static void LeaveStep() {
@@ -386,6 +517,8 @@ internal static class Tutorial {
         }
         index = i;
         doneAt = -1f;
+        interrupted = false;
+        lostKey = lostFallback = null;
         var step = chapter.Steps[i];
         try {
             step.Enter?.Invoke();
@@ -406,9 +539,20 @@ internal static class Tutorial {
         nextButton.Rect.parent.gameObject.SetActive(!waits && !asks);
         skipButton.Rect.parent.gameObject.SetActive(waits);
         replayButton.Rect.parent.gameObject.SetActive(false);
+        restoreButton.Rect.parent.gameObject.SetActive(false);
         backButton.SetBlocked(i == 0, true);
         ApplyTexts(step, i, count, keepTyped: false);
         noteGroup.alpha = 0f;
+
+        var lost = SafeLost(step);
+        if (lost.HasValue) {
+            EnterInterrupted(step, lost.Value);
+            replace = true;
+            userPlaced = false;
+            dragging = false;
+            PlaceAround(null);
+            return;
+        }
 
         demo = step.Demo;
         beat = 0;
@@ -431,8 +575,51 @@ internal static class Tutorial {
     private static void ApplyTexts(TutorialStep step, int i, int count, bool keepTyped) {
         bool wasFinished = keepTyped && (letters <= 0 || body.maxVisibleCharacters >= letters);
         caption.text = $"{Tr("TUTORIAL_CH_" + chapter.Id, chapter.Title).ToUpperInvariant()}   {i + 1} / {count}";
-        title.text = Styled(Tr($"TUTORIAL_{step.Key}_TITLE", step.Title));
-        body.text = Styled(Tr($"TUTORIAL_{step.Key}", step.Text));
+
+        string rawTitle = Tr($"TUTORIAL_{step.Key}_TITLE", step.Title);
+        string rawBody = Tr($"TUTORIAL_{step.Key}", step.Text);
+        string noteText = step.Note != null ? Tr($"TUTORIAL_{step.Key}_NOTE", step.Note) : null;
+
+        float needBody = TutorialWrap.NeededWidth(rawBody, s => MeasureWidth(body, s));
+        float needNote = !string.IsNullOrEmpty(noteText) ? TutorialWrap.NeededWidth(noteText, s => MeasureWidth(note, s)) : 0f;
+        float needed = Mathf.Max(
+            needBody > 0f ? needBody + 40f + 4f : 0f,
+            needNote > 0f ? needNote + 64f + 4f : 0f);
+        bubbleWidth = Mathf.Clamp(Mathf.Max(BubbleWidth, needed), BubbleWidth, MaxBubbleWidth);
+        bubble.sizeDelta = new Vector2(bubbleWidth, bubble.sizeDelta.y);
+
+        title.text = Styled(rawTitle);
+        body.text = TutorialWrap.Format(rawBody, bubbleWidth - 40f, s => MeasureWidth(body, s));
+
+        noteBox.gameObject.SetActive(!string.IsNullOrEmpty(noteText));
+        note.text = !string.IsNullOrEmpty(noteText)
+            ? TutorialWrap.Format(noteText, bubbleWidth - 64f, s => MeasureWidth(note, s))
+            : string.Empty;
+
+        if (doneAt >= 0f) {
+            waiting.text = "<color=#7CFF8A>✓</color> " + Tr("TUTORIAL_NICE", "Nice!");
+        } else if (nudged) {
+            waiting.text = TutorialWrap.Format(Tr("TUTORIAL_NUDGE", "...Still there? Stuck? <b>Skip step</b> works too."), bubbleWidth - 40f, s => MeasureWidth(waiting, s));
+        } else {
+            string waitRaw = step.Demo != null
+                ? Tr("TUTORIAL_WATCH", "Watch me first.")
+                : Tr("TUTORIAL_YOUR_TURN", "Your turn: do it and this moves on by itself.");
+            waiting.text = TutorialWrap.Format(waitRaw, bubbleWidth - 40f, s => MeasureWidth(waiting, s));
+        }
+
+        backButton.Text = Tr("TUTORIAL_BACK", "Back");
+        replayButton.Text = Tr("TUTORIAL_REPLAY", "Show again");
+        skipButton.Text = Tr("TUTORIAL_SKIP", "Skip step");
+        restoreButton.Text = Tr("TUTORIAL_RESTORE", "Return");
+        nextButton.Text = i == count - 1 && !course ? Tr("TUTORIAL_FINISH", "Finish") : Tr("TUTORIAL_NEXT", "Next");
+        BuildChoices(step);
+        if (interrupted) {
+            ApplyInterruptedUi(step);
+        } else {
+            UpdateLineHeights();
+            LayoutRebuilder.ForceRebuildLayoutImmediate(bubble);
+        }
+
         body.ForceMeshUpdate();
         letters = body.textInfo.characterCount;
         if (!keepTyped) {
@@ -443,27 +630,6 @@ internal static class Tutorial {
         } else {
             body.maxVisibleCharacters = Mathf.Min(body.maxVisibleCharacters, letters);
         }
-
-        string noteText = step.Note != null ? Tr($"TUTORIAL_{step.Key}_NOTE", step.Note) : null;
-        noteBox.gameObject.SetActive(!string.IsNullOrEmpty(noteText));
-        note.text = Styled(noteText ?? string.Empty);
-
-        if (doneAt >= 0f) {
-            waiting.text = "<color=#7CFF8A>✓</color> " + Tr("TUTORIAL_NICE", "Nice!");
-        } else if (nudged) {
-            waiting.text = Styled(Tr("TUTORIAL_NUDGE", "...Still there? Stuck? <b>Skip step</b> works too."));
-        } else {
-            waiting.text = step.Demo != null
-                ? Tr("TUTORIAL_WATCH", "Watch me first.")
-                : Tr("TUTORIAL_YOUR_TURN", "Your turn: do it and this moves on by itself.");
-        }
-
-        backButton.Text = Tr("TUTORIAL_BACK", "Back");
-        closeButton.Text = Tr("TUTORIAL_CLOSE", "Close");
-        replayButton.Text = Tr("TUTORIAL_REPLAY", "Show again");
-        skipButton.Text = Tr("TUTORIAL_SKIP", "Skip step");
-        nextButton.Text = i == count - 1 && !course ? Tr("TUTORIAL_FINISH", "Finish") : Tr("TUTORIAL_NEXT", "Next");
-        BuildChoices(step);
     }
 
     private static void OnLanguageChanged(string _) => RefreshLanguage();
@@ -481,10 +647,23 @@ internal static class Tutorial {
         var step = chapter.Steps[index];
         ApplyTexts(step, index, chapter.Steps.Count, keepTyped: true);
         LayoutRebuilder.ForceRebuildLayoutImmediate(bubble);
-        PlaceAround(Target(step));
+        PlaceAround(interrupted ? null : Target(step));
     }
 
     private static void Next() => Show(index + 1);
+
+    // Skip: do the step for the user when it knows how, then move on.
+    private static void Skip() {
+        var step = chapter.Steps[index];
+        if (step.Auto != null) {
+            try {
+                step.Auto();
+            } catch (Exception e) {
+                MainCore.Log.Wrn($"[Tutorial] Step '{step.Key}' auto-skip failed: {e.Message}");
+            }
+        }
+        Next();
+    }
 
     private static void Back() {
         int i = index - 1;
@@ -535,19 +714,8 @@ internal static class Tutorial {
 
     public static string Tr(string key, string fallback) => MainCore.Tr != null ? MainCore.Tr.Get(key, fallback) : fallback;
 
-    private static readonly System.Text.RegularExpressions.Regex CodeMark = new("«([^»]*)»");
-    private static readonly System.Text.RegularExpressions.Regex FaceMark = new(@"\[\[(\w+)\]\]");
-    private static readonly System.Text.RegularExpressions.Regex BoldMark = new(@"<b>(.*?)</b>");
-
     // «code» shows as code, as typed (tags and formatting not run); <b> highlights without TMP boldSpacing bloat.
-    internal static string Styled(string text) {
-        if (string.IsNullOrEmpty(text)) {
-            return text;
-        }
-        text = FaceMark.Replace(text, string.Empty);
-        text = CodeMark.Replace(text, m => $"<color=#AEB3FF><noparse>{m.Groups[1].Value}</noparse></color>");
-        return BoldMark.Replace(text, m => $"<color=#FFFFFF>{m.Groups[1].Value}</color>");
-    }
+    internal static string Styled(string text) => TutorialWrap.Styled(text);
 
     // ---- view ----
 
@@ -570,6 +738,11 @@ internal static class Tutorial {
         placed = null;
         snap = true;
         dragging = userPlaced = false;
+        closing = false;
+        closeTime = 0f;
+        interrupted = false;
+        lostKey = lostFallback = null;
+        bubbleWidth = BubbleWidth;
         PickLayer();
 
         // Shade around the target (doesn't take clicks), and a frame on it.
@@ -594,6 +767,7 @@ internal static class Tutorial {
         bubble.anchorMin = bubble.anchorMax = Vector2.zero;
         bubble.pivot = new Vector2(0f, 1f);
         bubble.sizeDelta = new Vector2(BubbleWidth, 0f);
+        bubble.localScale = Vector3.one;
         var layout = UiStyle.Vertical(bubble.gameObject, 8f, new RectOffset(20, 20, 16, 16));
         layout.childForceExpandHeight = false;
         bubble.gameObject.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
@@ -633,12 +807,12 @@ internal static class Tutorial {
         olly.Rect.localScale = Vector3.one * OllyScale;
         AttachDrag(olly.Rect.gameObject, pe => !olly.IsHead(pe.pressPosition));
 
-        caption = Line(ctx, bubble, 12f, UiStyle.Caption, BubbleWidth - 40f);
+        caption = Line(ctx, bubble, 12f, UiStyle.Caption, 40f);
         caption.characterSpacing = -3f;
-        title = Line(ctx, bubble, 20f, Color.white, BubbleWidth - 40f);
+        title = Line(ctx, bubble, 20f, Color.white, 40f);
         title.font = ctx.Fonts.Medium;
         title.characterSpacing = -3f;
-        body = Line(ctx, bubble, 17f, new Color(1f, 1f, 1f, 0.86f), BubbleWidth - 40f);
+        body = Line(ctx, bubble, 17f, new Color(1f, 1f, 1f, 0.86f), 40f);
         body.lineSpacing = 6f;
 
         var noteImage = UiStyle.Rounded("Note", bubble, new Color(1f, 1f, 1f, 0.05f));
@@ -646,21 +820,24 @@ internal static class Tutorial {
         noteGroup = noteBox.gameObject.AddComponent<CanvasGroup>();
         var noteLayout = UiStyle.Vertical(noteBox.gameObject, 0f, new RectOffset(12, 12, 10, 10));
         noteLayout.childForceExpandHeight = false;
-        note = Line(ctx, noteBox, 15f, new Color(1f, 1f, 1f, 0.74f), BubbleWidth - 40f - 24f);
+        note = Line(ctx, noteBox, 15f, new Color(1f, 1f, 1f, 0.74f), 64f);
         note.lineSpacing = 4f;
 
-        waiting = Line(ctx, bubble, 14f, Accent, BubbleWidth - 40f);
+        waiting = Line(ctx, bubble, 14f, Accent, 40f);
 
         choiceRow = UiStyle.HRow(bubble, 6f, 36f);
 
         var buttons = UiStyle.HRow(bubble, 6f, 34f);
         backButton = Track(UiStyle.Button(UiStyle.Cell(buttons, 70f), "tutorial_back", Tr("TUTORIAL_BACK", "Back"), Back));
-        closeButton = Track(UiStyle.Button(UiStyle.Cell(buttons, 70f), "tutorial_close", Tr("TUTORIAL_CLOSE", "Close"), Stop));
-        closeButton.Rect.AddToolTip(ctx, () => Tr("TUTORIAL_CLOSE_TIP", "Stop the tutorial (you can pick it up again on the Tutorial page)"));
+        closeButton = Track(UiStyle.IconButton(UiStyle.Cell(buttons, 34f), "tutorial_close", MainCore.Spr.Get(UISprite.X128), null, 9f));
+        HoldToConfirm.Attach(closeButton, BeginClose, canConfirm: () => !closing);
+        closeButton.Rect.AddToolTip(ctx, () => Tr("TUTORIAL_CLOSE_TIP", "Hold to stop the tutorial (you can pick it up again on the Tutorial page)"));
         UiStyle.Cell(buttons, 0f);
         replayButton = Track(UiStyle.Button(UiStyle.Cell(buttons, 96f), "tutorial_replay", Tr("TUTORIAL_REPLAY", "Show again"), Replay));
-        skipButton = Track(UiStyle.Button(UiStyle.Cell(buttons, 96f), "tutorial_skip", Tr("TUTORIAL_SKIP", "Skip step"), Next));
+        skipButton = Track(UiStyle.Button(UiStyle.Cell(buttons, 96f), "tutorial_skip", Tr("TUTORIAL_SKIP", "Skip step"), Skip));
         nextButton = Track(UiStyle.Button(UiStyle.Cell(buttons, 96f), "tutorial_next", Tr("TUTORIAL_NEXT", "Next"), Next, primary: true));
+        restoreButton = Track(UiStyle.Button(UiStyle.Cell(buttons, 96f), "tutorial_restore", Tr("TUTORIAL_RESTORE", "Return"), RestoreStep, primary: true));
+        restoreButton.Rect.parent.gameObject.SetActive(false);
 
         if (!langHooked && MainCore.Tr != null) {
             MainCore.Tr.OnLanguageChanged += OnLanguageChanged;
@@ -756,7 +933,7 @@ internal static class Tutorial {
             }));
     }
 
-    private static TextMeshProUGUI Line(O5Kit.Core.O5Context ctx, Transform parent, float size, Color color, float width) {
+    private static TextMeshProUGUI Line(O5Kit.Core.O5Context ctx, Transform parent, float size, Color color, float inset) {
         var text = O5Factory.ControlText(ctx, UiStyle.NewRect("Line", parent), size, true);
         text.rectTransform.anchorMin = Vector2.zero;
         text.rectTransform.anchorMax = Vector2.one;
@@ -769,25 +946,33 @@ internal static class Tutorial {
         var fitter = text.transform.parent.gameObject.AddComponent<LayoutElement>();
         text.rectTransform.offsetMin = text.rectTransform.offsetMax = Vector2.zero;
         fitter.minHeight = size + 4f;
-        Lines.Add((text, fitter, width));
+        Lines.Add((text, fitter, inset));
         return text;
     }
 
-    private static readonly List<(TextMeshProUGUI Text, LayoutElement Element, float Width)> Lines = [];
+    private static readonly List<(TextMeshProUGUI Text, LayoutElement Element, float Inset)> Lines = [];
+
+    private static float MeasureWidth(TextMeshProUGUI tmp, string text) =>
+        tmp == null || string.IsNullOrEmpty(text) ? 0f : tmp.GetPreferredValues(text).x;
+
+    private static void UpdateLineHeights() {
+        foreach (var (text, element, inset) in Lines) {
+            if (text != null) {
+                float w = Mathf.Max(1f, bubbleWidth - inset);
+                element.preferredHeight = string.IsNullOrEmpty(text.text) ? 0f : text.GetPreferredValues(text.text, w, 0f).y;
+            }
+        }
+    }
 
     // Bubble (with Olly on its left) next to the target (right, left, below, above: wherever
     // it fits), frame on it, shade around it. No target: at the bottom middle, no frame or shade.
     private static void PlaceAround(RectTransform target) {
-        foreach (var (text, element, width) in Lines) {
-            if (text != null) {
-                element.preferredHeight = string.IsNullOrEmpty(text.text) ? 0f : text.GetPreferredValues(text.text, width, 0f).y;
-            }
-        }
+        UpdateLineHeights();
         Vector2 size = root.rect.size;
         float bubbleHeight = LayoutUtility.GetPreferredHeight(bubble);
         // Olly can stand taller than the bubble.
         float above = Mathf.Max(0f, OllyHeight - bubbleHeight);
-        float cardWidth = OllyWidth + BubbleWidth;
+        float cardWidth = OllyWidth + bubbleWidth;
         bool has = target != null;
         frame.gameObject.SetActive(has);
         foreach (var shade in shades) {
@@ -826,7 +1011,7 @@ internal static class Tutorial {
             if (max.x + gap + cardWidth <= size.x - 8f) {
                 at = new Vector2(max.x + gap + OllyWidth, midY);
             } else if (min.x - gap - cardWidth >= 8f) {
-                at = new Vector2(min.x - gap - BubbleWidth, midY);
+                at = new Vector2(min.x - gap - bubbleWidth, midY);
             } else if (min.y - gap - cardHeight >= 8f) {
                 at = new Vector2((min.x + max.x - cardWidth) * 0.5f + OllyWidth, min.y - gap - above);
             } else {
@@ -868,12 +1053,12 @@ internal static class Tutorial {
     private static Vector2 glide, targetMin, targetMax;
 
     private static Vector2 Clamp(Vector2 at, Vector2 size, float bubbleHeight, float above) => new(
-        Mathf.Clamp(at.x, 8f + OllyWidth, size.x - BubbleWidth - 8f),
+        Mathf.Clamp(at.x, 8f + OllyWidth, size.x - bubbleWidth - 8f),
         Mathf.Clamp(at.y, bubbleHeight + 8f, size.y - 8f - above));
 
     // Whether the card (Olly and the bubble) with the bubble's top left here overlaps the target.
     private static bool Covers(Vector2 at, float bubbleHeight, float above, Vector2 min, Vector2 max)
-        => at.x - OllyWidth < max.x && at.x + BubbleWidth > min.x && at.y - bubbleHeight < max.y && at.y + above > min.y;
+        => at.x - OllyWidth < max.x && at.x + bubbleWidth > min.x && at.y - bubbleHeight < max.y && at.y + above > min.y;
 
     private static void Shade(int i, Vector2 from, Vector2 to) {
         var r = shades[i].rectTransform;

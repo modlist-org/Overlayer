@@ -140,6 +140,28 @@ internal sealed class TutorialDemo {
         }
     }
 
+    private static readonly Vector3[] Corners = new Vector3[4];
+
+    /// <summary>The closest point on a UI piece's screen rect to <paramref name="screenFrom"/>.</summary>
+    public static Vector2? ClosestPoint(RectTransform rt, Vector2 screenFrom) {
+        if (rt == null || !rt.gameObject.activeInHierarchy) {
+            return null;
+        }
+        var canvas = rt.GetComponentInParent<Canvas>()?.rootCanvas;
+        var cam = canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay ? canvas.worldCamera : null;
+        rt.GetWorldCorners(Corners);
+        float minX = float.PositiveInfinity, maxX = float.NegativeInfinity;
+        float minY = float.PositiveInfinity, maxY = float.NegativeInfinity;
+        for (int i = 0; i < 4; i++) {
+            Vector2 p = RectTransformUtility.WorldToScreenPoint(cam, Corners[i]);
+            if (p.x < minX) minX = p.x;
+            if (p.x > maxX) maxX = p.x;
+            if (p.y < minY) minY = p.y;
+            if (p.y > maxY) maxY = p.y;
+        }
+        return new Vector2(Mathf.Clamp(screenFrom.x, minX, maxX), Mathf.Clamp(screenFrom.y, minY, maxY));
+    }
+
     /// <summary>The middle of a UI piece in screen pixels.</summary>
     public static Vector2? Center(RectTransform rt) => Inside(rt, 0.5f, 0.5f);
 
