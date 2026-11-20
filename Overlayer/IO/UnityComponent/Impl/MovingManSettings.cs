@@ -15,7 +15,7 @@ public sealed class MovingManSettings : UnityComponentSettingsBase, ICopyable<Mo
     public FxValue<double> DefaultSize = new(30);
     public FxValue<double> Speed = new(800);
     public FxValue<bool> Invert = new(false);
-    public FxValue<O5Ease> Ease = new(O5Ease.OutExpo);
+    public FxValue<string> Ease = FxValue<string>.FromValue(nameof(O5Ease.OutExpo));
 
     private string _lastTagName = string.Empty;
     private MovingManTarget _lastTarget = MovingManTarget.TextSize;
@@ -24,7 +24,7 @@ public sealed class MovingManSettings : UnityComponentSettingsBase, ICopyable<Mo
     private double _lastDefaultSize = 30;
     private double _lastSpeed = 800;
     private bool _lastInvert;
-    private O5Ease _lastEase = O5Ease.OutExpo;
+    private string _lastEase = nameof(O5Ease.OutExpo);
 
     public override bool HasAnyFx => base.HasAnyFx
         || FxUtil.HasFx(TagName)
@@ -75,7 +75,8 @@ public sealed class MovingManSettings : UnityComponentSettingsBase, ICopyable<Mo
         DefaultSize.Value = component.DefaultSize;
         Speed.Value = component.Speed;
         Invert.Value = component.Invert;
-        Ease.Value = component.Ease;
+        string ease = string.IsNullOrWhiteSpace(component.Ease) ? nameof(O5Ease.Linear) : component.Ease;
+        Ease.Value = ease;
         _lastTagName = component.TagName;
         _lastTarget = component.Target;
         _lastStartSize = component.StartSize;
@@ -83,7 +84,7 @@ public sealed class MovingManSettings : UnityComponentSettingsBase, ICopyable<Mo
         _lastDefaultSize = component.DefaultSize;
         _lastSpeed = component.Speed;
         _lastInvert = component.Invert;
-        _lastEase = component.Ease;
+        _lastEase = ease;
         FromUnity(component);
         return true;
     }
@@ -132,7 +133,7 @@ public sealed class MovingManSettings : UnityComponentSettingsBase, ICopyable<Mo
         DefaultSize = IOUtils.ReadFx(token, nameof(DefaultSize), DefaultSize);
         Speed = IOUtils.ReadFx(token, nameof(Speed), Speed);
         Invert = IOUtils.ReadFx(token, nameof(Invert), Invert);
-        Ease = IOUtils.ReadFx(token, nameof(Ease), Ease);
+        Ease = IOUtils.ReadEaseFx(token, nameof(Ease), Ease);
     }
 
     public MovingManSettings Copy() => new() {

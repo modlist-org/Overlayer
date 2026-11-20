@@ -29,8 +29,8 @@ internal sealed class CurveGraph {
     private static readonly Color GuideColor = new(1f, 1f, 1f, 0.22f);
     private static readonly Color CurveColor = new(0.569f, 0.604f, 1f, 1f);
     private static readonly Color CompareColor = new(1f, 0.75f, 0.35f, 0.55f);
-    private static readonly Color PointColor = new(1f, 1f, 1f, 0.95f);
-    private static readonly Color EndpointColor = new(1f, 1f, 1f, 0.45f);
+    private static readonly Color PointColor = Color.white;
+    private static readonly Color EndpointColor = new(0.51f, 0.51f, 0.54f, 1f);
     private static readonly Color SelectedColor = new(1f, 0.35f, 0.75f, 1f);
     private static readonly Color HandleColor = new(0.55f, 0.9f, 1f, 1f);
     private const float HandleLength = 56f;
@@ -62,6 +62,12 @@ internal sealed class CurveGraph {
     private bool focused;
     private bool dirty = true;
     private float clock;
+    private Vector2 lastSize;
+    private float lastScale = -1f;
+    private string lastLang;
+    private Vector2 dragStart;
+    private bool dragMoved;
+    private Camera pressCamera;
 
     public int Selected => selected;
 
@@ -96,14 +102,14 @@ internal sealed class CurveGraph {
         hint.color = new Color(1f, 1f, 1f, 0.45f);
         hint.raycastTarget = false;
         UpdateHint();
+        lastLang = MainCore.Conf.Language.Value;
 
         var trigger = Rect.gameObject.AddComponent<EventTrigger>();
         UnityUtils.AddEvents(trigger,
             (EventTriggerType.PointerEnter, _ => pointerInside = true),
             (EventTriggerType.PointerExit, _ => pointerInside = false),
             (EventTriggerType.PointerDown, e => OnPointerDown(e as PointerEventData)),
-            (EventTriggerType.Drag, e => OnDrag(e as PointerEventData)),
-            (EventTriggerType.PointerUp, _ => OnPointerUp())
+            (EventTriggerType.PointerUp, e => OnPointerUp(e as PointerEventData))
         );
 
         model.Changed += MarkDirty;
@@ -238,11 +244,13 @@ internal sealed class CurveGraph {
             return;
         }
         focused = true;
-        if (!LocalFromScreen(e.position, e.pressEventCamera, out var local)) {
+        pressCamera = e.pressEventCamera;
+        if (!LocalFromScreen(e.position, pressCamera, out var local)) {
             return;
         }
         int hit = PointAt(local);
         if (e.button == PointerEventData.InputButton.Right) {
+            BeginPin();
             if (hit >= 0 && Model.Remove(hit)) {
                 Select(-1);
             }
@@ -251,12 +259,15 @@ internal sealed class CurveGraph {
         if (e.button != PointerEventData.InputButton.Left) {
             return;
         }
+        dragStart = local;
         handleDrag = HandleAt(local);
         if (handleDrag != 0) {
             dragging = true;
+            dragMoved = true;
             return;
         }
-        if (hit < 0) {
+        bool inserted = hit < 0;
+        if (inserted) {
             hit = Model.Insert(Snap(ToValue(local)));
             if (hit < 0) {
                 Select(-1);
@@ -265,30 +276,26 @@ internal sealed class CurveGraph {
         }
         Select(hit);
         dragging = true;
+        dragMoved = inserted;
     }
 
-    private void OnDrag(PointerEventData e) {
-        if (!dragging || selected < 0 || e == null) {
+    private void OnPointerUp(PointerEventData e) {
+        if (!dragging || (e != null && e.button != PointerEventData.InputButton.Left)) {
             return;
         }
-        if (!LocalFromScreen(e.position, e.pressEventCamera, out var local)) {
-            return;
-        }
-        if (handleDrag != 0) {
-            DragHandle(local);
-        } else {
-            Model.Move(selected, Snap(ToValue(local)), EndpointHeights?.Invoke() == true);
-        }
-        SelectionChanged?.Invoke(selected);
+        EndDrag();
     }
 
-    private void OnPointerUp() {
+    private void EndDrag() {
         if (!dragging) {
             return;
         }
         dragging = false;
         handleDrag = 0;
-        Model.Snapshot();
+        if (dragMoved) {
+            Model.Snapshot();
+        }
+        dragMoved = false;
     }
 
     // ---- per frame ----
@@ -301,7 +308,20 @@ internal sealed class CurveGraph {
 
     public void Tick() {
         if (Rect == null || !Rect.gameObject.activeInHierarchy) {
+            ReleasePin();
             return;
+        }
+        string lang = MainCore.Conf.Language.Value;
+        if (lastLang != lang) {
+            lastLang = lang;
+            UpdateHint();
+        }
+        float scale = UICore.Canvas != null && UICore.Canvas.scaleFactor > 0f ? UICore.Canvas.scaleFactor : 1f;
+        Vector2 size = Rect.rect.size;
+        if (!Mathf.Approximately(scale, lastScale) || size != lastSize) {
+            lastScale = scale;
+            lastSize = size;
+            dirty = true;
         }
         if (Input.GetMouseButtonDown(0) && !pointerInside) {
             focused = false;
@@ -314,10 +334,26 @@ internal sealed class CurveGraph {
                 Select(-1);
             }
             if (ctrl && Input.GetKeyDown(KeyCode.Z)) {
-                AfterHistory(shift ? Model.Redo() : Model.Undo());
+                ApplyHistory(shift ? Model.Redo() : Model.Undo());
             }
             if (ctrl && Input.GetKeyDown(KeyCode.Y)) {
-                AfterHistory(Model.Redo());
+                ApplyHistory(Model.Redo());
+            }
+        }
+
+        if (dragging) {
+            if (!Input.GetMouseButton(0)) {
+                EndDrag();
+            } else if (selected >= 0 && selected < Model.Points.Count
+                && LocalFromScreen(Input.mousePosition, pressCamera, out var dragLocal)) {
+                if (handleDrag != 0) {
+                    DragHandle(dragLocal);
+                    SelectionChanged?.Invoke(selected);
+                } else if (dragMoved || (dragLocal - dragStart).sqrMagnitude >= 4f) {
+                    dragMoved = true;
+                    Model.Move(selected, Snap(ToValue(dragLocal)), EndpointHeights?.Invoke() == true);
+                    SelectionChanged?.Invoke(selected);
+                }
             }
         }
 
@@ -346,36 +382,61 @@ internal sealed class CurveGraph {
     private float pinnedY;
     private bool pinning;
 
-    private void PinScroll() {
-        if (scroller == null) {
-            scroller = Rect.GetComponentInParent<UIScrollController>();
-            scrollContent = Rect.parent as RectTransform;
-            while (scrollContent != null && scrollContent.parent != null && scrollContent.parent.GetComponent<RectMask2D>() == null) {
-                scrollContent = scrollContent.parent as RectTransform;
-            }
-            if (scroller == null || scrollContent == null) {
-                return;
-            }
-        }
-        bool held = Input.GetMouseButton(1);
-        if (!held) {
-            if (pinning) {
-                pinning = false;
-                scroller.enabled = true;
-            }
-            pinnedY = scrollContent.anchoredPosition.y;
+    private void EnsureScroller() {
+        if (scroller != null) {
             return;
         }
-        if (!pinning && pointerInside) {
+        scroller = Rect.GetComponentInParent<UIScrollController>();
+        scrollContent = Rect.parent as RectTransform;
+        while (scrollContent != null && scrollContent.parent != null && scrollContent.parent.GetComponent<RectMask2D>() == null) {
+            scrollContent = scrollContent.parent as RectTransform;
+        }
+    }
+
+    private void BeginPin() {
+        EnsureScroller();
+        if (scroller == null || scrollContent == null) {
+            return;
+        }
+        if (!pinning) {
             pinning = true;
             scroller.enabled = false;
         }
-        if (pinning) {
+        scroller.ScrollTo(pinnedY, true);
+    }
+
+    public void ReleasePin() {
+        if (!pinning) {
+            return;
+        }
+        pinning = false;
+        if (scroller != null) {
+            scroller.enabled = true;
+        }
+    }
+
+    private void PinScroll() {
+        EnsureScroller();
+        if (scroller == null || scrollContent == null) {
+            return;
+        }
+        bool held = Input.GetMouseButton(1);
+        if (!held) {
+            ReleasePin();
+            if (!Input.GetMouseButtonDown(1)) {
+                pinnedY = scrollContent.anchoredPosition.y;
+            }
+            return;
+        }
+        bool over = pointerInside || RectTransformUtility.RectangleContainsScreenPoint(Rect, Input.mousePosition, null);
+        if (!pinning && over) {
+            BeginPin();
+        } else if (pinning) {
             scroller.ScrollTo(pinnedY, true);
         }
     }
 
-    private void AfterHistory(bool changed) {
+    public void ApplyHistory(bool changed) {
         if (!changed) {
             return;
         }
@@ -401,11 +462,12 @@ internal sealed class CurveGraph {
             g.Add(ToLocal(new Vector2(0f, y)));
             g.Add(ToLocal(new Vector2(1f, y)));
         }
-        grid.Set(g);
+        float minLine = 1.25f / (lastScale > 0f ? lastScale : 1f);
+        grid.Set(g, minLine);
         guides.Set([
             ToLocal(new Vector2(0f, 0f)), ToLocal(new Vector2(1f, 0f)),
             ToLocal(new Vector2(0f, 1f)), ToLocal(new Vector2(1f, 1f)),
-        ]);
+        ], minLine);
 
         int samples = Mathf.Clamp((int)plot.width / 6, 40, 160);
         string text = Model.Text;
@@ -447,7 +509,7 @@ internal sealed class CurveGraph {
             handleSegments.Add(ToLocal(Model.Points[selected]));
             handleSegments.Add(pos);
         }
-        handleLines.Set(handleSegments);
+        handleLines.Set(handleSegments, minLine);
         progressDot.SetAsLastSibling();
     }
 
@@ -463,6 +525,9 @@ internal sealed class CurveGraph {
             }
             return points;
         }
+        if (keys[0].x > 0f) {
+            Add(0f);
+        }
         for (int k = 0; k + 1 < keys.Count; k++) {
             float from = keys[k].x, to = keys[k + 1].x;
             int steps = Mathf.Max(8, Mathf.CeilToInt((to - from) * samples));
@@ -471,6 +536,9 @@ internal sealed class CurveGraph {
             }
         }
         Add(keys[keys.Count - 1].x);
+        if (keys[keys.Count - 1].x < 1f) {
+            Add(1f);
+        }
         return points;
     }
 
@@ -479,12 +547,13 @@ internal sealed class CurveGraph {
         float t = Mathf.Clamp01(clock / MoveSeconds);
         float v = Model.Evaluate(t);
         progressDot.anchoredPosition = ToLocal(new Vector2(t, Mathf.Clamp(v, CurveModel.MinY, CurveModel.MaxY)));
-        Place(PreviewBox, v);
         string preset = ComparePreset?.Invoke();
+        bool comparing = !string.IsNullOrEmpty(preset);
+        Place(PreviewBox, v, comparing ? 9f : 0f);
         if (CompareBox != null) {
-            CompareBox.gameObject.SetActive(!string.IsNullOrEmpty(preset));
-            if (!string.IsNullOrEmpty(preset)) {
-                Place(CompareBox, EaseMath.Evaluate(preset, t));
+            CompareBox.gameObject.SetActive(comparing);
+            if (comparing) {
+                Place(CompareBox, EaseMath.Evaluate(preset, t), -9f);
             }
         }
     }
@@ -493,7 +562,7 @@ internal sealed class CurveGraph {
     // scroll view's mask entirely got culled and didn't always come back, so stay inside.
     private const float PreviewMargin = 0.15f;
 
-    private void Place(RectTransform box, float value) {
+    private void Place(RectTransform box, float value, float y) {
         if (box == null || PreviewTrack == null) {
             return;
         }
@@ -501,6 +570,7 @@ internal sealed class CurveGraph {
         float t = PreviewMargin + value * (1f - 2f * PreviewMargin);
         var pos = box.anchoredPosition;
         pos.x = Mathf.Clamp(width * t, 0f, width);
+        pos.y = y;
         box.anchoredPosition = pos;
     }
 
@@ -523,7 +593,8 @@ internal sealed class CurveGraph {
             this.strip = strip;
         }
 
-        public void Set(List<Vector2> points) {
+        public void Set(List<Vector2> points, float minThickness = 0f) {
+            float w = Mathf.Max(width, minThickness);
             int used = 0;
             int step = strip ? 1 : 2;
             for (int i = 0; i + 1 < points.Count; i += step) {
@@ -535,7 +606,7 @@ internal sealed class CurveGraph {
                 var seg = Get(used++);
                 seg.anchoredPosition = (a + b) * 0.5f;
                 // Strips overlap a little at the joints so they don't show gaps.
-                seg.sizeDelta = new Vector2(dir.magnitude + (strip ? width : 0f), width);
+                seg.sizeDelta = new Vector2(dir.magnitude + (strip ? w : 0f), w);
                 seg.localEulerAngles = new Vector3(0f, 0f, Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg);
                 seg.gameObject.SetActive(true);
             }

@@ -13,14 +13,14 @@ public sealed class ColorRangeSettings : UnityComponentSettingsBase, ICopyable<C
     public FxValue<double> Maximum = new(100);
     public FxValue<GradientColor> MinimumColor = new(new GradientColor(Color.black, true));
     public FxValue<GradientColor> MaximumColor = new(new GradientColor(Color.white, true));
-    public FxValue<O5Ease> Ease = new(O5Ease.Linear);
+    public FxValue<string> Ease = FxValue<string>.FromValue(nameof(O5Ease.Linear));
 
     private string _lastTagName = string.Empty;
     private double _lastMinimum;
     private double _lastMaximum = 100;
     private GradientColor _lastMinimumColor = new(Color.black, true);
     private GradientColor _lastMaximumColor = new(Color.white, true);
-    private O5Ease _lastEase = O5Ease.Linear;
+    private string _lastEase = nameof(O5Ease.Linear);
 
     public override bool HasAnyFx => base.HasAnyFx
         || FxUtil.HasFx(TagName)
@@ -63,13 +63,14 @@ public sealed class ColorRangeSettings : UnityComponentSettingsBase, ICopyable<C
         Maximum.Value = component.Maximum;
         MinimumColor.Value = component.MinimumColor;
         MaximumColor.Value = component.MaximumColor;
-        Ease.Value = component.Ease;
+        string ease = string.IsNullOrWhiteSpace(component.Ease) ? nameof(O5Ease.Linear) : component.Ease;
+        Ease.Value = ease;
         _lastTagName = component.TagName;
         _lastMinimum = component.Minimum;
         _lastMaximum = component.Maximum;
         _lastMinimumColor = component.MinimumColor;
         _lastMaximumColor = component.MaximumColor;
-        _lastEase = component.Ease;
+        _lastEase = ease;
         FromUnity(component);
         return true;
     }
@@ -109,7 +110,7 @@ public sealed class ColorRangeSettings : UnityComponentSettingsBase, ICopyable<C
         Maximum = IOUtils.ReadFx(token, nameof(Maximum), Maximum);
         MinimumColor = IOUtils.ReadFx(token, nameof(MinimumColor), MinimumColor);
         MaximumColor = IOUtils.ReadFx(token, nameof(MaximumColor), MaximumColor);
-        Ease = IOUtils.ReadFx(token, nameof(Ease), Ease);
+        Ease = IOUtils.ReadEaseFx(token, nameof(Ease), Ease);
     }
 
     public ColorRangeSettings Copy() => new() {

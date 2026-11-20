@@ -77,22 +77,36 @@ internal sealed class CurveModel {
             return false;
         }
         if (CustomEase.TryParse(text, out var ease)) {
-            Points.Clear();
-            for (int i = 0; i < ease.Count; i++) {
-                Points.Add(new Vector2(ease[i].x, ease[i].y));
-            }
-            Kind = ease.Kind;
-            Tangents.Clear();
-            Tangents.AddRange(DeriveTangents(ease));
-        } else if (Enum.TryParse(text, true, out O5Kit.Core.O5Ease preset)) {
+            ApplyParsed(ease);
+        } else if (Enum.TryParse(text, true, out O5Kit.Core.O5Ease preset) && Enum.IsDefined(typeof(O5Kit.Core.O5Ease), preset)) {
             LoadPreset(preset.ToString());
             return true;
+        } else if (EaseLibrary.TryGet(text, out string saved)) {
+            if (CustomEase.TryParse(saved, out var savedEase)) {
+                ApplyParsed(savedEase);
+            } else if (!string.IsNullOrWhiteSpace(saved) && Enum.TryParse(saved.Trim(), true, out O5Kit.Core.O5Ease savedPreset)
+                && Enum.IsDefined(typeof(O5Kit.Core.O5Ease), savedPreset)) {
+                LoadPreset(savedPreset.ToString());
+                return true;
+            } else {
+                return false;
+            }
         } else {
             return false;
         }
         NotifyChanged();
         Snapshot();
         return true;
+    }
+
+    private void ApplyParsed(CustomEase ease) {
+        Points.Clear();
+        for (int i = 0; i < ease.Count; i++) {
+            Points.Add(new Vector2(ease[i].x, ease[i].y));
+        }
+        Kind = ease.Kind;
+        Tangents.Clear();
+        Tangents.AddRange(DeriveTangents(ease));
     }
 
     // A preset becomes points: sample it densely, then drop points while the shape holds.

@@ -1,4 +1,5 @@
 using Newtonsoft.Json.Linq;
+using O5Kit.Core;
 using Overlayer.IO.Fx;
 using UnityEngine;
 
@@ -34,6 +35,32 @@ public static class IOUtils {
 
     public static JToken WriteFx<T>(FxValue<T> fxValue) {
         return fxValue?.Serialize() ?? JValue.CreateNull();
+    }
+
+    public static FxValue<string> ReadEaseFx(JToken token, string key, FxValue<string> fallback) {
+        if (token is not JObject obj || !obj.TryGetValue(key, out var child)) {
+            return fallback;
+        }
+        if (child == null || child.Type == JTokenType.Null) {
+            return FxValue<string>.FromValue(nameof(O5Ease.Linear));
+        }
+        if (child.Type == JTokenType.Integer) {
+            int n = child.Value<int>();
+            return FxValue<string>.FromValue(Enum.IsDefined(typeof(O5Ease), n) ? ((O5Ease)n).ToString() : nameof(O5Ease.Linear));
+        }
+
+        var fx = ReadFx(token, key, fallback);
+        if (fx != null) {
+            string s = fx.StaticValue;
+            if (string.IsNullOrWhiteSpace(s) || s.Trim().Equals("null", StringComparison.OrdinalIgnoreCase)) {
+                fx.StaticValue = nameof(O5Ease.Linear);
+            } else if (int.TryParse(s.Trim(), out int n)) {
+                fx.StaticValue = Enum.IsDefined(typeof(O5Ease), n) ? ((O5Ease)n).ToString() : nameof(O5Ease.Linear);
+            } else {
+                fx.StaticValue = s.Trim();
+            }
+        }
+        return fx;
     }
     #endregion
     #region Enum

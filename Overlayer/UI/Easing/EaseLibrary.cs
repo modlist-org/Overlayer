@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 
 namespace Overlayer.UI.Easing;
 
@@ -14,16 +15,43 @@ internal static class EaseLibrary {
         public string Curve = curve;
     }
 
+    private static readonly object sync = new();
     private static List<Entry> entries;
+    private static int version;
+
+    public static int Version => Volatile.Read(ref version);
 
     private static string FilePath => Path.Combine(MainCore.Paths.RootPath, "Easings.json");
 
     public static IReadOnlyList<Entry> Entries {
         get {
-            if (entries == null) {
-                Load();
+            lock (sync) {
+                EnsureLoaded();
+                return entries.ToArray();
             }
-            return entries;
+        }
+    }
+
+    public static bool TryGet(string name, out string curve) {
+        curve = null;
+        if (string.IsNullOrWhiteSpace(name)) {
+            return false;
+        }
+        string trimmed = name.Trim();
+        lock (sync) {
+            EnsureLoaded();
+            var match = entries.FirstOrDefault(e => string.Equals(e.Name, trimmed, StringComparison.OrdinalIgnoreCase));
+            if (match == null) {
+                return false;
+            }
+            curve = match.Curve;
+            return true;
+        }
+    }
+
+    private static void EnsureLoaded() {
+        if (entries == null) {
+            Load();
         }
     }
 
@@ -42,6 +70,8 @@ internal static class EaseLibrary {
             }
         } catch (Exception e) {
             MainCore.Log.Err($"[Easing] Failed to read {FilePath}: {e.Message}");
+        } finally {
+            Interlocked.Increment(ref version);
         }
     }
 
@@ -58,18 +88,25 @@ internal static class EaseLibrary {
     /// <summary>Adds or overwrites by name.</summary>
     public static void Put(string name, string curve) {
         name = name.Trim();
-        var existing = Entries.FirstOrDefault(e => string.Equals(e.Name, name, StringComparison.OrdinalIgnoreCase));
-        if (existing != null) {
-            existing.Curve = curve;
-        } else {
-            entries.Add(new Entry(name, curve));
+        lock (sync) {
+            EnsureLoaded();
+            var existing = entries.FirstOrDefault(e => string.Equals(e.Name, name, StringComparison.OrdinalIgnoreCase));
+            if (existing != null) {
+                existing.Curve = curve;
+            } else {
+                entries.Add(new Entry(name, curve));
+            }
+            Interlocked.Increment(ref version);
+            Save();
         }
-        Save();
     }
 
     public static void Remove(Entry entry) {
-        if (entries != null && entries.Remove(entry)) {
-            Save();
+        lock (sync) {
+            if (entries != null && entries.Remove(entry)) {
+                Interlocked.Increment(ref version);
+                Save();
+            }
         }
     }
 }

@@ -1,5 +1,6 @@
 using O5Kit.Core;
 using Overlayer.Tag.Core;
+using Overlayer.UI.Easing;
 using Overlayer.Utility;
 using UnityEngine;
 
@@ -34,23 +35,48 @@ public static class Effects {
     }
 
     private static readonly Dictionary<string, Ease> resolvedEases = [];
+    private static int easeCacheVersion = -1;
 
     private static Ease ResolveEase(string ease) {
         if (string.IsNullOrWhiteSpace(ease)) {
             return new Ease(O5Ease.Linear, null);
         }
+        int ver = EaseLibrary.Version;
         lock (resolvedEases) {
+            if (easeCacheVersion != ver) {
+                resolvedEases.Clear();
+                easeCacheVersion = ver;
+            }
             if (resolvedEases.TryGetValue(ease, out Ease cached)) {
                 return cached;
             }
         }
 
-        Ease resolved = Enum.TryParse(ease.Trim(), true, out O5Ease preset)
-            ? new Ease(preset, null)
-            : CustomEase.TryParse(ease, out CustomEase custom)
-                ? new Ease(O5Ease.Linear, custom)
-                : new Ease(O5Ease.Linear, null);
+        string s = ease.Trim();
+        Ease resolved;
+        if (s.Equals("null", StringComparison.OrdinalIgnoreCase)) {
+            resolved = new Ease(O5Ease.Linear, null);
+        } else if (Enum.TryParse(s, true, out O5Ease preset) && Enum.IsDefined(typeof(O5Ease), preset)) {
+            resolved = new Ease(preset, null);
+        } else if (CustomEase.TryParse(s, out CustomEase custom)) {
+            resolved = new Ease(O5Ease.Linear, custom);
+        } else if (EaseLibrary.TryGet(s, out string saved) && !string.IsNullOrWhiteSpace(saved)) {
+            if (CustomEase.TryParse(saved, out CustomEase savedCustom)) {
+                resolved = new Ease(O5Ease.Linear, savedCustom);
+            } else if (Enum.TryParse(saved.Trim(), true, out O5Ease savedPreset) && Enum.IsDefined(typeof(O5Ease), savedPreset)) {
+                resolved = new Ease(savedPreset, null);
+            } else {
+                resolved = new Ease(O5Ease.Linear, null);
+            }
+        } else {
+            resolved = new Ease(O5Ease.Linear, null);
+        }
+
         lock (resolvedEases) {
+            if (easeCacheVersion != ver) {
+                resolvedEases.Clear();
+                easeCacheVersion = ver;
+            }
             if (resolvedEases.Count >= 256) {
                 resolvedEases.Clear();
             }
@@ -58,6 +84,8 @@ public static class Effects {
         }
         return resolved;
     }
+
+    internal static float EvaluateEase(string ease, float t) => ResolveEase(ease).Apply(Mathf.Clamp01(t));
 
     [Tag(TagType = TagType.ProcessFormat, Desc = "Smoothly follows a tag value with easing\nEx) {EasedValue:Combo} / {EasedValue(Combo,0,500,OutExpo)}\nargs are comma-separated: tag, digits, milliseconds, ease\nease: preset name, or curve(x,y;...) / lines(x,y;...) / mono(x,y;...) with x in 0..1\nanim(x,y,in,out;...): AnimationCurve keys with slopes\nEx) {EasedValue(Combo,0,500,curve(0,0;0.3,0.8;0.6,1.15;1,1))}")]
     public static double EasedValue(string tagName, int digits = -1, double speed = 500,
@@ -122,9 +150,6 @@ public static class Effects {
         return result;
     }
 
-    internal static bool TryColorRangeProgress(string tagName, double minimum, double maximum, O5Ease ease, out float progress)
-        => TryColorRangeProgress(tagName, minimum, maximum, new Ease(ease, null), out progress);
-
     internal static bool TryColorRangeProgress(string tagName, double minimum, double maximum, string ease, out float progress)
         => TryColorRangeProgress(tagName, minimum, maximum, ResolveEase(ease), out progress);
 
@@ -146,10 +171,6 @@ public static class Effects {
     public static double MovingMan(string tagName, double startSize, double endSize, double defaultSize,
         double speed, bool invert = false, string ease = "OutExpo")
         => MovingMan(tagName, startSize, endSize, defaultSize, speed, invert, ResolveEase(ease));
-
-    internal static double MovingMan(string tagName, double startSize, double endSize, double defaultSize,
-        double speed, bool invert, O5Ease ease)
-        => MovingMan(tagName, startSize, endSize, defaultSize, speed, invert, new Ease(ease, null));
 
     private static double MovingMan(string tagName, double startSize, double endSize, double defaultSize,
         double speed, bool invert, Ease ease) {

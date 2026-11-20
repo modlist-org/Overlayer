@@ -23,6 +23,7 @@ namespace Overlayer.UI.Easing;
 // Easing page: draw a curve by placing points, preview it, copy it into a tag.
 internal static class CurveEditor {
     private const string NoPreset = "—";
+    private static readonly EaseLibrary.Entry NoSaved = new(string.Empty, string.Empty);
 
     private static readonly CurveModel model = new();
     private static CurveGraph graph;
@@ -31,6 +32,7 @@ internal static class CurveEditor {
     private static O5InputField curveField, nameField;
     private static O5Dropdown<string> presetDropdown, compareDropdown;
     private static O5Dropdown<EaseLibrary.Entry> savedDropdown;
+    private static O5Button loadButton, deleteButton;
     private static TextMeshProUGUI exampleText;
     private static string comparePreset = string.Empty;
     private static bool endpointHeights;
@@ -54,8 +56,8 @@ internal static class CurveEditor {
         BuildPreview(content);
 
         var tools = UiStyle.HRow(content, 4f, 36f);
-        Button(tools, "undo", "Undo", () => model.Undo(), "Ctrl+Z", 80f);
-        Button(tools, "redo", "Redo", () => model.Redo(), "Ctrl+Y", 80f);
+        Button(tools, "undo", "Undo", () => graph.ApplyHistory(model.Undo()), "Ctrl+Z", 80f);
+        Button(tools, "redo", "Redo", () => graph.ApplyHistory(model.Redo()), "Ctrl+Y", 80f);
         UiStyle.Cell(tools, 0f);
         Button(tools, "tidy", "Tidy points", () => {
             model.Tidy();
@@ -80,8 +82,12 @@ internal static class CurveEditor {
 
     /// <summary>Per frame while the page is showing (input, hover, preview loop).</summary>
     public static void Tick() {
-        if (graph == null || UICore.CanvasObj == null || !UICore.CanvasObj.activeSelf
+        if (graph == null) {
+            return;
+        }
+        if (UICore.CanvasObj == null || !UICore.CanvasObj.activeSelf
             || UICore.CurrentMenuState != (int)OriginalMenuState.Easing) {
+            graph.ReleasePin();
             return;
         }
         graph.Tick();
@@ -116,7 +122,7 @@ internal static class CurveEditor {
             },
         });
         compareDropdown = O5Factory.DropDown(Ctx, O5Factory.Row(Ctx, parent), "easing_compare", new O5DropdownOptions<string> {
-            Values = [NoPreset, .. Presets],
+            Values = CompareValues(),
             Value = NoPreset,
             Display = v => v == NoPreset ? "Compare with…" : "Comparing with " + v,
             OnChanged = v => {
@@ -143,7 +149,8 @@ internal static class CurveEditor {
         UiStyle.Tooltip(curveField, "The curve as text. Paste one here (or a preset name) to edit it.");
         exampleText = O5Factory.ControlText(Ctx, O5Factory.Row(Ctx, parent, 40f), 15f);
         exampleText.color = UiStyle.Caption;
-        exampleText.enableWordWrapping = true;
+        exampleText.enableWordWrapping = false;
+        exampleText.overflowMode = TextOverflowModes.Ellipsis;
         var copy = UiStyle.HRow(parent, 4f, 36f);
         Button(copy, "copy_curve", "Copy curve", () => Copy(model.Text));
         Button(copy, "copy_tag", "Copy example tag", () => Copy(ExampleTag()));
@@ -171,8 +178,9 @@ internal static class CurveEditor {
         rail.color = UiStyle.Line;
         rail.raycastTarget = false;
         graph.PreviewTrack = track;
-        graph.PreviewBox = Box(track, "Curve", new Color(0.569f, 0.604f, 1f, 1f), 9f);
+        graph.PreviewBox = Box(track, "Curve", new Color(0.569f, 0.604f, 1f, 1f), 0f);
         graph.CompareBox = Box(track, "Compare", new Color(1f, 0.75f, 0.35f, 0.8f), -9f);
+        graph.CompareBox.gameObject.SetActive(false);
     }
 
     private static RectTransform Box(RectTransform track, string name, Color color, float y) {
@@ -182,7 +190,7 @@ internal static class CurveEditor {
         box.sizeDelta = new Vector2(28f, 14f);
         box.anchoredPosition = new Vector2(0f, y);
         var img = box.gameObject.AddComponent<Image>();
-        img.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P1024);
+        img.sprite = MainCore.Spr.GetSmoothSliced(7f);
         img.type = Image.Type.Sliced;
         img.color = color;
         img.raycastTarget = false;
@@ -204,42 +212,80 @@ internal static class CurveEditor {
             RefreshSaved(name.Trim());
         }, "Saves (or overwrites) a curve with this name", 110f);
 
-        var loadRow = UiStyle.HRow(parent, 4f);
-        savedDropdown = O5Factory.DropDown(Ctx, UiStyle.Cell(loadRow, 0f), "easing_saved", new O5DropdownOptions<EaseLibrary.Entry> {
-            Values = EaseLibrary.Entries.ToList(),
-            Display = e => e == null ? "No saved curves" : e.Name,
+        var savedList = EaseLibrary.Entries.ToList();
+        bool hasSaved = savedList.Count > 0;
+        savedDropdown = O5Factory.DropDown(Ctx, O5Factory.Row(Ctx, parent), "easing_saved", new O5DropdownOptions<EaseLibrary.Entry> {
+            Values = hasSaved ? savedList : [NoSaved],
+            Value = hasSaved ? savedList[0] : NoSaved,
+            Display = e => e == null || ReferenceEquals(e, NoSaved) || string.IsNullOrEmpty(e.Name) ? "No saved curves" : e.Name,
         });
-        Button(loadRow, "load", "Load", () => {
+
+        var loadRow = UiStyle.HRow(parent, 4f, 36f);
+        loadButton = Button(loadRow, "load", "Load", () => {
             var entry = savedDropdown.Value;
-            if (entry == null) {
+            if (entry == null || ReferenceEquals(entry, NoSaved) || string.IsNullOrEmpty(entry.Curve)) {
                 return;
             }
             model.Load(entry.Curve);
             nameField.Set(entry.Name, false);
             graph.Select(-1);
-        }, null, 90f);
-        var delBtn = Button(loadRow, "delete", "Delete", null, null, 90f);
-        Utility.HoldToConfirm.Attach(delBtn, () => {
+        });
+        deleteButton = Button(loadRow, "delete", "Delete", null);
+        Utility.HoldToConfirm.Attach(deleteButton, () => {
             var entry = savedDropdown.Value;
-            if (entry == null) {
+            if (entry == null || ReferenceEquals(entry, NoSaved) || string.IsNullOrEmpty(entry.Curve)) {
                 return;
             }
             EaseLibrary.Remove(entry);
             RefreshSaved(null);
-        }, canConfirm: () => savedDropdown.Value != null);
-        if (EaseLibrary.Entries.Count > 0) {
-            savedDropdown.Set(EaseLibrary.Entries[0], false);
+        }, canConfirm: () => savedDropdown.Value != null && !ReferenceEquals(savedDropdown.Value, NoSaved));
+        loadButton.SetBlocked(!hasSaved, true);
+        deleteButton.SetBlocked(!hasSaved, true);
+    }
+
+    private static List<string> CompareValues() {
+        var list = new List<string> { NoPreset };
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { NoPreset };
+        foreach (var entry in EaseLibrary.Entries) {
+            string n = entry?.Name?.Trim();
+            if (!string.IsNullOrEmpty(n) && seen.Add(n)) {
+                list.Add(n);
+            }
         }
+        foreach (string preset in Presets) {
+            if (seen.Add(preset)) {
+                list.Add(preset);
+            }
+        }
+        return list;
     }
 
     private static void RefreshSaved(string select) {
-        if (savedDropdown == null) {
-            return;
+        if (savedDropdown != null) {
+            var list = EaseLibrary.Entries.ToList();
+            bool hasSaved = list.Count > 0;
+            if (!hasSaved) {
+                savedDropdown.SetExpanded(false);
+                savedDropdown.SetValues([NoSaved]);
+                savedDropdown.Set(NoSaved, false);
+            } else {
+                savedDropdown.SetValues(list);
+                var pick = list.FirstOrDefault(e => string.Equals(e.Name, select, StringComparison.OrdinalIgnoreCase)) ?? list[0];
+                savedDropdown.Set(pick, false);
+            }
+            loadButton?.SetBlocked(!hasSaved, true);
+            deleteButton?.SetBlocked(!hasSaved, true);
         }
-        var list = EaseLibrary.Entries.ToList();
-        savedDropdown.SetValues(list);
-        var pick = list.FirstOrDefault(e => string.Equals(e.Name, select, StringComparison.OrdinalIgnoreCase)) ?? list.FirstOrDefault();
-        savedDropdown.Set(pick, false);
+
+        if (compareDropdown != null) {
+            var compareValues = CompareValues();
+            compareDropdown.SetValues(compareValues);
+            if (!string.IsNullOrEmpty(comparePreset) && !compareValues.Any(v => string.Equals(v, comparePreset, StringComparison.OrdinalIgnoreCase))) {
+                comparePreset = string.Empty;
+                compareDropdown.Set(NoPreset, false);
+                graph?.MarkDirty();
+            }
+        }
     }
 
     // ---- advanced controls ----
@@ -297,7 +343,7 @@ internal static class CurveEditor {
         animToggle?.Set(model.IsAnim, false);
         // Tangent handles decide the shape themselves; the other shape options wait until they're off.
         smoothToggle?.SetBlocked(model.IsAnim, true);
-        monoToggle?.SetBlocked(model.IsAnim, true);
+        monoToggle?.SetBlocked(model.IsAnim || model.Kind == CustomEaseKind.Lines, true);
         if (!model.IsAnim) {
             smoothToggle?.Set(model.Kind != CustomEaseKind.Lines, false);
             if (model.Kind == CustomEaseKind.Mono) {
@@ -305,6 +351,11 @@ internal static class CurveEditor {
             } else if (model.Kind == CustomEaseKind.Curve) {
                 monoToggle?.Set(false, false);
             }
+        }
+        if (!endpointHeights && model.Points.Count >= 2
+            && (!Mathf.Approximately(model.Points[0].y, 0f) || !Mathf.Approximately(model.Points[model.Points.Count - 1].y, 1f))) {
+            endpointHeights = true;
+            heightsToggle?.Set(true, false);
         }
         if (curveField != null && !curveField.InputField.isFocused) {
             curveField.Set(model.Text, false);

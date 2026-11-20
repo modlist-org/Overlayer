@@ -47,7 +47,7 @@ public sealed class MovingManComponent
     public double DefaultSize;
     public double Speed;
     public bool Invert;
-    public O5Ease Ease;
+    public string Ease = nameof(O5Ease.OutExpo);
 
     private const MovingManTarget RotationTargets = MovingManTarget.RotationX | MovingManTarget.RotationY | MovingManTarget.RotationZ;
     private float lastRotationValue = float.NaN;
@@ -189,7 +189,7 @@ public sealed class ColorRangeComponent
     public double Maximum;
     public GradientColor MinimumColor;
     public GradientColor MaximumColor;
-    public O5Ease Ease;
+    public string Ease = nameof(O5Ease.Linear);
 
     public void Init(TMP_Text text) => Text = text;
 

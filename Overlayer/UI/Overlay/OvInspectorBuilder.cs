@@ -16,8 +16,10 @@ using Overlayer.TextEngine.Core;
 using Overlayer.TextEngine.Highlight;
 using O5Kit.Factory;
 using O5Kit.Control;
+using Overlayer.UI.Easing;
 using Overlayer.UI.Objects.Impl;
 using Overlayer.UI.Utility;
+using Overlayer.Utility;
 using O5Kit.Behaviour;
 using UnityEngine;
 using UnityEngine.UI;
@@ -427,7 +429,7 @@ internal sealed class OvInspectorBuilder(
         FxDoubleSlider(card, "Default Value", cfg.DefaultSize, 30, -10000f, 10000f, "moving_man_default", "F1");
         FxDoubleSlider(card, "Speed", cfg.Speed, 800, 0f, 10000f, "moving_man_speed", "F0");
         FxToggle(card, "Invert", cfg.Invert, false, "moving_man_invert");
-        FxEnum(card, "Ease", cfg.Ease, O5Ease.OutExpo, "moving_man_ease");
+        FxEase(card, cfg.Ease, O5Ease.OutExpo, "moving_man_ease");
     }
 
     private void MovingManTargets(Transform parent, MovingManSettings cfg) {
@@ -591,7 +593,7 @@ internal sealed class OvInspectorBuilder(
         FxDoubleSlider(card, "Maximum", cfg.Maximum, 100, -10000f, 10000f, "color_range_max", "F2");
         FxGradient(card, cfg.MinimumColor, Color.black, "color_range_min_fx");
         FxGradient(card, cfg.MaximumColor, Color.white, "color_range_max_fx");
-        FxEnum(card, "Ease", cfg.Ease, O5Ease.Linear, "color_range_ease");
+        FxEase(card, cfg.Ease, O5Ease.Linear, "color_range_ease");
     }
 
     private void BuildContentSizeFitter(OvObject obj, ContentSizeFitterSettings cfg) {
@@ -2048,6 +2050,100 @@ internal sealed class OvInspectorBuilder(
 
     private RectTransform FxEnumMapped<TEnum>(Transform parent, string label, FxValue<int> fx, int defaultValue, string id, Func<int, TEnum> toEnum, Func<TEnum, int> fromEnum, Action completed = null) where TEnum : struct, Enum {
         return FxBlock(parent, label, fx, g => EnumDropDown(g, label, toEnum(defaultValue), toEnum(fx.Value), value => fx.Value = fromEnum(value), id, completed), id, dropdown: true);
+    }
+
+    private RectTransform FxEase(Transform parent, FxValue<string> fx, O5Ease defaultValue, string id) {
+        const string customOption = "\0custom";
+        string label = InspectorLabel("Ease");
+
+        var savedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var options = new List<string>();
+        foreach (var entry in EaseLibrary.Entries) {
+            string name = entry?.Name?.Trim();
+            if (string.IsNullOrEmpty(name) || name.Equals("null", StringComparison.OrdinalIgnoreCase)) {
+                continue;
+            }
+            if (Enum.TryParse(name, true, out O5Ease ep) && Enum.IsDefined(typeof(O5Ease), ep)) {
+                continue;
+            }
+            if (savedNames.Add(name)) {
+                options.Add(name);
+            }
+        }
+        options.AddRange(Enum.GetNames(typeof(O5Ease)));
+        options.Add(customOption);
+
+        string raw = fx.StaticValue?.Trim();
+        string currentOption;
+        string customValue = string.Empty;
+        bool isCustom = false;
+        if (string.IsNullOrEmpty(raw) || raw.Equals("null", StringComparison.OrdinalIgnoreCase)) {
+            currentOption = nameof(O5Ease.Linear);
+        } else if (Enum.TryParse(raw, true, out O5Ease enumVal) && Enum.IsDefined(typeof(O5Ease), enumVal)) {
+            currentOption = enumVal.ToString();
+        } else if (options.FirstOrDefault(o => savedNames.Contains(o) && string.Equals(o, raw, StringComparison.OrdinalIgnoreCase)) is string savedMatch) {
+            currentOption = savedMatch;
+        } else if (CustomEase.TryParse(raw, out _)) {
+            currentOption = customOption;
+            customValue = raw;
+            isCustom = true;
+        } else {
+            currentOption = nameof(O5Ease.Linear);
+        }
+
+        static string NormalizeCustomEase(string text) {
+            string t = text?.Trim();
+            return string.IsNullOrEmpty(t) || t.Equals("null", StringComparison.OrdinalIgnoreCase)
+                ? nameof(O5Ease.Linear)
+                : t;
+        }
+
+        return FxBlock(parent, "Ease", fx, group => {
+            var row = O5Factory.Row(O5KitAdapters.Ctx, group, 50f);
+            var customRow = O5Factory.Row(O5KitAdapters.Ctx, group, 50f);
+            O5InputField customInput = null;
+            var dropdown = O5Factory.DropDown(O5KitAdapters.Ctx, row, id, new O5DropdownOptions<string> {
+                DefaultValue = defaultValue.ToString(),
+                Value = currentOption,
+                Values = options,
+                Display = option => option == customOption
+                    ? $"{label}: Custom..."
+                    : savedNames.Contains(option)
+                        ? $"{label}: {option} (Custom)"
+                        : $"{label}: {option}",
+                OnChanged = selected => {
+                    bool custom = selected == customOption;
+                    customRow.gameObject.SetActive(custom);
+                    if (custom) {
+                        fx.Value = NormalizeCustomEase(customInput?.Value);
+                        ApplyAndSave();
+                    } else {
+                        fx.Value = string.IsNullOrWhiteSpace(selected) || selected.Equals("null", StringComparison.OrdinalIgnoreCase)
+                            ? nameof(O5Ease.Linear)
+                            : selected;
+                        ApplyAndSave();
+                    }
+                    LayoutRebuilder.MarkLayoutForRebuild(group.GetComponent<RectTransform>());
+                }
+            });
+            Track(dropdown);
+
+            customInput = O5Factory.Input(O5KitAdapters.Ctx, customRow, id + "_custom", new O5InputOptions {
+                Value = customValue,
+                Placeholder = "curve(0,0;1,1)",
+                Monospace = true,
+                OnChanged = text => {
+                    fx.Value = NormalizeCustomEase(text);
+                    apply();
+                },
+                OnEndEdit = text => {
+                    fx.Value = NormalizeCustomEase(text);
+                    ApplyAndSave();
+                }
+            });
+            Track(customInput);
+            customRow.gameObject.SetActive(isCustom);
+        }, id, dropdown: true);
     }
 
     private RectTransform FxWrapping(Transform parent, TextMeshProUGUISettings cfg) {
