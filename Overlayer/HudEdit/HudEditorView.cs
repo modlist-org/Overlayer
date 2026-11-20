@@ -45,7 +45,7 @@ internal static partial class HudEditor {
     private static readonly Color GuideColor = new(1f, 0.35f, 0.75f, 0.9f);
     private static readonly Color MeasureColor = new(1f, 0.32f, 0.36f, 1f);
 
-    private static readonly string[] PlacementNames = ["Main canvas", "New canvas", "Next to selected", "Inside selected", "Wrap selected"];
+    private static readonly string[] PlacementNames = ["Main canvas", "Next to selected", "Inside selected"];
 
     private static RectTransform root;
     private static RectTransform gizmoLayer;
@@ -83,7 +83,7 @@ internal static partial class HudEditor {
     private static float UiScale => UICore.Canvas != null && UICore.Canvas.scaleFactor > 0f ? UICore.Canvas.scaleFactor : 1f;
 
     private static Placement CurrentPlacement {
-        get => Enum.TryParse(MainCore.Conf.HudPlacement.Value, out Placement p) ? p : Placement.MainCanvas;
+        get => Enum.TryParse(MainCore.Conf.HudPlacement.Value, out Placement p) && Enum.IsDefined(typeof(Placement), p) ? p : Placement.MainCanvas;
         set {
             MainCore.Conf.HudPlacement.Value = value.ToString();
             MainCore.ConfMgr.RequestSave();
@@ -259,7 +259,7 @@ internal static partial class HudEditor {
 
     private static void UpdatePlacementLabel() {
         if (placementButton != null) {
-            placementButton.Text = PlacementNames[(int)CurrentPlacement] + "  ▾";
+            placementButton.Text = PlacementNames[(int)CurrentPlacement] + "  ▸";
         }
     }
 
@@ -536,9 +536,8 @@ internal static partial class HudEditor {
         var items = new List<(string Text, string Shortcut, Action Run, bool Danger)?>();
         if (target == null || target.Locked) {
             // Empty spot: relative placements make no sense here, use the main canvas instead.
-            Placement where = CurrentPlacement is Placement.NewCanvas ? Placement.NewCanvas : Placement.MainCanvas;
-            items.Add(("Add text here", null, () => Create(NewKind.Text, where, mouse), false));
-            items.Add(("Add image here", null, () => Create(NewKind.Image, where, mouse), false));
+            items.Add(("Add text here", null, () => Create(NewKind.Text, Placement.MainCanvas, mouse), false));
+            items.Add(("Add image here", null, () => Create(NewKind.Image, Placement.MainCanvas, mouse), false));
             items.Add(("Add preset here…", null, () => OpenPresetMenu(mouse, mouse), false));
             items.Add(("Paste", "Ctrl+V", () => Paste(false), false));
             if (selection.Count > 0) {
@@ -767,10 +766,14 @@ internal static partial class HudEditor {
 
         int g = 0;
         foreach (float x in guideX) {
-            PlaceLine(GetGuide(g++), ToLocal(new Vector2(x, 0f)), ToLocal(new Vector2(x, Screen.height)), 1f);
+            var line = GetGuide(g++);
+            PlaceLine(line, ToLocal(new Vector2(x, 0f)), ToLocal(new Vector2(x, Screen.height)), 1.5f);
+            line.SetAsLastSibling();
         }
         foreach (float y in guideY) {
-            PlaceLine(GetGuide(g++), ToLocal(new Vector2(0f, y)), ToLocal(new Vector2(Screen.width, y)), 1f);
+            var line = GetGuide(g++);
+            PlaceLine(line, ToLocal(new Vector2(0f, y)), ToLocal(new Vector2(Screen.width, y)), 1.5f);
+            line.SetAsLastSibling();
         }
         for (int i = g; i < guides.Count; i++) {
             guides[i].gameObject.SetActive(false);
@@ -799,6 +802,7 @@ internal static partial class HudEditor {
     }
 
     private static void PlaceLine(RectTransform rect, Vector2 a, Vector2 b, float thickness) {
+        thickness = Mathf.Max(thickness, 1.25f / UiScale);
         Vector2 dir = b - a;
         rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0.5f);
         rect.anchoredPosition = (a + b) * 0.5f;
@@ -980,6 +984,7 @@ internal static partial class HudEditor {
     private static O5Button gridButton;
     private static readonly List<Image> gridLines = [];
     private static float gridBuiltSpacing = -1f;
+    private static float gridBuiltScale = -1f;
     private static Vector2 gridBuiltScreen;
 
     private static void ToggleGrid() {
@@ -1007,11 +1012,13 @@ internal static partial class HudEditor {
             return;
         }
         float s = GridSpacing;
+        float scale = UiScale;
         var screen = new Vector2(Screen.width, Screen.height);
-        if (Mathf.Approximately(s, gridBuiltSpacing) && screen == gridBuiltScreen) {
+        if (Mathf.Approximately(s, gridBuiltSpacing) && Mathf.Approximately(scale, gridBuiltScale) && screen == gridBuiltScreen) {
             return;
         }
         gridBuiltSpacing = s;
+        gridBuiltScale = scale;
         gridBuiltScreen = screen;
         int used = 0;
         Vector2 c = screen * 0.5f;
@@ -1205,6 +1212,7 @@ internal static partial class HudEditor {
         placementButton = fitButton = ungroupButton = pinButton = gridButton = null;
         gridLines.Clear();
         gridBuiltSpacing = -1f;
+        gridBuiltScale = -1f;
         gridLayer = null;
         panelShown = true;
         layersPanel = layersContent = null;

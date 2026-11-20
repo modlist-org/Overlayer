@@ -16,10 +16,8 @@ namespace Overlayer.HudEdit;
 
 internal enum Placement {
     MainCanvas,
-    NewCanvas,
     Sibling,
     Child,
-    Parent,
 }
 
 internal enum NewKind {
@@ -141,8 +139,6 @@ internal static partial class HudEditor {
             }
             case Placement.Child when anchor != null:
                 return new Slot(anchor.Canvas, anchor.Object, -1);
-            case Placement.NewCanvas:
-                return new Slot(NewCanvas(), null, -1);
             default:
                 return new Slot(MainCanvas(true), null, -1);
         }
@@ -207,10 +203,6 @@ internal static partial class HudEditor {
     // ---- operations ----
 
     public static void Create(NewKind kind, Placement placement, Vector2? screen) {
-        if (placement == Placement.Parent) {
-            WrapSelection();
-            return;
-        }
         var slot = ResolveSlot(placement);
         if (slot.Canvas == null) {
             return;
@@ -269,9 +261,6 @@ internal static partial class HudEditor {
             () => { foreach (var (obj, slot) in created) FromTrash(obj, slot); }));
         AfterStructureChange(null, created.Select(c => c.Obj));
     }
-
-    // "Parent" placement: a new group takes the selected object's place and holds it.
-    private static void WrapSelection() => GroupSelection();
 
     // Draw order among siblings: +1 = one step toward the front.
     public static void MoveOrder(int direction) {

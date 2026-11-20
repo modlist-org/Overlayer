@@ -62,8 +62,7 @@ internal static partial class HudEditor {
             return;
         }
 
-        var placement = CurrentPlacement is Placement.Parent ? Placement.MainCanvas : CurrentPlacement;
-        var slot = ResolveSlot(placement);
+        var slot = ResolveSlot(CurrentPlacement);
         if (slot.Canvas == null) {
             return;
         }

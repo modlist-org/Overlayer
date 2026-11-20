@@ -244,7 +244,8 @@ internal static partial class HudEditor {
             var tick = NewRect("Tick", band);
             tick.anchorMin = tick.anchorMax = vertical ? new Vector2(1f, 0.5f) : new Vector2(0.5f, 0f);
             tick.pivot = vertical ? new Vector2(1f, 0.5f) : new Vector2(0.5f, 0f);
-            tick.sizeDelta = vertical ? new Vector2(major ? 8f : 4f, 1f) : new Vector2(1f, major ? 8f : 4f);
+            float pxWidth = Mathf.Max(1f, 1.25f / UiScale);
+            tick.sizeDelta = vertical ? new Vector2(major ? 8f : 4f, pxWidth) : new Vector2(pxWidth, major ? 8f : 4f);
             tick.gameObject.AddComponent<Image>().color = RulerTick;
             tick.GetComponent<Image>().raycastTarget = false;
             TextMeshProUGUI label = null;
@@ -305,7 +306,8 @@ internal static partial class HudEditor {
         var line = rect.GetChild(0) as RectTransform;
         line.anchorMin = vertical ? new Vector2(0.5f, 0f) : new Vector2(0f, 0.5f);
         line.anchorMax = vertical ? new Vector2(0.5f, 1f) : new Vector2(1f, 0.5f);
-        line.sizeDelta = vertical ? new Vector2(1f, 0f) : new Vector2(0f, 1f);
+        float pxWidth = Mathf.Max(1f, 1.25f / UiScale);
+        line.sizeDelta = vertical ? new Vector2(pxWidth, 0f) : new Vector2(0f, pxWidth);
         line.anchoredPosition = Vector2.zero;
         rect.gameObject.SetActive(true);
     }
