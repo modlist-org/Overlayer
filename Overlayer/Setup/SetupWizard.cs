@@ -1,13 +1,10 @@
 using O5Kit.Control;
 using O5Kit.Factory;
-using Overlayer.Async;
 using Overlayer.Compat;
 using Overlayer.Core;
 using Overlayer.HudEdit;
 using Overlayer.Localization;
 using Overlayer.ModuleAPI;
-using Overlayer.Overlay;
-using Overlayer.Package;
 using Overlayer.UI;
 using Overlayer.UI.Factory.Page;
 using Overlayer.UI.Utility;
@@ -23,18 +20,17 @@ using TMPro;
 namespace Overlayer.Setup;
 
 // The first-run wizard: fills the Overlayer window under its top bar (a fresh install opens the
-// window for it) and walks through language, UI scale, keys, a starting HUD and importing, one
-// page at a time. The last page suggests the tutorial. Settings can open it again.
+// window for it) and walks through language, UI scale and keys, one page at a time. The last
+// page suggests the tutorial. Settings can open it again.
 // Motion follows osu!lazer's first-run wizard (WizardOverlay / WizardScreen): pages slide 100 units
 // over 500 ms with OutQuint and fade in 100 ms, the content settles from 0.99 scale over 400 ms.
 internal static class SetupWizard {
-    private enum Step { Welcome, Scale, Keys, Hud, Import, Finish }
+    private enum Step { Welcome, Scale, Keys, Finish }
 
     private const float TopBarHeight = 60f;
     private const float MaxColumnWidth = 900f;
     private const float ColumnMargin = 32f;
     private const float StartDelay = 4f;
-    private const int MaxLayouts = 5;
     private const float KeyUnit = 40f;
     private const float KeyGap = 4f;
 
@@ -79,8 +75,6 @@ internal static class SetupWizard {
     private static RectTransform stepHost => page.Host;
 
     private static Step step;
-    private static PackagePreset pickedPreset;
-    private static string importStatus;
     private static bool showHudKey;
     private static float pendingSince = -1f;
 
@@ -106,8 +100,6 @@ internal static class SetupWizard {
         if (UICore.IsMenuOpen) {
             UICore.CloseMenu();
         }
-        pickedPreset = null;
-        importStatus = null;
         showHudKey = false;
         step = Step.Welcome;
         openTime = 0f;
@@ -119,12 +111,7 @@ internal static class SetupWizard {
     private static void Close(bool startTutorial) {
         KeyCapture.Cancel();
         MainCore.Conf.SetupPending.Value = false;
-        var preset = pickedPreset;
-        pickedPreset = null;
         BeginClosing();
-        if (preset != null) {
-            HudEditor.AddPresetToMainCanvas(preset);
-        }
         PageSettings.SyncValues();
         if (startTutorial) {
             Tutorial.Tutorial.Continue();
@@ -290,7 +277,7 @@ internal static class SetupWizard {
         layout.childForceExpandHeight = false;
 
         caption = FrameText(ctx, column, 22f, 13f, UiStyle.Caption);
-        caption.characterSpacing = 4f;
+        caption.characterSpacing = -3f;
 
         stage = UiStyle.NewRect("Stage", column);
         stage.gameObject.AddComponent<LayoutElement>().flexibleHeight = 1f;
@@ -407,7 +394,7 @@ internal static class SetupWizard {
             page.Time = SlideSeconds;
             page.FromAlpha = 1f;
         }
-        caption.text = string.Format(T("SETUP_STEP", "SETUP   {0} / {1}"), (int)step + 1, StepCount);
+        caption.text = string.Format(T("SETUP_STEP", "{0} / {1}"), (int)step + 1, StepCount);
         backButton.Text = T("SETUP_BACK", "Back");
         skipButton.Text = T("SETUP_SKIP", "Skip");
         nextButton.Text = T("SETUP_NEXT", "Next");
@@ -419,8 +406,6 @@ internal static class SetupWizard {
             case Step.Welcome: ShowWelcome(); break;
             case Step.Scale: ShowScale(); break;
             case Step.Keys: ShowKeys(); break;
-            case Step.Hud: ShowHud(); break;
-            case Step.Import: ShowImport(); break;
             default: ShowFinish(); break;
         }
     }
@@ -431,7 +416,7 @@ internal static class SetupWizard {
     }
 
     private static void ShowWelcome() {
-        Header("WELCOME", "Welcome to Overlayer", "A few quick settings before you start. First, choose a language.");
+        Header("WELCOME", "Welcome to Overlayer", "Let's start by choosing a language.");
         var ctx = O5KitAdapters.Ctx;
         foreach (string language in MainCore.Tr.GetLanguages().Where(l => l != Translator.FALLBACK_LANGUAGE).OrderBy(l => l, StringComparer.OrdinalIgnoreCase)) {
             string captured = language;
@@ -452,7 +437,7 @@ internal static class SetupWizard {
 
     private static void ShowScale() {
         // Named like the setting itself.
-        Header("SCALE", T("UI_SCALE", "UI Scale"), "Drag the slider to a comfortable scale. This screen and the Overlayer window change with it.");
+        Header("SCALE", T("UI_SCALE", "UI Scale"), "Adjust to a comfortable scale.");
         var ctx = O5KitAdapters.Ctx;
         var slider = Track(O5Factory.Slider(ctx, O5Factory.Row(ctx, stepHost), "setup_scale", new O5SliderOptions {
             DefaultValue = 1f,
@@ -487,7 +472,6 @@ internal static class SetupWizard {
         BuildKeyboard(showHudKey ? HudEditor.Key : WindowKey);
 
         if (!showHudKey) {
-            Note(T("SETUP_KEY_WINDOW_NOTE", "Opens and closes the Overlayer window. If this screen closes when you try it, press the keys again to come back."), 44f);
             return;
         }
         O5Button change = null;
@@ -596,60 +580,8 @@ internal static class SetupWizard {
 
     // ---- the rest ----
 
-    private static void ShowHud() {
-        Header("HUD", "Choose a starting HUD", "Start from a ready-made layout or an empty screen. You can edit everything later.");
-        var ctx = O5KitAdapters.Ctx;
-        Track(UiStyle.Button(O5Factory.Row(ctx, stepHost, 44f), "setup_hud_empty", T("SETUP_HUD_EMPTY", "Empty screen"),
-            () => PickPreset(null), primary: pickedPreset == null));
-        foreach (var preset in PresetStore.Presets.Where(p => p.Category == HudPreset.LayoutCategory).Take(MaxLayouts)) {
-            var captured = preset;
-            Track(UiStyle.Button(O5Factory.Row(ctx, stepHost, 44f), "setup_hud_" + preset.Id, preset.Name,
-                () => PickPreset(captured), primary: pickedPreset?.Id == preset.Id));
-        }
-    }
-
-    private static void PickPreset(PackagePreset preset) {
-        pickedPreset = preset;
-        Show(Step.Hud, false);
-    }
-
-    private static void ShowImport() {
-        Header("IMPORT", "Import a HUD", "If you have a shared package, import it here. Otherwise, continue to the next step.");
-        var ctx = O5KitAdapters.Ctx;
-        Track(UiStyle.Button(O5Factory.Row(ctx, stepHost, 50f), "setup_import", T("SETUP_IMPORT_PICK", "Choose a file (.o5cp, .json)"), BeginImport));
-        if (!string.IsNullOrEmpty(importStatus)) {
-            Note(importStatus, 50f);
-        }
-    }
-
-    private static void BeginImport() {
-        _ = NativeDialogThread.Run(() => {
-            try {
-                return NativeFileDialog.Extended.NFD.OpenDialog(MainCore.Paths.RootPath, new Dictionary<string, string> {
-                    ["Overlayer Package"] = "o5cp",
-                    ["JSON"] = "json",
-                });
-            } catch (Exception e) {
-                MainCore.Log.Err($"[Setup] File dialog failed: {e.Message}");
-                return null;
-            }
-        }).ContinueWith(task => MainThread.Enqueue(() => {
-            string path = task.Status == TaskStatus.RanToCompletion ? task.Result : null;
-            if (string.IsNullOrWhiteSpace(path) || !MainCore.IsModEnabled) {
-                return;
-            }
-            bool imported = OverlayCore.ImportCanvas(path);
-            importStatus = imported
-                ? string.Format(T("SETUP_IMPORT_DONE", "Imported {0}."), Path.GetFileName(path))
-                : string.Format(T("SETUP_IMPORT_FAILED", "Couldn't import {0}. See the log for details."), Path.GetFileName(path));
-            if (IsOpen && step == Step.Import) {
-                Show(Step.Import, false);
-            }
-        }));
-    }
-
     private static void ShowFinish() {
-        Header("FINISH", "All set", "Setup is complete. You can change these settings at any time in Settings.");
+        Header("FINISH", "All set", "You can always change these settings later.");
         var ctx = O5KitAdapters.Ctx;
         var box = UiStyle.Rounded("Suggestion", O5Factory.Row(ctx, stepHost, 124f), new Color(Accent.r, Accent.g, Accent.b, 0.12f)).rectTransform;
         box.anchorMin = Vector2.zero;
