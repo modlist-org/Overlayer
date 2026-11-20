@@ -1,0 +1,5 @@
+Olly artwork (including Overlayer-Legacy assets)
+Copyright (c) Kkitut
+Licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)
+
+Covers all files under Overlayer/Resource/Embedded/Image/Olly/.

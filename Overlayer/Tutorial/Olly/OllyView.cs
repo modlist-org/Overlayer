@@ -7,12 +7,14 @@ using UnityEngine.UI;
 namespace Overlayer.Tutorial.Olly;
 
 // Olly's portrait made of plain Images, one per part, each placed by hand at its pixel
-// anchor. Moving a few of them a little (eyes and hair toward what she's looking at, eyelids
-// for a blink) is enough to make her feel alive. Her expressions are fixed until the line
-// changes; the mouth doesn't flap along with the typing.
+// anchor. She looks through the calibration table; everything follows together a little
+// except the brow and the back hair, and the body stays put. Her expressions are fixed
+// until the line changes; the mouth doesn't flap along with the typing.
 internal sealed class OllyView {
     public const float Size = 240f;
     private const string Prefix = "Image.Olly.";
+    // Gaze circle around her: past this radius she looks fully that way.
+    private const float GazeRadius = 35f;
 
     public readonly RectTransform Rect;
     public Face Face = Face.Normal;
@@ -22,13 +24,22 @@ internal sealed class OllyView {
     public bool Patted => patting;
     public bool IsHead(Vector2 screen) => OllyAnchors.Head.Contains(ToPortrait(screen));
 
+    public void ForceFace(Face face) {
+        Face = face;
+        patting = false;
+        flusteredUntil = 0f;
+        blinkTimer = 0f;
+        LookTarget = null;
+        eyeLOffset = eyeROffset = eyeLVelocity = eyeRVelocity = headOffset = Vector2.zero;
+    }
+
     private readonly RectTransform mask;
-    private readonly Image bg, hairBg, body, patArea, mouth, nose, eyeRight, eyeLeft, lidDown, lidBg, lidUp, shineLeft, shineRight, shut, brow, hair;
+    private readonly Image bg, hairBg, body, patArea, mouth, nose, eyeRight, eyeLeft, lidDBg, lidDown, lidUBg, lidUp, shineLeft, shineRight, shut, brow, hair;
     private readonly Image[] marks = new Image[3];
     private readonly Image[] fronts = new Image[4];
 
     private float blinkTimer, blinkInterval = 2.5f;
-    private Vector2 eyeOffset, eyeVelocity, hairOffset, hairVelocity, headOffset, headVelocity, patAnchor;
+    private Vector2 eyeLOffset, eyeLVelocity, eyeROffset, eyeRVelocity, headOffset;
     private bool patting;
     private float patTime;
     private float flusteredUntil;
@@ -62,11 +73,13 @@ internal sealed class OllyView {
         nose = Part("Nose", "NOSE");
         eyeRight = Part("EyeRight", null);
         eyeLeft = Part("EyeLeft", null);
+        // Lower white under the lash: hides iris overflow when she looks down.
+        lidDBg = Part("LidDBg", "ELDBG");
         lidDown = Part("LidDown", "ELD");
         for (int i = 0; i < marks.Length; i++) {
             marks[i] = Part("Mark" + i, "FX_" + (Mark)(1 << i));
         }
-        lidBg = Part("LidBg", "ELBG");
+        lidUBg = Part("LidUBg", "ELUBG");
         lidUp = Part("LidUp", "ELU");
         shineLeft = Part("ShineLeft", "EHL");
         shineRight = Part("ShineRight", "EHR");
@@ -141,14 +154,14 @@ internal sealed class OllyView {
         return new Vector2(local.x - r.xMin, r.yMax - local.y);
     }
 
-    // Toward a point: up to max pixels, eased in over the first 100.
-    private static Vector2 Lean(Vector2 from, Vector2 to, float max) {
-        Vector2 d = to - from;
-        float t = Mathf.Clamp01(d.magnitude / 100f);
-        return d.normalized * (Mathf.Sin(t * Mathf.PI * 0.5f) * max);
+    // Portrait center in screen pixels.
+    public Vector2 ScreenCenter() {
+        var r = Rect.rect;
+        Vector3 world = Rect.TransformPoint(new Vector3(r.center.x, r.center.y, 0f));
+        return RectTransformUtility.WorldToScreenPoint(null, world);
     }
 
-    public void Tick(float dt) {
+    public void Tick(float dt, bool interactive = true) {
         Vector2 pointer = Pointer();
         // Flustered for a moment after a pat.
         var face = !patting && Time.unscaledTime < flusteredUntil ? Face.Flustered : Face;
@@ -157,12 +170,14 @@ internal sealed class OllyView {
         var mouthState = face.Mouth;
         var mark = face.Mark;
 
-        // A pat: press on her head and hold.
-        if (Input.GetMouseButtonDown(0) && OllyAnchors.Head.Contains(pointer) && Rect.gameObject.activeInHierarchy) {
+        // A pat: press on her head and hold. Leaving the head or releasing ends it,
+        // like Legacy; holding still closes her eyes after a moment.
+        if (!interactive) {
+            patting = false;
+        } else if (Input.GetMouseButtonDown(0) && OllyAnchors.Head.Contains(pointer) && Rect.gameObject.activeInHierarchy) {
             patting = true;
             patTime = 0f;
-            patAnchor = pointer;
-        } else if (patting && !Input.GetMouseButton(0)) {
+        } else if (patting && (!Input.GetMouseButton(0) || !OllyAnchors.Head.Contains(pointer))) {
             patting = false;
             blinkTimer = 0f;
             Pats++;
@@ -176,10 +191,11 @@ internal sealed class OllyView {
             if (patTime > 0.3f) {
                 shutState = EyeShut.Down;
             }
-            // Follow/lean along with the mouse as if pushed, plus subtle trailing stroke inertia.
-            patAnchor = Vector2.Lerp(patAnchor, pointer, 1f - Mathf.Exp(-dt * 4f));
-            Vector2 follow = Lean(OllyAnchors.Head.center, pointer, 10f) + Lean(patAnchor, pointer, 6f);
-            headTarget = new Vector2(Mathf.Clamp(follow.x, -14f, 14f), Mathf.Clamp(follow.y, -7f, 12f));
+            // Follow the cursor subtly inside the silhouette margin (HAIRBG/BASE stay put).
+            Vector2 delta = pointer - OllyAnchors.Head.center;
+            headTarget = new Vector2(
+                Mathf.Clamp(delta.x * 0.04f, -2.5f, 2.5f),
+                Mathf.Clamp(delta.y * 0.04f, -1.2f, 2f));
         }
 
         // Blink now and then: lids slide in, eyes shut for a moment.
@@ -193,35 +209,45 @@ internal sealed class OllyView {
             blinkInterval = UnityEngine.Random.Range(2.5f, 7f);
         }
 
-        // Eyes and hair lean toward what she's looking at (a highlighted part, or the
-        // player's mouse while they do their turn); otherwise straight ahead.
-        Vector2? focus = patting ? null : LookTarget;
-        var eyes = OllyAnchors.Eyes[0];
-        Vector2 eyeMid = (eyes.Left + eyes.Right) * 0.5f + new Vector2(14f, 14f);
-        Vector2 eyeTarget = Vector2.zero;
-        Vector2 hairTarget = Vector2.zero;
+        // She looks through the calibration table at what she's looking at (a highlighted
+        // part, or the player's mouse while they do their turn); otherwise straight ahead.
+        // Closed happy eyes don't follow anything.
+        Vector2? focus = (patting || face.Shut == EyeShut.Up) ? null : LookTarget;
+        Vector2 eyeLTarget = Vector2.zero, eyeRTarget = Vector2.zero;
         if (focus.HasValue) {
-            Vector2 portraitFocus = ToPortrait(focus.Value);
-            eyeTarget = Lean(eyeMid, portraitFocus, 3.6f);
-            eyeTarget.x *= eyeTarget.x < 0f ? 2.6f : 0.8f;
-            eyeTarget.y *= eyeTarget.y < 0f ? 0.8f : 2f;
-            hairTarget = Lean(OllyAnchors.Hair + new Vector2(112f, 106f), portraitFocus, 1.7f);
+            // Radial gaze around her: past a small circle, look fully that way.
+            Vector2 c = ScreenCenter();
+            Vector2 v = focus.Value - c;
+            float d = v.magnitude;
+            if (d > 0.001f) {
+                float maxComp = Mathf.Max(Mathf.Abs(v.x), Mathf.Abs(v.y));
+                Vector2 rim = v / maxComp;
+                float rx = OllyCalibration.Fx[2] - OllyCalibration.Fx[1];
+                float ry = OllyCalibration.Fy[0] - OllyCalibration.Fy[1];
+                Vector2 t = new((0.5f + rim.x * rx) * Screen.width, (0.5f + rim.y * ry) * Screen.height);
+                float response = Mathf.Min(1f, d / GazeRadius);
+                var sample = OllyCalibration.Sample(t);
+                eyeLTarget = sample.eyeL * response;
+                eyeRTarget = sample.eyeR * response;
+                headTarget = sample.head * response;
+            }
         }
         float safeDt = Mathf.Max(dt, 0.0001f);
-        eyeOffset = Vector2.SmoothDamp(eyeOffset, eyeTarget, ref eyeVelocity, 0.2f, Mathf.Infinity, safeDt);
-        hairOffset = Vector2.SmoothDamp(hairOffset, hairTarget, ref hairVelocity, 0.2f, Mathf.Infinity, safeDt);
-        headOffset = Vector2.SmoothDamp(headOffset, headTarget, ref headVelocity, patting ? 0.09f : 0.18f, Mathf.Infinity, safeDt);
+        eyeLOffset = Vector2.SmoothDamp(eyeLOffset, eyeLTarget, ref eyeLVelocity, 0.12f, Mathf.Infinity, safeDt);
+        eyeROffset = Vector2.SmoothDamp(eyeROffset, eyeRTarget, ref eyeRVelocity, 0.12f, Mathf.Infinity, safeDt);
+        headOffset = Vector2.Lerp(headOffset, headTarget, 1f - Mathf.Exp(-safeDt * (patting ? 10f : 8f)));
         // Breathing.
         float breath = Mathf.Sin(Time.unscaledTime * 1.7f);
         Vector2 sway = new(0f, breath * 0.6f);
 
-        Vector2 bodyOffset = headOffset * 0.65f;
-        Vector2 hairFollow = headOffset * 1.15f;
-        Vector2 faceOffset = headOffset + eyeOffset * 0.5f;
-        Vector2 eyeTotalOffset = headOffset + eyeOffset;
-        Put(body, bodyOffset);
-        Put(hairBg, OllyAnchors.HairBg + hairFollow + hairOffset + sway);
-        Put(hair, OllyAnchors.Hair + hairFollow + hairOffset + sway);
+        // Everything follows together a little, except the brow and the back hair.
+        // The body stays put.
+        Vector2 eyeAvg = (eyeLOffset + eyeROffset) * 0.5f;
+        Vector2 faceOffset = headOffset + eyeAvg * 0.5f;
+        Vector2 lidOffset = headOffset + eyeAvg * 0.4f;
+        Put(body, Vector2.zero);
+        Put(hairBg, OllyAnchors.HairBg);
+        Put(hair, OllyAnchors.Hair + headOffset + sway);
 
         Show(mouth, mouthState != Mouth.None);
         if (mouthState != Mouth.None) {
@@ -238,24 +264,25 @@ internal sealed class OllyView {
             var at = OllyAnchors.Eyes[(int)eye - 1];
             SetSprite(eyeLeft, "EL_" + eye);
             SetSprite(eyeRight, "ER_" + eye);
-            Put(eyeLeft, at.Left + eyeTotalOffset);
-            Put(eyeRight, at.Right + eyeTotalOffset);
+            Put(eyeLeft, at.Left + headOffset + eyeLOffset);
+            Put(eyeRight, at.Right + headOffset + eyeROffset);
         }
 
-        Vector2 lidOffset = headOffset + eyeOffset * 0.4f;
         Show(lidDown, open);
-        Show(lidBg, open);
+        Show(lidDBg, open);
+        Show(lidUBg, open);
         Show(lidUp, open);
         Show(shineLeft, open);
         Show(shineRight, open);
         if (open) {
             float closing = Mathf.Max(0f, blinking);
             Put(lidDown, OllyAnchors.LidDown + lidOffset + new Vector2(0f, -closing * 6f));
-            Put(lidBg, OllyAnchors.LidBg + lidOffset + new Vector2(0f, closing * 22f));
+            Put(lidDBg, OllyAnchors.LidDBg + lidOffset);
+            Put(lidUBg, OllyAnchors.LidUBg + lidOffset + new Vector2(0f, closing * 22f));
             Put(lidUp, OllyAnchors.LidUp + lidOffset + new Vector2(0f, closing * 22f));
             bool small = eye == Eye.Small;
-            Put(shineLeft, OllyAnchors.ShineLeft + eyeTotalOffset + (small ? new Vector2(4f, 6f) : Vector2.zero));
-            Put(shineRight, OllyAnchors.ShineRight + eyeTotalOffset + (small ? new Vector2(0f, 5f) : Vector2.zero));
+            Put(shineLeft, OllyAnchors.ShineLeft + headOffset + eyeLOffset + (small ? new Vector2(4f, 6f) : Vector2.zero));
+            Put(shineRight, OllyAnchors.ShineRight + headOffset + eyeROffset + (small ? new Vector2(0f, 5f) : Vector2.zero));
         }
         Show(shut, !open);
         if (!open) {
@@ -276,7 +303,9 @@ internal sealed class OllyView {
         Show(brow, face.Brow != Brow.None);
         if (face.Brow != Brow.None) {
             SetSprite(brow, "B_" + face.Brow);
-            Put(brow, OllyAnchors.Brows[(int)face.Brow - 1] + headOffset + eyeOffset * 0.23f);
+            // The brow lowers a little on down-gaze.
+            Vector2 browOffset = eyeAvg.y > 0f ? new Vector2(0f, eyeAvg.y * 0.4f) : Vector2.zero;
+            Put(brow, OllyAnchors.Brows[(int)face.Brow - 1] + browOffset);
         }
 
         for (int i = 0; i < fronts.Length; i++) {
@@ -284,12 +313,7 @@ internal sealed class OllyView {
             bool on = (face.Front & f) != 0;
             Show(fronts[i], on);
             if (on) {
-                Vector2 offset = f switch {
-                    MarkFront.Tremble or MarkFront.Tendon => hairFollow + hairOffset,
-                    MarkFront.BlushBig => faceOffset,
-                    _ => headOffset,
-                };
-                Put(fronts[i], OllyAnchors.Fronts[i] + offset);
+                Put(fronts[i], OllyAnchors.Fronts[i] + headOffset);
             }
         }
     }

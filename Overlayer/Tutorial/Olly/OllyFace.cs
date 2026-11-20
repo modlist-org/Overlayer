@@ -75,8 +75,9 @@ internal static class OllyAnchors {
     public static readonly Vector2 Hair = new(11, 6);
     public static readonly Vector2 HairBg = new(7, 3);
     public static readonly Vector2 LidUp = new(53, 96);
+    public static readonly Vector2 LidUBg = new(53, 92);
+    public static readonly Vector2 LidDBg = new(63, 122);
     public static readonly Vector2 LidDown = new(63, 126);
-    public static readonly Vector2 LidBg = new(53, 92);
     public static readonly Vector2 Nose = new(121, 134);
     public static readonly Vector2 ShineLeft = new(82, 108);
     public static readonly Vector2 ShineRight = new(146, 107);
