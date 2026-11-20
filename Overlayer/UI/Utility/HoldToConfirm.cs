@@ -11,7 +11,7 @@ namespace Overlayer.UI.Utility;
 /// <summary>
 /// osu!lazer HoldToConfirmContainer-style dangerous button helper:
 /// holding left mouse fills crimson red from left to right (and tints the button outline)
-/// and fires <c>onConfirm</c> at 100%; releasing or leaving early smoothly drains back.
+/// and fires <c>onConfirm</c> at 100%; holding Shift confirms immediately, and releasing or leaving early smoothly drains back.
 /// </summary>
 internal static class HoldToConfirm {
     private static readonly Color FillRed = new(0.90f, 0.20f, 0.26f, 0.90f);
@@ -99,6 +99,10 @@ internal static class HoldToConfirm {
             (EventTriggerType.PointerDown, e => {
                 if (e is PointerEventData pe && pe.button == PointerEventData.InputButton.Left
                     && (entry.CanConfirm == null || entry.CanConfirm())) {
+                    if (IsShiftHeld()) {
+                        ConfirmNow(entry);
+                        return;
+                    }
                     entry.Holding = true;
                     if (!Active.Contains(entry)) {
                         Active.Add(entry);
@@ -137,7 +141,7 @@ internal static class HoldToConfirm {
             }
 
             if (e.Holding && mouseDown) {
-                e.Progress = Mathf.Min(1f, e.Progress + dt / e.Duration);
+                e.Progress = IsShiftHeld() ? 1f : Mathf.Min(1f, e.Progress + dt / e.Duration);
             } else {
                 e.Holding = false;
                 e.Progress = Mathf.Max(0f, e.Progress - dt / 0.18f);
@@ -147,14 +151,10 @@ internal static class HoldToConfirm {
             ApplyOutlineColor(e);
 
             if (e.Progress >= 1f) {
-                e.Holding = false;
-                e.Progress = 0f;
-                e.FillRect.anchorMax = new Vector2(0f, 1f);
-                ApplyOutlineColor(e);
-                Active.RemoveAt(i);
-                UISound.SetHoldCharge(null);
-                UISound.PlayConfirm();
-                e.OnConfirm?.Invoke();
+                ConfirmNow(e);
+                if (i > Active.Count) {
+                    i = Active.Count;
+                }
                 continue;
             }
 
@@ -168,6 +168,22 @@ internal static class HoldToConfirm {
         }
 
         UISound.SetHoldCharge(maxHoldingProgress);
+    }
+
+    private static bool IsShiftHeld() =>
+        O5Input.GetKey(KeyCode.LeftShift) || O5Input.GetKey(KeyCode.RightShift);
+
+    private static void ConfirmNow(Entry e) {
+        e.Holding = false;
+        e.Progress = 0f;
+        if (e.FillRect != null) {
+            e.FillRect.anchorMax = new Vector2(0f, 1f);
+        }
+        ApplyOutlineColor(e);
+        Active.Remove(e);
+        UISound.SetHoldCharge(null);
+        UISound.PlayConfirm();
+        e.OnConfirm?.Invoke();
     }
 
     private static void ApplyOutlineColor(Entry e) {
