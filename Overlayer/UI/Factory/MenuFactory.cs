@@ -131,23 +131,23 @@ public static class MenuFactory {
 
         var trigger = item.AddComponent<EventTrigger>();
 
-        void Add(EventTriggerType type, Action cb) {
+        void Add(EventTriggerType type, Action<BaseEventData> cb) {
             var e = new EventTrigger.Entry {
                 eventID = type
             };
 
             e.callback.AddListener(
 #if ML && IL2CPP
-                new Action<BaseEventData>((_) => cb())
+                new Action<BaseEventData>(d => cb(d))
 #else
-                (_) => cb()
+                d => cb(d)
 #endif
             );
 
             trigger.triggers.Add(e);
         }
 
-        Add(EventTriggerType.PointerEnter, () => {
+        Add(EventTriggerType.PointerEnter, _ => {
             if (UICore.CurrentMenuState == state) {
                 return;
             }
@@ -156,7 +156,7 @@ public static class MenuFactory {
             menuItem.hoverSeq = bg.TColor(UIColors.MenuHover, 0.2f, O5Ease.OutSine);
         });
 
-        Add(EventTriggerType.PointerExit, () => {
+        Add(EventTriggerType.PointerExit, _ => {
             if (UICore.CurrentMenuState == state) {
                 return;
             }
@@ -165,7 +165,15 @@ public static class MenuFactory {
             menuItem.hoverSeq = bg.TColor(UIColors.MenuNormal, 0.25f, O5Ease.OutSine);
         });
 
-        Add(EventTriggerType.PointerClick, () => SetState(state));
+        Add(EventTriggerType.PointerClick, e => {
+            if (e is PointerEventData ped && ped.button != PointerEventData.InputButton.Left) {
+                return;
+            }
+            if (UICore.CurrentMenuState != state) {
+                UISound.PlayConfirm();
+                SetState(state);
+            }
+        });
 
         return menuItem;
     }
