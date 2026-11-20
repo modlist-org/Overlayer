@@ -40,9 +40,14 @@ public enum UISliceSprite {
 }
 
 public sealed class SpriteManager(ResourceManager resource) : IDisposable {
+    private const int SmoothCircleSize = 128;
+    // Slight inset keeps edge texels at alpha 0 so small dots never clip into flat sides.
+    private const float SmoothCirclePad = 0.035f;
+
     private readonly ResourceManager resource = resource;
     private readonly O5Resources o5 = O5Resources.Bundled();
     private readonly Dictionary<object, Sprite> cache = [];
+    private Texture2D smoothCircleTex;
 
     public static Sprite Create(Texture2D texture)
         => texture == null ? null : Sprite.Create(
@@ -138,6 +143,47 @@ public sealed class SpriteManager(ResourceManager resource) : IDisposable {
         return sprite;
     }
 
+    private Texture2D SmoothCircleTexture() {
+        if (smoothCircleTex != null) {
+            return smoothCircleTex;
+        }
+        int size = SmoothCircleSize;
+        var tex = new Texture2D(size, size, TextureFormat.RGBA32, true, false) {
+            filterMode = FilterMode.Trilinear,
+            wrapMode = TextureWrapMode.Clamp,
+            mipMapBias = -0.5f,
+            hideFlags = HideFlags.HideAndDontSave,
+        };
+        var pixels = new Color32[size * size];
+        float center = size * 0.5f;
+        float radius = size * (0.5f - SmoothCirclePad);
+        for (int y = 0; y < size; y++) {
+            float dy = y + 0.5f - center;
+            for (int x = 0; x < size; x++) {
+                float dx = x + 0.5f - center;
+                float alpha = Mathf.Clamp01(radius - Mathf.Sqrt(dx * dx + dy * dy) + 0.5f);
+                pixels[y * size + x] = new Color32(255, 255, 255, (byte)Mathf.RoundToInt(alpha * 255f));
+            }
+        }
+        tex.SetPixels32(pixels);
+        tex.Apply(true, true);
+        return smoothCircleTex = tex;
+    }
+
+    public Sprite GetSmoothSliced(float radius) {
+        if (radius <= 0f) {
+            return null;
+        }
+        object key = ("smooth_circle_sliced", radius);
+        if (cache.TryGetValue(key, out Sprite sprite)) {
+            return sprite;
+        }
+        float half = SmoothCircleSize * 0.5f;
+        sprite = CreateSliced(SmoothCircleTexture(), half * 100f / radius, new Vector4(half, half, half, half));
+        cache[key] = sprite;
+        return sprite;
+    }
+
     private Sprite Get(O5Asset asset) {
         if (cache.TryGetValue(asset, out Sprite sprite)) {
             return sprite;
@@ -148,6 +194,7 @@ public sealed class SpriteManager(ResourceManager resource) : IDisposable {
             return null;
         }
 
+        tex.wrapMode = TextureWrapMode.Clamp;
         sprite = Create(tex);
         cache[asset] = sprite;
         return sprite;
@@ -164,12 +211,22 @@ public sealed class SpriteManager(ResourceManager resource) : IDisposable {
             return null;
         }
 
+        tex.wrapMode = TextureWrapMode.Clamp;
         sprite = CreateSliced(tex, ppui, border);
         cache[key] = sprite;
         return sprite;
     }
 
     public Sprite Get(UISprite sprite) {
+        if (sprite == UISprite.Circle256) {
+            if (cache.TryGetValue(sprite, out Sprite cached)) {
+                return cached;
+            }
+            Sprite smooth = Create(SmoothCircleTexture());
+            cache[sprite] = smooth;
+            return smooth;
+        }
+
         if (o5SpriteMap.TryGetValue(sprite, out O5Asset o5Asset)) {
             return Get(o5Asset);
         }
@@ -203,6 +260,10 @@ public sealed class SpriteManager(ResourceManager resource) : IDisposable {
         }
 
         cache.Clear();
+        if (smoothCircleTex != null) {
+            Object.Destroy(smoothCircleTex);
+            smoothCircleTex = null;
+        }
         o5.Dispose();
     }
 
@@ -229,7 +290,6 @@ public sealed class SpriteManager(ResourceManager resource) : IDisposable {
     };
 
     private readonly Dictionary<UISprite, O5Asset> o5SpriteMap = new() {
-        [UISprite.Circle256] = O5Asset.Circle256,
         [UISprite.X128] = O5Asset.X128,
         [UISprite.ToggleCircle128] = O5Asset.ToggleCircle128,
         [UISprite.Triangle128] = O5Asset.Triangle128,

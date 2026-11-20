@@ -47,6 +47,7 @@
     "DESC_SHOW_TOOLTIP": "이게 도움말입니다!",
     "DESC_SYSTEM_FONT": "리소스에서 불러오는 UI 서체. 비어 있으면 내장 기본값.",
     "DOCS": "문서",
+    "EASING": "가감속",
     "EDITING_TEXTURE_SETTINGS": "{0} 텍스처 설정을 편집 중입니다.",
     "EMPTY": "(비어 있음)",
     "ENTER_RESOURCE_NAME": "자원 이름을 입력하세요.",
