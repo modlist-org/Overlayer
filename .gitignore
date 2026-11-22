@@ -448,5 +448,6 @@ tool/build-refs.zip
 
 
 # Zig build outputs
+OllyParts/
 zig-out/
 .zig-cache/
