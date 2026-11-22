@@ -62,7 +62,7 @@ internal static partial class HudEditor {
         var dock = new Dock { Id = id, Title = title, Section = section, Body = body, Visible = visible };
         docks.Add(dock);
         grabbable[header] = () => Tear(dock);
-        header.AddToolTip(O5KitAdapters.Ctx, "Drag out of the panel to make it a window");
+        header.AddToolTip(O5KitAdapters.Ctx, Tr("HUD_DETACH_SECTION", "Detach section"));
         return body;
     }
 
@@ -227,14 +227,14 @@ internal static partial class HudEditor {
         bar.rectTransform.sizeDelta = new Vector2(0f, DockTitleHeight);
         UnityUtils.AddEvents(bar.gameObject.AddComponent<EventTrigger>(),
             (EventTriggerType.Drag, e => {
-                if (e is PointerEventData pe) {
+                if (UnityUtils.AsPointerEventData(e) is { } pe) {
                     titleDragging = dock;
                     window.anchoredPosition += pe.delta / UiScale;
                 }
             }),
             (EventTriggerType.EndDrag, e => {
                 titleDragging = null;
-                if (e is PointerEventData pe && panelShown && RectTransformUtility.RectangleContainsScreenPoint(panel, pe.position, null)) {
+                if (UnityUtils.AsPointerEventData(e) is { } pe && panelShown && RectTransformUtility.RectangleContainsScreenPoint(panel, pe.position, null)) {
                     Attach(dock);
                 } else {
                     SaveDocks();
@@ -256,7 +256,7 @@ internal static partial class HudEditor {
         backCell.anchoredPosition = new Vector2(-8f, 0f);
         backCell.sizeDelta = new Vector2(24f, 24f);
         var back = Track(UiStyle.IconButton(backCell, "plus_hud_undock_" + dock.Id.Replace(' ', '_'), MainCore.Spr.Get(UISprite.X128), () => Attach(dock), 7f));
-        UiStyle.Tooltip(back, "Put it back in the panel (or drag it onto the panel)");
+        UiStyle.Tooltip(back, Tr("HUD_DOCK_PANEL", "Dock to panel"));
 
         var scrollHost = NewRect("Scroll", window);
         Stretch(scrollHost);
@@ -276,7 +276,7 @@ internal static partial class HudEditor {
             return;
         }
         if (dropHint == null) {
-            dropHint = UiStyle.Rounded("DropHint", panel, new Color(0.569f, 0.604f, 1f, 0.16f));
+            dropHint = UiStyle.Rounded("DropHint", panel, O5Kit.Core.O5Palette.WithAlpha(Overlayer.UI.UIColors.ObjectActive, 0.16f));
             dropHint.raycastTarget = false;
             Stretch(dropHint.rectTransform);
         }
@@ -297,7 +297,7 @@ internal static partial class HudEditor {
         mark.rectTransform.localEulerAngles = new Vector3(0f, 0f, 45f);
         UnityUtils.AddEvents(grip.gameObject.AddComponent<EventTrigger>(),
             (EventTriggerType.Drag, e => {
-                if (e is PointerEventData pe && dock.Window != null) {
+                if (UnityUtils.AsPointerEventData(e) is { } pe && dock.Window != null) {
                     var size = dock.Window.sizeDelta + new Vector2(pe.delta.x, -pe.delta.y) / UiScale;
                     dock.Window.sizeDelta = new Vector2(Mathf.Max(MinDockWidth, size.x), Mathf.Max(MinDockHeight, size.y));
                 }

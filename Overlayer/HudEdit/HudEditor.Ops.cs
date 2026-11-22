@@ -105,10 +105,20 @@ internal static partial class HudEditor {
     // ---- targets ----
 
     private static OvCanvas MainCanvas(bool create) {
-        string name = string.IsNullOrWhiteSpace(MainCore.Conf.HudMainCanvas.Value) ? "HUD" : MainCore.Conf.HudMainCanvas.Value;
+        string configured = MainCore.Conf.HudMainCanvas.Value;
+        string name = string.IsNullOrWhiteSpace(configured) ? "Canvas" : configured;
         var canvas = OverlayCore.Canvases.FirstOrDefault(c => c != null && c.Config.Name.Value == name && !HudElement.IsPackage(c));
         if (canvas != null || !create) {
             return canvas;
+        }
+        if (string.Equals(name, "HUD", StringComparison.Ordinal)) {
+            name = "Canvas";
+            MainCore.Conf.HudMainCanvas.Value = name;
+            MainCore.ConfMgr.RequestSave();
+            canvas = OverlayCore.Canvases.FirstOrDefault(c => c != null && c.Config.Name.Value == name && !HudElement.IsPackage(c));
+            if (canvas != null) {
+                return canvas;
+            }
         }
         canvas = OverlayCore.CreateOvCanvas();
         canvas.Config.Name.Value = name;
@@ -117,12 +127,16 @@ internal static partial class HudEditor {
     }
 
     private static OvCanvas NewCanvas() {
-        int n = 1;
-        while (OverlayCore.Canvases.Any(c => c?.Config.Name.Value == $"HUD {n}")) {
-            n++;
+        string name = "Canvas";
+        if (OverlayCore.Canvases.Any(c => c?.Config.Name.Value == name)) {
+            int n = 2;
+            while (OverlayCore.Canvases.Any(c => c?.Config.Name.Value == $"Canvas {n}")) {
+                n++;
+            }
+            name = $"Canvas {n}";
         }
         var canvas = OverlayCore.CreateOvCanvas();
-        canvas.Config.Name.Value = $"HUD {n}";
+        canvas.Config.Name.Value = name;
         canvas.ApplyConfig();
         return canvas;
     }
@@ -172,17 +186,22 @@ internal static partial class HudEditor {
     }
 
     private static void FlushPendingPlace() {
+        bool flushed = false;
         for (int i = pendingPlace.Count - 1; i >= 0; i--) {
             var (obj, screen, frame) = pendingPlace[i];
             if (Time.frameCount <= frame) {
                 continue;
             }
             pendingPlace.RemoveAt(i);
+            flushed = true;
             if (obj.GameObject != null && obj.GameObject.activeInHierarchy) {
                 PlaceAt(obj, screen);
             }
             RefreshInspectorSoon();
             SyncPanelValues();
+        }
+        if (flushed) {
+            UpdatePanelSide();
         }
     }
 
@@ -213,6 +232,30 @@ internal static partial class HudEditor {
         var placed = new Slot(slot.Canvas, slot.Parent, slot.Parent != null ? slot.Parent.Children.IndexOf(obj) : slot.Canvas.OvObjects.IndexOf(obj));
         undo.Push(new ActionCommand(() => ToTrash(obj, placed), () => FromTrash(obj, placed)));
         AfterStructureChange(obj);
+    }
+
+    private static void CreateOnCanvas(NewKind kind, OvCanvas canvas) {
+        if (canvas == null || HudElement.IsPackage(canvas)) {
+            return;
+        }
+        var obj = NewObject(kind);
+        var slot = new Slot(canvas, null, -1);
+        AttachAt(obj, slot);
+        PlaceAtSoon(obj, new Vector2(Screen.width * 0.5f, Screen.height * 0.5f));
+        var placed = new Slot(canvas, null, canvas.OvObjects.IndexOf(obj));
+        undo.Push(new ActionCommand(() => ToTrash(obj, placed), () => FromTrash(obj, placed)));
+        AfterStructureChange(obj);
+    }
+
+    private static void DeleteObject(OvCanvas canvas, OvObject obj) {
+        if (canvas == null || obj == null || HudElement.IsPackage(canvas)) {
+            return;
+        }
+        var slot = ObjectSlot(canvas, obj);
+        ToTrash(obj, slot);
+        undo.Push(new ActionCommand(() => FromTrash(obj, slot), () => ToTrash(obj, slot)));
+        AfterStructureChange(null);
+        layersDirty = true;
     }
 
     public static void DeleteSelection() {

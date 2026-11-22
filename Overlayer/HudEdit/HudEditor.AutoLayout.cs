@@ -66,6 +66,7 @@ internal static partial class HudEditor {
         c.SizeDelta.StaticValue = s.Rect.Size;
         o.ApplyComponent();
         o.ApplyConfig();
+        RebuildLayoutTree(o);
     }
 
     // A GameObject takes a single layout group, and Destroy waits for the end of the frame.
@@ -76,6 +77,19 @@ internal static partial class HudEditor {
         }
     }
 
+    private static void RebuildLayoutTree(OvObject obj) {
+        if (obj?.GameObject == null || !obj.GameObject.activeInHierarchy) {
+            return;
+        }
+        foreach (var child in obj.Children) {
+            RebuildLayoutTree(child);
+        }
+        obj.TextUpdater?.Flush();
+        if (obj.RectTransform != null) {
+            LayoutRebuilder.ForceRebuildLayoutImmediate(obj.RectTransform);
+        }
+    }
+
     public static void SetFlow(Flow flow) {
         var el = Primary;
         if (selection.Count != 1 || !CanAutoLayout(el) || FlowOf(el.Object) == flow) {
@@ -83,6 +97,9 @@ internal static partial class HudEditor {
         }
         CommitQuickEdit();
         var obj = el.Object;
+        foreach (var child in obj.Children) {
+            RebuildLayoutTree(child);
+        }
         var before = CaptureLayout(obj);
         Flow was = FlowOf(obj);
         el.GetScreenCorners(corners);
@@ -94,7 +111,7 @@ internal static partial class HudEditor {
         // Keep gap / padding / alignment when switching between row and column.
         float gap = GapOf(obj)?.StaticValue ?? -1f;
         Vector2 padH = PadHOf(obj)?.StaticValue ?? Vector2.zero, padV = PadVOf(obj)?.StaticValue ?? Vector2.zero;
-        TextAnchor align = AlignOf(obj)?.StaticValue ?? TextAnchor.UpperLeft;
+        TextAnchor align = AlignOf(obj)?.StaticValue ?? (flow == Flow.Row ? TextAnchor.MiddleLeft : TextAnchor.UpperCenter);
 
         RemoveLayoutGroupNow(obj);
         obj.Config.HorizontalLayoutGroupConfig = null;
@@ -110,6 +127,7 @@ internal static partial class HudEditor {
             foreach (var (child, screen) in placed) {
                 child.ApplyConfig();
                 PlaceAt(child, screen);
+                RebuildLayoutTree(child);
             }
         } else {
             // Turning it on: order by where they are on screen, so nothing gets shuffled.
@@ -153,11 +171,13 @@ internal static partial class HudEditor {
             obj.Config.RectTransformConfig.Pivot.StaticValue = new Vector2(0f, 1f);
             obj.ApplyComponent();
             obj.ApplyConfig();
-            LayoutRebuilder.ForceRebuildLayoutImmediate(obj.RectTransform);
+            RebuildLayoutTree(obj);
             obj.RectTransform.GetWorldCorners(corners);
             var cfg = obj.Config.RectTransformConfig;
+            cfg.SizeDelta.StaticValue = obj.RectTransform.sizeDelta;
             cfg.AnchoredPosition.StaticValue += el.ScreenToParentDelta(topLeft - (Vector2)corners[1]);
             cfg.ToUnity(obj.GameObject);
+            LayoutRebuilder.ForceRebuildLayoutImmediate(obj.RectTransform);
         }
         var after = CaptureLayout(obj);
         void Set(LayoutState s) {
@@ -189,7 +209,7 @@ internal static partial class HudEditor {
             count++;
         }
         float scale = Mathf.Max(Mathf.Abs(flow == Flow.Row ? group.lossyScale.x : group.lossyScale.y), 1e-4f);
-        return Mathf.Max(0f, Mathf.Round(total / count / scale));
+        return Mathf.Clamp(Mathf.Round(total / count / scale), 0f, 16f);
     }
 
     /// <summary>Wraps the selection in a new group laid out as a row or a column.</summary>

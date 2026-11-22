@@ -1,5 +1,6 @@
 using O5Kit.Behaviour;
 using O5Kit.Control;
+using O5Kit.Core;
 using O5Kit.Factory;
 using Overlayer.Async;
 using Overlayer.Compat;
@@ -32,6 +33,7 @@ internal static partial class HudEditor {
 
     private static RectTransform layersPanel;
     private static RectTransform layersContent;
+    private static CanvasGroup layersGroup;
     private static bool layersDirty = true;
     private static string layersSignature;
     // Groups start folded; these were opened by hand. The way down to a selected object opens by itself.
@@ -43,6 +45,7 @@ internal static partial class HudEditor {
         public Image Back;
         public OvCanvas Canvas;
         public OvObject Object; // null for a canvas row
+        public float TextLeft;
     }
 
     private static readonly List<LayerRow> layerRows = [];
@@ -51,15 +54,17 @@ internal static partial class HudEditor {
     private static (LayerRow Row, int Where)? dropTarget; // Where: -1 before, 0 inside, 1 after
     private static O5InputField renameField;
     private static O5Button layersButton;
+    private static OvObject layerAnchorObject;
 
     private static float LayersWidth => Mathf.Clamp(MainCore.Conf.HudLayersWidth.Value, MinLayersWidth, MaxLayersWidth);
     private static bool LayersShown => MainCore.Conf.HudLayersShown.Value;
 
-    private static readonly Color RowSelected = new(0.569f, 0.604f, 1f, 0.32f);
+    private static Color RowSelected => O5Palette.WithAlpha(Overlayer.UI.UIColors.ObjectActive, 0.32f);
     private static readonly Color RowHover = new(1f, 1f, 1f, 0.06f);
 
     private static void BuildLayersPanel() {
         layersPanel = UiStyle.Rounded("Layers", root, UiStyle.Surface).rectTransform;
+        layersGroup = layersPanel.gameObject.AddComponent<CanvasGroup>();
         layersPanel.anchorMin = layersPanel.anchorMax = layersPanel.pivot = new Vector2(0f, 1f);
         layersPanel.anchoredPosition = new Vector2(Margin, -Margin);
 
@@ -73,7 +78,7 @@ internal static partial class HudEditor {
         title.color = UiStyle.Caption;
         title.characterSpacing = 6f;
         title.raycastTarget = false;
-        title.text = "CANVAS";
+        title.text = Tr("HUD_LAYERS_TITLE", "CANVAS").ToUpperInvariant();
 
         // New canvas, at the right of the title.
         var addHost = NewRect("NewCanvas", layersPanel);
@@ -81,7 +86,7 @@ internal static partial class HudEditor {
         addHost.anchoredPosition = new Vector2(-8f, -6f);
         addHost.sizeDelta = new Vector2(28f, 28f);
         var add = Track(UiStyle.IconButton(addHost, "plus_hud_new_canvas", MainCore.Spr.Get(UISprite.Plus128), AddCanvas, 8f));
-        UiStyle.Tooltip(add, "New canvas");
+        UiStyle.Tooltip(add, Tr("HUD_NEW_CANVAS", "New canvas"));
 
         var scrollHost = NewRect("Scroll", layersPanel);
         Stretch(scrollHost);
@@ -101,7 +106,7 @@ internal static partial class HudEditor {
         grip.rectTransform.sizeDelta = new Vector2(10f, 0f);
         UnityUtils.AddEvents(grip.gameObject.AddComponent<EventTrigger>(),
             (EventTriggerType.Drag, e => {
-                if (e is PointerEventData pe) {
+                if (UnityUtils.AsPointerEventData(e) is { } pe) {
                     MainCore.Conf.HudLayersWidth.Value = Mathf.Clamp(LayersWidth + pe.delta.x / UiScale, MinLayersWidth, MaxLayersWidth);
                     ApplyPanelLayout();
                 }
@@ -232,7 +237,16 @@ internal static partial class HudEditor {
             arrow.preserveAspect = true;
             arrow.rectTransform.sizeDelta = new Vector2(9f, 9f);
             arrow.rectTransform.localEulerAngles = new Vector3(0f, 0f, folded ? 90f : 0f);
-            UnityUtils.AddEvents(arrowHit.gameObject.AddComponent<EventTrigger>(), (EventTriggerType.PointerClick, _ => {
+            UnityUtils.AddEvents(arrowHit.gameObject.AddComponent<EventTrigger>(), (EventTriggerType.PointerClick, e => {
+                if (UnityUtils.AsPointerEventData(e) is { } pe) {
+                    if (pe.button == PointerEventData.InputButton.Right) {
+                        OnRowClick(row, pe);
+                        return;
+                    }
+                    if (pe.button != PointerEventData.InputButton.Left) {
+                        return;
+                    }
+                }
                 if (isCanvas) {
                     if (!foldedCanvases.Remove(canvas)) {
                         foldedCanvases.Add(canvas);
@@ -244,6 +258,7 @@ internal static partial class HudEditor {
             }));
         }
         x += 16f;
+        row.TextLeft = x;
 
         string name = isCanvas ? canvas.Config.Name.Value : obj.Config.Name.Value;
         var label = RowText(rect, isCanvas ? $"<b>{name}</b>" : name, x, -56f, isCanvas ? 14f : 15f,
@@ -253,15 +268,15 @@ internal static partial class HudEditor {
         label.enableWordWrapping = false;
 
         if (!isCanvas) {
-            // Visible (dot) and locked (square) toggles on the right.
-            Toggle(rect, -34f, UISprite.Circle256, !hidden, "Visible", () => SetHidden([obj], !hidden));
-            Toggle(rect, -12f, null, locked, "Locked (can't be picked on screen)", () => SetLocked(canvas, obj, !locked));
+            // Locked (padlock) and visible (eye) toggles on the right.
+            Toggle(row, -34f, locked ? UISprite.LockOn128 : UISprite.LockOff128, locked, Tr("HUD_LOCK", "Lock"), () => SetLocked(canvas, obj, !locked), 12f, 0.3f);
+            Toggle(row, -12f, hidden ? UISprite.EyeHide128 : UISprite.EyeOpen128, !hidden, Tr("HUD_VISIBLE", "Visible"), () => SetHidden([obj], !hidden), 14f, 0.42f);
         } else {
             if (!canvas.Config.Enabled.UseFx) {
                 bool shown = canvas.Config.Enabled.StaticValue;
-                Toggle(rect, -34f, UISprite.Circle256, shown, "Visible (the whole canvas)", () => SetCanvasHidden(canvas, shown));
+                Toggle(row, -34f, shown ? UISprite.EyeOpen128 : UISprite.EyeHide128, shown, Tr("HUD_VISIBLE", "Visible"), () => SetCanvasHidden(canvas, shown), 14f, 0.42f);
             }
-            DeleteToggle(rect, canvas);
+            DeleteToggle(row);
         }
 
         UnityUtils.AddEvents(rect.gameObject.AddComponent<EventTrigger>(),
@@ -271,13 +286,13 @@ internal static partial class HudEditor {
                 }
             }),
             (EventTriggerType.PointerExit, _ => HighlightRow(row)),
-            (EventTriggerType.PointerClick, e => OnRowClick(row, e as PointerEventData)),
-            (EventTriggerType.BeginDrag, _ => {
-                if (!isCanvas) {
+            (EventTriggerType.PointerClick, e => OnRowClick(row, UnityUtils.AsPointerEventData(e))),
+            (EventTriggerType.BeginDrag, e => {
+                if (!isCanvas && UnityUtils.AsPointerEventData(e) is { button: PointerEventData.InputButton.Left }) {
                     dragRow = row;
                 }
             }),
-            (EventTriggerType.Drag, e => OnRowDrag(e as PointerEventData)),
+            (EventTriggerType.Drag, e => OnRowDrag(UnityUtils.AsPointerEventData(e))),
             (EventTriggerType.EndDrag, _ => OnRowDrop()));
     }
 
@@ -301,19 +316,29 @@ internal static partial class HudEditor {
         return t;
     }
 
-    private static void Toggle(RectTransform row, float x, UISprite? sprite, bool on, string tooltip, Action toggle) {
-        var hit = NewRect("Toggle", row);
+    private static void Toggle(LayerRow row, float x, UISprite? sprite, bool on, string tooltip, Action toggle, float size = 9f, float offAlpha = 0.18f) {
+        var hit = NewRect("Toggle", row.Rect);
         hit.anchorMin = hit.anchorMax = new Vector2(1f, 0.5f);
         hit.anchoredPosition = new Vector2(x, 0f);
         hit.sizeDelta = new Vector2(20f, RowHeight);
         var hitImage = hit.gameObject.AddComponent<Image>();
         hitImage.color = Color.clear;
         hitImage.raycastTarget = true;
-        var mark = NewImage("Mark", hit, on ? Color.white : new Color(1f, 1f, 1f, 0.18f),
+        var mark = NewImage("Mark", hit, on ? Color.white : new Color(1f, 1f, 1f, offAlpha),
             sprite.HasValue ? MainCore.Spr.Get(sprite.Value) : null);
-        mark.rectTransform.sizeDelta = new Vector2(9f, 9f);
-        UnityUtils.AddEvents(hit.gameObject.AddComponent<EventTrigger>(), (EventTriggerType.PointerClick, _ => {
-                toggle();
+        mark.preserveAspect = true;
+        mark.rectTransform.sizeDelta = new Vector2(size, size);
+        UnityUtils.AddEvents(hit.gameObject.AddComponent<EventTrigger>(), (EventTriggerType.PointerClick, e => {
+            if (UnityUtils.AsPointerEventData(e) is { } pe) {
+                if (pe.button == PointerEventData.InputButton.Right) {
+                    OnRowClick(row, pe);
+                    return;
+                }
+                if (pe.button != PointerEventData.InputButton.Left) {
+                    return;
+                }
+            }
+            toggle();
             layersDirty = true;
         }));
         hit.AddToolTip(O5KitAdapters.Ctx, tooltip);
@@ -353,9 +378,17 @@ internal static partial class HudEditor {
     private static LayerRow lastRowClicked;
 
     private static void OnRowClick(LayerRow row, PointerEventData e) {
-        if (e == null || e.button != PointerEventData.InputButton.Left) {
+        if (e == null) {
             return;
         }
+        if (e.button == PointerEventData.InputButton.Right) {
+            OnRowRightClick(row, e);
+            return;
+        }
+        if (e.button != PointerEventData.InputButton.Left) {
+            return;
+        }
+        CloseContextMenu();
         // By object (or canvas): the first click selects, which rebuilds the rows.
         bool sameRow = row.Object != null
             ? ReferenceEquals(row.Object, lastRowClicked?.Object)
@@ -368,6 +401,7 @@ internal static partial class HudEditor {
             return;
         }
         if (row.Object == null) {
+            layerAnchorObject = null;
             return;
         }
         // Hidden objects aren't on screen, so they can't be selected (show them first).
@@ -375,18 +409,229 @@ internal static partial class HudEditor {
         if (el == null) {
             return;
         }
-        if (Shift) {
+        if (Shift && layerAnchorObject != null) {
+            int a = layerRows.FindIndex(r => ReferenceEquals(r.Object, layerAnchorObject));
+            int b = layerRows.IndexOf(row);
+            if (a >= 0 && b >= 0) {
+                int lo = Math.Min(a, b);
+                int hi = Math.Max(a, b);
+                var range = new List<HudElement>();
+                if (Ctrl) {
+                    range.AddRange(selection);
+                }
+                for (int i = lo; i <= hi; i++) {
+                    if (layerRows[i].Object != null && ElementOf(layerRows[i].Object) is { } item && !range.Contains(item)) {
+                        range.Add(item);
+                    }
+                }
+                SetSelection(range);
+                HighlightRows();
+                return;
+            }
+        }
+        if (Ctrl || Shift) {
             ToggleSelect(el);
         } else {
             Select(el);
         }
+        layerAnchorObject = row.Object;
         HighlightRows();
     }
 
+    private static void OnRowRightClick(LayerRow row, PointerEventData e) {
+        if (row == null) {
+            return;
+        }
+        if (KeysBubbleOpen) {
+            CloseKeysBubble();
+        }
+        if (renameField != null) {
+            var prev = renameField;
+            renameField = null;
+            prev.Dispose();
+        }
+        if (row.Object == null) {
+            OpenLayerCanvasContextMenu(e.position, row.Canvas);
+            return;
+        }
+        var el = ElementOf(row.Object);
+        if (el == null) {
+            OpenHiddenObjectContextMenu(e.position, row.Canvas, row.Object);
+            return;
+        }
+        if (!selection.Contains(el)) {
+            Select(el);
+            layerAnchorObject = row.Object;
+            HighlightRows();
+        }
+        OpenLayerObjectContextMenu(e.position, row.Object);
+    }
+
+    private static void OpenLayerCanvasContextMenu(Vector2 mouse, OvCanvas canvas) {
+        if (canvas == null || HudElement.IsPackage(canvas)) {
+            return;
+        }
+        var targetCanvas = canvas;
+        var items = new List<(string Text, string Shortcut, Action Run, bool Danger)?> {
+            (Tr("HUD_RENAME", "Rename"), null, () => {
+                var live = layerRows.FirstOrDefault(r => r.Object == null && ReferenceEquals(r.Canvas, targetCanvas));
+                if (live != null) {
+                    BeginRenameCanvas(live);
+                }
+            }, false),
+            null,
+            (Tr("HUD_ADD_TEXT", "Add text"), null, () => CreateOnCanvas(NewKind.Text, targetCanvas), false),
+            (Tr("HUD_ADD_IMAGE", "Add image"), null, () => CreateOnCanvas(NewKind.Image, targetCanvas), false),
+        };
+        if (!targetCanvas.Config.Enabled.UseFx) {
+            bool shown = targetCanvas.Config.Enabled.StaticValue;
+            items.Add(null);
+            items.Add((shown ? Tr("HUD_HIDE", "Hide") : Tr("HUD_SHOW", "Show"), null, () => SetCanvasHidden(targetCanvas, shown), false));
+        }
+        items.Add(null);
+        items.Add((Tr("HUD_DELETE_CANVAS", "Delete canvas"), null, () => DeleteCanvas(targetCanvas), true));
+        ShowContextMenu(mouse, items);
+    }
+
+    private static void OpenLayerObjectContextMenu(Vector2 mouse, OvObject targetObj) {
+        if (targetObj == null || selection.Count == 0) {
+            return;
+        }
+        bool single = selection.Count == 1;
+        var primary = Primary;
+        bool anyEditable = selection.Any(s => !s.Locked);
+        bool allLocked = selection.All(s => s.UserLocked);
+        var items = new List<(string Text, string Shortcut, Action Run, bool Danger)?>();
+        if (single) {
+            var capturedObj = targetObj;
+            items.Add((Tr("HUD_RENAME", "Rename"), null, () => {
+                var live = layerRows.FirstOrDefault(r => ReferenceEquals(r.Object, capturedObj));
+                if (live != null) {
+                    BeginRename(live);
+                }
+            }, false));
+            if (primary != null && CanEditText(primary)) {
+                var capturedPrimary = primary;
+                items.Add((Tr("HUD_EDIT_TEXT", "Edit text"), null, () => BeginInlineEdit(capturedPrimary), false));
+            }
+            items.Add(null);
+            if (primary != null && !primary.Locked) {
+                items.Add((Tr("HUD_ADD_TEXT_INSIDE", "Add text inside"), null, () => Create(NewKind.Text, Placement.Child, null), false));
+                items.Add((Tr("HUD_ADD_IMAGE_INSIDE", "Add image inside"), null, () => Create(NewKind.Image, Placement.Child, null), false));
+                items.Add(null);
+                items.Add((Tr("HUD_BRING_FRONT", "Bring to front"), "Ctrl+Shift+]", () => MoveToEnd(true), false));
+                items.Add((Tr("HUD_BRING_FORWARD", "Bring forward"), "Ctrl+]", () => MoveOrder(1), false));
+                items.Add((Tr("HUD_SEND_BACKWARD", "Send backward"), "Ctrl+[", () => MoveOrder(-1), false));
+                items.Add((Tr("HUD_SEND_BACK", "Send to back"), "Ctrl+Shift+[", () => MoveToEnd(false), false));
+                items.Add(null);
+            }
+        }
+        if (anyEditable) {
+            items.Add((Tr("HUD_GROUP", "Group"), "Ctrl+G", GroupSelection, false));
+            if (selection.Any(s => !s.Locked && s.Object.Children.Count > 0)) {
+                items.Add((Tr("HUD_UNGROUP", "Ungroup"), "Ctrl+Shift+G", UngroupSelection, false));
+            }
+            items.Add(null);
+            items.Add((Tr("HUD_COPY", "Copy"), "Ctrl+C", CopySelection, false));
+            items.Add((Tr("HUD_PASTE", "Paste"), "Ctrl+V", () => Paste(false), false));
+            items.Add((Tr("HUD_COPY_STYLE", "Copy style"), "Ctrl+Alt+C", CopyStyle, false));
+            items.Add((Tr("HUD_PASTE_STYLE", "Paste style"), "Ctrl+Alt+V", PasteStyle, false));
+            items.Add((Tr("HUD_DUPLICATE", "Duplicate"), "Ctrl+D", DuplicateSelection, false));
+            items.Add(null);
+        }
+        bool nextLock = !allLocked;
+        items.Add((allLocked ? Tr("HUD_UNLOCK", "Unlock") : Tr("HUD_LOCK", "Lock"), "Ctrl+Shift+L", () => {
+            var targets = selection.Where(s => s.IsAlive).ToList();
+            foreach (var s in targets) {
+                SetLocked(s.Canvas, s.Object, nextLock);
+            }
+            layersDirty = true;
+        }, false));
+        if (anyEditable) {
+            items.Add((Tr("HUD_HIDE", "Hide"), "Ctrl+Shift+H", HideSelection, false));
+            items.Add((Tr("HUD_RESET_TRANSFORM", "Reset transform"), null, ResetSelection, false));
+            items.Add(null);
+            items.Add((Tr("HUD_DELETE", "Delete"), "Del", DeleteSelection, true));
+        }
+        ShowContextMenu(mouse, items);
+    }
+
+    private static void OpenHiddenObjectContextMenu(Vector2 mouse, OvCanvas canvas, OvObject obj) {
+        if (canvas == null || obj == null || HudElement.IsPackage(canvas)) {
+            return;
+        }
+        var targetCanvas = canvas;
+        var targetObj = obj;
+        bool locked = IsUserLocked(targetCanvas, targetObj);
+        var items = new List<(string Text, string Shortcut, Action Run, bool Danger)?> {
+            (Tr("HUD_RENAME", "Rename"), null, () => {
+                var live = layerRows.FirstOrDefault(r => ReferenceEquals(r.Object, targetObj));
+                if (live != null) {
+                    BeginRename(live);
+                }
+            }, false),
+        };
+        if (!targetObj.Config.Enabled.UseFx) {
+            items.Add((Tr("HUD_SHOW", "Show"), null, () => SetHidden([targetObj], false), false));
+        }
+        items.Add((locked ? Tr("HUD_UNLOCK", "Unlock") : Tr("HUD_LOCK", "Lock"), null, () => {
+            SetLocked(targetCanvas, targetObj, !locked);
+            layersDirty = true;
+        }, false));
+        items.Add(null);
+        items.Add((Tr("HUD_DELETE", "Delete"), null, () => DeleteObject(targetCanvas, targetObj), true));
+        ShowContextMenu(mouse, items);
+    }
+
+    private static void StyleRenameField(O5InputField field, LayerRow row) {
+        field.Rect.anchorMin = Vector2.zero;
+        field.Rect.anchorMax = Vector2.one;
+        float left = Mathf.Max(18f, row.TextLeft - 6f);
+        field.Rect.offsetMin = new Vector2(left, 1f);
+        field.Rect.offsetMax = new Vector2(-50f, -1f);
+
+        var input = field.InputField;
+        if (input.textComponent != null) {
+            input.textComponent.fontSize = 14f;
+            input.textComponent.alignment = TextAlignmentOptions.MidlineLeft;
+            input.textComponent.extraPadding = false;
+        }
+        if (field.Placeholder != null) {
+            field.Placeholder.fontSize = 14f;
+            field.Placeholder.alignment = TextAlignmentOptions.MidlineLeft;
+            field.Placeholder.extraPadding = false;
+        }
+        if (input.textViewport != null) {
+            input.textViewport.offsetMin = new Vector2(6f, 1f);
+            input.textViewport.offsetMax = new Vector2(-6f, -1f);
+        }
+        input.caretWidth = 1;
+
+        var bgImg = field.Rect.GetComponent<Image>();
+        if (bgImg != null) {
+            bgImg.pixelsPerUnitMultiplier = 1.25f;
+        }
+        var hoverTr = field.Rect.Find("Hover");
+        var hoverImg = hoverTr != null ? hoverTr.GetComponent<Image>() : null;
+        if (hoverImg != null) {
+            hoverImg.sprite = MainCore.Spr.Get(UISliceSprite.CircleOutline256O32P1024);
+            hoverImg.pixelsPerUnitMultiplier = 2.5f;
+            hoverImg.color = O5KitAdapters.Ctx.Theme.ControlOutlineHover;
+        }
+    }
+
     private static void BeginRename(LayerRow row) {
+        if (row?.Rect == null) {
+            return;
+        }
         if (row.Object == null) {
             BeginRenameCanvas(row);
             return;
+        }
+        if (renameField != null) {
+            var prev = renameField;
+            renameField = null;
+            prev.Dispose();
         }
         var obj = row.Object;
         renameField = O5Factory.Input(O5KitAdapters.Ctx, row.Rect, "plus_hud_rename", new O5InputOptions {
@@ -412,10 +657,7 @@ internal static partial class HudEditor {
                 undo.Push(new ActionCommand(() => Set(before), () => Set(after)));
             },
         });
-        renameField.Rect.anchorMin = Vector2.zero;
-        renameField.Rect.anchorMax = Vector2.one;
-        renameField.Rect.offsetMin = new Vector2(20f, 1f);
-        renameField.Rect.offsetMax = new Vector2(-50f, -1f);
+        StyleRenameField(renameField, row);
         renameField.InputField.ActivateInputField();
         renameField.InputField.Select();
     }
@@ -437,8 +679,8 @@ internal static partial class HudEditor {
     }
 
     // Small X at the row's end; red on hover.
-    private static void DeleteToggle(RectTransform row, OvCanvas canvas) {
-        var hit = NewRect("Delete", row);
+    private static void DeleteToggle(LayerRow row) {
+        var hit = NewRect("Delete", row.Rect);
         hit.anchorMin = hit.anchorMax = new Vector2(1f, 0.5f);
         hit.anchoredPosition = new Vector2(-12f, 0f);
         hit.sizeDelta = new Vector2(20f, RowHeight);
@@ -450,8 +692,19 @@ internal static partial class HudEditor {
         UnityUtils.AddEvents(hit.gameObject.AddComponent<EventTrigger>(),
             (EventTriggerType.PointerEnter, _ => mark.color = UiStyle.Danger),
             (EventTriggerType.PointerExit, _ => mark.color = new Color(1f, 1f, 1f, 0.3f)),
-            (EventTriggerType.PointerClick, _ => DeleteCanvas(canvas)));
-        hit.AddToolTip(O5KitAdapters.Ctx, "Delete this canvas (and everything in it). Ctrl+Z brings it back.");
+            (EventTriggerType.PointerClick, e => {
+                if (UnityUtils.AsPointerEventData(e) is { } pe) {
+                    if (pe.button == PointerEventData.InputButton.Right) {
+                        OnRowClick(row, pe);
+                        return;
+                    }
+                    if (pe.button != PointerEventData.InputButton.Left) {
+                        return;
+                    }
+                }
+                DeleteCanvas(row.Canvas);
+            }));
+        hit.AddToolTip(O5KitAdapters.Ctx, Tr("HUD_DELETE_CANVAS", "Delete canvas"));
     }
 
     public static void DeleteCanvas(OvCanvas canvas) {
@@ -500,6 +753,14 @@ internal static partial class HudEditor {
     }
 
     private static void BeginRenameCanvas(LayerRow row) {
+        if (row?.Rect == null) {
+            return;
+        }
+        if (renameField != null) {
+            var prev = renameField;
+            renameField = null;
+            prev.Dispose();
+        }
         var canvas = row.Canvas;
         renameField = O5Factory.Input(O5KitAdapters.Ctx, row.Rect, "plus_hud_rename", new O5InputOptions {
             Value = canvas.Config.Name.Value,
@@ -530,10 +791,7 @@ internal static partial class HudEditor {
                 undo.Push(new ActionCommand(() => Set(after, before), () => Set(before, after)));
             },
         });
-        renameField.Rect.anchorMin = Vector2.zero;
-        renameField.Rect.anchorMax = Vector2.one;
-        renameField.Rect.offsetMin = new Vector2(20f, 1f);
-        renameField.Rect.offsetMax = new Vector2(-50f, -1f);
+        StyleRenameField(renameField, row);
         renameField.InputField.ActivateInputField();
         renameField.InputField.Select();
     }

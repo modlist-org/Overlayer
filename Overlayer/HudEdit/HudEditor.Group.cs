@@ -59,6 +59,7 @@ internal static partial class HudEditor {
                 group.Attach(members[i].Obj);
                 members[i].Obj.ApplyConfig();
                 PlaceAt(members[i].Obj, world[i]);
+                RebuildLayoutTree(members[i].Obj);
             }
         }
 

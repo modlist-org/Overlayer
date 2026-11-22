@@ -19,32 +19,39 @@ internal sealed class HudElement {
     public readonly OvObject Object;
     public readonly RectTransform Rect;
     public readonly RectTransformSettings Config;
-    public readonly string LockReason;
+    private readonly LockKind lockKind;
     public readonly int Depth;
     /// <summary>Locked with the lock toggle (can't be picked on screen).</summary>
     public readonly bool UserLocked;
 
     private readonly TextMeshProUGUI text;
 
-    private HudElement(OvCanvas canvas, OvObject obj, string lockReason, int depth, bool userLocked) {
+    private enum LockKind { None, Package, User, Layout }
+
+    private HudElement(OvCanvas canvas, OvObject obj, LockKind lockKind, int depth, bool userLocked) {
         UserLocked = userLocked;
         Canvas = canvas;
         Object = obj;
         Rect = obj.RectTransform;
         Config = obj.Config.RectTransformConfig;
-        LockReason = lockReason;
+        this.lockKind = lockKind;
         Depth = depth;
         text = obj.GameObject.GetComponent<TextMeshProUGUI>();
     }
 
     public string Name => Object.GameObject != null ? Object.GameObject.name : "?";
     public bool IsAlive => Rect != null && Object.GameObject != null && Object.GameObject.activeInHierarchy;
-    public bool Locked => LockReason != null;
+    public bool Locked => lockKind != LockKind.None;
     /// <summary>Placed by its parent's layout group: can't be moved, but can change order.</summary>
-    public bool LayoutDriven => LockReason == LayoutReason;
+    public bool LayoutDriven => lockKind == LockKind.Layout;
     /// <summary>Nothing about it can change (a layout group only takes its position).</summary>
     public bool ReadOnly => Locked && !LayoutDriven;
-    public const string LayoutReason = "Positioned by a layout group";
+    public string LockReason => lockKind switch {
+        LockKind.Package => HudEditor.Tr("HUD_LOCK_PACKAGE", "Installed package (read-only)"),
+        LockKind.User => HudEditor.Tr("HUD_LOCK_USER", "Locked"),
+        LockKind.Layout => HudEditor.Tr("HUD_LOCK_LAYOUT", "Positioned by a layout group"),
+        _ => null,
+    };
 
     // A tag/JS expression owns the value; dragging would fight it every frame.
     public bool CanMove => !Locked && !Config.AnchoredPosition.UseFx;
@@ -68,16 +75,29 @@ internal sealed class HudElement {
         public Vector3 Scale;
         public float Rotation;
         public Vector2 Size;
+        public Vector2 AnchorMin;
+        public Vector2 AnchorMax;
+        public Vector2 Pivot;
     }
+
+    public bool CanAnchor => !Locked && !Config.AnchorMin.UseFx && !Config.AnchorMax.UseFx && !Config.Pivot.UseFx;
 
     public State Capture() => new() {
         Position = Config.AnchoredPosition.StaticValue,
         Scale = Config.Scale.StaticValue,
         Rotation = Config.Rotation.StaticValue,
         Size = Config.SizeDelta.StaticValue,
+        AnchorMin = Config.AnchorMin.StaticValue,
+        AnchorMax = Config.AnchorMax.StaticValue,
+        Pivot = Config.Pivot.StaticValue,
     };
 
     public void Apply(State state) {
+        if (CanAnchor) {
+            Config.AnchorMin.StaticValue = state.AnchorMin;
+            Config.AnchorMax.StaticValue = state.AnchorMax;
+            Config.Pivot.StaticValue = state.Pivot;
+        }
         if (CanMove) {
             Config.AnchoredPosition.StaticValue = state.Position;
         }
@@ -101,14 +121,41 @@ internal sealed class HudElement {
     }
 
     /// <summary>
-    /// Screen-space corners BL, TL, TR, BR (overlay canvases render in screen pixels).
-    /// Text uses the visible glyph bounds: a TMP rect is often much bigger than its text.
+    /// True when this object actually renders something visible on its own (not an empty container,
+    /// disabled/fully-transparent Graphic, empty TMP text, or stencil-only Mask).
     /// </summary>
+    public static bool IsVisiblyRendered(OvObject obj) {
+        if (obj?.GameObject == null) {
+            return false;
+        }
+        if (obj.GameObject.GetComponent<OvRainComponent>() != null) {
+            return true;
+        }
+        var mesh = obj.GameObject.GetComponent<MeshRenderer>();
+        if (mesh != null && mesh.enabled) {
+            return true;
+        }
+        var graphic = obj.GameObject.GetComponent<Graphic>();
+        if (graphic == null || !graphic.enabled || graphic.color.a <= 0.001f) {
+            return false;
+        }
+        if (graphic is TextMeshProUGUI tmp && string.IsNullOrWhiteSpace(tmp.text)) {
+            return false;
+        }
+        var mask = obj.GameObject.GetComponent<Mask>();
+        if (mask != null && mask.enabled && !mask.showMaskGraphic) {
+            return false;
+        }
+        return true;
+    }
+
+    public bool HasVisibleRender => IsVisiblyRendered(Object);
+
     /// <summary>
-    /// Holds others and draws nothing itself. It's picked through its children (a click on
-    /// a child picks the group at the outer level), never by its own box.
+    /// Holds children and renders nothing itself. Never blocks clicks on its children
+    /// (selectable from the canvas tree or right-click context menu).
     /// </summary>
-    public bool IsGroup => Object.Children.Count > 0 && Object.GameObject.GetComponent<Graphic>() == null;
+    public bool IsGroup => Object.Children.Count > 0 && !HasVisibleRender;
 
     public void GetScreenCorners(Vector3[] corners) {
         if (TextCorners(Rect, text, corners)) {
@@ -116,8 +163,7 @@ internal sealed class HudElement {
         }
         // Nothing drawn of its own (a group): its box is what its children show, so a
         // full-screen layout group doesn't cover the whole screen for picking and snapping.
-        if (Object.Children.Count > 0 && Object.GameObject.GetComponent<Graphic>() == null
-            && ContentBounds(Object, out Vector2 min, out Vector2 max)) {
+        if (IsGroup && ContentBounds(Object, out Vector2 min, out Vector2 max)) {
             corners[0] = new Vector3(min.x, min.y);
             corners[1] = new Vector3(min.x, max.y);
             corners[2] = new Vector3(max.x, max.y);
@@ -154,7 +200,7 @@ internal sealed class HudElement {
             if (child?.GameObject == null || !child.GameObject.activeInHierarchy || child.RectTransform == null) {
                 continue;
             }
-            bool drawn = child.GameObject.GetComponent<Graphic>() != null;
+            bool drawn = IsVisiblyRendered(child);
             if (drawn) {
                 if (!TextCorners(child.RectTransform, child.GameObject.GetComponent<TextMeshProUGUI>(), scratch)) {
                     child.RectTransform.GetWorldCorners(scratch);
@@ -206,7 +252,7 @@ internal sealed class HudElement {
             if (canvas?.GameObject == null || !canvas.GameObject.activeInHierarchy) {
                 continue;
             }
-            string canvasLock = IsPackage(canvas) ? "Installed package (read-only)" : null;
+            LockKind canvasLock = IsPackage(canvas) ? LockKind.Package : LockKind.None;
             foreach (var obj in canvas.OvObjects) {
                 Add(list, canvas, obj, canvasLock, 0);
             }
@@ -214,7 +260,7 @@ internal sealed class HudElement {
         return list;
     }
 
-    private static void Add(List<HudElement> list, OvCanvas canvas, OvObject obj, string inheritedLock, int depth) {
+    private static void Add(List<HudElement> list, OvCanvas canvas, OvObject obj, LockKind inheritedLock, int depth) {
         if (obj?.GameObject == null || !obj.GameObject.activeInHierarchy) {
             return;
         }
@@ -222,11 +268,11 @@ internal sealed class HudElement {
             var parent = obj.GameObject.transform.parent;
             bool layoutDriven = parent != null && parent.GetComponent<LayoutGroup>() != null;
             bool userLocked = HudEditor.IsUserLocked(canvas, obj);
-            string reason = inheritedLock ?? (userLocked ? "Locked" : layoutDriven ? LayoutReason : null);
-            list.Add(new HudElement(canvas, obj, reason, depth, userLocked || inheritedLock == "Locked"));
+            LockKind reason = inheritedLock != LockKind.None ? inheritedLock : userLocked ? LockKind.User : layoutDriven ? LockKind.Layout : LockKind.None;
+            list.Add(new HudElement(canvas, obj, reason, depth, userLocked || inheritedLock == LockKind.User));
             // A locked object's children are locked with it.
-            if (userLocked) {
-                inheritedLock ??= "Locked";
+            if (userLocked && inheritedLock == LockKind.None) {
+                inheritedLock = LockKind.User;
             }
         }
         foreach (var child in obj.Children) {

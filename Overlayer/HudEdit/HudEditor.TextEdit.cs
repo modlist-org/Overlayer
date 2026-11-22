@@ -43,10 +43,13 @@ internal static partial class HudEditor {
         inlineHost = NewRect("InlineText", root);
         inlineHost.anchorMin = inlineHost.anchorMax = new Vector2(0.5f, 0.5f);
         inlineHost.pivot = new Vector2(0f, 1f);
-        // At least big enough to type in comfortably.
+        // At least big enough to type in comfortably, and kept within the screen bounds.
         var size = new Vector2(Mathf.Max(b.x - a.x + 24f, 260f), Mathf.Max(b.y - a.y + 12f, 48f));
         inlineHost.sizeDelta = size;
-        inlineHost.anchoredPosition = new Vector2(a.x - 12f, b.y + 6f);
+        float hw = root.rect.width * 0.5f, hh = root.rect.height * 0.5f;
+        inlineHost.anchoredPosition = new Vector2(
+            Mathf.Clamp(a.x - 12f, -hw + 8f, hw - size.x - 8f),
+            Mathf.Clamp(b.y + 6f, -hh + size.y + 8f, hh - 8f));
         inlineHost.SetAsLastSibling();
 
         string text = TextOf(el.Object);
@@ -120,13 +123,15 @@ internal static partial class HudEditor {
             (EventTriggerType.PointerExit, _ => tab.color = TabColor),
             (EventTriggerType.PointerClick, _ => OpenPanelFromTab()),
             (EventTriggerType.BeginDrag, _ => {
+                panelOnLeft = false;
+                UpdateSideLabel();
                 pullingPanel = true;
                 pulled = 0f;
                 ApplyPanelLayout();
                 SlidePanel();
             }),
             (EventTriggerType.Drag, e => {
-                if (e is PointerEventData pe) {
+                if (UnityUtils.AsPointerEventData(e) is { } pe) {
                     pulled = Mathf.Clamp(pulled - pe.delta.x / UiScale, 0f, PanelWidth + Margin);
                     SlidePanel();
                 }
@@ -137,11 +142,11 @@ internal static partial class HudEditor {
                 if (pulled >= PanelWidth * 0.3f) {
                     OpenPanelFromTab();
                 } else {
-                    panel.anchoredPosition = new Vector2(-Margin, -Margin);
+                    panel.anchoredPosition = new Vector2(-Margin, -TopInset);
                     ApplyPanelLayout();
                 }
             }));
-        pullTab.AddToolTip(O5KitAdapters.Ctx, "Pull out (or click) to show the panel");
+        pullTab.AddToolTip(O5KitAdapters.Ctx, Tr("HUD_SHOW_PANEL", "Show panel"));
     }
 
     // Hidden panel slides in from the right edge as far as it was pulled.
@@ -149,17 +154,19 @@ internal static partial class HudEditor {
         if (panel == null) {
             return;
         }
-        panel.anchoredPosition = new Vector2(-Margin + (PanelWidth + Margin) - pulled, -Margin);
+        panel.anchoredPosition = new Vector2(-Margin + (PanelWidth + Margin) - pulled, -TopInset);
         pullTab.anchoredPosition = new Vector2(10f - pulled, 0f);
     }
 
     private static void OpenPanelFromTab() {
         pullingPanel = false;
+        panelOnLeft = false;
+        UpdateSideLabel();
         O5KitAdapters.Ctx.Tooltip.Hide();
         MainCore.Conf.HudPanelPinned.Value = true;
         MainCore.ConfMgr.RequestSave();
         UpdatePinLabel();
-        panel.anchoredPosition = new Vector2(-Margin, -Margin);
+        panel.anchoredPosition = new Vector2(-Margin, -TopInset);
         ApplyPanelLayout();
     }
 

@@ -6,11 +6,16 @@ namespace Overlayer.HudEdit;
 // Read-only views into the editor for the tutorial: what to point at and what the user did.
 internal static partial class HudEditor {
     /// <summary>A piece of the editor by its path under the editor's root ("Panel", "Layers", ...).</summary>
-    internal static RectTransform Part(string path) => root != null ? root.Find(path) as RectTransform : null;
+    internal static RectTransform Part(string path) {
+        var r = root != null ? root.Find(path) as RectTransform : null;
+        return r != null && r.gameObject.activeInHierarchy ? r : null;
+    }
 
     /// <summary>A toolbar / bottom bar / panel button by the id it was made with ("add_text", "grid", "align_l" ...).</summary>
-    internal static RectTransform Control(string id)
-        => controls.FirstOrDefault(c => c != null && c.Id == "plus_hud_" + id)?.Rect;
+    internal static RectTransform Control(string id) {
+        var r = controls.FirstOrDefault(c => c != null && c.Id == "plus_hud_" + id)?.Rect;
+        return r != null && r.gameObject.activeInHierarchy ? r : null;
+    }
 
     internal static OvObject SelectedObject => Primary?.Object;
 
@@ -20,21 +25,40 @@ internal static partial class HudEditor {
 
     internal static bool AnyContextMenuOpen => contextMenu != null;
 
+    internal static RectTransform ContextMenuRect => contextMenu;
+
     internal static bool AnyDetached => docks.Any(d => d.Window != null);
 
     // ---- the tutorial's demos: objects it adds and takes away again, kept out of undo ----
 
     internal const string DemoName = "Olly's sample";
 
+    internal static void DemoShowLayers() {
+        if (!IsOpen || LayersShown) {
+            return;
+        }
+        Core.MainCore.Conf.HudLayersShown.Value = true;
+        Core.MainCore.ConfMgr.RequestSave();
+        UpdateLayersButton();
+        ApplyPanelLayout();
+        layersDirty = true;
+        TickLayers();
+    }
+
     /// <summary>A new text on the main canvas with its middle on a screen point, selected.</summary>
     internal static OvObject DemoAddText(Vector2 screen, string text) {
         if (!IsOpen) {
             return null;
         }
+        var canvas = MainCanvas(true);
+        if (canvas.Config != null && !canvas.Config.Enabled.UseFx && !canvas.Config.Enabled.StaticValue) {
+            canvas.Config.Enabled.StaticValue = true;
+            canvas.ApplyConfig();
+        }
         var obj = NewObject(NewKind.Text);
         obj.Config.Name.Value = DemoName;
         obj.Config.TextEngineConfig.Text.StaticValue = text;
-        AttachAt(obj, new Slot(MainCanvas(true), null, -1));
+        AttachAt(obj, new Slot(canvas, null, -1));
         PlaceAtSoon(obj, screen);
         AfterStructureChange(obj);
         return obj;

@@ -21,13 +21,12 @@ namespace Overlayer.HudEdit;
 internal static partial class HudEditor {
     private enum DragMode { None, Move, Scale, Rotate, Marquee, Resize }
 
-    private const float HandleHitPx = 12f;
-    private const float HandleInsidePx = 6f;
     private const int RecollectFrames = 30;
 
     public static bool IsOpen { get; private set; }
 
     private static bool uiWasOpen;
+    private static bool closingRestorePanel;
     private static List<HudElement> elements = [];
     private static int collectedFrame = -1000;
     private static HudElement hovered;
@@ -62,24 +61,37 @@ internal static partial class HudEditor {
         }
     }
 
+    // Pressing the menu panel toggle while HUD Editor is open (or closing):
+    // use the same smooth transition out of HUD Editor into the menu panel.
+    internal static bool HandlePanelToggle() {
+        if (IsOpen) {
+            Close(keepWindowOpen: true);
+            return true;
+        }
+        if (isClosing) {
+            if (!closingRestorePanel) {
+                closingRestorePanel = true;
+                UICore.ShowPanelFromHudEditor();
+                return true;
+            }
+            closingRestorePanel = false;
+            DestroyView();
+        }
+        return false;
+    }
+
     public static void Open() {
         if (IsOpen || !Core.MainCore.IsModEnabled || UICore.CanvasObj == null || Setup.SetupWizard.IsOpen) {
             return;
         }
-        // While playing it needs a pause, unless the game plays itself (autoplay) or Settings allow it.
-        if (ModuleAPI.PlaybackState.IsPlaying && !ModuleAPI.PlaybackState.IsPaused
-            && !ModuleAPI.PlaybackState.IsAutoplay && !MainCore.Conf.HudEditorInPlay.Value) {
-            MainCore.Log.Msg("[HudEditor] Pause first (or use autoplay, or allow it in Settings) to edit the HUD while playing.");
-            return;
-        }
-        uiWasOpen = UICore.CanvasObj.activeSelf;
+        uiWasOpen = isClosing ? closingRestorePanel : UICore.IsOpen;
+        closingRestorePanel = false;
         UICore.Open(true);
         UICore.HidePanelForHudEditor(immediate: !uiWasOpen);
         BuildView();
         isClosing = false;
         IsOpen = true;
         UI.UISound.PlayOpen();
-        Tag.Compile.Compiler.ShowBlockedLive = true;
         collectedFrame = -1000;
         selection.Clear();
         hovered = null;
@@ -89,13 +101,17 @@ internal static partial class HudEditor {
         AnimateView(opening: true);
     }
 
-    public static void Close() {
+    public static void Close() => Close(false);
+
+    public static void Close(bool keepWindowOpen) {
         if (!IsOpen) {
             return;
         }
         IsOpen = false;
-        Tag.Compile.Compiler.ShowBlockedLive = false;
+        HudCursor.Reset();
         EndDrag();
+        CloseContextMenu();
+        CloseKeysBubble();
         CommitPanelEdit();
         FlushSave();
         selection.Clear();
@@ -113,17 +129,19 @@ internal static partial class HudEditor {
 
         isClosing = true;
         UI.UISound.PlayClose();
-        bool restorePanel = uiWasOpen;
-        if (restorePanel) {
+        closingRestorePanel = uiWasOpen || keepWindowOpen;
+        if (closingRestorePanel) {
             UICore.ShowPanelFromHudEditor();
         }
         AnimateView(opening: false, onDone: () => {
             if (!isClosing || IsOpen) {
                 return;
             }
+            bool restore = closingRestorePanel;
             isClosing = false;
+            closingRestorePanel = false;
             DestroyView();
-            if (UICore.CanvasObj != null && !restorePanel) {
+            if (UICore.CanvasObj != null && !restore) {
                 UICore.ShowPanelFromHudEditor(immediate: true);
                 UICore.Close(true);
             }
@@ -186,6 +204,7 @@ internal static partial class HudEditor {
         selection.Clear();
         selection.AddRange(items.Where(e => e != null).Distinct());
         RefreshPanel();
+        UpdatePanelSide();
     }
 
     private static void Select(HudElement element) => SetSelection(element == null ? [] : [element]);
@@ -199,6 +218,7 @@ internal static partial class HudEditor {
             selection.Add(element);
         }
         RefreshPanel();
+        UpdatePanelSide();
     }
 
     private static bool TypingInField() {
@@ -208,7 +228,8 @@ internal static partial class HudEditor {
     }
 
     private static bool Shift => Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
-    private static bool Ctrl => Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
+    private static bool Ctrl => Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl)
+        || Input.GetKey(KeyCode.LeftCommand) || Input.GetKey(KeyCode.RightCommand);
     private static bool Alt => Input.GetKey(KeyCode.LeftAlt) || Input.GetKey(KeyCode.RightAlt);
 
     // ---- keyboard ----
@@ -221,6 +242,8 @@ internal static partial class HudEditor {
         if (Input.GetKeyDown(KeyCode.Escape)) {
             if (ContextMenuOpen) {
                 CloseContextMenu();
+            } else if (KeysBubbleOpen) {
+                CloseKeysBubble();
             } else if (drag != DragMode.None) {
                 CancelDrag();
             } else if (selection.Count > 0) {
@@ -325,9 +348,11 @@ internal static partial class HudEditor {
             var after = before;
             after.Position += el.ScreenToParentDelta(nudge * (Shift ? 10f : 1f) * UiScale);
             el.Apply(after);
-            changes.Add((el, before, after));
+            ApplyAutoAnchorToElement(el);
+            changes.Add((el, before, el.Capture()));
         }
         Commit(changes);
+        UpdatePanelSide();
     }
 
     private static void AfterHistory(bool changed) {
@@ -348,6 +373,7 @@ internal static partial class HudEditor {
         lastMouse = mouse;
 
         if (drag == DragMode.Marquee) {
+            HudCursor.SetDefault();
             if (Input.GetMouseButton(0)) {
                 UpdateMarquee(mouse);
             } else {
@@ -358,22 +384,52 @@ internal static partial class HudEditor {
         if (drag != DragMode.None) {
             if (Input.GetMouseButton(0)) {
                 UpdateDrag(mouse);
+                UpdateActiveDragCursor(mouse);
             } else {
                 EndDrag();
             }
             return;
         }
 
+        if (resizingPanel && hoveredPanelGripAngle.HasValue) {
+            HudCursor.SetResize(hoveredPanelGripAngle.Value);
+            return;
+        }
+
         bool overUi = PointerOverEditorUi(mouse);
+        if (ContextMenuOpen && Time.frameCount != contextMenuOpenedFrame
+            && (Input.GetMouseButtonDown(0) || Input.GetMouseButtonDown(1))
+            && !RectTransformUtility.RectangleContainsScreenPoint(contextMenu, mouse, null)) {
+            CloseContextMenu();
+            if (!overUi && Input.GetMouseButtonDown(0)) {
+                return;
+            }
+        }
         var deep = overUi ? null : HitTest(mouse);
         // Hover shows what a click would pick.
         hovered = ResolvePick(deep, Ctrl);
         UpdateMeasure(overUi);
         if (overUi) {
+            if (hoveredPanelGripAngle.HasValue) {
+                HudCursor.SetResize(hoveredPanelGripAngle.Value);
+            } else {
+                HudCursor.SetDefault();
+            }
             return;
         }
 
+        HudHandleHit handleHit = default;
+        if (selection.Count == 1 && selection[0].IsAlive) {
+            handleHit = QueryHandle(selection[0], mouse);
+            ApplyHandleCursor(handleHit);
+        } else {
+            HudCursor.SetDefault();
+        }
+
         if (Input.GetMouseButtonDown(1)) {
+            if (KeysBubbleOpen) {
+                CloseKeysBubble();
+            }
             if (hovered != null && !selection.Contains(hovered)) {
                 Select(hovered);
             }
@@ -383,17 +439,26 @@ internal static partial class HudEditor {
         if (!Input.GetMouseButtonDown(0)) {
             return;
         }
+        if (KeysBubbleOpen) {
+            CloseKeysBubble();
+        }
         if (ContextMenuOpen) {
             CloseContextMenu();
             return;
         }
 
-        if (selection.Count == 1) {
-            var handle = HitHandle(selection[0], mouse);
-            if (handle != DragMode.None) {
-                BeginDrag(handle, mouse);
+        switch (handleHit.Kind) {
+            case HudHandleKind.Corner:
+                scaleCorner = handleHit.Index;
+                BeginDrag(DragMode.Scale, mouse);
                 return;
-            }
+            case HudHandleKind.Edge:
+                resizeEdge = handleHit.Index;
+                BeginDrag(DragMode.Resize, mouse);
+                return;
+            case HudHandleKind.Rotate:
+                BeginDrag(DragMode.Rotate, mouse);
+                return;
         }
         var picked = DiveOnDoubleClick(hovered, deep);
         if (pendingInlineEdit != null) {
@@ -425,10 +490,22 @@ internal static partial class HudEditor {
     }
 
     // Topmost first: later canvases and later/deeper objects render above earlier ones.
+    // Pass 1 picks visibly rendered objects so invisible/empty parents or siblings never
+    // swallow clicks on children; Pass 2 falls back to empty leaf placeholders.
     private static HudElement HitTest(Vector2 mouse) {
         for (int i = elements.Count - 1; i >= 0; i--) {
             var el = elements[i];
-            if (!el.IsAlive || el.UserLocked || el.IsGroup) {
+            if (!el.IsAlive || el.UserLocked || !el.HasVisibleRender) {
+                continue;
+            }
+            el.GetScreenCorners(corners);
+            if (InQuad(mouse, corners)) {
+                return el;
+            }
+        }
+        for (int i = elements.Count - 1; i >= 0; i--) {
+            var el = elements[i];
+            if (!el.IsAlive || el.UserLocked || el.IsGroup || el.HasVisibleRender) {
                 continue;
             }
             el.GetScreenCorners(corners);
@@ -457,62 +534,72 @@ internal static partial class HudEditor {
         return sign != null;
     }
 
-    private static DragMode HitHandle(HudElement el, Vector2 mouse) {
-        float r = HandleHitPx * UiScale;
+    private static Pt ToPt(Vector2 v) => new(v.x, v.y);
+
+    private static HudHandleHit QueryHandle(HudElement el, Vector2 mouse) {
         el.GetScreenCorners(corners);
-        if (el.CanRotate && (mouse - RotateHandleScreen(corners)).sqrMagnitude <= r * r) {
-            return DragMode.Rotate;
+        bool canCorner = el.CanScale || el.CanResizeX || el.CanResizeY;
+        bool canEdgeX = el.CanResizeX || el.CanScale;
+        bool canEdgeY = el.CanResizeY || el.CanScale;
+        return HudHandleMath.HitTest(
+            ToPt(corners[0]), ToPt(corners[1]), ToPt(corners[2]), ToPt(corners[3]),
+            ToPt(mouse), canCorner, canEdgeX, canEdgeY, el.CanRotate);
+    }
+
+    private static void ApplyHandleCursor(HudHandleHit hit) {
+        switch (hit.Kind) {
+            case HudHandleKind.Corner:
+            case HudHandleKind.Edge:
+                HudCursor.SetResize(hit.AngleDeg);
+                break;
+            case HudHandleKind.Rotate:
+                HudCursor.SetRotate(hit.AngleDeg);
+                break;
+            default:
+                HudCursor.SetDefault();
+                break;
         }
-        if (el.CanScale) {
-            // Inside the box only the handle square itself scales; anything further in moves,
-            // otherwise grabbing near a corner to move it scaled it instead.
-            float inner = HandleInsidePx * UiScale;
-            bool inside = InQuad(mouse, corners);
-            for (int i = 0; i < 4; i++) {
-                float d2 = (mouse - (Vector2)corners[i]).sqrMagnitude;
-                if (d2 <= (inside ? inner * inner : r * r)) {
-                    scaleCorner = i;
-                    return DragMode.Scale;
+    }
+
+    private static void UpdateActiveDragCursor(Vector2 mouse) {
+        var el = Primary;
+        switch (drag) {
+            case DragMode.Move:
+                if (dragChanged) {
+                    HudCursor.SetMove();
+                } else {
+                    HudCursor.SetDefault();
                 }
-            }
+                break;
+            case DragMode.Scale:
+                if (el != null && el.IsAlive) {
+                    el.GetScreenCorners(corners);
+                    Vector2 dir = corners[scaleCorner] - corners[(scaleCorner + 2) % 4];
+                    HudCursor.SetResize(Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg);
+                }
+                break;
+            case DragMode.Resize:
+                if (el != null && el.IsAlive) {
+                    el.GetScreenCorners(corners);
+                    Vector2 dir = EdgeMid(corners, resizeEdge) - EdgeMid(corners, (resizeEdge + 2) % 4);
+                    HudCursor.SetResize(Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg);
+                }
+                break;
+            case DragMode.Rotate:
+                if (el != null && el.IsAlive) {
+                    Vector2 dir = mouse - el.ScreenPivot;
+                    HudCursor.SetRotate(Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg);
+                }
+                break;
         }
-        // Anywhere along an edge (of the real box) changes width / height.
-        el.Rect.GetWorldCorners(corners);
-        float edgeR = EdgeHitPx * UiScale;
-        for (int i = 0; i < 4; i++) {
-            bool horizontal = i % 2 == 0; // 0 left, 2 right change the width; 1 top, 3 bottom the height
-            if (!(horizontal ? el.CanResizeX : el.CanResizeY)) {
-                continue;
-            }
-            Vector2 a = corners[i], b = corners[(i + 1) % 4];
-            if (DistanceToSegment(mouse, a, b) <= edgeR) {
-                resizeEdge = i;
-                return DragMode.Resize;
-            }
-        }
-        return DragMode.None;
-    }
-
-    private const float EdgeHitPx = 5f;
-
-    private static float DistanceToSegment(Vector2 p, Vector2 a, Vector2 b) {
-        Vector2 ab = b - a;
-        float t = ab.sqrMagnitude < 1e-6f ? 0f : Mathf.Clamp01(Vector2.Dot(p - a, ab) / ab.sqrMagnitude);
-        return (p - (a + ab * t)).magnitude;
-    }
-
-    private static Vector2 RotateHandleScreen(Vector3[] c) {
-        Vector2 topMid = (c[1] + c[2]) * 0.5f;
-        Vector2 up = ((Vector2)(c[1] - c[0])).normalized;
-        if (up == Vector2.zero) {
-            up = Vector2.up;
-        }
-        return topMid + up * (RotateHandleOffset * UiScale);
     }
 
     // ---- drag ----
 
     private static void BeginDrag(DragMode mode, Vector2 mouse) {
+        if (KeysBubbleOpen) {
+            CloseKeysBubble();
+        }
         var targets = mode == DragMode.Move ? selection.Where(e => e.CanMove).ToList() : [Primary];
         if (targets.Count == 0 || targets[0] == null) {
             return;
@@ -520,16 +607,38 @@ internal static partial class HudEditor {
         CommitPanelEdit();
         drag = mode;
         dragStart = targets.Select(e => (e, e.Capture())).ToList();
+        dragMoveBasePositions.Clear();
+        foreach (var (_, s) in dragStart) {
+            dragMoveBasePositions.Add(s.Position);
+        }
         dragMouseStart = mouse;
         dragChanged = false;
         if (mode == DragMode.Scale) {
-            targets[0].GetScreenCorners(corners);
+            var el = targets[0];
+            var s = dragStart[0].Start;
+            scaleUseSize = el.CanResizeX && el.CanResizeY && s.Size.x > 1e-3f && s.Size.y > 1e-3f;
+            if (scaleUseSize) {
+                el.Rect.GetWorldCorners(corners);
+            } else {
+                el.GetScreenCorners(corners);
+            }
             scaleCornerStart = corners[scaleCorner];
             scaleOppositeStart = corners[(scaleCorner + 2) % 4];
             scaleCenterStart = (corners[0] + corners[2]) * 0.5f;
+            Vector2 ex = corners[3] - corners[0], ey = corners[1] - corners[0];
+            scaleAxisX = ex.sqrMagnitude > 1e-4f ? ex.normalized : Vector2.right;
+            scaleAxisY = ey.sqrMagnitude > 1e-4f ? ey.normalized : Vector2.up;
         }
         if (mode == DragMode.Resize) {
-            targets[0].Rect.GetWorldCorners(corners);
+            var el = targets[0];
+            var s = dragStart[0].Start;
+            bool widthAxis = resizeEdge % 2 == 0;
+            resizeUseSize = widthAxis ? el.CanResizeX && s.Size.x > 1e-3f : el.CanResizeY && s.Size.y > 1e-3f;
+            if (resizeUseSize) {
+                el.Rect.GetWorldCorners(corners);
+            } else {
+                el.GetScreenCorners(corners);
+            }
             resizeEdgeStart = EdgeMid(corners, resizeEdge);
             resizeOppositeStart = EdgeMid(corners, (resizeEdge + 2) % 4);
             resizeCenterStart = (corners[0] + corners[2]) * 0.5f;
@@ -539,12 +648,15 @@ internal static partial class HudEditor {
     // Edge resizing: 0 left, 1 top, 2 right, 3 bottom (between corner i and i + 1).
     private static int resizeEdge;
     private static Vector2 resizeEdgeStart, resizeOppositeStart, resizeCenterStart;
+    private static bool resizeUseSize;
 
     private static Vector2 EdgeMid(Vector3[] c, int edge) => (c[edge] + c[(edge + 1) % 4]) * 0.5f;
 
     // Corner scaling: which corner was grabbed (0 BL, 1 TL, 2 TR, 3 BR) and where things started.
     private static int scaleCorner;
     private static Vector2 scaleCornerStart, scaleOppositeStart, scaleCenterStart;
+    private static Vector2 scaleAxisX, scaleAxisY;
+    private static bool scaleUseSize;
 
     private static void UpdateDrag(Vector2 mouse) {
         if (!dragChanged && (mouse - dragMouseStart).sqrMagnitude < 4f) {
@@ -565,28 +677,45 @@ internal static partial class HudEditor {
                         ApplyMove(screenDelta + snap);
                     }
                 }
+                if (AutoAnchorOn) {
+                    for (int i = 0; i < dragStart.Count; i++) {
+                        var el = dragStart[i].Element;
+                        Vector2 posBefore = el.Config.AnchoredPosition.StaticValue;
+                        if (ApplyAutoAnchorToElement(el) && i < dragMoveBasePositions.Count) {
+                            dragMoveBasePositions[i] += el.Config.AnchoredPosition.StaticValue - posBefore;
+                        }
+                    }
+                }
                 break;
             }
             case DragMode.Scale: {
-                // The grabbed corner follows the pointer and the opposite corner stays put
-                // (Alt: the middle stays put). Measured along the box's diagonal, so dragging
-                // outward grows and inward shrinks whatever the pivot or rotation is.
                 var (el, start) = dragStart[0];
                 Vector2 fixedPoint = Alt ? scaleCenterStart : scaleOppositeStart;
-                Vector2 diagonal = scaleCornerStart - fixedPoint;
-                if (diagonal.sqrMagnitude < 1f) {
-                    break;
-                }
-                float ratio = Vector2.Dot(mouse - fixedPoint, diagonal) / diagonal.sqrMagnitude;
-                if (Shift) {
-                    ratio = Mathf.Round(ratio * start.Scale.x / 0.05f) * 0.05f / Mathf.Max(start.Scale.x, 1e-4f);
-                }
-                ratio = Mathf.Max(ratio, 0.01f);
+                var (rx, ry) = HudHandleMath.ComputeCornerRatios(
+                    ToPt(fixedPoint), ToPt(scaleCornerStart), ToPt(mouse),
+                    ToPt(scaleAxisX), ToPt(scaleAxisY), lockAspect: Shift);
                 var state = start;
-                state.Scale = new Vector3(start.Scale.x * ratio, start.Scale.y * ratio, start.Scale.z);
+                if (scaleUseSize) {
+                    if (Shift) {
+                        float minK = 1f / Mathf.Min(start.Size.x, start.Size.y);
+                        float k = Mathf.Max(rx, minK);
+                        state.Size = new Vector2(start.Size.x * k, start.Size.y * k);
+                    } else {
+                        state.Size = new Vector2(Mathf.Max(1f, start.Size.x * rx), Mathf.Max(1f, start.Size.y * ry));
+                    }
+                } else if (el.CanScale) {
+                    state.Scale = new Vector3(start.Scale.x * rx, start.Scale.y * ry, start.Scale.z);
+                } else {
+                    state.Size = new Vector2(
+                        el.CanResizeX ? Mathf.Max(1f, start.Size.x * rx) : start.Size.x,
+                        el.CanResizeY ? Mathf.Max(1f, start.Size.y * ry) : start.Size.y);
+                }
                 el.Apply(state);
-                // Scaling happens around the pivot; shift back so the fixed point didn't move.
-                el.GetScreenCorners(corners);
+                if (scaleUseSize) {
+                    el.Rect.GetWorldCorners(corners);
+                } else {
+                    el.GetScreenCorners(corners);
+                }
                 Vector2 now = Alt ? (Vector2)(corners[0] + corners[2]) * 0.5f : (Vector2)corners[(scaleCorner + 2) % 4];
                 if (el.CanMove) {
                     state.Position = start.Position + el.ScreenToParentDelta(fixedPoint - now);
@@ -595,28 +724,37 @@ internal static partial class HudEditor {
                 break;
             }
             case DragMode.Resize: {
-                // The grabbed edge follows the pointer, the opposite edge stays (Alt: the middle).
                 var (el, start) = dragStart[0];
-                Vector2 fixedPoint = Alt ? resizeCenterStart : resizeOppositeStart;
-                Vector2 outward = resizeEdgeStart - fixedPoint;
-                if (outward.sqrMagnitude < 1e-4f) {
-                    break;
-                }
-                float startLen = outward.magnitude;
-                float len = Vector2.Dot(mouse - fixedPoint, outward / startLen);
                 bool widthAxis = resizeEdge % 2 == 0;
-                float startSize = widthAxis ? start.Size.x : start.Size.y;
-                // Screen pixels per unit of size along this axis (scale, canvas scale).
-                float perUnit = startLen / Mathf.Max(Alt ? startSize * 0.5f : startSize, 1e-4f);
-                float size = Alt ? len * 2f / perUnit : len / perUnit;
-                if (Shift) {
-                    size = Mathf.Round(size / 10f) * 10f;
-                }
-                size = Mathf.Max(size, 1f);
+                Vector2 fixedPoint = Alt ? resizeCenterStart : resizeOppositeStart;
+                var (rx, ry) = HudHandleMath.ComputeEdgeRatios(
+                    ToPt(fixedPoint), ToPt(resizeEdgeStart), ToPt(mouse), widthAxis, lockAspect: Shift);
+                bool canBothSize = el.CanResizeX && el.CanResizeY && start.Size.x > 1e-3f && start.Size.y > 1e-3f;
+                bool useSize = Shift ? (resizeUseSize && canBothSize) : resizeUseSize;
                 var state = start;
-                state.Size = widthAxis ? new Vector2(size, start.Size.y) : new Vector2(start.Size.x, size);
+                if (useSize) {
+                    if (Shift) {
+                        float minK = 1f / Mathf.Min(start.Size.x, start.Size.y);
+                        float k = Mathf.Max(rx, minK);
+                        state.Size = new Vector2(start.Size.x * k, start.Size.y * k);
+                    } else {
+                        state.Size = new Vector2(
+                            widthAxis ? Mathf.Max(1f, start.Size.x * rx) : start.Size.x,
+                            widthAxis ? start.Size.y : Mathf.Max(1f, start.Size.y * ry));
+                    }
+                } else if (el.CanScale) {
+                    state.Scale = new Vector3(start.Scale.x * rx, start.Scale.y * ry, start.Scale.z);
+                } else if (resizeUseSize) {
+                    state.Size = new Vector2(
+                        widthAxis ? Mathf.Max(1f, start.Size.x * rx) : start.Size.x,
+                        widthAxis ? start.Size.y : Mathf.Max(1f, start.Size.y * ry));
+                }
                 el.Apply(state);
-                el.Rect.GetWorldCorners(corners);
+                if (resizeUseSize) {
+                    el.Rect.GetWorldCorners(corners);
+                } else {
+                    el.GetScreenCorners(corners);
+                }
                 Vector2 now = Alt ? (Vector2)(corners[0] + corners[2]) * 0.5f : EdgeMid(corners, (resizeEdge + 2) % 4);
                 if (el.CanMove) {
                     state.Position = start.Position + el.ScreenToParentDelta(fixedPoint - now);
@@ -642,10 +780,22 @@ internal static partial class HudEditor {
         SyncPanelValues();
     }
 
+    private static readonly List<Vector2> dragMoveBasePositions = [];
+
     private static void ApplyMove(Vector2 screenDelta) {
-        foreach (var (el, start) in dragStart) {
+        for (int i = 0; i < dragStart.Count; i++) {
+            var (el, start) = dragStart[i];
             var state = start;
-            state.Position = start.Position + el.ScreenToParentDelta(screenDelta);
+            if (el.CanAnchor) {
+                state.AnchorMin = el.Config.AnchorMin.StaticValue;
+                state.AnchorMax = el.Config.AnchorMax.StaticValue;
+                state.Pivot = el.Config.Pivot.StaticValue;
+            }
+            if (el.CanResizeX || el.CanResizeY) {
+                state.Size = el.Config.SizeDelta.StaticValue;
+            }
+            Vector2 basePos = i < dragMoveBasePositions.Count ? dragMoveBasePositions[i] : start.Position;
+            state.Position = basePos + el.ScreenToParentDelta(screenDelta);
             el.Apply(state);
         }
     }
@@ -777,6 +927,7 @@ internal static partial class HudEditor {
     }
 
     private static void EndDrag() {
+        HudCursor.SetDefault();
         if (drag == DragMode.None) {
             return;
         }
@@ -792,9 +943,11 @@ internal static partial class HudEditor {
             return;
         }
         Commit(dragStart.Select(d => (d.Element, d.Start, d.Element.Capture())).ToList());
+        UpdatePanelSide();
     }
 
     private static void CancelDrag() {
+        HudCursor.SetDefault();
         if (drag == DragMode.None) {
             return;
         }
@@ -811,6 +964,7 @@ internal static partial class HudEditor {
             el.Apply(start);
         }
         SyncPanelValues();
+        UpdatePanelSide();
     }
 
     // ---- align / distribute (screen space, by visible boxes) ----
@@ -845,7 +999,8 @@ internal static partial class HudEditor {
             var after = before;
             after.Position += el.ScreenToParentDelta(screenDelta);
             el.Apply(after);
-            changes.Add((el, before, after));
+            ApplyAutoAnchorToElement(el);
+            changes.Add((el, before, el.Capture()));
         }
 
         switch (mode) {
@@ -875,11 +1030,12 @@ internal static partial class HudEditor {
             }
         }
         Commit(changes);
+        UpdatePanelSide();
     }
 
     private static void AlignTarget(HudElement el, out float minX, out float maxX, out float minY, out float maxY) {
         var parent = el.Object.Parent;
-        if (parent?.RectTransform != null && parent.GameObject.GetComponent<UnityEngine.UI.Graphic>() != null) {
+        if (parent?.RectTransform != null && HudElement.IsVisiblyRendered(parent)) {
             var c = new Vector3[4];
             parent.RectTransform.GetWorldCorners(c);
             Bounds(c, out minX, out maxX, out minY, out maxY);
@@ -905,7 +1061,8 @@ internal static partial class HudEditor {
     }
 
     private static bool SameState(HudElement.State a, HudElement.State b)
-        => a.Position == b.Position && a.Scale == b.Scale && Mathf.Approximately(a.Rotation, b.Rotation);
+        => a.Position == b.Position && a.Scale == b.Scale && a.Size == b.Size && Mathf.Approximately(a.Rotation, b.Rotation)
+            && a.AnchorMin == b.AnchorMin && a.AnchorMax == b.AnchorMax && a.Pivot == b.Pivot;
 
     // Edits come in bursts (arrow keys, slider drags); write once things settle.
     private static float saveDue;

@@ -27,7 +27,8 @@ internal static partial class HudEditor {
     private static readonly Color RulerTick = new(1f, 1f, 1f, 0.35f);
     private static readonly Color UserGuideColor = new(0.25f, 0.85f, 1f, 0.9f);
 
-    private static RectTransform rulerLayer, rulerTop, rulerLeft, guideLayer;
+    private static RectTransform rulerLayer, rulerBars, rulerTop, rulerLeft, rulerCorner, guideLayer;
+    private static CanvasGroup rulerBarsGroup;
     private static O5Kit.Control.O5Button rulersButton;
     private static TextMeshProUGUI guideLabel;
     private static readonly List<(RectTransform Rect, TextMeshProUGUI Label, bool Vertical, int Pixel)> rulerTicks = [];
@@ -75,6 +76,10 @@ internal static partial class HudEditor {
         guideLayer = NewRect("Guides", rulerLayer);
         Stretch(guideLayer);
 
+        rulerBars = NewRect("RulerBars", rulerLayer);
+        Stretch(rulerBars);
+        rulerBarsGroup = rulerBars.gameObject.AddComponent<CanvasGroup>();
+
         rulerTop = Band("RulerTop", false);
         rulerTop.anchorMin = new Vector2(0f, 1f);
         rulerTop.anchorMax = Vector2.one;
@@ -83,6 +88,10 @@ internal static partial class HudEditor {
         rulerLeft.anchorMin = Vector2.zero;
         rulerLeft.anchorMax = new Vector2(0f, 1f);
         rulerLeft.pivot = new Vector2(0f, 0.5f);
+        rulerCorner = NewImage("RulerCorner", rulerBars, RulerColor).rectTransform;
+        rulerCorner.anchorMin = rulerCorner.anchorMax = rulerCorner.pivot = new Vector2(0f, 1f);
+        rulerCorner.anchoredPosition = Vector2.zero;
+        rulerCorner.sizeDelta = new Vector2(RulerPx, RulerPx);
 
         guideLabel = O5Factory.ControlText(O5KitAdapters.Ctx, rulerLayer, 13f, true);
         guideLabel.rectTransform.anchorMin = guideLabel.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
@@ -90,31 +99,31 @@ internal static partial class HudEditor {
         guideLabel.color = UserGuideColor;
         guideLabel.raycastTarget = false;
         guideLabel.gameObject.SetActive(false);
-        ApplyRulerLayout(0f, 0f);
+        ApplyRulerLayout();
     }
 
     private static RectTransform Band(string name, bool vertical) {
-        var band = NewImage(name, rulerLayer, RulerColor);
+        var band = NewImage(name, rulerBars, RulerColor);
         band.raycastTarget = true;
         band.gameObject.AddComponent<RectMask2D>();
         UnityUtils.AddEvents(band.gameObject.AddComponent<EventTrigger>(),
             // Dragging out of the top ruler makes a horizontal line, out of the left one a vertical line.
-            (EventTriggerType.BeginDrag, e => BeginGuideDrag(-1, vertical, e as PointerEventData)),
-            (EventTriggerType.Drag, e => DragGuide(e as PointerEventData)),
-            (EventTriggerType.EndDrag, e => EndGuideDrag(e as PointerEventData)));
+            (EventTriggerType.BeginDrag, e => BeginGuideDrag(-1, vertical, UnityUtils.AsPointerEventData(e))),
+            (EventTriggerType.Drag, e => DragGuide(UnityUtils.AsPointerEventData(e))),
+            (EventTriggerType.EndDrag, e => EndGuideDrag(UnityUtils.AsPointerEventData(e))));
         return band.rectTransform;
     }
 
-    // Rulers sit in the free area between the side panels.
-    private static void ApplyRulerLayout(float left, float right) {
+    // Rulers sit flush along the top and left edges of the screen.
+    private static void ApplyRulerLayout() {
         if (rulerLayer == null) {
             return;
         }
         rulerLayer.gameObject.SetActive(RulersShown);
-        rulerTop.offsetMin = new Vector2(left + RulerPx, -RulerPx);
-        rulerTop.offsetMax = new Vector2(-right, 0f);
-        rulerLeft.offsetMin = new Vector2(left, 0f);
-        rulerLeft.offsetMax = new Vector2(left + RulerPx, -RulerPx);
+        rulerTop.offsetMin = new Vector2(RulerPx, -RulerPx);
+        rulerTop.offsetMax = Vector2.zero;
+        rulerLeft.offsetMin = Vector2.zero;
+        rulerLeft.offsetMax = new Vector2(RulerPx, -RulerPx);
     }
 
     private static void ToggleRulers() {
@@ -288,11 +297,11 @@ internal static partial class HudEditor {
         UnityUtils.AddEvents(hit.gameObject.AddComponent<EventTrigger>(),
             (EventTriggerType.BeginDrag, e => {
                 if (rect.gameObject.name.StartsWith("Guide:") && int.TryParse(rect.gameObject.name.Substring(6), out int index)) {
-                    BeginGuideDrag(index, rect.sizeDelta.y > rect.sizeDelta.x, e as PointerEventData);
+                    BeginGuideDrag(index, rect.sizeDelta.y > rect.sizeDelta.x, UnityUtils.AsPointerEventData(e));
                 }
             }),
-            (EventTriggerType.Drag, e => DragGuide(e as PointerEventData)),
-            (EventTriggerType.EndDrag, e => EndGuideDrag(e as PointerEventData)));
+            (EventTriggerType.Drag, e => DragGuide(UnityUtils.AsPointerEventData(e))),
+            (EventTriggerType.EndDrag, e => EndGuideDrag(UnityUtils.AsPointerEventData(e))));
         return rect;
     }
 
@@ -306,14 +315,15 @@ internal static partial class HudEditor {
         var line = rect.GetChild(0) as RectTransform;
         line.anchorMin = vertical ? new Vector2(0.5f, 0f) : new Vector2(0f, 0.5f);
         line.anchorMax = vertical ? new Vector2(0.5f, 1f) : new Vector2(1f, 0.5f);
-        float pxWidth = Mathf.Max(1f, 1.25f / UiScale);
+        float pxWidth = 1f / UiScale;
         line.sizeDelta = vertical ? new Vector2(pxWidth, 0f) : new Vector2(0f, pxWidth);
         line.anchoredPosition = Vector2.zero;
         rect.gameObject.SetActive(true);
     }
 
     private static void DestroyRulers() {
-        rulerLayer = rulerTop = rulerLeft = guideLayer = null;
+        rulerLayer = rulerBars = rulerTop = rulerLeft = rulerCorner = guideLayer = null;
+        rulerBarsGroup = null;
         guideLabel = null;
         rulersButton = null;
         rulerTicks.Clear();

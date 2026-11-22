@@ -4,6 +4,7 @@ using Overlayer.Compat;
 using Overlayer.Core;
 using Overlayer.Overlay;
 using Overlayer.Package;
+using Overlayer.UI;
 using Overlayer.UI.Utility;
 using System.IO.Compression;
 using UnityEngine;
@@ -172,7 +173,8 @@ internal static partial class HudEditor {
         PresetStore.RefreshFilePresets();
         var presets = PresetStore.Presets;
 
-        contextMenu = UiStyle.Rounded("PresetMenu", root, UiStyle.Surface).rectTransform;
+        var host = UICore.CanvasObj != null ? UICore.CanvasObj.transform : root;
+        contextMenu = UiStyle.Rounded("PresetMenu", host, UiStyle.Surface).rectTransform;
         contextMenu.anchorMin = contextMenu.anchorMax = Vector2.zero;
         contextMenu.pivot = new Vector2(0f, 1f);
         var (_, content, _) = O5Factory.ScrollView(O5KitAdapters.Ctx, contextMenu, 2f, 6f);
@@ -185,7 +187,7 @@ internal static partial class HudEditor {
             UiStyle.Section(content, title);
             foreach (var preset in list) {
                 var captured = preset;
-                string source = string.IsNullOrEmpty(preset.Module) ? "File" : preset.Module;
+                string source = string.IsNullOrEmpty(preset.Module) ? Tr("O5CP_PRESET_FILE", "File") : preset.Module;
                 string label = $"{preset.Name}<pos=70%><alpha=#55>{source}";
                 var button = Button(O5Factory.Row(O5KitAdapters.Ctx, content, 28f), "preset_" + preset.Id, label, () => {
                     CloseContextMenu();
@@ -199,11 +201,11 @@ internal static partial class HudEditor {
             }
         }
 
-        Section("Elements", presets.Where(p => p.Category == HudPreset.ElementCategory));
-        Section("Layouts", presets.Where(p => p.Category == HudPreset.LayoutCategory));
-        Section("Other presets", presets.Where(p => p.Category != HudPreset.ElementCategory && p.Category != HudPreset.LayoutCategory));
+        Section(Tr("HUD_PRESETS_ELEMENTS", "Elements"), presets.Where(p => p.Category == HudPreset.ElementCategory));
+        Section(Tr("HUD_PRESETS_LAYOUTS", "Layouts"), presets.Where(p => p.Category == HudPreset.LayoutCategory));
+        Section(Tr("HUD_PRESETS_OTHER", "Other presets"), presets.Where(p => p.Category != HudPreset.ElementCategory && p.Category != HudPreset.LayoutCategory));
         if (presets.Count == 0) {
-            UiStyle.Section(content, "No presets yet");
+            UiStyle.Section(content, Tr("HUD_PRESETS_EMPTY", "No presets yet"));
         }
 
         LayoutRebuilder.ForceRebuildLayoutImmediate(content);
@@ -216,5 +218,6 @@ internal static partial class HudEditor {
         local.x = Mathf.Clamp(local.x, 4f, screen.x - PresetMenuWidth - 4f);
         local.y = Mathf.Max(local.y, height + 4f);
         contextMenu.anchoredPosition = local;
+        contextMenu.SetAsLastSibling();
     }
 }

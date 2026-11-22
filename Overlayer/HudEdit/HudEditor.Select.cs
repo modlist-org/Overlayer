@@ -32,40 +32,45 @@ internal static partial class HudEditor {
         return chain;
     }
 
-    private static bool SameLevel(HudElement a, HudElement b)
-        => ReferenceEquals(a.Canvas, b.Canvas) && ReferenceEquals(a.Object.Parent, b.Object.Parent);
-
     private static HudElement ResolvePick(HudElement deep, bool deepest) {
-        if (deep == null || deepest) {
-            return deep;
-        }
-        var chain = Chain(deep);
-        if (chain.Count == 0) {
-            return deep;
-        }
-        // Stay at the level of the current selection (or inside it), else the outermost group.
-        var p = Primary;
-        if (p != null && p.IsAlive) {
-            foreach (var el in chain) {
-                if (SameLevel(el, p)) {
-                    return el;
-                }
-            }
-        }
-        return chain[0];
+        // Pick the directly clicked object instead of hijacking clicks up to an invisible
+        // or enclosing parent container; parent containers stay selectable in the layers
+        // panel and right-click menu.
+        return deep;
     }
 
-    // Top to bottom, every object whose box holds the point (for "Select layer").
+    // Top to bottom, every object under the pointer (visibly rendered first, then empty
+    // leaves, then enclosing non-rendering parent containers for right-click "Select layer").
     private static List<HudElement> AllUnder(Vector2 mouse) {
         var list = new List<HudElement>();
         for (int i = elements.Count - 1; i >= 0; i--) {
             var el = elements[i];
-            if (!el.IsAlive || el.UserLocked || el.IsGroup) {
+            if (!el.IsAlive || el.UserLocked || !el.HasVisibleRender) {
                 continue;
             }
             el.GetScreenCorners(corners);
             if (InQuad(mouse, corners)) {
                 list.Add(el);
+            }
+        }
+        for (int i = elements.Count - 1; i >= 0; i--) {
+            var el = elements[i];
+            if (!el.IsAlive || el.UserLocked || el.IsGroup || el.HasVisibleRender) {
+                continue;
+            }
+            el.GetScreenCorners(corners);
+            if (InQuad(mouse, corners)) {
+                list.Add(el);
+            }
+        }
+        // Include enclosing parent containers so right-click can still pick any ancestor group.
+        int directCount = list.Count;
+        for (int i = 0; i < directCount; i++) {
+            for (var o = list[i].Object.Parent; o != null; o = o.Parent) {
+                var anc = ElementOf(o);
+                if (anc != null && anc.IsAlive && !anc.UserLocked && !list.Contains(anc)) {
+                    list.Add(anc);
+                }
             }
         }
         return list;
@@ -113,23 +118,28 @@ internal static partial class HudEditor {
         dragChanged = true;
         float x0 = Mathf.Min(marqueeStart.x, mouse.x), x1 = Mathf.Max(marqueeStart.x, mouse.x);
         float y0 = Mathf.Min(marqueeStart.y, mouse.y), y1 = Mathf.Max(marqueeStart.y, mouse.y);
+        var marquee = new Box(x0, x1, y0, y1);
         var hits = new List<HudElement>();
         foreach (var el in elements) {
-            if (!el.IsAlive || el.UserLocked) {
+            if (!el.IsAlive || el.UserLocked || el.IsGroup) {
                 continue;
             }
-            // Outermost objects only, unless Ctrl: then the innermost ones.
-            bool leaf = !elements.Any(o => !ReferenceEquals(o, el) && IsAncestor(el.Object, o.Object));
-            if (Ctrl ? !leaf : el.Depth != 0) {
-                continue;
+            if (Ctrl) {
+                bool leaf = !elements.Any(o => !ReferenceEquals(o, el) && IsAncestor(el.Object, o.Object));
+                if (!leaf) {
+                    continue;
+                }
             }
             var b = BoxOf(el);
             // A box around the whole drag (a full-screen layout, a background) is what you
             // dragged inside of, not something you meant to pick.
-            bool around = b.Contains(new Box(x0, x1, y0, y1));
-            if (!around && b.MaxX >= x0 && b.MinX <= x1 && b.MaxY >= y0 && b.MinY <= y1) {
+            if (!b.Contains(marquee) && b.MaxX >= x0 && b.MinX <= x1 && b.MaxY >= y0 && b.MinY <= y1) {
                 hits.Add(el);
             }
+        }
+        if (!Ctrl) {
+            // Avoid selecting both a visible parent and its child (dragging would move the child twice).
+            hits.RemoveAll(e => hits.Any(o => !ReferenceEquals(o, e) && IsAncestor(o.Object, e.Object)));
         }
         selection.Clear();
         selection.AddRange(marqueeBase.Concat(hits).Distinct());
