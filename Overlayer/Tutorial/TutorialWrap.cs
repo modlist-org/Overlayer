@@ -10,6 +10,8 @@ internal static class TutorialWrap {
     private static readonly Regex FaceMark = new(@"\[\[(\w+)\]\]");
     private static readonly Regex BoldMark = new(@"<b>(.*?)</b>");
 
+    internal static Func<string> CodeColorHex { get; set; }
+
     private readonly struct Token(string leadingSep, string raw, string plain, bool isCode) {
         public readonly string LeadingSep = leadingSep;
         public readonly string Raw = raw;
@@ -23,7 +25,11 @@ internal static class TutorialWrap {
             return text;
         }
         text = FaceMark.Replace(text, string.Empty);
-        text = CodeMark.Replace(text, m => $"<color=#AEB3FF><noparse>{m.Groups[1].Value}</noparse></color>");
+        string codeHex = CodeColorHex?.Invoke();
+        if (string.IsNullOrEmpty(codeHex)) {
+            codeHex = "AEB3FF";
+        }
+        text = CodeMark.Replace(text, m => $"<color=#{codeHex}><noparse>{m.Groups[1].Value}</noparse></color>");
         return BoldMark.Replace(text, m => $"<color=#FFFFFF>{m.Groups[1].Value}</color>");
     }
 

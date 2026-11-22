@@ -18,11 +18,13 @@ internal static class TutorialPage {
     private static RectTransform list;
     private static TextMeshProUGUI intro;
     private static O5Kit.Control.O5Button continueButton, resetButton;
+    internal static O5Kit.Behaviour.UIScrollController Scroller { get; private set; }
     private static readonly List<O5Kit.Core.O5Object> controls = [];
 
     public static void Create(RectTransform page) {
         var ctx = O5KitAdapters.Ctx;
-        var (_, content, _) = O5Factory.ScrollView(ctx, page, 12f, 18f);
+        var (_, content, scroller) = O5Factory.ScrollView(ctx, page, 12f, 18f);
+        Scroller = scroller;
 
         intro = O5Factory.ControlText(ctx, O5Factory.Row(ctx, content, 70f), 16f);
         intro.enableWordWrapping = true;
@@ -60,9 +62,9 @@ internal static class TutorialPage {
             return;
         }
         intro.text = Tutorial.Tr("TUTORIAL_PAGE_INTRO",
-            "Learn Overlayer by doing it: each chapter points at the real buttons and waits while you try them. "
-            + "Do them in order, or pick any one. You can stop at any time.");
+            "Follow along directly in the real UI. Click Start / continue to go through unfinished chapters in order, or pick any chapter individually.");
         continueButton.Text = Tutorial.Tr("TUTORIAL_CONTINUE", "Start / continue");
+        continueButton.SetBlocked(Tutorial.Chapters.All(Tutorial.IsDone));
         resetButton.Text = Tutorial.Tr("TUTORIAL_RESET", "Mark all as not done");
         foreach (var control in rowControls) {
             control.Dispose();
@@ -94,6 +96,7 @@ internal static class TutorialPage {
             title.alignment = TextAlignmentOptions.MidlineLeft;
             title.enableWordWrapping = true;
             title.raycastTarget = false;
+            // Chapter titles stay in English by design.
             title.text = $"{mark}{chapter.Title}";
             title.transform.parent.gameObject.AddComponent<LayoutElement>().preferredHeight = 26f;
 

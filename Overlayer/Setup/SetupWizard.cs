@@ -42,7 +42,7 @@ internal static class SetupWizard {
     private const float CloseScaleSeconds = 0.4f;
     private const float RestingScale = 0.99f;
 
-    private static readonly Color Accent = new(0.569f, 0.604f, 1f, 1f);
+    private static Color Accent => UIColors.ObjectActive;
     private static readonly Color KeyColor = new(1f, 1f, 1f, 0.07f);
 
     private static readonly int StepCount = Enum.GetValues(typeof(Step)).Length;
@@ -83,11 +83,6 @@ internal static class SetupWizard {
     private static string T(string key, string fallback) => MainCore.Tr.Get(key, fallback);
 
     private static float OutQuint(float t) => 1f - Mathf.Pow(1f - Mathf.Clamp01(t), 5f);
-
-    private static KeyBind WindowKey => new(KeyCode.BackQuote,
-        Application.platform == RuntimePlatform.LinuxPlayer ? KeyBind.Mods.Ctrl : KeyBind.Mods.Alt);
-
-    private static string WindowKeyText => Application.platform == RuntimePlatform.LinuxPlayer ? "Ctrl + `" : "Alt + `";
 
     // ---- opening and closing ----
 
@@ -332,7 +327,7 @@ internal static class SetupWizard {
         var (_, content, _) = O5Factory.ScrollView(ctx, made.Rect, 8f);
         made.Host = content;
         made.Title = FrameText(ctx, content, 44f, 30f, Color.white);
-        made.Title.fontStyle = FontStyles.Bold;
+        made.Title.font = ctx.Fonts.Medium;
         made.Say = FrameText(ctx, content, 64f, 18f, new Color(1f, 1f, 1f, 0.82f));
         made.Say.lineSpacing = 6f;
         return made;
@@ -437,7 +432,7 @@ internal static class SetupWizard {
 
     private static void ShowScale() {
         // Named like the setting itself.
-        Header("SCALE", T("UI_SCALE", "UI Scale"), "Adjust to a comfortable scale.");
+        Header("SCALE", T("UI_SCALE", "UI Scale"), "Let's adjust to a comfortable scale.");
         var ctx = O5KitAdapters.Ctx;
         var slider = Track(O5Factory.Slider(ctx, O5Factory.Row(ctx, stepHost), "setup_scale", new O5SliderOptions {
             DefaultValue = 1f,
@@ -464,26 +459,30 @@ internal static class SetupWizard {
         Header("KEYS", "Keys to remember", "Press the highlighted keys together.");
         var ctx = O5KitAdapters.Ctx;
         var tabs = UiStyle.HRow(stepHost, 8f, 44f);
-        Track(UiStyle.Button(UiStyle.Cell(tabs, 0f), "setup_key_window", $"{T("SETUP_KEY_WINDOW", "Overlayer window")}:  <b>{WindowKeyText}</b>",
+        Track(UiStyle.Button(UiStyle.Cell(tabs, 0f), "setup_key_window", $"{T("SETUP_KEY_WINDOW", "Overlayer window")}:  <b>{UICore.WindowKey.ToDisplayString()}</b>",
             () => ShowKeyOf(false), primary: !showHudKey));
-        Track(UiStyle.Button(UiStyle.Cell(tabs, 0f), "setup_key_hud", $"{T("SETUP_KEY_HUD", "HUD editor")}:  <b>{HudEditor.Key}</b>",
+        Track(UiStyle.Button(UiStyle.Cell(tabs, 0f), "setup_key_hud", $"{T("SETUP_KEY_HUD", "HUD editor")}:  <b>{HudEditor.Key.ToDisplayString()}</b>",
             () => ShowKeyOf(true), primary: showHudKey));
 
-        BuildKeyboard(showHudKey ? HudEditor.Key : WindowKey);
+        BuildKeyboard(showHudKey ? HudEditor.Key : UICore.WindowKey);
 
-        if (!showHudKey) {
-            return;
-        }
         O5Button change = null;
         string Caption() => T("SETUP_KEY_CHANGE", "Change key");
-        change = Track(UiStyle.Button(O5Factory.Row(ctx, stepHost, 44f), "setup_hud_key", Caption(), () => KeyCapture.Begin(
+        change = Track(UiStyle.Button(O5Factory.Row(ctx, stepHost, 44f), "setup_key_change", Caption(), () => KeyCapture.Begin(
             () => change.Text = T("SETUP_KEY_PRESS", "Press a key...   (Esc: cancel)"),
             bind => {
                 if (bind is { IsNone: false } b) {
-                    MainCore.Conf.HudEditorKey = b.ToString();
+                    if (showHudKey) {
+                        MainCore.Conf.HudEditorKey = b.ToString();
+                        HudEditor.RegisterShortcut();
+                    } else {
+                        MainCore.Conf.WindowKey = b.ToString();
+                        UICore.RegisterToggleShortcut();
+                    }
                     MainCore.ConfMgr.RequestSave();
-                    HudEditor.RegisterShortcut();
                     PageSettings.SyncValues();
+                    UI.Factory.Page.PageDocs.RefreshHotkeys();
+                    Tutorial.Tutorial.RefreshTexts();
                     Show(Step.Keys, false);
                 } else if (root != null && step == Step.Keys) {
                     change.Text = Caption();
@@ -571,7 +570,7 @@ internal static class SetupWizard {
         label.alignment = TextAlignmentOptions.Center;
         label.raycastTarget = false;
         label.color = lit ? Color.white : UiStyle.Muted;
-        label.fontStyle = lit ? FontStyles.Bold : FontStyles.Normal;
+        label.font = lit ? ctx.Fonts.Medium : ctx.Fonts.Regular;
         label.text = $"<noparse>{cap.Label}</noparse>";
         if (lit) {
             litKeys.Add(image);
@@ -602,7 +601,7 @@ internal static class SetupWizard {
             + "You can also start it later from the <b>Tutorial</b> page in the menu.");
 
         var buttons = UiStyle.HRow(stepHost, 8f, 50f);
-        Track(UiStyle.Button(UiStyle.Cell(buttons, 0f), "setup_finish_tutorial", T("SETUP_FINISH_YES", "Try the tutorial"), () => Close(true), primary: true));
-        Track(UiStyle.Button(UiStyle.Cell(buttons, 0f), "setup_finish_done", T("SETUP_FINISH_NO", "Start using Overlayer"), () => Close(false)));
+        Track(UiStyle.Button(UiStyle.Cell(buttons, 0f), "setup_finish_tutorial", T("SETUP_FINISH_YES", "Start tutorial"), () => Close(true), primary: true));
+        Track(UiStyle.Button(UiStyle.Cell(buttons, 0f), "setup_finish_done", T("SETUP_FINISH_NO", "Start right away"), () => Close(false)));
     }
 }

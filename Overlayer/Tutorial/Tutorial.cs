@@ -25,6 +25,10 @@ namespace Overlayer.Tutorial;
 // the highest sort order, so only being last puts it on top); otherwise in a canvas of its own
 // under Overlayer's root. Only the bubble and Olly take clicks, so the UI underneath stays usable.
 internal static class Tutorial {
+    static Tutorial() {
+        TutorialWrap.CodeColorHex = () => UI.UIColors.ToHexRgb(UI.UIColors.ObjectActiveBright);
+    }
+
     private const float BubbleWidth = 420f;
     private const float MaxBubbleWidth = 560f;
     private const float OllyScale = 0.8f;
@@ -35,19 +39,23 @@ internal static class Tutorial {
 
     private static float bubbleWidth = BubbleWidth;
 
-    private static readonly Color Accent = new(0.569f, 0.604f, 1f, 1f);
+    private static Color Accent => Overlayer.UI.UIColors.ObjectActive;
     private static readonly Color Dim = new(0f, 0f, 0f, 0.28f);
 
     private static float OllyWidth => OllyView.Size * OllyScale + OllyGap;
     private static float OllyHeight => OllyView.Size * OllyScale;
 
     private static GameObject canvasObj;
-    private static RectTransform root, bubble, frame, pointer, noteBox, choiceRow;
+    private static RectTransform root, bubble, frame, pointer, noteBox, linkRow, choiceRow;
     private static CanvasGroup noteGroup, rootGroup;
     private static Image pointerRing;
     private static readonly Image[] edges = new Image[4];
     private static readonly Image[] shades = new Image[4];
-    private static TextMeshProUGUI caption, title, body, note, waiting;
+    private static TextMeshProUGUI caption, title, body, note, linkText, waiting;
+    private static LayoutElement linkElement;
+    private static string currentLinkUrl;
+    private static Color LinkColor => Overlayer.UI.UIColors.ObjectActiveBright;
+    private static Color LinkHoverColor => Overlayer.UI.UIColors.ButtonPressed;
     private static O5Kit.Control.O5Button backButton, nextButton, skipButton, closeButton, replayButton, restoreButton;
     private static readonly List<O5Kit.Core.O5Object> controls = [];
     private static readonly List<O5Kit.Core.O5Object> choiceControls = [];
@@ -117,6 +125,7 @@ internal static class Tutorial {
         if (langHooked) {
             MainCore.Tr.OnLanguageChanged -= OnLanguageChanged;
             MainCore.Tr.OnLoadEnd -= OnLangLoadEnd;
+            UI.UIColors.OnPaletteChanged -= OnPaletteChanged;
             langHooked = false;
         }
         chapter = null;
@@ -126,6 +135,8 @@ internal static class Tutorial {
         closeTime = 0f;
         interrupted = false;
         lostKey = lostFallback = null;
+        placed = null;
+        placedFor = scrolledFor = null;
         if (root != null) {
             UnityEngine.Object.Destroy(root.gameObject);
         }
@@ -139,7 +150,10 @@ internal static class Tutorial {
         controls.Clear();
         Lines.Clear();
         canvasObj = null;
-        root = bubble = frame = pointer = noteBox = choiceRow = null;
+        root = bubble = frame = pointer = noteBox = linkRow = choiceRow = null;
+        linkText = null;
+        linkElement = null;
+        currentLinkUrl = null;
         olly = null;
         // Olly cleans up after herself (also after a run that was cut short).
         try {
@@ -184,9 +198,15 @@ internal static class Tutorial {
             root.SetParent(host, false);
             StretchRoot();
         }
-        // Things opened later (the HUD editor, dialogs) come after it otherwise.
-        if (root.GetSiblingIndex() != host.childCount - 1) {
-            root.SetAsLastSibling();
+        // Things opened later (the HUD editor, dialogs) come after it otherwise, except an open
+        // HUD editor context/preset menu which stays on top so Olly never covers right-click actions.
+        var popup = HudEditor.ContextMenuRect is { } p && p.parent == host ? p : null;
+        if (popup != null && popup.GetSiblingIndex() != host.childCount - 1) {
+            popup.SetAsLastSibling();
+        }
+        int wantRoot = host.childCount - (popup != null ? 2 : 1);
+        if (root.GetSiblingIndex() != wantRoot) {
+            root.SetSiblingIndex(wantRoot);
         }
     }
 
@@ -281,7 +301,7 @@ internal static class Tutorial {
             // Waiting a long while: Olly checks in.
             if (step.Done != null && doneAt < 0f && !nudged && Time.unscaledTime - shownAt > 20f) {
                 nudged = true;
-                waiting.text = TutorialWrap.Format(Tr("TUTORIAL_NUDGE", "...Still there? Stuck? <b>Skip step</b> works too."), bubbleWidth - 40f, s => MeasureWidth(waiting, s));
+                waiting.text = TutorialWrap.Format(Tr("TUTORIAL_NUDGE", "If you're stuck, you can click <b>Skip</b> to move on."), bubbleWidth - 40f, s => MeasureWidth(waiting, s));
             }
             if (doneAt < 0f && step.Keep != null) {
                 int before = index;
@@ -464,7 +484,7 @@ internal static class Tutorial {
 
     private static void ApplyInterruptedUi(TutorialStep step) {
         waiting.gameObject.SetActive(true);
-        waiting.text = TutorialWrap.Format(Tr(lostKey, lostFallback), bubbleWidth - 40f, s => MeasureWidth(waiting, s));
+        waiting.text = TutorialWrap.Format(FormatHotkeys(Tr(lostKey, lostFallback)), bubbleWidth - 40f, s => MeasureWidth(waiting, s));
         restoreButton.Rect.parent.gameObject.SetActive(step.Restore != null);
         nextButton.Rect.parent.gameObject.SetActive(false);
         skipButton.Rect.parent.gameObject.SetActive(false);
@@ -477,6 +497,7 @@ internal static class Tutorial {
     // ---- moving through ----
 
     private static void LeaveStep() {
+        O5KitAdapters.Ctx?.Tooltip?.Hide();
         if (chapter == null || index < 0 || index >= chapter.Steps.Count) {
             return;
         }
@@ -569,47 +590,61 @@ internal static class Tutorial {
         replace = true;
         userPlaced = false;
         dragging = false;
+        scrolledFor = null;
         PlaceAround(Target(step));
     }
 
     private static void ApplyTexts(TutorialStep step, int i, int count, bool keepTyped) {
         bool wasFinished = keepTyped && (letters <= 0 || body.maxVisibleCharacters >= letters);
-        caption.text = $"{Tr("TUTORIAL_CH_" + chapter.Id, chapter.Title).ToUpperInvariant()}   {i + 1} / {count}";
+        // Chapter titles stay in English by design.
+        caption.text = $"{chapter.Title.ToUpperInvariant()}   {i + 1} / {count}";
 
-        string rawTitle = Tr($"TUTORIAL_{step.Key}_TITLE", step.Title);
-        string rawBody = Tr($"TUTORIAL_{step.Key}", step.Text);
-        string noteText = step.Note != null ? Tr($"TUTORIAL_{step.Key}_NOTE", step.Note) : null;
+        string rawTitle = FormatHotkeys(Tr($"TUTORIAL_{step.Key}_TITLE", step.Title));
+        string rawBody = FormatHotkeys(Tr($"TUTORIAL_{step.Key}", step.Text));
+        string noteText = step.Note != null ? FormatHotkeys(Tr($"TUTORIAL_{step.Key}_NOTE", step.Note)) : null;
+        bool hasLink = !string.IsNullOrEmpty(step.LinkUrl);
+        currentLinkUrl = hasLink ? step.LinkUrl : null;
+        string linkDisplay = hasLink ? $"<u>{Tr($"TUTORIAL_{step.Key}_LINK", step.LinkLabel ?? step.LinkUrl)}</u>" : string.Empty;
 
         float needBody = TutorialWrap.NeededWidth(rawBody, s => MeasureWidth(body, s));
         float needNote = !string.IsNullOrEmpty(noteText) ? TutorialWrap.NeededWidth(noteText, s => MeasureWidth(note, s)) : 0f;
+        float needLink = hasLink ? MeasureWidth(linkText, linkDisplay) : 0f;
         float needed = Mathf.Max(
             needBody > 0f ? needBody + 40f + 4f : 0f,
-            needNote > 0f ? needNote + 64f + 4f : 0f);
+            Mathf.Max(needNote, needLink) > 0f ? Mathf.Max(needNote, needLink) + 64f + 4f : 0f);
         bubbleWidth = Mathf.Clamp(Mathf.Max(BubbleWidth, needed), BubbleWidth, MaxBubbleWidth);
         bubble.sizeDelta = new Vector2(bubbleWidth, bubble.sizeDelta.y);
 
         title.text = Styled(rawTitle);
         body.text = TutorialWrap.Format(rawBody, bubbleWidth - 40f, s => MeasureWidth(body, s));
 
-        noteBox.gameObject.SetActive(!string.IsNullOrEmpty(noteText));
+        noteBox.gameObject.SetActive(!string.IsNullOrEmpty(noteText) || hasLink);
+        note.transform.parent.gameObject.SetActive(!string.IsNullOrEmpty(noteText));
         note.text = !string.IsNullOrEmpty(noteText)
             ? TutorialWrap.Format(noteText, bubbleWidth - 64f, s => MeasureWidth(note, s))
             : string.Empty;
+        if (linkRow != null) {
+            linkRow.gameObject.SetActive(hasLink);
+            if (linkText != null) {
+                linkText.text = linkDisplay;
+                linkText.color = LinkColor;
+            }
+        }
 
         if (doneAt >= 0f) {
             waiting.text = "<color=#7CFF8A>✓</color> " + Tr("TUTORIAL_NICE", "Nice!");
         } else if (nudged) {
-            waiting.text = TutorialWrap.Format(Tr("TUTORIAL_NUDGE", "...Still there? Stuck? <b>Skip step</b> works too."), bubbleWidth - 40f, s => MeasureWidth(waiting, s));
+            waiting.text = TutorialWrap.Format(Tr("TUTORIAL_NUDGE", "If you're stuck, you can click <b>Skip</b> to move on."), bubbleWidth - 40f, s => MeasureWidth(waiting, s));
         } else {
             string waitRaw = step.Demo != null
-                ? Tr("TUTORIAL_WATCH", "Watch me first.")
-                : Tr("TUTORIAL_YOUR_TURN", "Your turn: do it and this moves on by itself.");
+                ? Tr("TUTORIAL_WATCH", "Watch how it works first.")
+                : Tr("TUTORIAL_YOUR_TURN", "Try it yourself to move on automatically.");
             waiting.text = TutorialWrap.Format(waitRaw, bubbleWidth - 40f, s => MeasureWidth(waiting, s));
         }
 
         backButton.Text = Tr("TUTORIAL_BACK", "Back");
-        replayButton.Text = Tr("TUTORIAL_REPLAY", "Show again");
-        skipButton.Text = Tr("TUTORIAL_SKIP", "Skip step");
+        replayButton.Text = Tr("TUTORIAL_REPLAY", "Replay");
+        skipButton.Text = Tr("TUTORIAL_SKIP", "Skip");
         restoreButton.Text = Tr("TUTORIAL_RESTORE", "Return");
         nextButton.Text = i == count - 1 && !course ? Tr("TUTORIAL_FINISH", "Finish") : Tr("TUTORIAL_NEXT", "Next");
         BuildChoices(step);
@@ -634,11 +669,29 @@ internal static class Tutorial {
 
     private static void OnLanguageChanged(string _) => RefreshLanguage();
 
+    private static void OnPaletteChanged() {
+        if (waiting != null) {
+            waiting.color = Accent;
+        }
+        RefreshLanguage();
+    }
+
     private static void OnLangLoadEnd(Overlayer.Localization.TranslationFailState state) {
         if (state == Overlayer.Localization.TranslationFailState.Success) {
             RefreshLanguage();
         }
     }
+
+    private static string FormatHotkeys(string text) {
+        if (string.IsNullOrEmpty(text)) {
+            return text;
+        }
+        return text
+            .Replace("{WindowKey}", UI.UICore.WindowKey.ToDisplayString())
+            .Replace("{HudKey}", HudEditor.Key.ToDisplayString());
+    }
+
+    internal static void RefreshTexts() => RefreshLanguage();
 
     private static void RefreshLanguage() {
         if (chapter == null || root == null || index < 0 || index >= chapter.Steps.Count) {
@@ -724,7 +777,7 @@ internal static class Tutorial {
         canvasObj.transform.SetParent(MainCore.Root.transform, false);
         var canvas = canvasObj.AddComponent<Canvas>();
         canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        canvas.sortingOrder = 32767;
+        canvas.sortingOrder = 32766;
         var scaler = canvasObj.AddComponent<CanvasScaler>();
         scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
         scaler.referenceResolution = new Vector2(1920f, 1080f);
@@ -761,7 +814,7 @@ internal static class Tutorial {
         }
 
         var ctx = O5KitAdapters.Ctx;
-        var bubbleImage = UiStyle.Rounded("Bubble", root, new Color(0.08f, 0.08f, 0.11f, 0.97f));
+        var bubbleImage = UiStyle.Rounded("Bubble", root, O5Kit.Core.O5Palette.WithAlpha(Overlayer.UI.UIColors.SurfaceOpaque, 0.97f));
         bubbleImage.raycastTarget = true;
         bubble = bubbleImage.rectTransform;
         bubble.anchorMin = bubble.anchorMax = Vector2.zero;
@@ -796,7 +849,7 @@ internal static class Tutorial {
                 dot.rectTransform.sizeDelta = new Vector2(3.5f, 3.5f);
             }
         }
-        AttachDrag(bubble.gameObject, pe => pe.pointerPressRaycast.gameObject?.GetComponentInParent<Button>() == null);
+        AttachDrag(bubble.gameObject, pe => pe.pointerPressRaycast.gameObject?.GetComponentInParent<Button>() == null && pe.pointerPressRaycast.gameObject != linkText?.gameObject);
 
         // Olly stands at the bubble's lower left, outside it.
         olly = new OllyView(bubble);
@@ -818,10 +871,26 @@ internal static class Tutorial {
         var noteImage = UiStyle.Rounded("Note", bubble, new Color(1f, 1f, 1f, 0.05f));
         noteBox = noteImage.rectTransform;
         noteGroup = noteBox.gameObject.AddComponent<CanvasGroup>();
-        var noteLayout = UiStyle.Vertical(noteBox.gameObject, 0f, new RectOffset(12, 12, 10, 10));
+        var noteLayout = UiStyle.Vertical(noteBox.gameObject, 6f, new RectOffset(12, 12, 10, 10));
         noteLayout.childForceExpandHeight = false;
         note = Line(ctx, noteBox, 15f, new Color(1f, 1f, 1f, 0.74f), 64f);
         note.lineSpacing = 4f;
+
+        linkText = Line(ctx, noteBox, 14f, LinkColor, 64f);
+        linkRow = linkText.rectTransform.parent as RectTransform;
+        linkRow.gameObject.name = "Link";
+        linkElement = linkRow.GetComponent<LayoutElement>();
+        linkElement.minHeight = 20f;
+        linkText.raycastTarget = true;
+        UnityUtils.AddEvents(linkText.gameObject.AddComponent<EventTrigger>(),
+            (EventTriggerType.PointerEnter, _ => linkText.color = LinkHoverColor),
+            (EventTriggerType.PointerExit, _ => linkText.color = LinkColor),
+            (EventTriggerType.PointerClick, e => {
+                if (UnityUtils.AsPointerEventData(e) is { button: PointerEventData.InputButton.Left } && !string.IsNullOrEmpty(currentLinkUrl)) {
+                    Application.OpenURL(currentLinkUrl);
+                }
+            }));
+        linkRow.gameObject.SetActive(false);
 
         waiting = Line(ctx, bubble, 14f, Accent, 40f);
 
@@ -831,10 +900,10 @@ internal static class Tutorial {
         backButton = Track(UiStyle.Button(UiStyle.Cell(buttons, 70f), "tutorial_back", Tr("TUTORIAL_BACK", "Back"), Back));
         closeButton = Track(UiStyle.IconButton(UiStyle.Cell(buttons, 34f), "tutorial_close", MainCore.Spr.Get(UISprite.X128), null, 9f));
         HoldToConfirm.Attach(closeButton, BeginClose, canConfirm: () => !closing);
-        closeButton.Rect.AddToolTip(ctx, () => Tr("TUTORIAL_CLOSE_TIP", "Hold to stop the tutorial (you can pick it up again on the Tutorial page)"));
+        closeButton.Rect.AddToolTip(ctx, () => Tr("TUTORIAL_CLOSE_TIP", "Hold to close the tutorial. You can restart it from the Tutorial page."));
         UiStyle.Cell(buttons, 0f);
-        replayButton = Track(UiStyle.Button(UiStyle.Cell(buttons, 96f), "tutorial_replay", Tr("TUTORIAL_REPLAY", "Show again"), Replay));
-        skipButton = Track(UiStyle.Button(UiStyle.Cell(buttons, 96f), "tutorial_skip", Tr("TUTORIAL_SKIP", "Skip step"), Skip));
+        replayButton = Track(UiStyle.Button(UiStyle.Cell(buttons, 96f), "tutorial_replay", Tr("TUTORIAL_REPLAY", "Replay"), Replay));
+        skipButton = Track(UiStyle.Button(UiStyle.Cell(buttons, 96f), "tutorial_skip", Tr("TUTORIAL_SKIP", "Skip"), Skip));
         nextButton = Track(UiStyle.Button(UiStyle.Cell(buttons, 96f), "tutorial_next", Tr("TUTORIAL_NEXT", "Next"), Next, primary: true));
         restoreButton = Track(UiStyle.Button(UiStyle.Cell(buttons, 96f), "tutorial_restore", Tr("TUTORIAL_RESTORE", "Return"), RestoreStep, primary: true));
         restoreButton.Rect.parent.gameObject.SetActive(false);
@@ -842,6 +911,7 @@ internal static class Tutorial {
         if (!langHooked && MainCore.Tr != null) {
             MainCore.Tr.OnLanguageChanged += OnLanguageChanged;
             MainCore.Tr.OnLoadEnd += OnLangLoadEnd;
+            UI.UIColors.OnPaletteChanged += OnPaletteChanged;
             langHooked = true;
         }
 
@@ -910,13 +980,13 @@ internal static class Tutorial {
     private static void AttachDrag(GameObject target, Func<PointerEventData, bool> canStart = null) {
         UnityUtils.AddEvents(target.AddComponent<EventTrigger>(),
             (EventTriggerType.BeginDrag, e => {
-                if (e is PointerEventData pe && pe.button == PointerEventData.InputButton.Left && (canStart == null || canStart(pe))) {
+                if (UnityUtils.AsPointerEventData(e) is { } pe && pe.button == PointerEventData.InputButton.Left && (canStart == null || canStart(pe))) {
                     dragging = true;
                     glide = Vector2.zero;
                 }
             }),
             (EventTriggerType.Drag, e => {
-                if (dragging && e is PointerEventData pe && bubble != null) {
+                if (dragging && UnityUtils.AsPointerEventData(e) is { } pe && bubble != null) {
                     var canvas = root != null ? root.GetComponentInParent<Canvas>()?.rootCanvas : null;
                     float scale = canvas != null && canvas.scaleFactor > 0f ? canvas.scaleFactor : 1f;
                     bubble.anchoredPosition += pe.delta / scale;
@@ -983,6 +1053,10 @@ internal static class Tutorial {
         if (!has) {
             at = new Vector2((size.x - cardWidth) * 0.5f + OllyWidth, 90f + bubbleHeight);
         } else {
+            if (!ReferenceEquals(scrolledFor, target)) {
+                ScrollIntoView(target);
+                scrolledFor = target;
+            }
             var corners = new Vector3[4];
             target.GetWorldCorners(corners);
             var cam = target.GetComponentInParent<Canvas>()?.rootCanvas is { renderMode: not RenderMode.ScreenSpaceOverlay } c ? c.worldCamera : null;
@@ -1047,8 +1121,31 @@ internal static class Tutorial {
         bubble.SetAsLastSibling();
     }
 
+    private static void ScrollIntoView(RectTransform target) {
+        var scroller = target.GetComponentInParent<UIScrollController>();
+        if (scroller == null || scroller.content == null || scroller.viewport == null) {
+            return;
+        }
+        LayoutRebuilder.ForceRebuildLayoutImmediate(scroller.content);
+        var rel = RectTransformUtility.CalculateRelativeRectTransformBounds(scroller.viewport, target);
+        var view = scroller.viewport.rect;
+        const float pad = 16f;
+        float now = scroller.content.anchoredPosition.y;
+        bool scrolled = false;
+        if (rel.size.y > view.height - pad * 2f || rel.max.y > view.yMax - pad) {
+            scroller.ScrollTo(now - (rel.max.y - (view.yMax - pad)), true);
+            scrolled = true;
+        } else if (rel.min.y < view.yMin + pad) {
+            scroller.ScrollTo(now + ((view.yMin + pad) - rel.min.y), true);
+            scrolled = true;
+        }
+        if (scrolled) {
+            Canvas.ForceUpdateCanvases();
+        }
+    }
+
     private static Vector2? placed;
-    private static RectTransform placedFor;
+    private static RectTransform placedFor, scrolledFor;
     private static bool replace, snap = true, dragging, userPlaced;
     private static Vector2 glide, targetMin, targetMax;
 

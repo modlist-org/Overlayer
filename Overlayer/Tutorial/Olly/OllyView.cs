@@ -53,7 +53,7 @@ internal sealed class OllyView {
         var frameBg = Stretch("FrameBg", Rect).gameObject.AddComponent<Image>();
         frameBg.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P1024);
         frameBg.type = Image.Type.Sliced;
-        frameBg.color = new Color(0.08f, 0.08f, 0.11f, 0.97f);
+        frameBg.color = O5Kit.Core.O5Palette.WithAlpha(Overlayer.UI.UIColors.SurfaceOpaque, 0.97f);
         frameBg.raycastTarget = true;
 
         mask = Stretch("PortraitMask", Rect);
@@ -93,7 +93,7 @@ internal sealed class OllyView {
         var border = Stretch("FrameBorder", Rect).gameObject.AddComponent<Image>();
         border.sprite = MainCore.Spr.Get(UISliceSprite.CircleOutline256O32P1024);
         border.type = Image.Type.Sliced;
-        border.color = new Color(0.569f, 0.604f, 1f, 0.75f);
+        border.color = O5Kit.Core.O5Palette.WithAlpha(Overlayer.UI.UIColors.ObjectActive, 0.75f);
         border.raycastTarget = false;
 
         patArea = Part("PatArea", null, Rect);

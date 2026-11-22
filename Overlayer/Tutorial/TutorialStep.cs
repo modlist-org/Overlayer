@@ -39,6 +39,9 @@ internal sealed class TutorialStep {
     public Action Restore;
     /// <summary>Per-frame safeguard while the required context is intact (e.g. recreate deleted sample or step back).</summary>
     public Action Keep;
+    /// <summary>Optional clickable reference link shown below the note.</summary>
+    public string LinkLabel;
+    public string LinkUrl;
 
     public TutorialStep(string key, string title, string text, string note = null) {
         Key = key;
@@ -100,6 +103,12 @@ internal sealed class TutorialStep {
 
     public TutorialStep Keeping(Action keep) {
         Keep = keep;
+        return this;
+    }
+
+    public TutorialStep WithLink(string label, string url) {
+        LinkLabel = label;
+        LinkUrl = url;
         return this;
     }
 }
