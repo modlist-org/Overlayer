@@ -11,6 +11,7 @@ using Xunit.Abstractions;
 namespace Overlayer.Tests;
 
 // Opt-in: OVERLAYER_BENCHMARK=1 ./test.sh -c Release --filter FrameCost
+[Collection("ExprCore.TagLookupProvider")]
 public sealed class FrameCostBenchmark(ITestOutputHelper output) {
     public static double Accuracy = 99.123456;
     public static double GetAccuracy() => Accuracy;

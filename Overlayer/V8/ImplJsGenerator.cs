@@ -10,7 +10,7 @@ namespace Overlayer.V8;
 
 public static class ImplJsGenerator {
     public const string TagTypeScript =
-        "globalThis.TagType = Object.freeze({ None: 0, BlockOnNotPlaying: 1, BlockOnPaused: 2, BlockOnAll: 3, ProcessFormat: 256, JsOnly: 512, Hide: 65536, Advanced: 16777216 });";
+        "globalThis.TagType = Object.freeze({ None: 0, ProcessFormat: 256, JsOnly: 512, Hide: 65536, Advanced: 16777216 });";
 
     public static string BuildJs(IEnumerable<TagCore> tags) {
         var sb = new StringBuilder();
@@ -25,7 +25,7 @@ public static class ImplJsGenerator {
 
         sb.AppendLine("/* TagType bitmask constants (see TagCore.TagType).");
         sb.AppendLine("   Use in RegisterTag options, e.g. { Type: TagType.ProcessFormat }");
-        sb.AppendLine("   or combine with bitwise OR: { Type: TagType.ProcessFormat | TagType.BlockOnPaused } */");
+        sb.AppendLine("   or combine with bitwise OR: { Type: TagType.ProcessFormat | TagType.Hide } */");
         sb.AppendLine(TagTypeScript + "\n");
 
         sb.AppendLine("/**");
@@ -34,7 +34,7 @@ public static class ImplJsGenerator {
         sb.AppendLine(" * @param {string} name - The unique name of the tag.");
         sb.AppendLine(" * @param {Function} func - The logic to execute.");
         sb.AppendLine(" * @param {Object} [options] - Configuration object.");
-        sb.AppendLine(" * @param {number} [options.Type] - TagType bitmask (e.g. TagType.ProcessFormat, or TagType.ProcessFormat | TagType.BlockOnPaused).");
+        sb.AppendLine(" * @param {number} [options.Type] - TagType bitmask (e.g. TagType.ProcessFormat, or TagType.ProcessFormat | TagType.Hide).");
         sb.AppendLine(" * Use TagType.ProcessFormat to allow a trailing format argument (e.g. {Tag:0.##}).");
         sb.AppendLine(" * @param {string} [options.ReturnType] - Declared return type for format validation.");
         sb.AppendLine(" * One of 'number', 'float', 'decimal', 'int', 'long', 'string'.");
@@ -148,9 +148,6 @@ public static class ImplJsGenerator {
         sb.AppendLine("   and drop the emitted .js into Script/. Runtime executes JS only. */");
         sb.AppendLine("declare const TagType: {");
         sb.AppendLine("    readonly None: 0;");
-        sb.AppendLine("    readonly BlockOnNotPlaying: 1;");
-        sb.AppendLine("    readonly BlockOnPaused: 2;");
-        sb.AppendLine("    readonly BlockOnAll: 3;");
         sb.AppendLine("    readonly ProcessFormat: 256;");
         sb.AppendLine("    readonly JsOnly: 512;");
         sb.AppendLine("    readonly Hide: 65536;");

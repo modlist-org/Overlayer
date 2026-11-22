@@ -42,7 +42,6 @@ internal sealed class JsBatch {
         }
         Array.Clear(states, 0, count);
         if (owners.Length < count) owners = new ScriptEngine[values.Length];
-        // Blocked tags never call JS; they keep their last text via the delegate.
         engines.Clear();
         for (int i = 0; i < count; i++) {
             var owner = owners[i] = Owner(bindings[i]);
@@ -75,7 +74,7 @@ internal sealed class JsBatch {
     }
 
     private static ScriptEngine Owner(JsBinding binding) =>
-        binding.IsBlocked ? null : binding.Function?.Engine;
+        binding.Function?.Engine;
 
     // False: evaluate this slot through its normal delegate.
     internal bool TryTake(int index, out string text, out bool failed) {

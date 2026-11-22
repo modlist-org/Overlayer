@@ -35,13 +35,13 @@ public sealed class CompilerTests {
     }
 
     [Fact]
-    public void BlockedTag_RendersRawWhenNotPlaying() {
+    public void NumericProperty_EvaluatesNormallyRegardlessOfPlaybackState() {
         var prop = typeof(DummyTags).GetProperty(nameof(DummyTags.FullComboValue), BindingFlags.Public | BindingFlags.Static)!;
-        var tag = new TagCore("FullCombo", prop, TagType.BlockOnNotPlaying);
+        var tag = new TagCore("FullCombo", prop, TagType.None);
         var compiled = Compiler.Compile(tag, new ParsedTag("{FullCombo:F1}", "FullCombo", ["F1"], 0, 14));
 
         Assert.True(compiled.IsValid);
-        Assert.Equal("{FullCombo:F1}", compiled.Get());
+        Assert.Equal(1557.0d.ToString("F1"), compiled.Get());
     }
 
     [Fact]

@@ -1,5 +1,4 @@
 using Microsoft.ClearScript;
-using Overlayer.ModuleAPI;
 using Overlayer.Tag.Core;
 
 namespace Overlayer.Tag.Runtime;
@@ -10,49 +9,36 @@ public sealed class JsBinding {
     internal readonly TagCore Tag;
     internal readonly object[] Args;
     internal readonly Func<object, string> Finish;
-    private readonly bool blockable;
-    // Last good text for block-flagged tags (shown while blocked).
-    internal string Last;
 
     internal JsBinding(TagCore tag, object[] args, Func<object, string> finish) {
         Tag = tag;
         Args = args;
         Finish = finish;
-        blockable = (tag.TagType & (TagType.BlockOnNotPlaying | TagType.BlockOnPaused)) != 0;
     }
 
     internal ScriptObject Function => Tag.JSFunction;
 
-    internal bool IsBlocked => blockable && (
-        ((Tag.TagType & TagType.BlockOnNotPlaying) != 0 && !PlaybackState.IsPlaying) ||
-        ((Tag.TagType & TagType.BlockOnPaused) != 0 && PlaybackState.IsPaused));
-
-    internal string Complete(object result) => Keep(Formatted(result));
+    internal string Complete(object result) => Formatted(result);
 
     // Batched results: a number arrives unboxed and a string as a range of the
     // batch's result string. Unchanged values reuse the last text without
     // boxing, copying or formatting.
     internal string CompleteNumber(double value) {
         var last = memo;
-        return Keep(last != null && last.Kind == MemoKind.Number && last.Bits == BitConverter.DoubleToInt64Bits(value)
+        return last != null && last.Kind == MemoKind.Number && last.Bits == BitConverter.DoubleToInt64Bits(value)
             ? last.Text
-            : Remember(JsBatch.Narrow(value)));
+            : Remember(JsBatch.Narrow(value));
     }
 
     internal string CompleteString(string source, int start, int length) {
         var last = memo;
-        return Keep(last != null && last.Kind == MemoKind.String && last.Str.Length == length
+        return last != null && last.Kind == MemoKind.String && last.Str.Length == length
             && string.CompareOrdinal(last.Str, 0, source, start, length) == 0
             ? last.Text
-            : Remember(source.Substring(start, length)));
+            : Remember(source.Substring(start, length));
     }
 
     internal string Invoke() => Complete(Function.Invoke(false, Args));
-
-    private string Keep(string text) {
-        if (blockable) Last = text;
-        return text;
-    }
 
     private enum MemoKind : byte { Number, Bool, String }
 

@@ -19,10 +19,10 @@ public static class ExprCore {
     private static readonly Dictionary<string, NativeExpression> NativeHandleCache = new(StringComparer.Ordinal);
     private static readonly Queue<string> NativeCacheOrder = new();
 
-    private static NativeExpression GetOrCompileNative(string transformed) {
+    private static NativeExpression GetOrCompileNative(string transformed, string jsTransformed) {
         lock (NativeCacheLock) {
             if (NativeHandleCache.TryGetValue(transformed, out var expression)) return expression;
-            nint js = OvJsExpr.Compile(transformed);
+            nint js = OvJsExpr.Compile(jsTransformed);
             if (js != 0) {
                 expression = new NativeExpression(js, js: true);
             } else {
@@ -136,9 +136,10 @@ public static class ExprCore {
 
         // 2. Native Path: OvJsExpr (exact JS number semantics), then legacy O5Expr
         if (OvJsExpr.IsSupported || O5Expr.IsSupported) {
+            string jsTransformed = NormalizeBareMathForJs(transformed, rewriteConstants: true);
             if (tags.Count == 0 && !HasDynamicVariable(transformed)) {
                 // Constant Folding
-                nint jsHandle = OvJsExpr.Compile(transformed);
+                nint jsHandle = OvJsExpr.Compile(jsTransformed);
                 if (jsHandle != 0) {
                     double folded = OvJsExpr.Eval(jsHandle, []);
                     OvJsExpr.Free(jsHandle);
@@ -156,7 +157,7 @@ public static class ExprCore {
                 }
             }
 
-            var nativeExpression = GetOrCompileNative(transformed);
+            var nativeExpression = GetOrCompileNative(transformed, jsTransformed);
             if (nativeExpression != null) {
                 var resultMemo = new StringMemo<long>();
                 // Compile tag getters
@@ -185,7 +186,8 @@ public static class ExprCore {
         }
 
         // 3. Fallback: ClearScript V8 JavaScript Engine (via Reflection)
-        string wrappedJsCode = isLegacyJs ? "{\n" + trimmed + "\n}" : WrapJsBlock(rawCode);
+        string jsFallbackSource = NormalizeBareMathForJs(trimmed, rewriteConstants: false);
+        string wrappedJsCode = isLegacyJs ? "{\n" + jsFallbackSource + "\n}" : WrapJsBlock(jsFallbackSource);
         var jsResultMemo = new StringMemo<long>();
         // Warn once per failure streak, not every frame (logging uses reflection and disk).
         bool warned = false;
@@ -289,6 +291,304 @@ public static class ExprCore {
     }
 
     private static readonly Regex ReturnKeyword = new(@"\breturn\b", RegexOptions.Compiled);
+
+    /// <summary>
+    /// Rewrites bare math helper calls (e.g. round, clamp, lerp, sin) and optionally
+    /// bare constants (pi, e) into standard JS Math.* / arithmetic expressions so
+    /// both OvJsExpr and ClearScript V8 evaluate them natively.
+    /// </summary>
+    internal static string NormalizeBareMathForJs(string expr, bool rewriteConstants) {
+        if (string.IsNullOrEmpty(expr)) {
+            return expr;
+        }
+
+        var sb = new System.Text.StringBuilder(expr.Length + 16);
+        int i = 0;
+        int len = expr.Length;
+
+        while (i < len) {
+            char c = expr[i];
+
+            // Skip string literals verbatim (single, double, backtick) with backslash escapes
+            if (c == '\'' || c == '"' || c == '`') {
+                int end = ScanStringLiteral(expr, i);
+                sb.Append(expr, i, end - i);
+                i = end;
+                continue;
+            }
+
+            // Skip line / block comments verbatim
+            if (c == '/' && i + 1 < len) {
+                if (expr[i + 1] == '/') {
+                    int end = expr.IndexOf('\n', i + 2);
+                    if (end < 0) end = len;
+                    sb.Append(expr, i, end - i);
+                    i = end;
+                    continue;
+                }
+                if (expr[i + 1] == '*') {
+                    int end = expr.IndexOf("*/", i + 2, StringComparison.Ordinal);
+                    end = end < 0 ? len : end + 2;
+                    sb.Append(expr, i, end - i);
+                    i = end;
+                    continue;
+                }
+            }
+
+            if (IsIdentStart(c)) {
+                int start = i;
+                i++;
+                while (i < len && IsIdentPart(expr[i])) {
+                    i++;
+                }
+                string name = expr[start..i];
+                string lower = name.ToLowerInvariant();
+
+                bool precededByDotOrDigitOrDollar = start > 0 && (
+                    expr[start - 1] == '.'
+                    || expr[start - 1] == '$'
+                    || char.IsDigit(expr[start - 1])
+                    || PrevNonWsChar(expr, start - 1) == '.'
+                );
+                bool precededByDeclKeyword = IsDeclarationKeywordBefore(expr, start);
+
+                if (precededByDotOrDigitOrDollar || precededByDeclKeyword) {
+                    sb.Append(name);
+                    continue;
+                }
+
+                int j = SkipWs(expr, i);
+                if (j < len && expr[j] == '(' && IsSupportedBareMathFn(lower)) {
+                    if (TryParseCallArgs(expr, j, out var rawArgs, out int afterParen)
+                        && TryRewriteMathCall(lower, rawArgs, rewriteConstants, out string rewritten)) {
+                        sb.Append(rewritten);
+                        i = afterParen;
+                        continue;
+                    }
+                    sb.Append(name);
+                    continue;
+                }
+
+                if (rewriteConstants && (lower == "pi" || lower == "e")) {
+                    // Do not rewrite object keys (`{ e: 1 }`), assignments (`e = 1`), or calls (`e()`).
+                    bool blockedNext = j < len && (
+                        expr[j] == ':'
+                        || expr[j] == '('
+                        || (expr[j] == '=' && (j + 1 >= len || expr[j + 1] != '='))
+                    );
+                    if (!blockedNext) {
+                        sb.Append(lower == "pi" ? "Math.PI" : "Math.E");
+                        continue;
+                    }
+                }
+
+                sb.Append(name);
+                continue;
+            }
+
+            sb.Append(c);
+            i++;
+        }
+
+        return sb.ToString();
+    }
+
+    private static bool IsIdentStart(char c) => (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '_';
+    private static bool IsIdentPart(char c) => IsIdentStart(c) || char.IsDigit(c);
+
+    private static int SkipWs(string s, int idx) {
+        while (idx < s.Length && char.IsWhiteSpace(s[idx])) {
+            idx++;
+        }
+        return idx;
+    }
+
+    private static char PrevNonWsChar(string s, int idx) {
+        while (idx >= 0 && char.IsWhiteSpace(s[idx])) {
+            idx--;
+        }
+        return idx >= 0 ? s[idx] : '\0';
+    }
+
+    private static bool IsDeclarationKeywordBefore(string s, int identStart) {
+        int k = identStart - 1;
+        while (k >= 0 && char.IsWhiteSpace(s[k])) {
+            k--;
+        }
+        if (k < 0 || !IsIdentPart(s[k])) {
+            return false;
+        }
+        int end = k + 1;
+        while (k >= 0 && IsIdentPart(s[k])) {
+            k--;
+        }
+        int start = k + 1;
+        if (!IsIdentStart(s[start])) {
+            return false;
+        }
+        string word = s[start..end];
+        return word is "function" or "var" or "let" or "const" or "class";
+    }
+
+    private static int ScanStringLiteral(string s, int start) {
+        char quote = s[start];
+        int i = start + 1;
+        while (i < s.Length) {
+            char ch = s[i];
+            if (ch == '\\') {
+                i += 2;
+                continue;
+            }
+            if (ch == quote) {
+                return i + 1;
+            }
+            i++;
+        }
+        return s.Length;
+    }
+
+    private static bool TryParseCallArgs(string s, int openParenIdx, out List<string> args, out int afterCloseParen) {
+        args = [];
+        afterCloseParen = openParenIdx;
+        int len = s.Length;
+        int depth = 1;
+        int i = openParenIdx + 1;
+        int argStart = i;
+
+        while (i < len && depth > 0) {
+            char c = s[i];
+            if (c == '\'' || c == '"' || c == '`') {
+                i = ScanStringLiteral(s, i);
+                continue;
+            }
+            if (c == '/' && i + 1 < len) {
+                if (s[i + 1] == '/') {
+                    int end = s.IndexOf('\n', i + 2);
+                    i = end < 0 ? len : end + 1;
+                    continue;
+                }
+                if (s[i + 1] == '*') {
+                    int end = s.IndexOf("*/", i + 2, StringComparison.Ordinal);
+                    i = end < 0 ? len : end + 2;
+                    continue;
+                }
+            }
+            if (c == '(' || c == '[' || c == '{') {
+                depth++;
+            } else if (c == ')' || c == ']' || c == '}') {
+                depth--;
+                if (depth == 0 && c == ')') {
+                    string tail = s[argStart..i];
+                    if (args.Count > 0 || !string.IsNullOrWhiteSpace(tail)) {
+                        args.Add(tail);
+                    }
+                    afterCloseParen = i + 1;
+                    return true;
+                }
+            } else if (c == ',' && depth == 1) {
+                args.Add(s[argStart..i]);
+                argStart = i + 1;
+            }
+            i++;
+        }
+
+        return false;
+    }
+
+    private static bool IsSupportedBareMathFn(string lower) => lower is
+        "sin" or "cos" or "tan" or "asin" or "acos" or "atan" or "atan2" or
+        "sinh" or "cosh" or "tanh" or "asinh" or "acosh" or "atanh" or
+        "sqrt" or "cbrt" or "exp" or "exp2" or "ln" or "log" or "log2" or "log10" or
+        "abs" or "sign" or "floor" or "ceil" or "round" or "trunc" or
+        "min" or "max" or "clamp" or "pow" or "mod" or "fmod" or "hypot" or
+        "lerp" or "step" or "smoothstep" or "deg2rad" or "rad2deg";
+
+    private static bool TryRewriteMathCall(string lower, List<string> rawArgs, bool rewriteConstants, out string result) {
+        result = string.Empty;
+        string[] a = new string[rawArgs.Count];
+        for (int i = 0; i < rawArgs.Count; i++) {
+            a[i] = NormalizeBareMathForJs(rawArgs[i].Trim(), rewriteConstants);
+        }
+
+        switch (lower) {
+            case "round":
+                if (a.Length == 1) {
+                    result = $"Math.round({a[0]})";
+                    return true;
+                }
+                if (a.Length == 2) {
+                    result = $"(Math.round(({a[0]}) * Math.pow(10, ({a[1]}))) / Math.pow(10, ({a[1]})))";
+                    return true;
+                }
+                return false;
+            case "log":
+                if (a.Length == 1) {
+                    result = $"Math.log({a[0]})";
+                    return true;
+                }
+                if (a.Length == 2) {
+                    result = $"(Math.log({a[0]}) / Math.log({a[1]}))";
+                    return true;
+                }
+                return false;
+            case "ln":
+                if (a.Length != 1) return false;
+                result = $"Math.log({a[0]})";
+                return true;
+            case "exp2":
+                if (a.Length != 1) return false;
+                result = $"Math.pow(2, ({a[0]}))";
+                return true;
+            case "clamp":
+                if (a.Length != 3) return false;
+                result = $"Math.min(Math.max(({a[0]}), ({a[1]})), ({a[2]}))";
+                return true;
+            case "lerp":
+                if (a.Length != 3) return false;
+                result = $"(({a[0]}) + (({a[1]}) - ({a[0]})) * ({a[2]}))";
+                return true;
+            case "deg2rad":
+                if (a.Length != 1) return false;
+                result = $"(({a[0]}) * (Math.PI / 180))";
+                return true;
+            case "rad2deg":
+                if (a.Length != 1) return false;
+                result = $"(({a[0]}) * (180 / Math.PI))";
+                return true;
+            case "fmod":
+                if (a.Length != 2) return false;
+                result = $"(({a[0]}) % ({a[1]}))";
+                return true;
+            case "mod":
+                if (a.Length != 2) return false;
+                result = $"(((({a[0]}) % ({a[1]})) + ({a[1]})) % ({a[1]}))";
+                return true;
+            case "step":
+                if (a.Length != 2) return false;
+                result = $"(({a[1]}) < ({a[0]}) ? 0 : 1)";
+                return true;
+            case "smoothstep":
+                if (a.Length != 3) return false;
+                string tExpr = $"Math.min(Math.max((({a[2]}) - ({a[0]})) / (({a[1]}) - ({a[0]})), 0), 1)";
+                result = $"({tExpr} * {tExpr} * (3 - 2 * {tExpr}))";
+                return true;
+            case "min":
+            case "max":
+            case "hypot":
+                if (a.Length == 0) return false;
+                result = $"Math.{lower}({string.Join(", ", a)})";
+                return true;
+            case "atan2":
+            case "pow":
+                if (a.Length != 2) return false;
+                result = $"Math.{lower}({a[0]}, {a[1]})";
+                return true;
+            default:
+                if (a.Length != 1) return false;
+                result = $"Math.{lower}({a[0]})";
+                return true;
+        }
+    }
 
     private static string WrapJsBlock(string code) {
         if (string.IsNullOrEmpty(code)) return "()";

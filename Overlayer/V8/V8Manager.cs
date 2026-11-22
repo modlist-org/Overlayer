@@ -217,6 +217,8 @@ public class V8Manager : IRuntimeService {
         GenerateImplJs(force: true);
     }
 
+    public event Action OnScriptsReloaded;
+
     public async Task ReloadScriptsAsync() {
         await _reloadGate.WaitAsync();
         try {
@@ -270,6 +272,7 @@ public class V8Manager : IRuntimeService {
         }
         await Task.Run(() => GenerateImplJs(false)).ConfigureAwait(false);
         MainThread.Enqueue(TextEngineUpdater.RecompileAll);
+        OnScriptsReloaded?.Invoke();
     }
 
     /// <summary>Forces a full rebuild regardless of file changes (e.g. after toggling a script on/off).</summary>

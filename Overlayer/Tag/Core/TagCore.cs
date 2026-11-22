@@ -8,9 +8,6 @@ namespace Overlayer.Tag.Core;
 [Flags]
 public enum TagType {
     None = 0,
-    BlockOnNotPlaying = 1 << 0,
-    BlockOnPaused = 1 << 1,
-    BlockOnAll = BlockOnNotPlaying | BlockOnPaused,
 
     ProcessFormat = 1 << 8,
 
@@ -102,8 +99,7 @@ public class TagCore {
     private TagCore(TagCore real, Func<object[], object> values) {
         Name = real.Name;
         Description = real.Description;
-        // Made-up values are always there to show.
-        TagType = real.TagType & ~TagType.BlockOnAll;
+        TagType = real.TagType;
         Member = real.Member;
         MemberType = real.MemberType;
         Parameters = real.Parameters;

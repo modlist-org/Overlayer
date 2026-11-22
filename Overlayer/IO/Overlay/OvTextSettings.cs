@@ -7,18 +7,6 @@ namespace Overlayer.IO.Overlay;
 public sealed class OvTextSettings : ISettingsFile, ICopyable<OvTextSettings> {
     public FxValue<string> Text = FxValue<string>.FromValue("Text");
 
-    [Obsolete("Use Text instead.")]
-    public FxValue<string> PlayingText {
-        get => Text;
-        set => Text = value;
-    }
-
-    [Obsolete("Use Text instead.")]
-    public FxValue<string> NotPlayingText {
-        get => Text;
-        set => Text = value;
-    }
-
     public JToken Serialize() => new JObject {
         [nameof(Text)] = IOUtils.WriteFx(Text)
     };

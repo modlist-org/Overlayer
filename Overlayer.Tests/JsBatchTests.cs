@@ -75,19 +75,16 @@ public sealed class JsBatchTests {
     }
 
     [Fact]
-    public async Task ErrorsAndBlockedTagsStayIsolated() {
+    public async Task ErrorsStayIsolated() {
         using var v8 = new TestV8Host();
         v8.Engine.Execute("globalThis.calls = 0;");
         Register(v8, "BatchBoom", "(() => { ++globalThis.calls; throw new Error('x'); })");
         Register(v8, "BatchOk", "(() => 'ok' + (++globalThis.calls))");
-        Register(v8, "BatchPlaying", "(() => 'p' + (++globalThis.calls))", type: TagType.BlockOnNotPlaying);
-        using var engine = await Ready("[{BatchBoom}][{BatchOk}][{BatchPlaying}]");
-        bool playing = true;
-        using var _ = PlaybackState.Register(() => playing);
-        Assert.Equal("[{BatchBoom}][ok2][p3]", engine.Get());
-        playing = false;
-        Assert.Equal("[{BatchBoom}][ok5][p3]", engine.Get());
-        Assert.Equal(5, Convert.ToInt32(v8.Engine.Evaluate("globalThis.calls"), CultureInfo.InvariantCulture));
+        Register(v8, "BatchSecond", "(() => 's' + (++globalThis.calls))");
+        using var engine = await Ready("[{BatchBoom}][{BatchOk}][{BatchSecond}]");
+        Assert.Equal("[{BatchBoom}][ok2][s3]", engine.Get());
+        Assert.Equal("[{BatchBoom}][ok5][s6]", engine.Get());
+        Assert.Equal(6, Convert.ToInt32(v8.Engine.Evaluate("globalThis.calls"), CultureInfo.InvariantCulture));
     }
 
     [Fact]

@@ -103,7 +103,7 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
         popupRect.sizeDelta = new(PopupWidth, MaxItems * ItemHeight);
 
         Image popupImage = popup.AddComponent<Image>();
-        popupImage.color = new Color(0.10f, 0.10f, 0.14f, 0.98f);
+        popupImage.color = O5Kit.Core.O5Palette.WithAlpha(UIColors.SurfaceOpaque, 0.98f);
 
         rows = new CompletionRow[MaxItems];
 

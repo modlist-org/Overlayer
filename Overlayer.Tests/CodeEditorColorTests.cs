@@ -5,6 +5,7 @@ using Xunit;
 
 namespace Overlayer.Tests;
 
+[Collection("ExprCore.TagLookupProvider")]
 public sealed class CodeEditorColorTests {
     private static class MockTags {
         public static double Combo => 350.0;

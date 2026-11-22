@@ -1,4 +1,3 @@
-using Overlayer.ModuleAPI;
 using Overlayer.Tag.Core;
 using Overlayer.Tag.Diagnostics;
 using Overlayer.Tag.Runtime;
@@ -56,10 +55,6 @@ public static class Compiler {
                     [.. diagnostics]
                 );
             }
-            // Block flags are checked at runtime so no recompile is needed
-            // when play/pause state flips. While blocked (e.g. the frames of
-            // a scene transition), keep the last good value instead of
-            // flashing raw text; raw is only the never-evaluated fallback.
             if (tag.IsJS && tag.JSFunction != null) {
                 string format = sig.HasFormat ? sig.Format : null;
                 js = new JsBinding(tag, ExpressionBuilder.ArgumentValues(tag, sig), format == null
@@ -68,22 +63,7 @@ public static class Compiler {
                 // Same call and formatting as the expression tree, plus result memo.
                 inner = js.Invoke;
             }
-            if (!HasBlockFlag(tag)) {
-                compiledFunc = inner;
-            } else if (js != null) {
-                var binding = js;
-                var preview = new Preview(inner, parsed.Raw);
-                compiledFunc = () => binding.IsBlocked ? binding.Last ?? preview.Get() : binding.Last = inner();
-            } else {
-                string last = null;
-                var preview = new Preview(inner, parsed.Raw);
-                compiledFunc = () => {
-                    if (IsBlocked(tag)) {
-                        return last ?? preview.Get();
-                    }
-                    return last = inner();
-                };
-            }
+            compiledFunc = inner;
         }
 
         return new CompiledPlaceholder(
@@ -92,33 +72,4 @@ public static class Compiler {
             js
         );
     }
-
-    // A blocked tag that never ran shows its raw text. In the HUD editor show what it says
-    // right now instead (0 combo, 0.00% ...), so a layout can be judged before playing.
-    // A tag that can't run outside play falls back to raw for good (no throw every frame).
-    /// <summary>Set while the HUD editor is open: blocked tags that never ran show their current value.</summary>
-    internal static bool ShowBlockedLive { get; set; }
-
-    private sealed class Preview(Func<string> inner, string raw) {
-        private bool failed;
-
-        public string Get() {
-            if (failed || !ShowBlockedLive) {
-                return raw;
-            }
-            try {
-                return inner() ?? raw;
-            } catch {
-                failed = true;
-                return raw;
-            }
-        }
-    }
-
-    private static bool HasBlockFlag(TagCore tag)
-        => (tag.TagType & (TagType.BlockOnNotPlaying | TagType.BlockOnPaused)) != 0;
-
-    private static bool IsBlocked(TagCore tag)
-        => ((tag.TagType & TagType.BlockOnNotPlaying) != 0 && !PlaybackState.IsPlaying)
-        || ((tag.TagType & TagType.BlockOnPaused) != 0 && PlaybackState.IsPaused);
 }
