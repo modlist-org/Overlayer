@@ -1,8 +1,10 @@
 using O5Kit.Behaviour;
 using O5Kit.Core;
+using O5Kit.Input;
 using Overlayer.Compat;
 using Overlayer.Core;
 using Overlayer.Resource;
+using Overlayer.UI.Utility;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -26,8 +28,9 @@ internal sealed class CurveGraph {
     private const float HoldSeconds = 0.5f;
 
     private static readonly Color GridColor = new(1f, 1f, 1f, 0.07f);
-    private static readonly Color GuideColor = new(1f, 1f, 1f, 0.22f);
-    private static readonly Color CurveColor = new(0.569f, 0.604f, 1f, 1f);
+    private static readonly Color GuideColor = new(1f, 0.92f, 0.28f, 0.55f);
+    private static readonly Color GuideLabelColor = new(1f, 0.92f, 0.28f, 0.92f);
+    private static Color CurveColor => UIColors.ObjectActive;
     private static readonly Color CompareColor = new(1f, 0.75f, 0.35f, 0.55f);
     private static readonly Color PointColor = Color.white;
     private static readonly Color EndpointColor = new(0.51f, 0.51f, 0.54f, 1f);
@@ -42,12 +45,36 @@ internal sealed class CurveGraph {
     public Func<bool> EndpointHeights;
     public Action<int> SelectionChanged;
 
-    public RectTransform PreviewTrack;
-    public RectTransform PreviewBox;
-    public RectTransform CompareBox;
+    private RectTransform previewTrack, previewDot, compareDot;
+    private RectTransform previewUnitRail, previewZeroLine, previewOneLine, previewUnderLine, previewOverLine;
+    private TextMeshProUGUI previewZeroLabel, previewOneLabel, previewZeroOneLabel, previewUnderLabel, previewOverLabel;
+    private PreviewScale previewScale = PreviewScale.Compute(0f, 1f, 1f);
+    private float lastPreviewWidth = -1f;
+
+    public void BindPreview(
+        RectTransform track, RectTransform dot, RectTransform compareDot, RectTransform unitRail,
+        RectTransform zeroLine, RectTransform oneLine, RectTransform underLine, RectTransform overLine,
+        TextMeshProUGUI zeroLabel, TextMeshProUGUI oneLabel, TextMeshProUGUI zeroOneLabel,
+        TextMeshProUGUI underLabel, TextMeshProUGUI overLabel) {
+        previewTrack = track;
+        previewDot = dot;
+        this.compareDot = compareDot;
+        previewUnitRail = unitRail;
+        previewZeroLine = zeroLine;
+        previewOneLine = oneLine;
+        previewUnderLine = underLine;
+        previewOverLine = overLine;
+        previewZeroLabel = zeroLabel;
+        previewOneLabel = oneLabel;
+        previewZeroOneLabel = zeroOneLabel;
+        previewUnderLabel = underLabel;
+        previewOverLabel = overLabel;
+        lastPreviewWidth = -1f;
+    }
 
     private readonly Lines grid, guides, compare, curve, handleLines;
     private readonly RectTransform inHandle, outHandle;
+    private readonly TextMeshProUGUI startLabel, endLabel;
     private readonly TextMeshProUGUI hint;
     private bool hintAnim;
     private readonly RectTransform progressDot;
@@ -82,8 +109,10 @@ internal sealed class CurveGraph {
 
         grid = new Lines(Rect, "Grid", GridColor, 1f, false);
         guides = new Lines(Rect, "Guides", GuideColor, 1.5f, false);
+        startLabel = GuideLabel("StartLabel", MainCore.Tr.Get("EASING_START", "Start"), TextAlignmentOptions.TopLeft, new Vector2(0f, 1f));
+        endLabel = GuideLabel("EndLabel", MainCore.Tr.Get("EASING_END", "End"), TextAlignmentOptions.BottomLeft, new Vector2(0f, 0f));
         compare = new Lines(Rect, "Compare", CompareColor, 2f, true);
-        curve = new Lines(Rect, "Curve", CurveColor, 3f, true);
+        curve = new Lines(Rect, "Curve", () => CurveColor, 3f, true);
         handleLines = new Lines(Rect, "HandleLines", HandleColor, 1.5f, false);
 
         progressDot = Dot("Progress", CurveColor);
@@ -102,14 +131,13 @@ internal sealed class CurveGraph {
         hint.color = new Color(1f, 1f, 1f, 0.45f);
         hint.raycastTarget = false;
         UpdateHint();
-        lastLang = MainCore.Conf.Language.Value;
 
         var trigger = Rect.gameObject.AddComponent<EventTrigger>();
         UnityUtils.AddEvents(trigger,
             (EventTriggerType.PointerEnter, _ => pointerInside = true),
             (EventTriggerType.PointerExit, _ => pointerInside = false),
-            (EventTriggerType.PointerDown, e => OnPointerDown(e as PointerEventData)),
-            (EventTriggerType.PointerUp, e => OnPointerUp(e as PointerEventData))
+            (EventTriggerType.PointerDown, e => OnPointerDown(UnityUtils.AsPointerEventData(e))),
+            (EventTriggerType.PointerUp, e => OnPointerUp(UnityUtils.AsPointerEventData(e)))
         );
 
         model.Changed += MarkDirty;
@@ -130,6 +158,20 @@ internal sealed class CurveGraph {
         img.raycastTarget = false;
         r.sizeDelta = new Vector2(PointSize, PointSize);
         return r;
+    }
+
+    private TextMeshProUGUI GuideLabel(string name, string text, TextAlignmentOptions align, Vector2 pivot) {
+        var t = O5Kit.Factory.O5Factory.ControlText(O5KitAdapters.Ctx, Rect, 12f, true);
+        t.gameObject.name = name;
+        t.rectTransform.anchorMin = t.rectTransform.anchorMax = Vector2.zero;
+        t.rectTransform.pivot = pivot;
+        t.rectTransform.sizeDelta = new Vector2(64f, 18f);
+        t.alignment = align;
+        t.color = GuideLabelColor;
+        t.raycastTarget = false;
+        TmpCompat.SetNoWrap(t);
+        t.text = text;
+        return t;
     }
 
     public void MarkDirty() => dirty = true;
@@ -174,9 +216,11 @@ internal sealed class CurveGraph {
         return true;
     }
 
-    private int PointAt(Vector2 local) {
+    private int PointAt(Vector2 local) => PointAt(local, HitRadius);
+
+    private int PointAt(Vector2 local, float radius) {
         int best = -1;
-        float bestDist = HitRadius * HitRadius;
+        float bestDist = radius * radius;
         for (int i = 0; i < Model.Points.Count; i++) {
             float d = (ToLocal(Model.Points[i]) - local).sqrMagnitude;
             if (d <= bestDist) {
@@ -187,10 +231,19 @@ internal sealed class CurveGraph {
         return best;
     }
 
-    private void UpdateHint() {
+    internal void UpdateHint() {
         hintAnim = Model.IsAnim;
-        hint.text = MainCore.Tr.Get("EASING_GRAPH_HINT", "Click: add point   Drag: move   Right-click / Del: remove   Shift: snap   Ctrl+Z/Y")
-            + (hintAnim ? MainCore.Tr.Get("EASING_GRAPH_HINT_ANIM", "   Handles: slope (Alt: split)") : string.Empty);
+        lastLang = MainCore.Tr.Language;
+        if (startLabel != null) {
+            startLabel.text = MainCore.Tr.Get("EASING_START", "Start");
+        }
+        if (endLabel != null) {
+            endLabel.text = MainCore.Tr.Get("EASING_END", "End");
+        }
+        if (hint != null) {
+            hint.text = MainCore.Tr.Get("EASING_GRAPH_HINT", "Click: add point   Drag: move   Right-click / Del: remove   Shift: snap   Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z")
+                + (hintAnim ? MainCore.Tr.Get("EASING_GRAPH_HINT_ANIM", "   Handles: slope (Alt: split)") : string.Empty);
+        }
     }
 
     // ---- tangent handles (anim) ----
@@ -250,9 +303,13 @@ internal sealed class CurveGraph {
         }
         int hit = PointAt(local);
         if (e.button == PointerEventData.InputButton.Right) {
-            BeginPin();
-            if (hit >= 0 && Model.Remove(hit)) {
-                Select(-1);
+            if (hit >= 0) {
+                BeginPin();
+                if (Model.Remove(hit)) {
+                    Select(-1);
+                }
+            } else if (PointAt(local, HitRadius * 1.5f) >= 0) {
+                BeginPin();
             }
             return;
         }
@@ -311,9 +368,8 @@ internal sealed class CurveGraph {
             ReleasePin();
             return;
         }
-        string lang = MainCore.Conf.Language.Value;
+        string lang = MainCore.Tr.Language;
         if (lastLang != lang) {
-            lastLang = lang;
             UpdateHint();
         }
         float scale = UICore.Canvas != null && UICore.Canvas.scaleFactor > 0f ? UICore.Canvas.scaleFactor : 1f;
@@ -328,15 +384,15 @@ internal sealed class CurveGraph {
         }
 
         if ((focused || pointerInside) && !TypingInField()) {
-            bool ctrl = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
+            bool ctrl = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl)
+                || Input.GetKey(KeyCode.LeftCommand) || Input.GetKey(KeyCode.RightCommand);
             bool shift = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
             if (Input.GetKeyDown(KeyCode.Delete) && selected >= 0 && Model.Remove(selected)) {
                 Select(-1);
             }
             if (ctrl && Input.GetKeyDown(KeyCode.Z)) {
                 ApplyHistory(shift ? Model.Redo() : Model.Undo());
-            }
-            if (ctrl && Input.GetKeyDown(KeyCode.Y)) {
+            } else if (ctrl && Input.GetKeyDown(KeyCode.Y)) {
                 ApplyHistory(Model.Redo());
             }
         }
@@ -369,6 +425,8 @@ internal sealed class CurveGraph {
         PinScroll();
         if (dirty) {
             Redraw();
+        } else if (previewTrack != null && !Mathf.Approximately(previewTrack.rect.width, lastPreviewWidth)) {
+            UpdatePreviewScale();
         }
         Animate();
     }
@@ -381,6 +439,7 @@ internal sealed class CurveGraph {
     private RectTransform scrollContent;
     private float pinnedY;
     private bool pinning;
+    private bool rightPressedOutside;
 
     private void EnsureScroller() {
         if (scroller != null) {
@@ -420,17 +479,23 @@ internal sealed class CurveGraph {
         if (scroller == null || scrollContent == null) {
             return;
         }
-        bool held = Input.GetMouseButton(1);
+        bool held = O5Input.GetMouseButton(1);
         if (!held) {
+            rightPressedOutside = false;
             ReleasePin();
-            if (!Input.GetMouseButtonDown(1)) {
+            if (!O5Input.GetMouseButtonDown(1)) {
                 pinnedY = scrollContent.anchoredPosition.y;
             }
             return;
         }
-        bool over = pointerInside || RectTransformUtility.RectangleContainsScreenPoint(Rect, Input.mousePosition, null);
-        if (!pinning && over) {
-            BeginPin();
+        if (O5Input.GetMouseButtonDown(1) && !pinning && !rightPressedOutside) {
+            Vector2 mouse = O5Input.MousePosition;
+            bool over = pointerInside || RectTransformUtility.RectangleContainsScreenPoint(Rect, mouse, null);
+            if (over && LocalFromScreen(mouse, null, out var pressLocal) && PointAt(pressLocal, HitRadius * 1.5f) >= 0) {
+                BeginPin();
+            } else {
+                rightPressedOutside = true;
+            }
         } else if (pinning) {
             scroller.ScrollTo(pinnedY, true);
         }
@@ -468,6 +533,10 @@ internal sealed class CurveGraph {
             ToLocal(new Vector2(0f, 0f)), ToLocal(new Vector2(1f, 0f)),
             ToLocal(new Vector2(0f, 1f)), ToLocal(new Vector2(1f, 1f)),
         ], minLine);
+        Vector2 startPos = ToLocal(new Vector2(0f, 0f));
+        Vector2 endPos = ToLocal(new Vector2(0f, 1f));
+        startLabel.rectTransform.anchoredPosition = new Vector2(startPos.x + 12f, startPos.y - 3f);
+        endLabel.rectTransform.anchoredPosition = new Vector2(endPos.x + 12f, endPos.y + 3f);
 
         int samples = Mathf.Clamp((int)plot.width / 6, 40, 160);
         string text = Model.Text;
@@ -511,6 +580,92 @@ internal sealed class CurveGraph {
         }
         handleLines.Set(handleSegments, minLine);
         progressDot.SetAsLastSibling();
+        UpdatePreviewScale();
+    }
+
+    private void UpdatePreviewScale() {
+        if (previewTrack == null) {
+            return;
+        }
+        float width = previewTrack.rect.width;
+        if (width <= 1f) {
+            lastPreviewWidth = width;
+            return;
+        }
+        lastPreviewWidth = width;
+
+        float sMin = 0f, sMax = 1f;
+        void Check(float v) {
+            if (float.IsNaN(v) || float.IsInfinity(v)) {
+                return;
+            }
+            v = Mathf.Clamp(v, -1e4f, 1e4f);
+            if (v < sMin) sMin = v;
+            if (v > sMax) sMax = v;
+        }
+
+        string text = Model.Text;
+        for (int i = 0; i <= 128; i++) {
+            Check(EaseMath.Evaluate(text, i / 128f));
+        }
+        for (int i = 0; i < Model.Points.Count; i++) {
+            Check(EaseMath.Evaluate(text, Model.Points[i].x));
+        }
+        string preset = ComparePreset?.Invoke();
+        if (!string.IsNullOrEmpty(preset)) {
+            for (int i = 0; i <= 128; i++) {
+                Check(EaseMath.Evaluate(preset, i / 128f));
+            }
+        }
+
+        previewScale = PreviewScale.Compute(sMin, sMax, width);
+
+        if (previewUnitRail != null) {
+            previewUnitRail.anchoredPosition = new Vector2(previewScale.X0, 0f);
+            previewUnitRail.sizeDelta = new Vector2(Mathf.Max(0f, previewScale.X1 - previewScale.X0), 1.5f);
+        }
+        if (previewUnderLine != null) {
+            previewUnderLine.gameObject.SetActive(previewScale.HasUnder);
+            previewUnderLine.anchoredPosition = new Vector2(0f, 0f);
+        }
+        if (previewOverLine != null) {
+            previewOverLine.gameObject.SetActive(previewScale.HasOver);
+            previewOverLine.anchoredPosition = new Vector2(width, 0f);
+        }
+        if (previewZeroLine != null) {
+            float lineX = previewScale.MergeLines ? (previewScale.X0 + previewScale.X1) * 0.5f : previewScale.X0;
+            previewZeroLine.anchoredPosition = new Vector2(lineX, 0f);
+        }
+        if (previewOneLine != null) {
+            previewOneLine.gameObject.SetActive(!previewScale.MergeLines);
+            previewOneLine.anchoredPosition = new Vector2(previewScale.X1, 0f);
+        }
+
+        if (previewUnderLabel != null) {
+            previewUnderLabel.gameObject.SetActive(previewScale.HasUnder);
+            previewUnderLabel.text = previewScale.UnderText;
+            previewUnderLabel.rectTransform.anchoredPosition = Vector2.zero;
+        }
+        if (previewOverLabel != null) {
+            previewOverLabel.gameObject.SetActive(previewScale.HasOver);
+            previewOverLabel.text = previewScale.OverText;
+            previewOverLabel.rectTransform.anchoredPosition = new Vector2(width, 0f);
+        }
+        if (previewZeroLabel != null) {
+            previewZeroLabel.gameObject.SetActive(!previewScale.MergedZeroOne);
+            previewZeroLabel.rectTransform.anchoredPosition = new Vector2(previewScale.ZeroLabelX, 0f);
+        }
+        if (previewOneLabel != null) {
+            previewOneLabel.gameObject.SetActive(!previewScale.MergedZeroOne);
+            previewOneLabel.rectTransform.anchoredPosition = new Vector2(previewScale.OneLabelX, 0f);
+        }
+        if (previewZeroOneLabel != null) {
+            previewZeroOneLabel.gameObject.SetActive(previewScale.MergedZeroOne);
+            previewZeroOneLabel.rectTransform.anchoredPosition = new Vector2(previewScale.MergedLabelX, 0f);
+        }
+
+        previewDot?.SetAsLastSibling();
+        compareDot?.SetAsLastSibling();
     }
 
     // Evenly spaced samples miss a sharp turn between them (points close together), and the
@@ -549,29 +704,20 @@ internal sealed class CurveGraph {
         progressDot.anchoredPosition = ToLocal(new Vector2(t, Mathf.Clamp(v, CurveModel.MinY, CurveModel.MaxY)));
         string preset = ComparePreset?.Invoke();
         bool comparing = !string.IsNullOrEmpty(preset);
-        Place(PreviewBox, v, comparing ? 9f : 0f);
-        if (CompareBox != null) {
-            CompareBox.gameObject.SetActive(comparing);
+        Place(previewDot, v, comparing ? 7f : 0f);
+        if (compareDot != null) {
+            compareDot.gameObject.SetActive(comparing);
             if (comparing) {
-                Place(CompareBox, EaseMath.Evaluate(preset, t), -9f);
+                Place(compareDot, EaseMath.Evaluate(preset, t), -7f);
             }
         }
     }
 
-    // 0..1 spans the middle of the track; the margins show overshoot. A box that left the
-    // scroll view's mask entirely got culled and didn't always come back, so stay inside.
-    private const float PreviewMargin = 0.15f;
-
-    private void Place(RectTransform box, float value, float y) {
-        if (box == null || PreviewTrack == null) {
+    private void Place(RectTransform dot, float value, float y) {
+        if (dot == null || previewTrack == null) {
             return;
         }
-        float width = PreviewTrack.rect.width - box.rect.width;
-        float t = PreviewMargin + value * (1f - 2f * PreviewMargin);
-        var pos = box.anchoredPosition;
-        pos.x = Mathf.Clamp(width * t, 0f, width);
-        pos.y = y;
-        box.anchoredPosition = pos;
+        dot.anchoredPosition = new Vector2(previewScale.MapX(value, previewTrack.rect.width), y);
     }
 
     // Line segments as pooled Images: clipped by the scroll view's RectMask2D like any other
@@ -580,21 +726,32 @@ internal sealed class CurveGraph {
         private readonly RectTransform root;
         private readonly List<RectTransform> pool = [];
         private readonly Color color;
+        private readonly Func<Color> colorProvider;
         private readonly float width;
         private readonly bool strip;
 
-        public Lines(RectTransform parent, string name, Color color, float width, bool strip) {
+        public Lines(RectTransform parent, string name, Color color, float width, bool strip)
+            : this(parent, name, null, color, width, strip) { }
+
+        public Lines(RectTransform parent, string name, Func<Color> colorProvider, float width, bool strip)
+            : this(parent, name, colorProvider, colorProvider(), width, strip) { }
+
+        private Lines(RectTransform parent, string name, Func<Color> colorProvider, Color color, float width, bool strip) {
             root = NewRect(name, parent);
             root.anchorMin = root.pivot = Vector2.zero;
             root.anchorMax = Vector2.one;
             root.offsetMin = root.offsetMax = Vector2.zero;
+            this.colorProvider = colorProvider;
             this.color = color;
             this.width = width;
             this.strip = strip;
         }
 
+        private Color CurrentColor => colorProvider != null ? colorProvider() : color;
+
         public void Set(List<Vector2> points, float minThickness = 0f) {
             float w = Mathf.Max(width, minThickness);
+            Color currentColor = CurrentColor;
             int used = 0;
             int step = strip ? 1 : 2;
             for (int i = 0; i + 1 < points.Count; i += step) {
@@ -603,7 +760,7 @@ internal sealed class CurveGraph {
                 if (dir.sqrMagnitude < 1e-6f) {
                     continue;
                 }
-                var seg = Get(used++);
+                var seg = Get(used++, currentColor);
                 seg.anchoredPosition = (a + b) * 0.5f;
                 // Strips overlap a little at the joints so they don't show gaps.
                 seg.sizeDelta = new Vector2(dir.magnitude + (strip ? w : 0f), w);
@@ -615,16 +772,20 @@ internal sealed class CurveGraph {
             }
         }
 
-        private RectTransform Get(int index) {
+        private RectTransform Get(int index, Color currentColor) {
             while (pool.Count <= index) {
                 var seg = NewRect("Segment", root);
                 seg.anchorMin = seg.anchorMax = Vector2.zero;
                 var img = seg.gameObject.AddComponent<Image>();
-                img.color = color;
+                img.color = currentColor;
                 img.raycastTarget = false;
                 pool.Add(seg);
             }
-            return pool[index];
+            var rect = pool[index];
+            if (colorProvider != null) {
+                rect.GetComponent<Image>().color = currentColor;
+            }
+            return rect;
         }
     }
 }

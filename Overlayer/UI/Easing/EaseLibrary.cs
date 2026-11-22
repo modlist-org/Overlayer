@@ -19,6 +19,8 @@ internal static class EaseLibrary {
     private static List<Entry> entries;
     private static int version;
 
+    public static event Action Changed;
+
     public static int Version => Volatile.Read(ref version);
 
     private static string FilePath => Path.Combine(MainCore.Paths.RootPath, "Easings.json");
@@ -99,14 +101,20 @@ internal static class EaseLibrary {
             Interlocked.Increment(ref version);
             Save();
         }
+        Changed?.Invoke();
     }
 
     public static void Remove(Entry entry) {
+        bool removed = false;
         lock (sync) {
             if (entries != null && entries.Remove(entry)) {
                 Interlocked.Increment(ref version);
                 Save();
+                removed = true;
             }
+        }
+        if (removed) {
+            Changed?.Invoke();
         }
     }
 }
