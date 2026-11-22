@@ -4,6 +4,7 @@ using Overlayer.Async;
 using Overlayer.Compat;
 using Overlayer.Core;
 using Overlayer.IO.User;
+using Overlayer.Localization;
 using Overlayer.Overlay;
 using Overlayer.Package;
 using Overlayer.Resource;
@@ -63,6 +64,7 @@ public sealed class OvCanvasPropsPage : IDisposable {
         headerRect.offsetMax = Vector2.zero;
 
         var backBtn = O5Factory.Button(O5KitAdapters.Ctx, headerGo.transform, "props_back", new O5ButtonOptions { Text = T("O5CP_BACK", "Back"), OnClick = () => Close(), Height = 40f });
+        backBtn.Label.gameObject.AddComponent<TextLocalization>().Init("O5CP_BACK", "Back");
         backBtn.Rect.anchorMin = new Vector2(0f, 0.5f);
         backBtn.Rect.anchorMax = new Vector2(0f, 0.5f);
         backBtn.Rect.pivot = new Vector2(0f, 0.5f);
@@ -70,6 +72,7 @@ public sealed class OvCanvasPropsPage : IDisposable {
         backBtn.Rect.sizeDelta = new Vector2(120f, 40f);
 
         var saveBtn = O5Factory.Button(O5KitAdapters.Ctx, headerGo.transform, "props_save", new O5ButtonOptions { Text = T("SAVE", "Save"), OnClick = () => Save(), Height = 40f });
+        saveBtn.Label.gameObject.AddComponent<TextLocalization>().Init("SAVE", "Save");
         saveBtn.Rect.anchorMin = new Vector2(1f, 0.5f);
         saveBtn.Rect.anchorMax = new Vector2(1f, 0.5f);
         saveBtn.Rect.pivot = new Vector2(1f, 0.5f);
@@ -102,6 +105,7 @@ public sealed class OvCanvasPropsPage : IDisposable {
 
         var thumbHead = O5Factory.ControlTextH1(O5KitAdapters.Ctx, O5Factory.Row(O5KitAdapters.Ctx, root));
         thumbHead.text = T("O5CP_THUMBNAIL", "Thumbnail");
+        thumbHead.gameObject.AddComponent<TextLocalization>().Init("O5CP_THUMBNAIL", "Thumbnail");
 
         var thumbRow = O5Factory.Row(O5KitAdapters.Ctx, root, 140f);
         var previewGo = new GameObject("Preview");
@@ -119,6 +123,7 @@ public sealed class OvCanvasPropsPage : IDisposable {
         previewImage.color = new Color(1f, 1f, 1f, 0.35f);
 
         var browseBtn = O5Factory.Button(O5KitAdapters.Ctx, thumbRow, "props_thumb_browse", new O5ButtonOptions { Text = T("BROWSE", "Browse"), OnClick = () => BrowseThumbnail(), Height = 40f });
+        browseBtn.Label.gameObject.AddComponent<TextLocalization>().Init("BROWSE", "Browse");
         browseBtn.Rect.anchorMin = new Vector2(0f, 1f);
         browseBtn.Rect.anchorMax = new Vector2(0f, 1f);
         browseBtn.Rect.pivot = new Vector2(0f, 1f);
@@ -126,6 +131,7 @@ public sealed class OvCanvasPropsPage : IDisposable {
         browseBtn.Rect.sizeDelta = new Vector2(140f, 40f);
 
         var clearBtn = O5Factory.Button(O5KitAdapters.Ctx, thumbRow, "props_thumb_clear", new O5ButtonOptions { Text = T("REMOVE", "Remove"), Height = 40f });
+        clearBtn.Label.gameObject.AddComponent<TextLocalization>().Init("REMOVE", "Remove");
         Utility.HoldToConfirm.Attach(clearBtn, () => SetThumbnail(null));
         clearBtn.Rect.anchorMin = new Vector2(0f, 1f);
         clearBtn.Rect.anchorMax = new Vector2(0f, 1f);
@@ -135,6 +141,7 @@ public sealed class OvCanvasPropsPage : IDisposable {
 
         var metaHead = O5Factory.ControlTextH1(O5KitAdapters.Ctx, O5Factory.Row(O5KitAdapters.Ctx, root));
         metaHead.text = T("O5CP_META", "Package info");
+        metaHead.gameObject.AddComponent<TextLocalization>().Init("O5CP_META", "Package info");
 
         authorInput = LabeledInput(root, "O5CP_AUTHOR", "Author");
         descInput = LabeledInput(root, "O5CP_DESCRIPTION", "Description", multiline: true);
@@ -143,9 +150,12 @@ public sealed class OvCanvasPropsPage : IDisposable {
 
         var scriptHead = O5Factory.ControlTextH1(O5KitAdapters.Ctx, O5Factory.Row(O5KitAdapters.Ctx, root));
         scriptHead.text = T("O5CP_SCRIPTS", "Extra JS files");
+        scriptHead.gameObject.AddComponent<TextLocalization>().Init("O5CP_SCRIPTS", "Extra JS files");
         var scriptNoteRow = O5Factory.Row(O5KitAdapters.Ctx, root, 30f);
         var scriptNote = O5Factory.ControlText(O5KitAdapters.Ctx, scriptNoteRow, 16f, true);
         scriptNote.text = T("O5CP_SCRIPTS_NOTE",
+            "JS the exporter cannot trace (patches, object access) must be listed here.");
+        scriptNote.gameObject.AddComponent<TextLocalization>().Init("O5CP_SCRIPTS_NOTE",
             "JS the exporter cannot trace (patches, object access) must be listed here.");
         scriptNote.color = new Color(1f, 1f, 1f, 0.6f);
 
@@ -160,15 +170,19 @@ public sealed class OvCanvasPropsPage : IDisposable {
         var scriptFitter = scriptList.gameObject.AddComponent<ContentSizeFitter>();
         scriptFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
         var addRow = O5Factory.Row(O5KitAdapters.Ctx, root, 44f);
-        O5Factory.Button(O5KitAdapters.Ctx, addRow, "props_script_add", new O5ButtonOptions { Text = T("O5CP_ADD_SCRIPT", "Add JS"), OnClick = () => BrowseScript(), Height = 40f });
+        var addScriptBtn = O5Factory.Button(O5KitAdapters.Ctx, addRow, "props_script_add", new O5ButtonOptions { Text = T("O5CP_ADD_SCRIPT", "Add JS"), OnClick = () => BrowseScript(), Height = 40f });
+        addScriptBtn.Label.gameObject.AddComponent<TextLocalization>().Init("O5CP_ADD_SCRIPT", "Add JS");
     }
 
     private static O5InputField LabeledInput(Transform root, string key, string fallback, bool multiline = false) {
         var labelRow = O5Factory.Row(O5KitAdapters.Ctx, root, 28f);
         var label = O5Factory.ControlText(O5KitAdapters.Ctx, labelRow, 18f, true);
         label.text = MainCore.Tr.Get(key, fallback);
+        label.gameObject.AddComponent<TextLocalization>().Init(key, fallback);
         var inputRow = O5Factory.Row(O5KitAdapters.Ctx, root, multiline ? 80f : 44f);
-        return O5Factory.Input(O5KitAdapters.Ctx, inputRow, $"props_{key.ToLowerInvariant()}", new O5InputOptions { Value = string.Empty, Placeholder = MainCore.Tr.Get(key, fallback), Multiline = multiline });
+        var input = O5Factory.Input(O5KitAdapters.Ctx, inputRow, $"props_{key.ToLowerInvariant()}", new O5InputOptions { Value = string.Empty, Placeholder = MainCore.Tr.Get(key, fallback), Multiline = multiline });
+        input.Placeholder.gameObject.AddComponent<TextLocalization>().Init(key, fallback);
+        return input;
     }
 
     public void Open(OvCanvas canvas) {

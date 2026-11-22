@@ -757,8 +757,7 @@ public partial class OvCanvasSettingPage : IDisposable {
             UnityUtils.AddEvents(tabTrigger,
                 (EventTriggerType.PointerDown, _ => suppressCanvasTabClick = false),
                 (EventTriggerType.PointerClick, e => {
-                    PointerEventData pointer =
-e as PointerEventData;
+                    PointerEventData pointer = UnityUtils.AsPointerEventData(e);
                     if (suppressCanvasTabClick) {
                         suppressCanvasTabClick = false;
                         return;
@@ -769,8 +768,7 @@ e as PointerEventData;
                 }
             ),
                 (EventTriggerType.BeginDrag, e => {
-                    PointerEventData pointer =
-e as PointerEventData;
+                    PointerEventData pointer = UnityUtils.AsPointerEventData(e);
                     if (pointer == null || pointer.button != InputButton.Left) {
                         return;
                     }
@@ -783,8 +781,7 @@ e as PointerEventData;
                         return;
                     }
 
-                    PointerEventData pointer =
-e as PointerEventData;
+                    PointerEventData pointer = UnityUtils.AsPointerEventData(e);
                     if (pointer != null && MoveCanvasTab(tab, pointer)) {
                         canvasTabDragReordered = true;
                     }
@@ -834,8 +831,7 @@ e as PointerEventData;
             var closeTrigger = closeObject.AddComponent<EventTrigger>();
             UnityUtils.AddEvents(closeTrigger,
                 (EventTriggerType.PointerClick, e => {
-                    PointerEventData pointer =
-e as PointerEventData;
+                    PointerEventData pointer = UnityUtils.AsPointerEventData(e);
                     if (pointer != null && pointer.button == InputButton.Left) {
                         CloseCanvasTab(tab);
                     }
@@ -1165,10 +1161,7 @@ e as PointerEventData;
         O5Effects.HoverOutline(O5KitAdapters.Ctx, itemBtn, trigger);
         UnityUtils.AddEvents(trigger,
             (EventTriggerType.PointerClick, eventData => {
-#pragma warning disable IDE0019
-                var pointer =
-#pragma warning restore IDE0019
-eventData as PointerEventData;
+                var pointer = UnityUtils.AsPointerEventData(eventData);
                 if (pointer == null || pointer.button != InputButton.Left) {
                     return;
                 }
@@ -1219,7 +1212,7 @@ eventData as PointerEventData;
         btnImg.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P2048);
         btnImg.type = Image.Type.Sliced;
         btnImg.color = selectedObject == obj ? UIColors.ObjectActive
-            : multiSelected.Contains(obj) ? UIColors.ObjectButton
+            : multiSelected.Contains(obj) ? O5Palette.WithAlpha(UIColors.ObjectActive, 0.55f)
             : UIColors.ObjectBG;
 
         RectTransform foldoutRect = null;
@@ -1269,10 +1262,7 @@ eventData as PointerEventData;
         CanvasGroup dragCanvasGroup = itemBtn.AddComponent<CanvasGroup>();
         UnityUtils.AddEvents(trigger,
             (EventTriggerType.PointerClick, e => {
-#pragma warning disable IDE0019
-                var ped =
-#pragma warning restore IDE0019
-e as PointerEventData;
+                var ped = UnityUtils.AsPointerEventData(e);
                 if (ped == null || ped.button != InputButton.Left) {
                     return;
                 }
@@ -1301,10 +1291,7 @@ e as PointerEventData;
             }
         ),
             (EventTriggerType.BeginDrag, e => {
-#pragma warning disable IDE0019
-                var ped =
-#pragma warning restore IDE0019
-e as PointerEventData;
+                var ped = UnityUtils.AsPointerEventData(e);
 
                 if (ped == null || ped.button != InputButton.Left) {
                     return;

@@ -210,7 +210,7 @@ internal sealed class OvInspectorBuilder(
             : Card("Rect Transform", false);
         Action refreshPositionFields = null;
         Action refreshPivotFields = null;
-        RectTransform rectLayout = CompactRow(basic, 92f, 6f);
+        RectTransform rectLayout = CompactRow(basic, 96f, 6f);
         rectLayout.GetComponent<LayoutElement>().preferredHeight = -1f;
         rectLayout.GetComponent<HorizontalLayoutGroup>().childForceExpandHeight = false;
         rectLayout.GetComponent<HorizontalLayoutGroup>().childAlignment = TextAnchor.UpperLeft;
@@ -257,7 +257,7 @@ internal sealed class OvInspectorBuilder(
         var (_, basic) = Card("Rect Transform", false);
         Action refreshPositionFields = null;
         Action refreshPivotFields = null;
-        RectTransform rectLayout = CompactRow(basic, 92f, 6f);
+        RectTransform rectLayout = CompactRow(basic, 96f, 6f);
         rectLayout.GetComponent<LayoutElement>().preferredHeight = -1f;
         rectLayout.GetComponent<HorizontalLayoutGroup>().childForceExpandHeight = false;
         rectLayout.GetComponent<HorizontalLayoutGroup>().childAlignment = TextAnchor.UpperLeft;
@@ -898,7 +898,7 @@ internal sealed class OvInspectorBuilder(
         }
 
         var row = O5Factory.Row(O5KitAdapters.Ctx, content, 50f);
-        var dropdown = O5Factory.DropDown(O5KitAdapters.Ctx, row, "add_component", new O5DropdownOptions<string> { DefaultValue = options[0], Value = options[0], Values = options, Display = InspectorLabel, OnChanged = selected => {
+        var dropdown = O5Factory.DropDown(O5KitAdapters.Ctx, row, "add_component", new O5DropdownOptions<string> { DefaultValue = options[0], Value = options[0], Values = options, Display = ComponentDisplayLabel, OnChanged = selected => {
             switch (selected) {
                 case "Text":
                     obj.Config.RectTransformConfig ??= new RectTransformSettings();
@@ -1015,6 +1015,19 @@ internal sealed class OvInspectorBuilder(
             : ComponentText(key, label);
     }
 
+    private string ComponentDisplayLabel(string label) {
+        if (string.IsNullOrEmpty(label) || label == "Add Component...") {
+            return InspectorLabel(label);
+        }
+
+        string key = label
+            .Replace(" / ", "_")
+            .Replace(" ", "_")
+            .Replace(".", string.Empty)
+            .ToUpperInvariant();
+        return InspectorText($"COMPONENT_{key}", InspectorText($"INSPECTOR_{key}", label));
+    }
+
     private (RectTransform Card, RectTransform Content) Card(string title, bool removable, Action remove = null) {
         componentKey = null;
         return O5Factory.Card(O5KitAdapters.Ctx, content, InspectorLabel(title), true, null, remove, removable, showActiveToggle: false);
@@ -1095,7 +1108,12 @@ internal sealed class OvInspectorBuilder(
             changed(text);
         }
 
-        var input = O5Factory.Input(O5KitAdapters.Ctx, row, id, new O5InputOptions { Value = value, OnChanged = OnTextChanged, Placeholder = InspectorLabel($"{label} / {language.LabelSuffix}"), OnEndEdit = _ => save(), Multiline = true, Monospace = true, FieldFactory = static go => go.AddComponent<UICodeInputField>() });
+        string combinedPlaceholder = $"{label} / {language.LabelSuffix}";
+        string placeholder = InspectorLabel(combinedPlaceholder);
+        if (placeholder == combinedPlaceholder) {
+            placeholder = $"{InspectorLabel(label)} / {InspectorLabel(language.LabelSuffix)}";
+        }
+        var input = O5Factory.Input(O5KitAdapters.Ctx, row, id, new O5InputOptions { Value = value, OnChanged = OnTextChanged, Placeholder = placeholder, OnEndEdit = _ => save(), Multiline = true, Monospace = true, FieldFactory = static go => go.AddComponent<UICodeInputField>() });
         var codeInput = (UICodeInputField)input.InputField;
 
         const float gutterWidth = 44f;
@@ -1802,9 +1820,9 @@ internal sealed class OvInspectorBuilder(
     };
 
     private static Color SeverityUnityColor(CompileSeverity severity) => severity switch {
-        CompileSeverity.Error => new Color(0.886f, 0.404f, 0.427f, 1f),
-        CompileSeverity.Warning => new Color(1f, 0.898f, 0.569f, 1f),
-        _ => new Color(0.588f, 0.718f, 1f, 1f)
+        CompileSeverity.Error => UIColors.SoftRed,
+        CompileSeverity.Warning => UIColors.ObjectActiveMathWarn,
+        _ => UIColors.ObjectActive
     };
 
     private static string FormatDiagnostic(CompileDiagnostic diagnostic) {
@@ -2058,38 +2076,48 @@ internal sealed class OvInspectorBuilder(
 
         var savedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var options = new List<string>();
-        foreach (var entry in EaseLibrary.Entries) {
-            string name = entry?.Name?.Trim();
-            if (string.IsNullOrEmpty(name) || name.Equals("null", StringComparison.OrdinalIgnoreCase)) {
-                continue;
+        void RebuildOptions() {
+            savedNames.Clear();
+            options.Clear();
+            foreach (var entry in EaseLibrary.Entries) {
+                string name = entry?.Name?.Trim();
+                if (string.IsNullOrEmpty(name) || name.Equals("null", StringComparison.OrdinalIgnoreCase)) {
+                    continue;
+                }
+                if (Enum.TryParse(name, true, out O5Ease ep) && Enum.IsDefined(typeof(O5Ease), ep)) {
+                    continue;
+                }
+                if (savedNames.Add(name)) {
+                    options.Add(name);
+                }
             }
-            if (Enum.TryParse(name, true, out O5Ease ep) && Enum.IsDefined(typeof(O5Ease), ep)) {
-                continue;
-            }
-            if (savedNames.Add(name)) {
-                options.Add(name);
-            }
+            options.AddRange(Enum.GetNames(typeof(O5Ease)));
+            options.Add(customOption);
         }
-        options.AddRange(Enum.GetNames(typeof(O5Ease)));
-        options.Add(customOption);
+        RebuildOptions();
 
-        string raw = fx.StaticValue?.Trim();
-        string currentOption;
-        string customValue = string.Empty;
-        bool isCustom = false;
-        if (string.IsNullOrEmpty(raw) || raw.Equals("null", StringComparison.OrdinalIgnoreCase)) {
-            currentOption = nameof(O5Ease.Linear);
-        } else if (Enum.TryParse(raw, true, out O5Ease enumVal) && Enum.IsDefined(typeof(O5Ease), enumVal)) {
-            currentOption = enumVal.ToString();
-        } else if (options.FirstOrDefault(o => savedNames.Contains(o) && string.Equals(o, raw, StringComparison.OrdinalIgnoreCase)) is string savedMatch) {
-            currentOption = savedMatch;
-        } else if (CustomEase.TryParse(raw, out _)) {
-            currentOption = customOption;
-            customValue = raw;
-            isCustom = true;
-        } else {
-            currentOption = nameof(O5Ease.Linear);
+        string ResolveSelection(out string customText, out bool custom) {
+            string raw = fx.StaticValue?.Trim();
+            customText = string.Empty;
+            custom = false;
+            if (string.IsNullOrEmpty(raw) || raw.Equals("null", StringComparison.OrdinalIgnoreCase)) {
+                return nameof(O5Ease.Linear);
+            }
+            if (Enum.TryParse(raw, true, out O5Ease enumVal) && Enum.IsDefined(typeof(O5Ease), enumVal)) {
+                return enumVal.ToString();
+            }
+            if (options.FirstOrDefault(o => savedNames.Contains(o) && string.Equals(o, raw, StringComparison.OrdinalIgnoreCase)) is string savedMatch) {
+                return savedMatch;
+            }
+            if (CustomEase.TryParse(raw, out _)) {
+                customText = raw;
+                custom = true;
+                return customOption;
+            }
+            return nameof(O5Ease.Linear);
         }
+
+        string currentOption = ResolveSelection(out string customValue, out bool isCustom);
 
         static string NormalizeCustomEase(string text) {
             string t = text?.Trim();
@@ -2107,9 +2135,9 @@ internal sealed class OvInspectorBuilder(
                 Value = currentOption,
                 Values = options,
                 Display = option => option == customOption
-                    ? $"{label}: Custom..."
+                    ? $"{label}: {InspectorText("INSPECTOR_CUSTOM_DOTS", "Custom...")}"
                     : savedNames.Contains(option)
-                        ? $"{label}: {option} (Custom)"
+                        ? $"{label}: {option} ({InspectorText("INSPECTOR_CUSTOM", "Custom")})"
                         : $"{label}: {option}",
                 OnChanged = selected => {
                     bool custom = selected == customOption;
@@ -2127,6 +2155,11 @@ internal sealed class OvInspectorBuilder(
                 }
             });
             Track(dropdown);
+            Action refreshCurves = UI.Easing.EaseDropdownCurveHelper.Attach(
+                dropdown,
+                option => option == customOption ? null : option,
+                Track
+            );
 
             customInput = O5Factory.Input(O5KitAdapters.Ctx, customRow, id + "_custom", new O5InputOptions {
                 Value = customValue,
@@ -2143,6 +2176,26 @@ internal sealed class OvInspectorBuilder(
             });
             Track(customInput);
             customRow.gameObject.SetActive(isCustom);
+
+            void OnEaseChanged() {
+                if (dropdown.IsDisposed || !dropdown.Rect) {
+                    return;
+                }
+                RebuildOptions();
+                string selectedOption = ResolveSelection(out string customText, out bool custom);
+                dropdown.SetValues(options, false);
+                dropdown.Set(selectedOption, false);
+                if (customRow) {
+                    customRow.gameObject.SetActive(custom);
+                }
+                if (custom && customInput != null && !customInput.IsDisposed && !customInput.InputField.isFocused) {
+                    customInput.Set(customText, false);
+                }
+                refreshCurves?.Invoke();
+            }
+
+            EaseLibrary.Changed += OnEaseChanged;
+            dropdown.OnDisposed += () => EaseLibrary.Changed -= OnEaseChanged;
         }, id, dropdown: true);
     }
 
@@ -2478,7 +2531,7 @@ internal sealed class OvInspectorBuilder(
         float Top() => DrivenY() && Alive() ? -obj.RectTransform.offsetMax.y : -cfg.GetOffsetMax(1);
         float Bottom() => DrivenY() && Alive() ? obj.RectTransform.offsetMin.y : cfg.GetOffsetMin(1);
 
-        RectTransform fields = VerticalGroup(parent, 2f);
+        RectTransform fields = VerticalGroup(parent, 8f);
         var firstRow = CompactRow(fields, 44f, 6f);
         var secondRow = CompactRow(fields, 44f, 6f);
         var (Field, Get) = NumericField(firstRow, "", 0f, () => StretchX() ? Left() : PositionX(), value => {
@@ -2561,7 +2614,7 @@ internal sealed class OvInspectorBuilder(
         float Top() => -cfg.GetOffsetMax(1);
         float Bottom() => cfg.GetOffsetMin(1);
 
-        RectTransform fields = VerticalGroup(parent, 2f);
+        RectTransform fields = VerticalGroup(parent, 8f);
         var firstRow = CompactRow(fields, 44f, 6f);
         var secondRow = CompactRow(fields, 44f, 6f);
         var (Field, Get) = NumericField(firstRow, "", 0f, () => StretchX() ? Left() : PositionX(), value => {
@@ -2651,8 +2704,9 @@ internal sealed class OvInspectorBuilder(
         controls.Add(summary);
 
         GameObject summaryGraphic = AddAnchorGraphic(summary.Rect, ModeForAxis(cfg, 0), ModeForAxis(cfg, 1), false, false, 42f);
-        TextMeshProUGUI horizontalLabel = AddAnchorHeader(summary.Rect, true, ModeName(ModeForAxis(cfg, 0), false));
-        TextMeshProUGUI verticalLabel = AddAnchorHeader(summary.Rect, false, ModeName(ModeForAxis(cfg, 1), true));
+        TextMeshProUGUI horizontalLabel = AddAnchorHeader(summary.Rect, true, ModeAbbrev(ModeForAxis(cfg, 0), false));
+        TextMeshProUGUI verticalLabel = AddAnchorHeader(summary.Rect, false, ModeAbbrev(ModeForAxis(cfg, 1), true));
+        summary.Rect.AddToolTip(O5KitAdapters.Ctx, () => AnchorCellName(ModeForAxis(cfg, 0), ModeForAxis(cfg, 1)));
 
         RectTransform popup = CreateAnchorPopup(UICore.Canvas.transform);
         RectTransform blocker = CreatePopupBlocker(UICore.Canvas.transform);
@@ -2744,8 +2798,8 @@ internal sealed class OvInspectorBuilder(
         void RefreshSummary() {
             UnityEngine.Object.Destroy(summaryGraphic);
             summaryGraphic = AddAnchorGraphic(summary.Rect, ModeForAxis(cfg, 0), ModeForAxis(cfg, 1), false, false, 42f);
-            horizontalLabel.text = ModeName(ModeForAxis(cfg, 0), false);
-            verticalLabel.text = ModeName(ModeForAxis(cfg, 1), true);
+            horizontalLabel.text = ModeAbbrev(ModeForAxis(cfg, 0), false);
+            verticalLabel.text = ModeAbbrev(ModeForAxis(cfg, 1), true);
             foreach (var cell in selections) {
                 bool selected = (cell.H == AnchorMode.Custom || cell.H == ModeForAxis(cfg, 0))
                     && (cell.V == AnchorMode.Custom || cell.V == ModeForAxis(cfg, 1));
@@ -2790,8 +2844,8 @@ internal sealed class OvInspectorBuilder(
                 Track(cell);
                 bool header = x == 0 || y == 0;
                 cell.NormalColor = header
-                    ? new Color(0.13f, 0.13f, 0.17f, 1f)
-                    : new Color(0.09f, 0.09f, 0.12f, 1f);
+                    ? UIColors.AnchorCellHeader
+                    : UIColors.AnchorCell;
                 cell.Background.color = cell.NormalColor;
                 Image selection = AddSelection(cell.Rect);
                 selections.Add((horizontal, vertical, selection));
@@ -2799,7 +2853,7 @@ internal sealed class OvInspectorBuilder(
                 PositionAnchorGraphic(graphic, horizontal, vertical);
                 presetGraphics.Add((cell.Rect, horizontal, vertical, header, graphic));
                 if (header) {
-                    AddTableHeader(cell.Rect, x == 0, x == 0 ? ModeName(vertical, true) : ModeName(horizontal, false));
+                    AddTableHeader(cell.Rect, x == 0, x == 0 ? ModeAbbrev(vertical, true) : ModeAbbrev(horizontal, false));
                 }
 
                 cell.Rect.AddToolTip(O5KitAdapters.Ctx, AnchorCellName(horizontal, vertical));
@@ -2839,7 +2893,7 @@ internal sealed class OvInspectorBuilder(
                 RefreshModifierGraphics(true);
             }
         };
-        summary.Rect.GetComponent<OventHandler>().OnDisabled = ClosePopup;
+        summary.Rect.GetComponent<OventHandler>().OnDisabled += ClosePopup;
         popup.gameObject.GetComponent<OventHandler>().OnDisabled = () => {
             if (open) {
                 ClosePopup();
@@ -2869,8 +2923,9 @@ internal sealed class OvInspectorBuilder(
         controls.Add(summary);
 
         GameObject summaryGraphic = AddAnchorGraphic(summary.Rect, ModeForAxis(cfg, 0), ModeForAxis(cfg, 1), false, false, 42f);
-        TextMeshProUGUI horizontalLabel = AddAnchorHeader(summary.Rect, true, ModeName(ModeForAxis(cfg, 0), false));
-        TextMeshProUGUI verticalLabel = AddAnchorHeader(summary.Rect, false, ModeName(ModeForAxis(cfg, 1), true));
+        TextMeshProUGUI horizontalLabel = AddAnchorHeader(summary.Rect, true, ModeAbbrev(ModeForAxis(cfg, 0), false));
+        TextMeshProUGUI verticalLabel = AddAnchorHeader(summary.Rect, false, ModeAbbrev(ModeForAxis(cfg, 1), true));
+        summary.Rect.AddToolTip(O5KitAdapters.Ctx, () => AnchorCellName(ModeForAxis(cfg, 0), ModeForAxis(cfg, 1)));
 
         RectTransform popup = CreateAnchorPopup(UICore.Canvas.transform);
         RectTransform blocker = CreatePopupBlocker(UICore.Canvas.transform);
@@ -2962,8 +3017,8 @@ internal sealed class OvInspectorBuilder(
         void RefreshSummary() {
             UnityEngine.Object.Destroy(summaryGraphic);
             summaryGraphic = AddAnchorGraphic(summary.Rect, ModeForAxis(cfg, 0), ModeForAxis(cfg, 1), false, false, 42f);
-            horizontalLabel.text = ModeName(ModeForAxis(cfg, 0), false);
-            verticalLabel.text = ModeName(ModeForAxis(cfg, 1), true);
+            horizontalLabel.text = ModeAbbrev(ModeForAxis(cfg, 0), false);
+            verticalLabel.text = ModeAbbrev(ModeForAxis(cfg, 1), true);
             foreach (var cell in selections) {
                 bool selected = (cell.H == AnchorMode.Custom || cell.H == ModeForAxis(cfg, 0))
                     && (cell.V == AnchorMode.Custom || cell.V == ModeForAxis(cfg, 1));
@@ -3008,8 +3063,8 @@ internal sealed class OvInspectorBuilder(
                 Track(cell);
                 bool header = x == 0 || y == 0;
                 cell.NormalColor = header
-                    ? new Color(0.13f, 0.13f, 0.17f, 1f)
-                    : new Color(0.09f, 0.09f, 0.12f, 1f);
+                    ? UIColors.AnchorCellHeader
+                    : UIColors.AnchorCell;
                 cell.Background.color = cell.NormalColor;
                 Image selection = AddSelection(cell.Rect);
                 selections.Add((horizontal, vertical, selection));
@@ -3017,7 +3072,7 @@ internal sealed class OvInspectorBuilder(
                 PositionAnchorGraphic(graphic, horizontal, vertical);
                 presetGraphics.Add((cell.Rect, horizontal, vertical, header, graphic));
                 if (header) {
-                    AddTableHeader(cell.Rect, x == 0, x == 0 ? ModeName(vertical, true) : ModeName(horizontal, false));
+                    AddTableHeader(cell.Rect, x == 0, x == 0 ? ModeAbbrev(vertical, true) : ModeAbbrev(horizontal, false));
                 }
 
                 cell.Rect.AddToolTip(O5KitAdapters.Ctx, AnchorCellName(horizontal, vertical));
@@ -3053,7 +3108,7 @@ internal sealed class OvInspectorBuilder(
                 RefreshModifierGraphics(true);
             }
         };
-        summary.Rect.GetComponent<OventHandler>().OnDisabled = ClosePopup;
+        summary.Rect.GetComponent<OventHandler>().OnDisabled += ClosePopup;
         popup.gameObject.GetComponent<OventHandler>().OnDisabled = () => {
             if (open) {
                 ClosePopup();
@@ -3103,7 +3158,7 @@ internal sealed class OvInspectorBuilder(
         popup.sizeDelta = new Vector2(320f, 352f);
         popupObject.AddComponent<OventHandler>();
         Image background = popup.gameObject.AddComponent<Image>();
-        background.color = new Color(0.08f, 0.08f, 0.08f, 0.98f);
+        background.color = O5Kit.Core.O5Palette.WithAlpha(UIColors.SurfaceOpaque, 0.98f);
 
         var vertical = popup.gameObject.AddComponent<VerticalLayoutGroup>();
         vertical.padding = new RectOffset { left = 10, right = 10, top = 8, bottom = 8 };
@@ -3115,8 +3170,8 @@ internal sealed class OvInspectorBuilder(
 
         TextMeshProUGUI title = O5Factory.ControlText(O5KitAdapters.Ctx, popup, 24f, true);
         title.text = InspectorText("INSPECTOR_ANCHOR_PRESETS", "Anchor Presets");
+        title.font = O5KitAdapters.Ctx.Fonts.Medium;
         title.fontSize = 18f;
-        title.fontStyle = FontStyles.Bold;
         title.gameObject.AddComponent<LayoutElement>().preferredHeight = 23f;
 
         TextMeshProUGUI help = O5Factory.ControlText(O5KitAdapters.Ctx, popup, 24f, true);
@@ -3269,7 +3324,7 @@ internal sealed class OvInspectorBuilder(
 
     private static void AddTableHeader(RectTransform parent, bool vertical, string value) {
         TextMeshProUGUI label = O5Factory.ControlText(O5KitAdapters.Ctx, parent, 24f, true);
-        label.text = vertical ? value[0].ToString().ToUpperInvariant() : value;
+        label.text = value;
         label.fontSize = 10f;
         label.color = new Color(1f, 1f, 1f, 0.85f);
         label.alignment = vertical ? TextAlignmentOptions.MidlineLeft : TextAlignmentOptions.Top;
@@ -3344,6 +3399,14 @@ internal sealed class OvInspectorBuilder(
 
         return AnchorMode.Custom;
     }
+
+    private static string ModeAbbrev(AnchorMode mode, bool vertical) => mode switch {
+        AnchorMode.Min => vertical ? "B" : "L",
+        AnchorMode.Middle => vertical ? "M" : "C",
+        AnchorMode.Max => vertical ? "T" : "R",
+        AnchorMode.Stretch => "S",
+        _ => "*"
+    };
 
     private static string ModeName(AnchorMode mode, bool vertical) => mode switch {
         AnchorMode.Min => InspectorText(vertical ? "INSPECTOR_ANCHOR_BOTTOM" : "INSPECTOR_ANCHOR_LEFT", vertical ? "bottom" : "left"),
@@ -3442,72 +3505,134 @@ internal sealed class OvInspectorBuilder(
     private void SpriteDropDown(Transform parent, FxValue<string> spriteKey, string id = "image_sprite") {
         const string none = "None";
         var folders = UserResourceManager.Config.Data.ImageFolders;
-        List<string> options = [.. UserResourceManager.Spr.Keys
-            .Where(key => !O5cpFormat.IsPackageKey(key))
-            .OrderBy(key => UserResourceSettings.FolderOf(folders, key), StringComparer.OrdinalIgnoreCase)
-            .ThenBy(key => key, StringComparer.OrdinalIgnoreCase)];
-        if (!string.IsNullOrEmpty(spriteKey.Value) && !options.Contains(spriteKey.Value)) {
-            options.Insert(0, spriteKey.Value);
+        List<string> BuildOptions() {
+            List<string> opts = [.. UserResourceManager.Spr.Keys
+                .Concat(UserResourceManager.Spr.MissingKeys)
+                .Distinct(StringComparer.Ordinal)
+                .Where(key => !O5cpFormat.IsPackageKey(key))
+                .OrderBy(key => UserResourceSettings.FolderOf(folders, key), StringComparer.OrdinalIgnoreCase)
+                .ThenBy(key => key, StringComparer.OrdinalIgnoreCase)];
+            if (MainCore.Conf.ShowInternalImages.Value) {
+                opts.AddRange(Overlayer.Resource.InternalResources.ImageKeys);
+            }
+            if (!string.IsNullOrEmpty(spriteKey.Value) && !opts.Contains(spriteKey.Value)) {
+                opts.Insert(0, spriteKey.Value);
+            }
+            opts.Insert(0, none);
+            return opts;
         }
-        options.Insert(0, none);
 
         string current = string.IsNullOrEmpty(spriteKey.Value) ? none : spriteKey.Value;
         FxBlock(parent, "Sprite", spriteKey, group => {
             var row = O5Factory.Row(O5KitAdapters.Ctx, group, 50f);
-            var dropdown = O5Factory.DropDown(O5KitAdapters.Ctx, row, id, new O5DropdownOptions<string> { DefaultValue = none, Value = current, Values = options, Display = option => $"{InspectorLabel("Sprite")}: {(option == none ? InspectorLabel(option) : UserResourceSettings.FullName(folders, option))}", OnChanged = selected => {
+            var dropdown = O5Factory.DropDown(O5KitAdapters.Ctx, row, id, new O5DropdownOptions<string> { DefaultValue = none, Value = current, Values = BuildOptions(), Display = option => $"{InspectorLabel("Sprite")}: {FormatResourceOption(option, none, folders, UserResourceManager.IsMissingImage)}", OnChanged = selected => {
                 spriteKey.Value = selected == none ? null : selected;
                 ApplyAndSave();
             } });
             Track(dropdown);
+            void OnResourcesChanged() {
+                if (dropdown.IsDisposed || !dropdown.Rect) {
+                    return;
+                }
+                string cur = string.IsNullOrEmpty(spriteKey.Value) ? none : spriteKey.Value;
+                dropdown.SetValues(BuildOptions(), false);
+                dropdown.Set(cur, false);
+            }
+            UserResourceManager.Changed += OnResourcesChanged;
+            dropdown.OnDisposed += () => UserResourceManager.Changed -= OnResourcesChanged;
         }, id, dropdown: true);
     }
 
     private void SpriteAssetDropDown(Transform parent, TextMeshProUGUISettings cfg) {
         const string none = "Default";
-        List<string> options = Overlayer.Resource.ResourceManager.SpriteAssetNames();
-        try {
-            if (Overlayer.IO.User.Impl.UserSpriteAsset.HasSprites() && !options.Contains(Overlayer.IO.User.Impl.UserSpriteAsset.AssetKey)) {
-                options.Insert(0, Overlayer.IO.User.Impl.UserSpriteAsset.AssetKey);
+        List<string> BuildOptions() {
+            List<string> opts = Overlayer.Resource.ResourceManager.SpriteAssetNames();
+            try {
+                if (Overlayer.IO.User.Impl.UserSpriteAsset.HasSprites() && !opts.Contains(Overlayer.IO.User.Impl.UserSpriteAsset.AssetKey)) {
+                    opts.Insert(0, Overlayer.IO.User.Impl.UserSpriteAsset.AssetKey);
+                }
+            } catch {
             }
-        } catch {
+            if (!string.IsNullOrEmpty(cfg.SpriteKey.Value) && !opts.Contains(cfg.SpriteKey.Value)) {
+                opts.Insert(0, cfg.SpriteKey.Value);
+            }
+            opts.Insert(0, none);
+            return opts;
         }
-        if (!string.IsNullOrEmpty(cfg.SpriteKey.Value) && !options.Contains(cfg.SpriteKey.Value)) {
-            options.Insert(0, cfg.SpriteKey.Value);
-        }
-        options.Insert(0, none);
 
         string current = string.IsNullOrEmpty(cfg.SpriteKey.Value) ? none : cfg.SpriteKey.Value;
         FxBlock(parent, "Sprite Asset", cfg.SpriteKey, group => {
             var row = O5Factory.Row(O5KitAdapters.Ctx, group, 50f);
-            var dropdown = O5Factory.DropDown(O5KitAdapters.Ctx, row, "text_sprite_asset", new O5DropdownOptions<string> { DefaultValue = none, Value = current, Values = options, Display = option => $"{InspectorLabel("Sprite Asset")}: {(option == none ? InspectorLabel(option) : option)}", OnChanged = selected => {
+            var dropdown = O5Factory.DropDown(O5KitAdapters.Ctx, row, "text_sprite_asset", new O5DropdownOptions<string> { DefaultValue = none, Value = current, Values = BuildOptions(), Display = option => $"{InspectorLabel("Sprite Asset")}: {(option == none ? InspectorLabel(option) : option)}", OnChanged = selected => {
                 cfg.SpriteKey.Value = selected == none ? null : selected;
                 ApplyAndSave();
             } });
             Track(dropdown);
+            void OnResourcesChanged() {
+                if (dropdown.IsDisposed || !dropdown.Rect) {
+                    return;
+                }
+                string cur = string.IsNullOrEmpty(cfg.SpriteKey.Value) ? none : cfg.SpriteKey.Value;
+                dropdown.SetValues(BuildOptions(), false);
+                dropdown.Set(cur, false);
+            }
+            UserResourceManager.Changed += OnResourcesChanged;
+            dropdown.OnDisposed += () => UserResourceManager.Changed -= OnResourcesChanged;
         }, "text_sprite_asset", dropdown: true);
     }
 
     private void FontDropDown(Transform parent, TextMeshProUGUISettings cfg) {
         const string none = "Default";
         var folders = UserResourceManager.Config.Data.FontFolders;
-        List<string> options = [.. UserResourceManager.Fnt.Keys
-            .Where(key => !O5cpFormat.IsPackageKey(key))
-            .OrderBy(key => UserResourceSettings.FolderOf(folders, key), StringComparer.OrdinalIgnoreCase)
-            .ThenBy(key => key, StringComparer.OrdinalIgnoreCase)];
-        if (!string.IsNullOrEmpty(cfg.FontKey.Value) && !options.Contains(cfg.FontKey.Value)) {
-            options.Insert(0, cfg.FontKey.Value);
+        List<string> BuildOptions() {
+            List<string> opts = [.. UserResourceManager.Fnt.Keys
+                .Concat(UserResourceManager.Fnt.MissingKeys)
+                .Distinct(StringComparer.Ordinal)
+                .Where(key => !O5cpFormat.IsPackageKey(key))
+                .OrderBy(key => UserResourceSettings.FolderOf(folders, key), StringComparer.OrdinalIgnoreCase)
+                .ThenBy(key => key, StringComparer.OrdinalIgnoreCase)];
+            if (MainCore.Conf.ShowInternalFonts.Value) {
+                opts.AddRange(Overlayer.Resource.InternalResources.FontKeys);
+            }
+            if (!string.IsNullOrEmpty(cfg.FontKey.Value) && !opts.Contains(cfg.FontKey.Value)) {
+                opts.Insert(0, cfg.FontKey.Value);
+            }
+            opts.Insert(0, none);
+            return opts;
         }
-        options.Insert(0, none);
 
         string current = string.IsNullOrEmpty(cfg.FontKey.Value) ? none : cfg.FontKey.Value;
         FxBlock(parent, "Font", cfg.FontKey, group => {
             var row = O5Factory.Row(O5KitAdapters.Ctx, group, 50f);
-            var dropdown = O5Factory.DropDown(O5KitAdapters.Ctx, row, "text_font", new O5DropdownOptions<string> { DefaultValue = none, Value = current, Values = options, Display = option => $"{InspectorLabel("Font")}: {(option == none ? InspectorLabel(option) : UserResourceSettings.FullName(folders, option))}", OnChanged = selected => {
+            var dropdown = O5Factory.DropDown(O5KitAdapters.Ctx, row, "text_font", new O5DropdownOptions<string> { DefaultValue = none, Value = current, Values = BuildOptions(), Display = option => $"{InspectorLabel("Font")}: {FormatResourceOption(option, none, folders, UserResourceManager.IsMissingFont)}", OnChanged = selected => {
                 cfg.FontKey.Value = selected == none ? null : selected;
                 ApplyAndSave();
             } });
             Track(dropdown);
+            void OnResourcesChanged() {
+                if (dropdown.IsDisposed || !dropdown.Rect) {
+                    return;
+                }
+                string cur = string.IsNullOrEmpty(cfg.FontKey.Value) ? none : cfg.FontKey.Value;
+                dropdown.SetValues(BuildOptions(), false);
+                dropdown.Set(cur, false);
+            }
+            UserResourceManager.Changed += OnResourcesChanged;
+            dropdown.OnDisposed += () => UserResourceManager.Changed -= OnResourcesChanged;
         }, "text_font", dropdown: true);
+    }
+
+    private string FormatResourceOption(string option, string none, Dictionary<string, string> folders, Func<string, bool> isMissing) {
+        if (option == none) {
+            return InspectorLabel(option);
+        }
+        string name = Overlayer.Resource.InternalResources.IsInternalKey(option)
+            ? Overlayer.Resource.InternalResources.DisplayName(option)
+            : UserResourceSettings.FullName(folders, option);
+        if (isMissing(option)) {
+            name += $" ({MainCore.Tr.Get("RESOURCE_MISSING_SHORT", "Missing")})";
+        }
+        return name;
     }
 
     private void ColorSliders(Transform parent, string label, Color defaults, Func<Color> get, Action<Color> set, string id) {
