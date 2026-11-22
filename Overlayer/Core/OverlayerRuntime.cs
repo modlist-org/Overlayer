@@ -110,8 +110,6 @@ public sealed class OverlayerRuntime {
 
         Logger.Msg("Hello");
 
-        Update.UpdateService.Initialize();
-
         ModuleService.DiscoverAndRegisterModules();
         ModuleService.InitializeAllModules();
         Package.PackageStore.RecheckModules();
@@ -130,7 +128,7 @@ public sealed class OverlayerRuntime {
         UI.Utility.KeyCapture.Tick();
         HudEdit.HudEditor.Tick();
         UI.Easing.CurveEditor.Tick();
-        HudEdit.HudPreview.Tick();
+        UI.Factory.Page.PageDocs.Tick();
         Tutorial.Tutorial.Tick();
         Setup.SetupWizard.Tick();
         UI.UISound.Tick();

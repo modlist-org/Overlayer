@@ -67,7 +67,6 @@
     <Compile Include="..\Overlayer\TextEngine\Runtime\TextRenderPlan.cs" />
     <Compile Include="..\Overlayer\TextEngine\Highlight\TagSyntaxHighlighter.cs" />
     <Compile Include="..\Overlayer\TextEngine\Highlight\JsSyntaxHighlighter.cs" />
-    <Compile Include="..\Overlayer\Update\UpdatePackage.cs" />
     <Compile Include="..\Overlayer\Package\O5cpManifest.cs" />
     <Compile Include="..\Overlayer\Package\O5cpProps.cs" />
     <Compile Include="..\Overlayer\Package\O5cpKeyScanner.cs" />
@@ -92,6 +91,8 @@
     <Compile Include="..\Overlayer\Native\Polyfills.cs" />
     <Compile Include="..\Overlayer\V8\ImplJsGenerator.cs" />
     <Compile Include="..\Overlayer\Tutorial\TutorialWrap.cs" />
+    <Compile Include="..\Overlayer\UI\Easing\PreviewScale.cs" />
+    <Compile Include="..\Overlayer\HudEdit\HudHandleMath.cs" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="..\..\O5Kit\src\O5Kit\ThirdParty\GTweens\Source\**\*.cs" />

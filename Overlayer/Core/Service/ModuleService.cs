@@ -42,7 +42,12 @@ public sealed class ModuleService(OverlayerLogger logger) : IDisposable {
 
     public void InitializeAllModules() {
         foreach (var module in _loadedModules) {
-            try { module.OnInitialize(); } catch (Exception ex) { _logger.Err($"[{nameof(ModuleService)}] Failed to initialize core module ({module.Name}): {ex.Message}"); }
+            try {
+                module.OnInitialize();
+            } catch (Exception ex) {
+                _logger.Err($"[{nameof(ModuleService)}] Failed to initialize core module ({module.Name}): {ex.GetType().Name}: {ex.Message}");
+                _logger.Err(ex.ToString());
+            }
         }
     }
 
