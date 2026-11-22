@@ -138,7 +138,7 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
         }
         com.color = UnityEngine.Color.white;
         com.colorGradient = _lastColor;
-        if (!string.IsNullOrEmpty(_lastFontKey) && UserResourceManager.Fnt.TryGet(_lastFontKey, out var fontAsset)) {
+        if (!string.IsNullOrEmpty(_lastFontKey) && UserResourceManager.TryGetFont(_lastFontKey, out var fontAsset)) {
             com.font = fontAsset;
         }
         com.fontSize = _lastFontSize;
@@ -250,6 +250,9 @@ public class TextMeshProUGUISettings : UnityComponentSettingsBase, ICopyable<Tex
         Text.Value = com.text;
         Color.Value = com.colorGradient;
         FontKey.Value = UserResourceManager.Fnt.Keys.FirstOrDefault(key => !O5cpFormat.IsPackageKey(key) && UserResourceManager.Fnt.TryGet(key, out var font) && font == com.font);
+        if (string.IsNullOrEmpty(FontKey.Value) && Overlayer.Resource.InternalResources.TryGetFontKey(com.font, out var internalFontKey)) {
+            FontKey.Value = internalFontKey;
+        }
         SpriteKey.Value = com.spriteAsset != null ? com.spriteAsset.name : null;
         FontSize.Value = com.fontSize;
         RichText.Value = com.richText;

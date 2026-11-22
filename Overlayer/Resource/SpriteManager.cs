@@ -28,6 +28,12 @@ public enum UISprite {
     Expand128,
     Upload128,
     Download128,
+    EyeOpen128,
+    EyeHide128,
+    LockOff128,
+    LockOn128,
+    Ease128,
+    DotInCircle128,
 }
 
 public enum UISliceSprite {
@@ -287,6 +293,12 @@ public sealed class SpriteManager(ResourceManager resource) : IDisposable {
         [UISprite.Expand128] = Asset.Expand128,
         [UISprite.Upload128] = Asset.Upload128,
         [UISprite.Download128] = Asset.Download128,
+        [UISprite.EyeOpen128] = Asset.EyeOpen128,
+        [UISprite.EyeHide128] = Asset.EyeHide128,
+        [UISprite.LockOff128] = Asset.LockOff128,
+        [UISprite.LockOn128] = Asset.LockOn128,
+        [UISprite.Ease128] = Asset.Ease128,
+        [UISprite.DotInCircle128] = Asset.DotInCircle128,
     };
 
     private readonly Dictionary<UISprite, O5Asset> o5SpriteMap = new() {

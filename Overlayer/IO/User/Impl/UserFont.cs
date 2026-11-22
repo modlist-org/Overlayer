@@ -14,6 +14,22 @@ namespace Overlayer.IO.User.Impl;
 
 public class UserFont : UserResourceBase<TMP_FontAsset>, ISettingsFile {
     public static readonly HashSet<string> Ext = new(StringComparer.OrdinalIgnoreCase) { ".ttf", ".otf" };
+    private readonly Dictionary<string, string> _missing = [];
+
+    public ICollection<string> MissingKeys => _missing.Keys;
+    public bool IsMissing(string key) => !string.IsNullOrEmpty(key) && _missing.ContainsKey(key);
+    public bool HasKey(string key) => !string.IsNullOrEmpty(key) && (Cache.ContainsKey(key) || _missing.ContainsKey(key));
+
+    public bool TryGetMissingPath(string key, out string path) {
+        if (!string.IsNullOrEmpty(key) && _missing.TryGetValue(key, out path)) {
+            return true;
+        }
+        path = string.Empty;
+        return false;
+    }
+
+    public bool TryGetAnyPath(string key, out string path) =>
+        TryGetPath(key, out path) || TryGetMissingPath(key, out path);
 
 #if ML && IL2CPP
     private static readonly HashSet<TMP_FontAsset> StolenFonts = new();
@@ -45,7 +61,7 @@ public class UserFont : UserResourceBase<TMP_FontAsset>, ISettingsFile {
         string path
     ) {
         try {
-            if (Cache.ContainsKey(key)) {
+            if (HasKey(key)) {
                 return Result.KeyAlreadyExists;
             }
 
@@ -87,27 +103,75 @@ public class UserFont : UserResourceBase<TMP_FontAsset>, ISettingsFile {
         }
     }
 
-    public bool Remove(string key) {
-        if (!Cache.Remove(key, out var entry)) {
+    public Result TryReload(string key) {
+        if (string.IsNullOrEmpty(key)) {
+            return Result.InvalidArgument;
+        }
+        if (Cache.ContainsKey(key)) {
+            return Result.Success;
+        }
+        if (!_missing.TryGetValue(key, out string path)) {
+            return Result.NotFound;
+        }
+
+        _missing.Remove(key);
+        Result result = Load(key, path);
+        if (result != Result.Success) {
+            _missing[key] = path;
+        }
+        return result;
+    }
+
+    public override bool TryRenameKey(string oldKey, string newKey) {
+        if (
+            string.IsNullOrWhiteSpace(oldKey) ||
+            string.IsNullOrWhiteSpace(newKey) ||
+            string.Equals(oldKey, newKey, StringComparison.Ordinal) ||
+            HasKey(newKey)
+        ) {
             return false;
         }
 
-#if ML && IL2CPP
-        if (IsStolen(entry.value)) {
+        if (_missing.TryGetValue(oldKey, out string path)) {
+            _missing.Remove(oldKey);
+            _missing[newKey] = path;
             return true;
         }
+
+        return base.TryRenameKey(oldKey, newKey);
+    }
+
+    public bool Remove(string key) {
+        if (string.IsNullOrEmpty(key)) {
+            return false;
+        }
+        if (Cache.Remove(key, out var entry)) {
+#if ML && IL2CPP
+            if (IsStolen(entry.value)) {
+                return true;
+            }
 #endif
-        if (entry.value) {
-            UnityEngine.Object.Destroy(entry.value);
+            if (entry.value) {
+                UnityEngine.Object.Destroy(entry.value);
+            }
+
+            return true;
         }
 
-        return true;
+        return _missing.Remove(key);
     }
 
     public JToken Serialize() {
         var obj = new JObject();
 
         foreach (var (key, (path, _)) in Cache) {
+            if (O5cpFormat.IsPackageKey(key)) {
+                continue;
+            }
+            obj[key] = UserResourceManager.ToUser(path);
+        }
+
+        foreach (var (key, path) in _missing) {
             if (O5cpFormat.IsPackageKey(key)) {
                 continue;
             }
@@ -136,6 +200,9 @@ public class UserFont : UserResourceBase<TMP_FontAsset>, ISettingsFile {
                 MainCore.Log.Wrn(
                     $"[{nameof(UserFont)}] {result} {{ \"{property.Name}\": \"{path}\" }}"
                 );
+                if (result != Result.KeyAlreadyExists && !HasKey(key) && !string.IsNullOrWhiteSpace(key)) {
+                    _missing[key] = path;
+                }
             }
         }
     }
@@ -151,5 +218,6 @@ public class UserFont : UserResourceBase<TMP_FontAsset>, ISettingsFile {
         }
 
         Cache.Clear();
+        _missing.Clear();
     }
 }

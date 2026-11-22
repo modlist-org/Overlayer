@@ -28,7 +28,7 @@ public abstract class UserResourceBase<T> {
         return false;
     }
 
-    public bool TryRenameKey(string oldKey, string newKey) {
+    public virtual bool TryRenameKey(string oldKey, string newKey) {
         if (
             string.IsNullOrWhiteSpace(oldKey) ||
             string.IsNullOrWhiteSpace(newKey) ||

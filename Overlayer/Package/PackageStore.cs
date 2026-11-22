@@ -512,6 +512,9 @@ public static class PackageStore {
             ApplyEnabled(entry);
             var scan = O5cpKeyScanner.Scan(canvasJson);
             foreach (string key in scan.FontKeys) {
+                if (Overlayer.Resource.InternalResources.IsInternalKey(key)) {
+                    continue;
+                }
                 string shortKey = key.StartsWith(prefix, StringComparison.Ordinal)
                     ? key[prefix.Length..]
                     : key;
@@ -522,6 +525,9 @@ public static class PackageStore {
                 }
             }
             foreach (string key in scan.SpriteKeys) {
+                if (Overlayer.Resource.InternalResources.IsInternalKey(key)) {
+                    continue;
+                }
                 if (!UserResourceManager.Spr.TryGet(key, out _)) {
                     string shortKey = key.StartsWith(prefix, StringComparison.Ordinal)
                         ? key[prefix.Length..]

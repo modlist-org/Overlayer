@@ -36,7 +36,7 @@ public class OvCanvas : ISettingsFile {
     private bool _lastEnabled = true;
 
     public OvCanvas() {
-        GameObject = new GameObject("OvCanvas");
+        GameObject = new GameObject("Canvas");
         GameObject.transform.SetParent(OverlayCore.Transform, false);
         RectTransform = GameObject.AddComponent<RectTransform>();
         Canvas = GameObject.AddComponent<Canvas>();

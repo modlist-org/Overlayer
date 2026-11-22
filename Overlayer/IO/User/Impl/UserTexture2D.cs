@@ -9,6 +9,31 @@ namespace Overlayer.IO.User.Impl;
 
 public class UserTexture2D : UserResourceBase<(Texture2D texture, Texture2DSettings settings)> {
     public static readonly HashSet<string> Ext = new(StringComparer.OrdinalIgnoreCase) { ".png", ".jpg", ".jpeg", ".bmp", ".tga" };
+    private readonly Dictionary<string, (string path, Texture2DSettings settings)> _missing = [];
+
+    public ICollection<string> MissingKeys => _missing.Keys;
+    public bool IsMissing(string key) => !string.IsNullOrEmpty(key) && _missing.ContainsKey(key);
+    public bool HasKey(string key) => !string.IsNullOrEmpty(key) && (Cache.ContainsKey(key) || _missing.ContainsKey(key));
+
+    public bool TryGetMissing(string key, out (string path, Texture2DSettings settings) entry) {
+        if (!string.IsNullOrEmpty(key) && _missing.TryGetValue(key, out entry)) {
+            return true;
+        }
+        entry = default;
+        return false;
+    }
+
+    public bool TryGetAnyPath(string key, out string path) {
+        if (TryGetPath(key, out path)) {
+            return true;
+        }
+        if (TryGetMissing(key, out var entry)) {
+            path = entry.path;
+            return true;
+        }
+        path = string.Empty;
+        return false;
+    }
 
     public enum Result {
         Success,
@@ -25,7 +50,7 @@ public class UserTexture2D : UserResourceBase<(Texture2D texture, Texture2DSetti
         bool linear
     ) {
         try {
-            if (Cache.ContainsKey(key)) {
+            if (HasKey(key)) {
                 return Result.KeyAlreadyExists;
             }
 
@@ -49,7 +74,7 @@ public class UserTexture2D : UserResourceBase<(Texture2D texture, Texture2DSetti
         if (string.IsNullOrWhiteSpace(key) || data == null || data.Length == 0) {
             return Result.InvalidArgument;
         }
-        if (Cache.ContainsKey(key)) {
+        if (HasKey(key)) {
             return Result.KeyAlreadyExists;
         }
 
@@ -110,29 +135,82 @@ public class UserTexture2D : UserResourceBase<(Texture2D texture, Texture2DSetti
         }
     }
 
-    public bool Remove(string key) {
-        if (!Cache.Remove(key, out var entry)) {
+    public Result TryReload(string key, out Texture2D texture) {
+        texture = null;
+        if (string.IsNullOrEmpty(key)) {
+            return Result.InvalidArgument;
+        }
+        if (Cache.TryGetValue(key, out var loaded)) {
+            texture = loaded.value.texture;
+            return Result.Success;
+        }
+        if (!_missing.TryGetValue(key, out var entry)) {
+            return Result.NotFound;
+        }
+
+        _missing.Remove(key);
+        Result result = Load(key, entry.path, entry.settings.MipChain.Value, entry.settings.Linear.Value);
+        if (result != Result.Success) {
+            _missing[key] = entry;
+            return result;
+        }
+
+        texture = Cache[key].value.texture;
+        return Result.Success;
+    }
+
+    public override bool TryRenameKey(string oldKey, string newKey) {
+        if (
+            string.IsNullOrWhiteSpace(oldKey) ||
+            string.IsNullOrWhiteSpace(newKey) ||
+            string.Equals(oldKey, newKey, StringComparison.Ordinal) ||
+            HasKey(newKey)
+        ) {
             return false;
         }
 
-        if (entry.value.texture) {
-            UnityEngine.Object.Destroy(entry.value.texture);
+        if (_missing.TryGetValue(oldKey, out var entry)) {
+            _missing.Remove(oldKey);
+            _missing[newKey] = entry;
+            return true;
         }
 
-        return true;
+        return base.TryRenameKey(oldKey, newKey);
+    }
+
+    public bool Remove(string key) {
+        if (string.IsNullOrEmpty(key)) {
+            return false;
+        }
+        if (Cache.Remove(key, out var entry)) {
+            if (entry.value.texture) {
+                UnityEngine.Object.Destroy(entry.value.texture);
+            }
+            return true;
+        }
+        return _missing.Remove(key);
     }
 
     public JToken Serialize() {
         var obj = new JObject();
 
+        static JObject SerializeEntry(string path, Texture2DSettings settings) => new() {
+            ["Path"] = UserResourceManager.ToUser(path),
+            [nameof(Texture2DSettings)] = settings.Serialize()
+        };
+
         foreach (var (key, (path, value)) in Cache) {
             if (O5cpFormat.IsPackageKey(key)) {
                 continue;
             }
-            obj[key] = new JObject {
-                ["Path"] = UserResourceManager.ToUser(path),
-                [nameof(Texture2DSettings)] = value.settings.Serialize()
-            };
+            obj[key] = SerializeEntry(path, value.settings);
+        }
+
+        foreach (var (key, (path, settings)) in _missing) {
+            if (O5cpFormat.IsPackageKey(key)) {
+                continue;
+            }
+            obj[key] = SerializeEntry(path, settings);
         }
 
         return obj;
@@ -178,6 +256,9 @@ public class UserTexture2D : UserResourceBase<(Texture2D texture, Texture2DSetti
                 MainCore.Log.Wrn(
                     $"[{nameof(UserTexture2D)}] {result} {{ \"{property.Name}\": \"{path}\" }}"
                 );
+                if (result != Result.KeyAlreadyExists && !HasKey(property.Name) && !string.IsNullOrWhiteSpace(property.Name)) {
+                    _missing[property.Name] = (path, settings);
+                }
             }
         }
     }
@@ -188,5 +269,6 @@ public class UserTexture2D : UserResourceBase<(Texture2D texture, Texture2DSetti
         }
 
         Cache.Clear();
+        _missing.Clear();
     }
 }

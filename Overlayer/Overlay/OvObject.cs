@@ -528,6 +528,13 @@ public sealed class OvObject : ISettingsFile {
             Engine.Text = text ?? string.Empty;
         }
 
+        internal void Flush() {
+            if (Tmp != null && Engine != null) {
+                Apply(Engine.Get());
+                Tmp.ForceMeshUpdate();
+            }
+        }
+
         private static int renderedFrame = -1;
         private static readonly List<TextEngineUpdater> FrameUpdaters = [];
         private static readonly List<TextEngineCore> FrameEngines = [];

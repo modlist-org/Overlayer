@@ -7,7 +7,7 @@ using UnityEngine;
 namespace Overlayer.IO.Overlay;
 
 public sealed class OvCanvasSettings : ISettingsFile, ICopyable<OvCanvasSettings> {
-    public FxValue<string> Name = FxValue<string>.FromValue("OvCanvas");
+    public FxValue<string> Name = FxValue<string>.FromValue("Canvas");
     public FxValue<bool> Enabled = new(true);
     public RectTransformSettings RectTransformConfig = new() {
         AnchorMin = Vector2.zero,

@@ -68,7 +68,7 @@ public class ImageSettings : UnityComponentSettingsBase, ICopyable<ImageSettings
         _lastFillOrigin = FillOrigin.Value;
         _lastFillClockwise = FillClockwise.Value;
         com.color = _lastColor;
-        com.sprite = UserResourceManager.Spr.TryGet(_lastSpriteKey, out var value) ? value.sprite : null;
+        com.sprite = UserResourceManager.TryGetSprite(_lastSpriteKey, out var value) ? value : null;
         com.preserveAspect = _lastPreserveAspect;
         com.raycastTarget = _lastRaycastTarget;
         com.useSpriteMesh = _lastUseSpriteMesh;
@@ -96,6 +96,9 @@ public class ImageSettings : UnityComponentSettingsBase, ICopyable<ImageSettings
                 x => x.sprite == com.sprite,
                 out var key
             );
+            if (string.IsNullOrEmpty(key)) {
+                Overlayer.Resource.InternalResources.TryGetSpriteKey(com.sprite, out key);
+            }
             SpriteKey.Value = O5cpFormat.IsPackageKey(key) ? string.Empty : key;
         } else {
             SpriteKey.Value = string.Empty;
@@ -140,7 +143,7 @@ public class ImageSettings : UnityComponentSettingsBase, ICopyable<ImageSettings
         RefreshEnabled(com);
         if (FxUtil.Changed(ref _lastColor, Color.Value)) com.color = _lastColor;
         if (FxUtil.ApplyIfChanged(ref _lastSpriteKey, SpriteKey.Value, _ => { })) {
-            com.sprite = UserResourceManager.Spr.TryGet(_lastSpriteKey, out var value) ? value.sprite : null;
+            com.sprite = UserResourceManager.TryGetSprite(_lastSpriteKey, out var value) ? value : null;
         }
         if (FxUtil.Changed(ref _lastPreserveAspect, PreserveAspect.Value)) com.preserveAspect = _lastPreserveAspect;
         if (FxUtil.Changed(ref _lastRaycastTarget, RaycastTarget.Value)) com.raycastTarget = _lastRaycastTarget;

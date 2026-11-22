@@ -111,7 +111,7 @@ public sealed class OvRainComponent
         var sprite = SpriteKey;
         if (sprite != lastSpriteKey) {
             lastSpriteKey = sprite;
-            lastSprite = !string.IsNullOrEmpty(sprite) && UserResourceManager.Spr.TryGet(sprite, out var res) ? res.sprite : null;
+            lastSprite = !string.IsNullOrEmpty(sprite) && UserResourceManager.TryGetSprite(sprite, out var res) ? res : null;
         }
         if (lastSprite != graphic.Sprite) {
             graphic.Sprite = lastSprite;

@@ -14,6 +14,8 @@ public sealed class UserResourceSettings : ISettingsFile, IDisposable {
     /// <summary>UI-only folder per resource key ("icons", "ui/buttons"). Keys stay global, so overlays reference resources unchanged.</summary>
     public Dictionary<string, string> ImageFolders { get; } = new(StringComparer.Ordinal);
     public Dictionary<string, string> FontFolders { get; } = new(StringComparer.Ordinal);
+    public HashSet<string> ReferencedImages { get; } = new(StringComparer.Ordinal);
+    public HashSet<string> ReferencedFonts { get; } = new(StringComparer.Ordinal);
 
     public static string FolderOf(Dictionary<string, string> folders, string key) =>
         key != null && folders.TryGetValue(key, out string folder) ? folder : string.Empty;
@@ -30,9 +32,11 @@ public sealed class UserResourceSettings : ISettingsFile, IDisposable {
             [nameof(UserSprite)] = Spr.Serialize(),
             [nameof(UserFont)] = Fnt.Serialize(),
             ["Folders"] = new JObject {
-                ["Images"] = SerializeFolders(ImageFolders, Spr.Keys),
-                ["Fonts"] = SerializeFolders(FontFolders, Fnt.Keys)
-            }
+                ["Images"] = SerializeFolders(ImageFolders, Spr.HasKey),
+                ["Fonts"] = SerializeFolders(FontFolders, Fnt.HasKey)
+            },
+            ["ReferencedImages"] = SerializeReferenced(ReferencedImages, k => T2D.HasKey(k) || Spr.HasKey(k)),
+            ["ReferencedFonts"] = SerializeReferenced(ReferencedFonts, Fnt.HasKey)
         };
     }
 
@@ -47,15 +51,43 @@ public sealed class UserResourceSettings : ISettingsFile, IDisposable {
         Fnt.Deserialize(obj[nameof(UserFont)]);
         DeserializeFolders(ImageFolders, obj["Folders"]?["Images"]);
         DeserializeFolders(FontFolders, obj["Folders"]?["Fonts"]);
+        DeserializeReferenced(ReferencedImages, obj["ReferencedImages"]);
+        DeserializeReferenced(ReferencedFonts, obj["ReferencedFonts"]);
     }
 
-    private static JObject SerializeFolders(Dictionary<string, string> folders, ICollection<string> keys) {
+    private static JArray SerializeReferenced(HashSet<string> set, Func<string, bool> exists) {
+        var result = new JArray();
+        foreach (string key in set.OrderBy(k => k, StringComparer.Ordinal)) {
+            if (O5cpFormat.IsPackageKey(key)) {
+                continue;
+            }
+            if (exists(key)) {
+                result.Add(key);
+            }
+        }
+        return result;
+    }
+
+    private static void DeserializeReferenced(HashSet<string> set, JToken token) {
+        set.Clear();
+        if (token is not JArray arr) {
+            return;
+        }
+        foreach (JToken item in arr) {
+            string key = item?.ToString();
+            if (!string.IsNullOrEmpty(key) && !O5cpFormat.IsPackageKey(key)) {
+                set.Add(key);
+            }
+        }
+    }
+
+    private static JObject SerializeFolders(Dictionary<string, string> folders, Func<string, bool> exists) {
         var result = new JObject();
         foreach (var (key, folder) in folders) {
             if (O5cpFormat.IsPackageKey(key)) {
                 continue;
             }
-            if (keys.Contains(key) && !string.IsNullOrEmpty(folder)) {
+            if (exists(key) && !string.IsNullOrEmpty(folder)) {
                 result[key] = folder;
             }
         }

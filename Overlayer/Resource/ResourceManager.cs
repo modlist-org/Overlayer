@@ -43,6 +43,12 @@ public enum Asset {
     Upload128,
     Download128,
     OllyMouse,
+    EyeOpen128,
+    EyeHide128,
+    LockOff128,
+    LockOn128,
+    Ease128,
+    DotInCircle128,
 }
 
 public sealed class ResourceManager(Assembly assembly, string resourcePath) : IDisposable {
@@ -404,5 +410,11 @@ public sealed class ResourceManager(Assembly assembly, string resourcePath) : ID
         [Asset.Upload128] = "Image.Upload128.png",
         [Asset.Download128] = "Image.Download128.png",
         [Asset.OllyMouse] = "Image.OllyMouse.png",
+        [Asset.EyeOpen128] = "Image.EyeOpen128.png",
+        [Asset.EyeHide128] = "Image.EyeHide128.png",
+        [Asset.LockOff128] = "Image.LockOff128.png",
+        [Asset.LockOn128] = "Image.LockOn128.png",
+        [Asset.Ease128] = "Image.Ease128.png",
+        [Asset.DotInCircle128] = "Image.DotInCircle128.png",
     };
 }

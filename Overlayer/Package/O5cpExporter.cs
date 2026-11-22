@@ -64,7 +64,7 @@ public static class O5cpExporter {
         }
 
         foreach (string key in scan.FontKeys.Concat(scan.GuessedFontKeys).Distinct()) {
-            if (manifest.Fonts.Any(f => f.Key == key)) {
+            if (Overlayer.Resource.InternalResources.IsInternalKey(key) || manifest.Fonts.Any(f => f.Key == key)) {
                 continue;
             }
             if (!UserResourceManager.Fnt.TryGetPath(key, out string path)
@@ -94,7 +94,7 @@ public static class O5cpExporter {
         }
 
         foreach (string key in scan.SpriteKeys.Concat(scan.GuessedSpriteKeys).Distinct()) {
-            if (manifest.Sprites.Any(s => s.Key == key)) {
+            if (Overlayer.Resource.InternalResources.IsInternalKey(key) || manifest.Sprites.Any(s => s.Key == key)) {
                 continue;
             }
             if (!UserResourceManager.Spr.TryGet(key, out var sprite)) {
