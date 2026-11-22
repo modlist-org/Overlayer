@@ -34,12 +34,54 @@ internal readonly struct KeyBind {
                 mods |= Mods.Shift;
             } else if (part.Equals("Alt", StringComparison.OrdinalIgnoreCase)) {
                 mods |= Mods.Alt;
+            } else if (part == "`") {
+                key = KeyCode.BackQuote;
+            } else if (part == "~") {
+                key = KeyCode.Tilde;
             } else if (Enum.TryParse(part, true, out KeyCode k)) {
                 key = k;
             }
         }
         return new KeyBind(key, mods);
     }
+
+    public string ToDisplayString(string separator = " + ") {
+        if (IsNone) {
+            return "None";
+        }
+        var parts = new List<string>();
+        if ((Modifiers & Mods.Ctrl) != 0) {
+            parts.Add("Ctrl");
+        }
+        if ((Modifiers & Mods.Shift) != 0) {
+            parts.Add("Shift");
+        }
+        if ((Modifiers & Mods.Alt) != 0) {
+            parts.Add("Alt");
+        }
+        parts.Add(FormatKeyName(Key));
+        return string.Join(separator, parts);
+    }
+
+    public static string FormatKeyName(KeyCode key) => key switch {
+        KeyCode.BackQuote => "`",
+        KeyCode.Tilde => "~",
+        >= KeyCode.Alpha0 and <= KeyCode.Alpha9 => ((int)(key - KeyCode.Alpha0)).ToString(),
+        KeyCode.Minus => "-",
+        KeyCode.Equals => "=",
+        KeyCode.LeftBracket => "[",
+        KeyCode.RightBracket => "]",
+        KeyCode.Backslash => "\\",
+        KeyCode.Semicolon => ";",
+        KeyCode.Quote => "'",
+        KeyCode.Comma => ",",
+        KeyCode.Period => ".",
+        KeyCode.Slash => "/",
+        KeyCode.Return => "Enter",
+        KeyCode.Escape => "Esc",
+        KeyCode.Backspace => "Backspace",
+        _ => key.ToString(),
+    };
 
     public override string ToString() {
         if (IsNone) {
@@ -83,11 +125,19 @@ internal readonly struct KeyBind {
     /// Registers the shortcut once per left/right modifier combination (O5 combos name exact keys),
     /// all under <paramref name="id"/>. <see cref="Unregister"/> removes every variant.
     /// </summary>
-    public void Register(string id, Action onPressed) {
+    public void Register(string id, Action onPressed, float holdSeconds = 0f, Action onHeld = null) {
         Unregister(id);
         if (IsNone) {
             return;
         }
+        RegisterKey(id, Key, onPressed, holdSeconds, onHeld);
+        // Fallback in case keyboard layout maps ` to Tilde.
+        if (Key == KeyCode.BackQuote) {
+            RegisterKey(id + ".tilde", KeyCode.Tilde, onPressed, holdSeconds, onHeld);
+        }
+    }
+
+    private void RegisterKey(string id, KeyCode key, Action onPressed, float holdSeconds, Action onHeld) {
         var choices = new List<KeyCode[]>();
         if ((Modifiers & Mods.Ctrl) != 0) {
             choices.Add([KeyCode.LeftControl, KeyCode.RightControl]);
@@ -104,13 +154,23 @@ internal readonly struct KeyBind {
             for (int i = 0; i < choices.Count; i++) {
                 mods[i] = choices[i][(v >> i) & 1];
             }
-            O5ShortcutManager.Register($"{id}#{v}", new O5KeyCombo(Key, mods), onPressed: _ => onPressed());
+            if (onHeld != null && holdSeconds > 0f) {
+                O5ShortcutManager.Register(
+                    $"{id}#{v}",
+                    new O5KeyCombo(key, mods),
+                    holdSeconds,
+                    onPressed: _ => onPressed(),
+                    onHeld: _ => onHeld());
+            } else {
+                O5ShortcutManager.Register($"{id}#{v}", new O5KeyCombo(key, mods), onPressed: _ => onPressed());
+            }
         }
     }
 
     public static void Unregister(string id) {
         for (int v = 0; v < 8; v++) {
             O5ShortcutManager.Unregister($"{id}#{v}");
+            O5ShortcutManager.Unregister($"{id}.tilde#{v}");
         }
     }
 }

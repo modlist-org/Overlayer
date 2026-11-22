@@ -13,7 +13,6 @@ using Overlayer.Utility;
 using Overlayer.IO.Fx;
 using Overlayer.IO.User;
 using Overlayer.Package;
-using Overlayer.Update;
 using Overlayer.Native;
 using Overlayer.UI.Utility;
 using UnityEngine;
@@ -39,13 +38,38 @@ internal static class PageSettings {
     private static readonly Dictionary<TextLocalization, (GameObject LabelRow, GameObject MainRow)> objects = [];
     private static O5Dropdown<string> languageDropdown;
     private static O5Slider uiScaleSlider;
+    private static O5Toggle showInternalImagesToggle;
+    private static O5Toggle showInternalFontsToggle;
+    private static O5Toggle scrollEasingToggle;
+    private static O5Dropdown<string> palettePresetDropdown;
+    private static O5ColorPicker paletteColorPicker;
+    private static O5InputField findInput;
+    private static Action refreshWindowKey;
     private static Action refreshHudKey;
+    private static Action refreshPaletteLabels;
+
+    internal static void ClearSearch() {
+        if (findInput != null && !string.IsNullOrEmpty(findInput.Value)) {
+            findInput.Set(string.Empty, true);
+        }
+    }
 
     /// <summary>Shows values changed elsewhere (the setup wizard).</summary>
     internal static void SyncValues() {
         languageDropdown?.Set(MainCore.Tr.Language, false);
         uiScaleSlider?.Set(MainCore.Conf.UIScale, false);
+        showInternalImagesToggle?.Set(MainCore.Conf.ShowInternalImages.Value, false);
+        showInternalFontsToggle?.Set(MainCore.Conf.ShowInternalFonts.Value, false);
+        scrollEasingToggle?.Set(MainCore.Conf.ScrollEasing.Value, false);
+        string configuredColor = MainCore.Conf.UIBaseColor.Value;
+        Color baseColor = UIColors.IsStaticToken(configuredColor)
+            ? UIColors.StaticDisplayColor
+            : UIColors.ParseBaseColor(configuredColor);
+        paletteColorPicker?.Set(baseColor, false);
+        palettePresetDropdown?.Set(UIColors.MatchConfiguredPresetId(configuredColor), false);
+        refreshWindowKey?.Invoke();
         refreshHudKey?.Invoke();
+        refreshPaletteLabels?.Invoke();
     }
 
     public static void Create(RectTransform parent) {
@@ -56,7 +80,7 @@ internal static class PageSettings {
         CoreSettings defSet = new();
 
         var inputRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
-        var findInput =
+        findInput =
         O5Factory.Input(O5KitAdapters.Ctx, inputRow, "search_find", new O5InputOptions { OnChanged = value => {
                 bool isBlank = string.IsNullOrWhiteSpace(value);
                 Dictionary<GameObject, bool> labelActivationMap = [];
@@ -130,6 +154,12 @@ internal static class PageSettings {
                 MainCore.Conf.Language = value;
                 MainCore.ConfMgr.RequestSave();
                 TextLocalization.RefreshAll();
+                refreshWindowKey?.Invoke();
+                refreshHudKey?.Invoke();
+                refreshPaletteLabels?.Invoke();
+                foreach (var refresh in fontOptionRefreshers.ToArray()) {
+                    refresh();
+                }
             } });
         languageDropdown.Rect.offsetMax = new Vector2(-(languageReloadWidth + languageControlSpacing), 0f);
         var langBtn = O5Factory.Button(O5KitAdapters.Ctx, langRow, "language_reload", new O5ButtonOptions { Text = "Reload", OnClick = () => { } });
@@ -175,34 +205,35 @@ internal static class PageSettings {
         var setupButtonTr = setupButton.Label.gameObject.AddComponent<TextLocalization>().Init("SETUP_RUN_AGAIN", "Run Setup Again");
         objects[setupButtonTr] = (overlayerText.gameObject, setupRow.gameObject);
 
+        var windowKeyRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
+        CreateKeyBindButton(
+            windowKeyRow,
+            "window_key",
+            "WINDOW_KEY",
+            "Shortcut",
+            "DESC_WINDOW_KEY",
+            "Click, then press a key (hold Ctrl / Shift / Alt for a combination). Hold to reset window position and size. Esc cancels.",
+            () => UICore.WindowKey,
+            b => {
+                MainCore.Conf.WindowKey = b.ToString();
+                MainCore.ConfMgr.RequestSave();
+                UICore.RegisterToggleShortcut();
+                PageDocs.RefreshHotkeys();
+                Tutorial.Tutorial.RefreshTexts();
+            },
+            out refreshWindowKey);
+
         var tooltipRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
         var tooltipToggle = O5Factory.Toggle(O5KitAdapters.Ctx, tooltipRow, "show_tooltip", new O5ToggleOptions { DefaultValue = defSet.Tooltip, Value = MainCore.Conf.Tooltip, Text = "Show Tooltip" });
-        var advTooltipRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
-        var advTooltipToggle = O5Factory.Toggle(O5KitAdapters.Ctx, advTooltipRow, "show_advanced_tooltip", new O5ToggleOptions { DefaultValue = defSet.AdvancedTooltip, Value = MainCore.Conf.AdvancedTooltip, Text = "Show Advanced Tooltip" });
         tooltipToggle.OnChanged = toggle => {
             O5KitAdapters.Ctx.Tooltip.Hide();
             MainCore.Conf.Tooltip = toggle;
-            O5KitAdapters.SyncConfig();
-            MainCore.ConfMgr.RequestSave();
-
-            advTooltipToggle.SetBlocked(!toggle);
-        };
-        advTooltipToggle.OnChanged = toggle => {
-            O5KitAdapters.Ctx.Tooltip.Hide();
-            MainCore.Conf.AdvancedTooltip = toggle;
             O5KitAdapters.SyncConfig();
             MainCore.ConfMgr.RequestSave();
         };
         tooltipToggle.Rect.AddToolTip(O5KitAdapters.Ctx, () => MainCore.Tr.Get("DESC_SHOW_TOOLTIP", "This is a Tooltip!"));
         var tooltipToggleTr = tooltipToggle.Label.gameObject.AddComponent<TextLocalization>().Init("SHOW_TOOLTIP", "Show Tooltip");
         objects[tooltipToggleTr] = (overlayerText.gameObject, tooltipRow.gameObject);
-        advTooltipToggle.Rect.AddToolTip(O5KitAdapters.Ctx, () => MainCore.Tr.Get(
-            "DESC_SHOW_ADVANCED_TOOLTIP",
-            "Additionally displays developer-written notes, technical implementation details, and inner mechanics in tooltips.\nRecommended for anyone curious about how features work under the hood."
-        ));
-        var advTooltipToggleTr = advTooltipToggle.Label.gameObject.AddComponent<TextLocalization>().Init("SHOW_ADVANCED_TOOLTIP", "Show Advanced Tooltip");
-        objects[advTooltipToggleTr] = (overlayerText.gameObject, advTooltipRow.gameObject);
-        advTooltipToggle.SetBlocked(!MainCore.Conf.Tooltip.Value);
 
         var middleClickRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
         O5Toggle middleClickToggle = O5Factory.Toggle(O5KitAdapters.Ctx, middleClickRow, "middle_click_default", new O5ToggleOptions { DefaultValue = defSet.MiddleClickToDefault, Value = MainCore.Conf.MiddleClickToDefault, OnChanged = toggle => {
@@ -246,6 +277,37 @@ internal static class PageSettings {
         var rawInputToggleTr = rawInputToggle.Label.gameObject.AddComponent<TextLocalization>().Init("USE_RAW_INPUT", "Use OS Raw Input");
         objects[rawInputToggleTr] = (overlayerText.gameObject, rawInputRow.gameObject);
 
+        var internalImgRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
+        showInternalImagesToggle = O5Factory.Toggle(O5KitAdapters.Ctx, internalImgRow, "show_internal_images", new O5ToggleOptions { DefaultValue = defSet.ShowInternalImages, Value = MainCore.Conf.ShowInternalImages, OnChanged = toggle => {
+                MainCore.Conf.ShowInternalImages = toggle;
+                MainCore.ConfMgr.RequestSave();
+                PageResources.RefreshList();
+                UserResourceManager.NotifyChanged();
+            }, Text = "Show Internal Images" });
+        showInternalImagesToggle.Rect.AddToolTip(O5KitAdapters.Ctx, () => MainCore.Tr.Get(
+            "DESC_SHOW_INTERNAL_IMAGES",
+            "Show Overlayer's built-in images in the Resources tab and image pickers."
+        ));
+        var internalImgTr = showInternalImagesToggle.Label.gameObject.AddComponent<TextLocalization>().Init("SHOW_INTERNAL_IMAGES", "Show Internal Images");
+        objects[internalImgTr] = (overlayerText.gameObject, internalImgRow.gameObject);
+
+        var internalFontRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
+        showInternalFontsToggle = O5Factory.Toggle(O5KitAdapters.Ctx, internalFontRow, "show_internal_fonts", new O5ToggleOptions { DefaultValue = defSet.ShowInternalFonts, Value = MainCore.Conf.ShowInternalFonts, OnChanged = toggle => {
+                MainCore.Conf.ShowInternalFonts = toggle;
+                MainCore.ConfMgr.RequestSave();
+                PageResources.RefreshList();
+                UserResourceManager.NotifyChanged();
+                foreach (var refresh in fontOptionRefreshers.ToArray()) {
+                    refresh();
+                }
+            }, Text = "Show Internal Fonts" });
+        showInternalFontsToggle.Rect.AddToolTip(O5KitAdapters.Ctx, () => MainCore.Tr.Get(
+            "DESC_SHOW_INTERNAL_FONTS",
+            "Show Overlayer's built-in fonts in the Resources tab and font pickers."
+        ));
+        var internalFontTr = showInternalFontsToggle.Label.gameObject.AddComponent<TextLocalization>().Init("SHOW_INTERNAL_FONTS", "Show Internal Fonts");
+        objects[internalFontTr] = (overlayerText.gameObject, internalFontRow.gameObject);
+
 
         var uiScaleRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
         var uiScale = O5Factory.Slider(O5KitAdapters.Ctx, uiScaleRow, "ui_scale", new O5SliderOptions { DefaultValue = defSet.UIScale, Min = 0.8f, Max = 1.6f, Value = MainCore.Conf.UIScale, Format = "0.00x", Label = "UI Scale", ClampDrag = true, ClampInput = true, DragFilter = value => Math.Round(value, 2), InputFilter = value => Math.Round(value, 2), OnChanged = value => {
@@ -286,6 +348,24 @@ internal static class PageSettings {
         var animationSpeedTr = animationSpeed.Label.gameObject.AddComponent<TextLocalization>().Init("ANIMATION_SPEED", "Animation Speed");
         objects[animationSpeedTr] = (overlayerText.gameObject, animationSpeedRow.gameObject);
 
+        var scrollEasingRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
+        scrollEasingToggle = O5Factory.Toggle(O5KitAdapters.Ctx, scrollEasingRow, "scroll_easing", new O5ToggleOptions {
+            DefaultValue = defSet.ScrollEasing,
+            Value = MainCore.Conf.ScrollEasing,
+            OnChanged = toggle => {
+                MainCore.Conf.ScrollEasing = toggle;
+                O5KitAdapters.SyncConfig();
+                MainCore.ConfMgr.RequestSave();
+            },
+            Text = "Scroll Easing"
+        });
+        scrollEasingToggle.Rect.AddToolTip(O5KitAdapters.Ctx, () => MainCore.Tr.Get(
+            "DESC_SCROLL_EASING",
+            "Smoothly eases wheel and right-click drag scrolling. Affected by Animation Speed."
+        ));
+        var scrollEasingTr = scrollEasingToggle.Label.gameObject.AddComponent<TextLocalization>().Init("SCROLL_EASING", "Scroll Easing");
+        objects[scrollEasingTr] = (overlayerText.gameObject, scrollEasingRow.gameObject);
+
         var soundVolRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
         var soundVol = O5Factory.Slider(O5KitAdapters.Ctx, soundVolRow, "ui_sound_volume", new O5SliderOptions { DefaultValue = defSet.UISoundVolume, Min = 0.0f, Max = 1.0f, Value = MainCore.Conf.UISoundVolume, Format = "F2", Label = "UI Sound Volume", ClampDrag = true, ClampInput = true, DragFilter = value => Math.Round(value, 2), InputFilter = value => Math.Round(value, 2), OnChanged = value => {
                 MainCore.Conf.UISoundVolume = Mathf.Clamp01((float)value);
@@ -296,11 +376,102 @@ internal static class PageSettings {
         var soundVolTr = soundVol.Label.gameObject.AddComponent<TextLocalization>().Init("UI_SOUND_VOLUME", "UI Sound Volume");
         objects[soundVolTr] = (overlayerText.gameObject, soundVolRow.gameObject);
 
+        BuildPaletteSettings(content, overlayerText);
+
         BuildFontPickers(content, objects, overlayerText);
 
         BuildHudEditor(content, defSet);
+    }
 
-        BuildUpdates(content, defSet);
+    private static void BuildPaletteSettings(GameObject content, TextMeshProUGUI overlayerText) {
+        var ctx = O5KitAdapters.Ctx;
+        var paletteLabelRow = O5Factory.Row(ctx, content.transform);
+        var paletteLabel = O5Factory.ControlTextH1(ctx, paletteLabelRow);
+        var paletteLabelTr = paletteLabel.gameObject.AddComponent<TextLocalization>().Init("UI_PALETTE", "UI Palette");
+
+        string[] presetIds = [.. UIColors.Presets.Select(p => p.Id), UIColors.CustomPresetId];
+        string PresetDisplay(string id) {
+            for (int i = 0; i < UIColors.Presets.Length; i++) {
+                if (UIColors.Presets[i].Id == id) {
+                    return MainCore.Tr.Get(UIColors.Presets[i].LangKey, UIColors.Presets[i].FallbackName);
+                }
+            }
+            return MainCore.Tr.Get("UI_PALETTE_CUSTOM", "Custom");
+        }
+
+        string configuredColor = MainCore.Conf.UIBaseColor.Value;
+        bool isStatic = UIColors.IsStaticToken(configuredColor);
+        Color initialColor = isStatic ? UIColors.StaticDisplayColor : UIColors.ParseBaseColor(configuredColor);
+        string initialPreset = UIColors.MatchConfiguredPresetId(configuredColor);
+
+        var presetRow = O5Factory.Row(ctx, content.transform);
+        palettePresetDropdown = O5Factory.DropDown(ctx, presetRow, "ui_palette_preset", new O5DropdownOptions<string> {
+            DefaultValue = UIColors.Presets[0].Id,
+            Value = initialPreset,
+            Values = presetIds,
+            Display = PresetDisplay,
+            OnChanged = id => {
+                if (id == UIColors.StaticPresetId) {
+                    paletteColorPicker?.Set(UIColors.StaticDisplayColor, false);
+                    MainCore.Conf.UIBaseColor.Value = UIColors.StaticConfigToken;
+                    UIColors.ApplyStatic(true);
+                    MainCore.ConfMgr.RequestSave();
+                } else if (UIColors.TryGetPresetColor(id, out Color presetColor)) {
+                    paletteColorPicker?.Set(presetColor, false);
+                    MainCore.Conf.UIBaseColor.Value = UIColors.ToHexRgb(presetColor);
+                    UIColors.ApplyBaseColor(presetColor, true);
+                    MainCore.ConfMgr.RequestSave();
+                } else if (id != UIColors.CustomPresetId) {
+                    paletteColorPicker?.Set(UIColors.DefaultBaseColor, false);
+                    MainCore.Conf.UIBaseColor.Value = UIColors.DefaultBaseHex;
+                    UIColors.ApplyBaseColor(UIColors.DefaultBaseColor, true);
+                    MainCore.ConfMgr.RequestSave();
+                }
+            }
+        });
+        palettePresetDropdown.Rect.AddToolTip(ctx, () => MainCore.Tr.Get(
+            "DESC_UI_PALETTE",
+            "Derives the entire UI color palette from a single base hue using balanced saturation and brightness."
+        ));
+        objects[paletteLabelTr] = (paletteLabelRow.gameObject, presetRow.gameObject);
+
+        var colorRow = O5Factory.Row(ctx, content.transform);
+        paletteColorPicker = O5Factory.ColorPicker(ctx, colorRow, "ui_palette_color", new O5ColorPickerOptions {
+            CanvasRect = UICore.CanvasObj.GetComponent<RectTransform>(),
+            CanvasCamera = UICore.Canvas ? UICore.Canvas.worldCamera : null,
+            DefaultValue = UIColors.DefaultBaseColor,
+            Value = initialColor,
+            Label = MainCore.Tr.Get("UI_PALETTE_COLOR", "Base Color"),
+            OnChanged = color => {
+                Color opaque = new(color.r, color.g, color.b, 1f);
+                UIColors.ApplyBaseColor(opaque, true);
+                palettePresetDropdown?.Set(UIColors.MatchPresetId(opaque), false);
+            },
+            OnComplete = color => {
+                Color opaque = new(color.r, color.g, color.b, 1f);
+                MainCore.Conf.UIBaseColor.Value = UIColors.ToHexRgb(opaque);
+                UIColors.ApplyBaseColor(opaque, true);
+                palettePresetDropdown?.Set(UIColors.MatchPresetId(opaque), false);
+                MainCore.ConfMgr.RequestSave();
+            }
+        });
+        paletteColorPicker.Rect.AddToolTip(ctx, () => MainCore.Tr.Get(
+            "DESC_UI_PALETTE_COLOR",
+            "Customize Overlayer with a monochrome palette using your chosen color."
+        ));
+        var colorLabel = paletteColorPicker.Rect.Find("Header/Preview/ColorLabel")?.GetComponent<TMP_Text>();
+        if (colorLabel != null) {
+            var colorLabelTr = colorLabel.gameObject.AddComponent<TextLocalization>().Init("UI_PALETTE_COLOR", "Base Color");
+            objects[colorLabelTr] = (paletteLabelRow.gameObject, colorRow.gameObject);
+        }
+
+        refreshPaletteLabels = () => {
+            if (palettePresetDropdown != null && !palettePresetDropdown.IsDisposed && palettePresetDropdown.Rect) {
+                string cur = palettePresetDropdown.Value;
+                palettePresetDropdown.SetValues(presetIds);
+                palettePresetDropdown.Set(cur, false);
+            }
+        };
     }
 
     private static void BuildHudEditor(GameObject content, CoreSettings defSet) {
@@ -309,61 +480,34 @@ internal static class PageSettings {
         var header = O5Factory.ControlTextH1(ctx, headerRow);
         header.gameObject.AddComponent<TextLocalization>().Init("HUD_EDITOR", "HUD Editor");
 
-        var tabs = new UiStyle.Tabs(content.transform, "hud_settings",
-            MainCore.Tr.Get("BASIC", "Basic"), MainCore.Tr.Get("ADVANCED", "Advanced"));
-        Transform basic = tabs[0], advanced = tabs[1];
+        var keyRow = O5Factory.Row(ctx, content.transform);
+        CreateKeyBindButton(
+            keyRow,
+            "hud_editor_key",
+            "HUD_EDITOR_KEY",
+            "Shortcut",
+            "DESC_HUD_EDITOR_KEY",
+            "Click, then press a key (hold Ctrl / Shift / Alt for a combination). Esc cancels.",
+            () => HudEdit.HudEditor.Key,
+            b => {
+                MainCore.Conf.HudEditorKey = b.ToString();
+                MainCore.ConfMgr.RequestSave();
+                HudEdit.HudEditor.RegisterShortcut();
+                PageDocs.RefreshHotkeys();
+                Tutorial.Tutorial.RefreshTexts();
+            },
+            out refreshHudKey);
 
-        var openRow = O5Factory.Row(ctx, basic);
-        var openButton = O5Factory.Button(ctx, openRow, "hud_editor_open", new O5ButtonOptions { Text = "Open HUD Editor", OnClick = HudEdit.HudEditor.Open });
-        openButton.Label.gameObject.AddComponent<TextLocalization>().Init("OPEN_HUD_EDITOR", "Open HUD Editor");
-        openButton.Rect.AddToolTip(ctx, () => MainCore.Tr.Get("DESC_HUD_EDITOR",
-            "Move, scale, rotate and create HUD objects right on the game screen."));
-
-        var keyRow = O5Factory.Row(ctx, basic);
-        O5Button keyButton = null;
-        string KeyCaption() => $"{MainCore.Tr.Get("HUD_EDITOR_KEY", "Open Key")}: {HudEdit.HudEditor.Key}";
-        keyButton = O5Factory.Button(ctx, keyRow, "hud_editor_key", new O5ButtonOptions { Text = KeyCaption(), OnClick = () => KeyCapture.Begin(
-            () => keyButton.Text = $"{MainCore.Tr.Get("HUD_EDITOR_KEY", "Open Key")}: ...",
-            bind => {
-                if (bind is { IsNone: false } b) {
-                    MainCore.Conf.HudEditorKey = b.ToString();
-                    MainCore.ConfMgr.RequestSave();
-                    HudEdit.HudEditor.RegisterShortcut();
-                }
-                keyButton.Text = KeyCaption();
-            }) });
-        refreshHudKey = () => keyButton.Text = KeyCaption();
-        keyButton.Rect.AddToolTip(ctx, () => MainCore.Tr.Get("DESC_HUD_EDITOR_KEY",
-            "Click, then press a key (hold Ctrl / Shift / Alt for a combination). Esc cancels."));
-
-        var snapRow = O5Factory.Row(ctx, basic);
+        var snapRow = O5Factory.Row(ctx, content.transform);
         var snapToggle = O5Factory.Toggle(ctx, snapRow, "hud_snap", new O5ToggleOptions { DefaultValue = defSet.HudSnap, Value = MainCore.Conf.HudSnap, OnChanged = toggle => {
                 MainCore.Conf.HudSnap = toggle;
                 MainCore.ConfMgr.RequestSave();
             }, Text = "Snap to Edges and Other Objects" });
-        snapToggle.Rect.AddToolTip(ctx, () => MainCore.Tr.Get("DESC_HUD_SNAP", "Hold Alt while dragging to place freely."));
+        snapToggle.Rect.AddToolTip(ctx, () => MainCore.Tr.Get("DESC_HUD_SNAP", "Hold Alt while dragging to temporarily disable snapping."));
         var snapTr = snapToggle.Label.gameObject.AddComponent<TextLocalization>().Init("HUD_SNAP", "Snap to Edges and Other Objects");
         objects[snapTr] = (headerRow.gameObject, snapRow.gameObject);
 
-        var hintsRow = O5Factory.Row(ctx, basic);
-        var hintsToggle = O5Factory.Toggle(ctx, hintsRow, "hud_hints", new O5ToggleOptions { DefaultValue = defSet.HudShowHints, Value = MainCore.Conf.HudShowHints, OnChanged = toggle => {
-                MainCore.Conf.HudShowHints = toggle;
-                MainCore.ConfMgr.RequestSave();
-            }, Text = "Show Shortcut Hints" });
-        var hintsTr = hintsToggle.Label.gameObject.AddComponent<TextLocalization>().Init("HUD_SHOW_HINTS", "Show Shortcut Hints");
-        objects[hintsTr] = (headerRow.gameObject, hintsRow.gameObject);
-
-        var canvasLabel = O5Factory.ControlText(ctx, O5Factory.Row(ctx, basic, 30f), 20f, true);
-        canvasLabel.gameObject.AddComponent<TextLocalization>().Init("HUD_MAIN_CANVAS", "Main Canvas (new objects go here)");
-        var canvasRow = O5Factory.Row(ctx, basic);
-        var canvasInput = O5Factory.Input(ctx, canvasRow, "hud_main_canvas", new O5InputOptions { Value = MainCore.Conf.HudMainCanvas, Placeholder = "HUD", OnEndEdit = value => {
-                MainCore.Conf.HudMainCanvas = string.IsNullOrWhiteSpace(value) ? "HUD" : value.Trim();
-                MainCore.ConfMgr.RequestSave();
-            } });
-        canvasInput.Rect.AddToolTip(ctx, () => MainCore.Tr.Get("DESC_HUD_MAIN_CANVAS",
-            "Main canvas: where new HUD objects go. Created automatically if it doesn't exist."));
-
-        var distanceRow = O5Factory.Row(ctx, advanced);
+        var distanceRow = O5Factory.Row(ctx, content.transform);
         var distance = O5Factory.Slider(ctx, distanceRow, "hud_snap_distance", new O5SliderOptions { DefaultValue = defSet.HudSnapDistance, Min = 2f, Max = 32f, Value = MainCore.Conf.HudSnapDistance, Format = "0 px", Label = "Snap Distance", ClampDrag = true, ClampInput = true, DragFilter = value => Math.Round(value), OnComplete = value => {
                 MainCore.Conf.HudSnapDistance = (float)value;
                 MainCore.ConfMgr.RequestSave();
@@ -371,7 +515,7 @@ internal static class PageSettings {
         var distanceTr = distance.Label.gameObject.AddComponent<TextLocalization>().Init("HUD_SNAP_DISTANCE", "Snap Distance");
         objects[distanceTr] = (headerRow.gameObject, distanceRow.gameObject);
 
-        var gridRow = O5Factory.Row(ctx, advanced);
+        var gridRow = O5Factory.Row(ctx, content.transform);
         var grid = O5Factory.Slider(ctx, gridRow, "hud_grid_size", new O5SliderOptions { DefaultValue = defSet.HudGridSize, Min = 8f, Max = 200f, Value = MainCore.Conf.HudGridSize, Format = "0", Label = "Grid Size", ClampDrag = true, ClampInput = true, DragFilter = value => Math.Round(value), OnComplete = value => {
                 MainCore.Conf.HudGridSize = (float)value;
                 MainCore.ConfMgr.RequestSave();
@@ -379,106 +523,6 @@ internal static class PageSettings {
         grid.Rect.AddToolTip(ctx, () => MainCore.Tr.Get("DESC_HUD_GRID_SIZE", "Spacing of the HUD editor grid, in HUD units."));
         var gridTr = grid.Label.gameObject.AddComponent<TextLocalization>().Init("HUD_GRID_SIZE", "Grid Size");
         objects[gridTr] = (headerRow.gameObject, gridRow.gameObject);
-
-        var inPlayRow = O5Factory.Row(ctx, advanced);
-        var inPlayToggle = O5Factory.Toggle(ctx, inPlayRow, "hud_in_play", new O5ToggleOptions { DefaultValue = defSet.HudEditorInPlay, Value = MainCore.Conf.HudEditorInPlay, OnChanged = toggle => {
-                MainCore.Conf.HudEditorInPlay = toggle;
-                MainCore.ConfMgr.RequestSave();
-            }, Text = "Allow Opening While Playing" });
-        inPlayToggle.Rect.AddToolTip(ctx, () => MainCore.Tr.Get("DESC_HUD_IN_PLAY",
-            "By default the HUD editor only opens outside of play or while paused."));
-        var inPlayTr = inPlayToggle.Label.gameObject.AddComponent<TextLocalization>().Init("HUD_IN_PLAY", "Allow Opening While Playing");
-        objects[inPlayTr] = (headerRow.gameObject, inPlayRow.gameObject);
-    }
-
-    private static Action refreshUpdates;
-
-    private static void BuildUpdates(GameObject content, CoreSettings defSet) {
-        if (!UpdateService.Supported) {
-            return;
-        }
-
-        var updatesText = O5Factory.ControlTextH1(O5KitAdapters.Ctx, O5Factory.Row(O5KitAdapters.Ctx, content.transform));
-        updatesText.gameObject.AddComponent<TextLocalization>().Init("UPDATES", "Updates");
-
-        var autoRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
-        var autoToggle = O5Factory.Toggle(O5KitAdapters.Ctx, autoRow, "auto_update", new O5ToggleOptions { DefaultValue = defSet.AutoUpdate, Value = MainCore.Conf.AutoUpdate, OnChanged = toggle => {
-                if (toggle && !UpdateService.IsHttpAvailable) {
-                    MainCore.Log.Wrn("[Update] Cannot enable AutoUpdate: HTTP networking is not available.");
-                    return;
-                }
-                MainCore.Conf.AutoUpdate = toggle;
-                MainCore.ConfMgr.RequestSave();
-            }, Text = "Auto Update" });
-        autoToggle.Rect.AddToolTip(O5KitAdapters.Ctx, () => MainCore.Tr.Get(
-            "DESC_AUTO_UPDATE",
-            "Checks GitHub for a newer Overlayer at launch and installs it in the background.\nThe update takes effect the next time the game starts."
-        ));
-        var autoToggleTr = autoToggle.Label.gameObject.AddComponent<TextLocalization>().Init("AUTO_UPDATE", "Auto Update");
-        objects[autoToggleTr] = (updatesText.gameObject, autoRow.gameObject);
-
-        var betaRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
-        var betaToggle = O5Factory.Toggle(O5KitAdapters.Ctx, betaRow, "update_beta", new O5ToggleOptions { DefaultValue = defSet.UpdateBeta, Value = MainCore.Conf.UpdateBeta, OnChanged = toggle => {
-                MainCore.Conf.UpdateBeta = toggle;
-                MainCore.ConfMgr.RequestSave();
-            }, Text = "Include Beta Releases" });
-        betaToggle.Rect.AddToolTip(O5KitAdapters.Ctx, () => MainCore.Tr.Get(
-            "DESC_UPDATE_BETA",
-            "Also offers releases marked as pre-release on GitHub."
-        ));
-        var betaToggleTr = betaToggle.Label.gameObject.AddComponent<TextLocalization>().Init("UPDATE_BETA", "Include Beta Releases");
-        objects[betaToggleTr] = (updatesText.gameObject, betaRow.gameObject);
-
-        const float buttonWidth = 160f;
-        const float buttonSpacing = 8f;
-        var statusRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
-        var statusText = O5Factory.ControlText(O5KitAdapters.Ctx, statusRow, 22f, true);
-        statusText.overflowMode = TextOverflowModes.Ellipsis;
-        statusText.rectTransform.offsetMax = new Vector2(-(2f * (buttonWidth + buttonSpacing)), 0f);
-        var installBtn = O5Factory.Button(O5KitAdapters.Ctx, statusRow, "update_install", new O5ButtonOptions { Text = "Install", OnClick = () => UpdateService.Install() });
-        var checkBtn = O5Factory.Button(O5KitAdapters.Ctx, statusRow, "update_check", new O5ButtonOptions { Text = "Check", OnClick = () => UpdateService.Check() });
-        PinRight(installBtn.Rect, 0f, buttonWidth);
-        PinRight(checkBtn.Rect, buttonWidth + buttonSpacing, buttonWidth);
-        installBtn.Label.gameObject.AddComponent<TextLocalization>().Init("UPDATE_INSTALL", "Install");
-        checkBtn.Label.gameObject.AddComponent<TextLocalization>().Init("UPDATE_CHECK", "Check");
-
-        refreshUpdates = () => {
-            if (!UpdateService.IsHttpAvailable) {
-                statusText.text = MainCore.Tr.Get("UPDATE_HTTP_UNAVAILABLE", "HTTP networking is unavailable.");
-                checkBtn.SetBlocked(true);
-                installBtn.SetBlocked(true);
-                return;
-            }
-            UpdateStatus status = UpdateService.Status;
-            string tag = UpdateService.Available?.Tag;
-            statusText.text = status switch {
-                UpdateStatus.Checking => MainCore.Tr.Get("UPDATE_CHECKING", "Checking for updates..."),
-                UpdateStatus.UpToDate => string.Format(MainCore.Tr.Get("UPDATE_UP_TO_DATE", "Up to date ({0})"), Info.Version),
-                UpdateStatus.Available => string.Format(MainCore.Tr.Get("UPDATE_AVAILABLE", "{0} is available"), tag),
-                UpdateStatus.Installing => string.Format(MainCore.Tr.Get("UPDATE_INSTALLING", "Installing {0}..."), tag),
-                UpdateStatus.Installed => string.Format(MainCore.Tr.Get("UPDATE_INSTALLED", "{0} installed. Restart the game to apply."), tag),
-                UpdateStatus.Failed => string.Format(MainCore.Tr.Get("UPDATE_FAILED", "Update failed: {0}"), UpdateService.Error),
-                _ => string.Format(MainCore.Tr.Get("UPDATE_CURRENT", "Current version: {0}"), Info.Version),
-            };
-            checkBtn.SetBlocked(status is UpdateStatus.Checking or UpdateStatus.Installing or UpdateStatus.Installed);
-            installBtn.SetBlocked(status != UpdateStatus.Available);
-        };
-        if (!updatesHooked) {
-            updatesHooked = true;
-            UpdateService.OnChanged += () => refreshUpdates?.Invoke();
-            MainCore.Tr.OnLanguageChanged += _ => refreshUpdates?.Invoke();
-        }
-        refreshUpdates();
-    }
-
-    private static bool updatesHooked;
-
-    private static void PinRight(RectTransform rect, float right, float width) {
-        rect.pivot = new(1f, 1f);
-        rect.anchorMin = new(1f, 1f);
-        rect.anchorMax = new(1f, 1f);
-        rect.anchoredPosition = new(-right, 0f);
-        rect.sizeDelta = new(width, 50f);
     }
 
     private static void BuildFontPickers(GameObject content, Dictionary<TextLocalization, (GameObject, GameObject)> objects, TextMeshProUGUI overlayerText) {
@@ -493,17 +537,103 @@ internal static class PageSettings {
                 }
             };
         }
-        BuildFontPicker(content, objects, overlayerText,
-            "SYSTEM_FONT", "System Font", MainCore.Conf.SystemFontKey, MainCore.Conf.SystemFontFallbacks,
-            "SYSTEM_FONT_FALLBACKS", "System Font Fallbacks");
+        BuildSystemFontPickers(content, objects, overlayerText);
         BuildFontPicker(content, objects, overlayerText,
             "CODE_FONT", "Code Font", MainCore.Conf.CodeFontKey, MainCore.Conf.CodeFontFallbacks,
             "CODE_FONT_FALLBACKS", "Code Font Fallbacks");
     }
 
+    private static void BuildSystemFontPickers(GameObject content, Dictionary<TextLocalization, (GameObject, GameObject)> objects,
+        TextMeshProUGUI overlayerText) {
+        GameObject warnRow = null;
+        TextMeshProUGUI warnText = null;
+        void RefreshWarning() {
+            if (warnRow == null || warnText == null) {
+                return;
+            }
+            bool hasReg = !string.IsNullOrEmpty(MainCore.Conf.SystemFontKey.Value);
+            bool hasMed = !string.IsNullOrEmpty(MainCore.Conf.SystemMediumFontKey.Value);
+            if (hasReg && !hasMed) {
+                warnRow.SetActive(true);
+                warnText.text = MainCore.Tr.Get("WARN_SYSTEM_MEDIUM_DEFAULT",
+                    "Medium font is set to Default, so bold text will not appear bold.");
+            } else if (!hasReg && hasMed) {
+                warnRow.SetActive(true);
+                warnText.text = MainCore.Tr.Get("WARN_SYSTEM_MEDIUM_ONLY",
+                    "Medium font alone cannot be applied. Change the Regular font to change standard text.");
+            } else {
+                warnRow.SetActive(false);
+            }
+        }
+
+        var colsObj = new GameObject("SystemFontColumns");
+        colsObj.transform.SetParent(content.transform, false);
+        colsObj.AddComponent<RectTransform>();
+        var colsLayout = colsObj.AddComponent<HorizontalLayoutGroup>();
+        colsLayout.spacing = 16f;
+        colsLayout.childControlWidth = true;
+        colsLayout.childControlHeight = true;
+        colsLayout.childForceExpandWidth = true;
+        colsLayout.childForceExpandHeight = false;
+        colsLayout.childAlignment = TextAnchor.UpperLeft;
+        colsObj.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        var colsLe = colsObj.AddComponent<LayoutElement>();
+        colsLe.minWidth = 0f;
+        colsLe.flexibleWidth = 1f;
+
+        GameObject MakeColumn(string name) {
+            var col = new GameObject(name);
+            col.transform.SetParent(colsObj.transform, false);
+            col.AddComponent<RectTransform>();
+            var v = col.AddComponent<VerticalLayoutGroup>();
+            v.spacing = 10f;
+            v.childControlWidth = true;
+            v.childControlHeight = true;
+            v.childForceExpandWidth = true;
+            v.childForceExpandHeight = false;
+            col.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+            var le = col.AddComponent<LayoutElement>();
+            le.minWidth = 0f;
+            le.flexibleWidth = 1f;
+            return col;
+        }
+
+        var regCol = MakeColumn("RegularCol");
+        var regFallbacks = BuildFontDropdown(regCol, objects, overlayerText,
+            "SYSTEM_FONT", "System Font (Regular)", MainCore.Conf.SystemFontKey, MainCore.Conf.SystemFontFallbacks,
+            "DESC_SYSTEM_FONT", "UI font (Regular), loaded from Resources. Empty means the built-in default.",
+            onChanged: RefreshWarning);
+        BuildFallbackSection(regCol, "SYSTEM_FONT", MainCore.Conf.SystemFontKey, MainCore.Conf.SystemFontFallbacks,
+            "SYSTEM_FONT_FALLBACKS", "System Font Fallbacks", regFallbacks);
+
+        var medCol = MakeColumn("MediumCol");
+        var medFallbacks = BuildFontDropdown(medCol, objects, overlayerText,
+            "SYSTEM_MEDIUM_FONT", "System Font (Medium)", MainCore.Conf.SystemMediumFontKey, MainCore.Conf.SystemMediumFontFallbacks,
+            "DESC_SYSTEM_MEDIUM_FONT", "Bold/header UI font (Medium), loaded from Resources. Empty means the built-in default.",
+            onChanged: RefreshWarning);
+        BuildFallbackSection(medCol, "SYSTEM_MEDIUM_FONT", MainCore.Conf.SystemMediumFontKey, MainCore.Conf.SystemMediumFontFallbacks,
+            "SYSTEM_FONT_FALLBACKS", "System Font Fallbacks", medFallbacks);
+
+        var warnRect = O5Factory.Row(O5KitAdapters.Ctx, content.transform, 44f);
+        warnRow = warnRect.gameObject;
+        warnText = O5Factory.ControlText(O5KitAdapters.Ctx, warnRect, 16f, true);
+        warnText.color = new Color(1f, 0.78f, 0.32f, 1f);
+        warnText.enableWordWrapping = true;
+        RefreshWarning();
+        fontOptionRefreshers.Add(RefreshWarning);
+    }
+
     private static void BuildFontPicker(GameObject content, Dictionary<TextLocalization, (GameObject, GameObject)> objects,
         TextMeshProUGUI overlayerText, string key, string label, FxValue<string> fx,
         FxValue<List<string>> fallbacks, string fallbacksKey, string fallbacksLabel) {
+        var fallbackList = BuildFontDropdown(content, objects, overlayerText, key, label, fx, fallbacks,
+            "DESC_CODE_FONT", "Code and numeric font, loaded from Resources. Empty means the built-in default.");
+        BuildFallbackSection(content, key, fx, fallbacks, fallbacksKey, fallbacksLabel, fallbackList);
+    }
+
+    private static FallbackListView BuildFontDropdown(GameObject content, Dictionary<TextLocalization, (GameObject, GameObject)> objects,
+        TextMeshProUGUI overlayerText, string key, string label, FxValue<string> fx,
+        FxValue<List<string>> fallbacks, string descKey, string descFallback, Action onChanged = null) {
         var row = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
         var text = O5Factory.ControlTextH1(O5KitAdapters.Ctx, row);
         var textTr = text.gameObject.AddComponent<TextLocalization>().Init(key, label);
@@ -520,16 +650,23 @@ internal static class PageSettings {
                 O5KitAdapters.RefreshFonts();
                 TextLocalization.RefreshAll();
                 RefreshFallbackRows(fallbackList, fallbacks, fx.Value);
+                onChanged?.Invoke();
             } });
-        dropdown.Rect.AddToolTip(O5KitAdapters.Ctx, () => {
-            if (key == "SYSTEM_FONT") {
-                return MainCore.Tr.Get("DESC_SYSTEM_FONT",
-                    "UI font, loaded from Resources. Empty means the built-in default.");
-            }
-            return MainCore.Tr.Get("DESC_CODE_FONT",
-                "Code and numeric font, loaded from Resources. Empty means the built-in default.");
-        });
+        dropdown.Rect.AddToolTip(O5KitAdapters.Ctx, () => MainCore.Tr.Get(descKey, descFallback));
         objects[textTr] = (overlayerText.gameObject, row.gameObject);
+
+        fontOptionRefreshers.Add(() => {
+            if (dropdown != null) {
+                dropdown.SetValues(FontOptions(includeBuiltin: true, includeKey: fx.Value));
+                dropdown.Set(string.IsNullOrEmpty(fx.Value) ? BuiltinFontOption : fx.Value, false);
+            }
+        });
+        return fallbackList;
+    }
+
+    private static void BuildFallbackSection(GameObject content, string key, FxValue<string> fx,
+        FxValue<List<string>> fallbacks, string fallbacksKey, string fallbacksLabel, FallbackListView fallbackList = null) {
+        fallbackList ??= new FallbackListView();
 
         var fallbacksRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
         var fallbacksText = O5Factory.ControlText(O5KitAdapters.Ctx, fallbacksRow, 22f, true);
@@ -553,12 +690,16 @@ internal static class PageSettings {
         RefreshFallbackRows(fallbackList, fallbacks, fx.Value);
 
         var addRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform, 44f);
-        O5Factory.Button(O5KitAdapters.Ctx, addRow, key.ToLowerInvariant() + "_fallback_add", new O5ButtonOptions { Text = MainCore.Tr.Get("ADD_FALLBACK", "Add Fallback"), OnClick = () => {
+        var addFallbackBtn = O5Factory.Button(O5KitAdapters.Ctx, addRow, key.ToLowerInvariant() + "_fallback_add", new O5ButtonOptions { Text = MainCore.Tr.Get("ADD_FALLBACK", "Add Fallback"), OnClick = () => {
             var chain = fallbacks.Value ?? [];
-            string first = UserResourceManager.Fnt.Keys
+            var available = UserResourceManager.Fnt.Keys
                 .Where(k => !O5cpFormat.IsPackageKey(k))
                 .OrderBy(k => k, StringComparer.OrdinalIgnoreCase)
-                .FirstOrDefault(k => k != fx.Value && !chain.Contains(k));
+                .AsEnumerable();
+            if (MainCore.Conf.ShowInternalFonts.Value) {
+                available = available.Concat(InternalResources.FontKeys);
+            }
+            string first = available.FirstOrDefault(k => k != fx.Value && !chain.Contains(k));
             if (first == null) {
                 if (chain.Contains(BuiltinFontOption)) {
                     return;
@@ -572,10 +713,10 @@ internal static class PageSettings {
             TextLocalization.RefreshAll();
             RefreshFallbackRows(fallbackList, fallbacks, fx.Value);
         }, Height = 44f });
+        addFallbackBtn.Label.gameObject.AddComponent<TextLocalization>().Init("ADD_FALLBACK", "Add Fallback");
 
         fontOptionRefreshers.Add(() => {
-            if (dropdown != null && fallbackList.Root != null) {
-                dropdown.SetValues(FontOptions(includeBuiltin: true, includeKey: fx.Value));
+            if (fallbackList.Root != null) {
                 RefreshFallbackRows(fallbackList, fallbacks, fx.Value);
             }
         });
@@ -668,10 +809,13 @@ internal static class PageSettings {
         return button;
     }
 
-    private static string DefaultFontName() => "Default";
+    private static string DefaultFontName() => MainCore.Tr.Get("DEFAULT_FONT", "Default");
 
-    private static string FontOptionLabel(string key)
-        => key == BuiltinFontOption ? DefaultFontName() : UserResourceSettings.FullName(UserResourceManager.Config.Data.FontFolders, key);
+    private static string FontOptionLabel(string key) => key == BuiltinFontOption
+        ? DefaultFontName()
+        : InternalResources.IsInternalKey(key)
+            ? InternalResources.DisplayName(key)
+            : UserResourceSettings.FullName(UserResourceManager.Config.Data.FontFolders, key);
 
     private static string[] FontOptions(bool includeBuiltin = false, string includeKey = null) {
         var folders = UserResourceManager.Config.Data.FontFolders;
@@ -679,6 +823,9 @@ internal static class PageSettings {
             .Where(k => !O5cpFormat.IsPackageKey(k))
             .OrderBy(k => UserResourceSettings.FolderOf(folders, k), StringComparer.OrdinalIgnoreCase)
             .ThenBy(k => k, StringComparer.OrdinalIgnoreCase)];
+        if (MainCore.Conf.ShowInternalFonts.Value) {
+            keys.AddRange(InternalResources.FontKeys);
+        }
         if (includeBuiltin) {
             keys.Insert(0, BuiltinFontOption);
         }
@@ -686,6 +833,35 @@ internal static class PageSettings {
             keys.Add(includeKey);
         }
         return [.. keys];
+    }
+
+    private static O5Button CreateKeyBindButton(
+        Transform row,
+        string id,
+        string labelKey,
+        string labelFallback,
+        string descKey,
+        string descFallback,
+        Func<KeyBind> getBind,
+        Action<KeyBind> applyBind,
+        out Action refresh) {
+        var ctx = O5KitAdapters.Ctx;
+        O5Button keyButton = null;
+        string KeyCaption() => $"{MainCore.Tr.Get(labelKey, labelFallback)}: {getBind().ToDisplayString()}";
+        keyButton = O5Factory.Button(ctx, row, id, new O5ButtonOptions {
+            Text = KeyCaption(),
+            OnClick = () => KeyCapture.Begin(
+                () => keyButton.Text = $"{MainCore.Tr.Get(labelKey, labelFallback)}: ...",
+                bind => {
+                    if (bind is { IsNone: false } b) {
+                        applyBind(b);
+                    }
+                    keyButton.Text = KeyCaption();
+                })
+        });
+        refresh = () => keyButton.Text = KeyCaption();
+        keyButton.Rect.AddToolTip(ctx, () => MainCore.Tr.Get(descKey, descFallback));
+        return keyButton;
     }
 
     internal static void OnTranslatorLoadEnd() {
@@ -701,5 +877,11 @@ internal static class PageSettings {
                 : MainCore.Conf.Language,
             false
         );
+        refreshWindowKey?.Invoke();
+        refreshHudKey?.Invoke();
+        refreshPaletteLabels?.Invoke();
+        foreach (var refresh in fontOptionRefreshers.ToArray()) {
+            refresh();
+        }
     }
 }

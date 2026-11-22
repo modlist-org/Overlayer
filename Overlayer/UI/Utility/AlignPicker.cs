@@ -1,6 +1,7 @@
 using O5Kit.Behaviour;
 using O5Kit.Factory;
 using Overlayer.Compat;
+using Overlayer.Core;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -26,23 +27,40 @@ internal sealed class AlignPicker {
     // TMP keeps the horizontal part in the low byte and the vertical part in the next one.
     private static readonly int[] HorizontalValues = [1, 2, 4, 8, 16, 32];
     private static readonly int[] VerticalValues = [256, 512, 1024, 2048, 4096, 8192];
-    private static readonly string[] HorizontalNames = ["Left", "Center", "Right", "Justified", "Flush", "Geometry center"];
-    private static readonly string[] VerticalNames = ["Top", "Middle", "Bottom", "Baseline", "Midline", "Capline"];
+    private static readonly (string Key, string Fallback)[] HorizontalNames = [
+        ("ALIGN_LEFT", "Left"),
+        ("ALIGN_CENTER", "Center"),
+        ("ALIGN_RIGHT", "Right"),
+        ("ALIGN_JUSTIFIED", "Justified"),
+        ("ALIGN_FLUSH", "Flush"),
+        ("ALIGN_GEOMETRY", "Geometry center"),
+    ];
+    private static readonly (string Key, string Fallback)[] VerticalNames = [
+        ("ALIGN_TOP", "Top"),
+        ("ALIGN_MIDDLE", "Middle"),
+        ("ALIGN_BOTTOM", "Bottom"),
+        ("ALIGN_BASELINE", "Baseline"),
+        ("ALIGN_MIDLINE", "Midline"),
+        ("ALIGN_CAPLINE", "Capline"),
+    ];
 
     private static readonly Color Bar = new(1f, 1f, 1f, 0.85f);
     private static readonly Color Faint = new(1f, 1f, 1f, 0.3f);
 
     private readonly Func<TextAlignmentOptions> get;
     private readonly Action<TextAlignmentOptions> set;
+    private readonly Action<int, int> pickMask;
     private readonly Image[] horizontal = new Image[6];
     private readonly Image[] vertical = new Image[6];
 
     public RectTransform Rect { get; }
 
     /// <summary>A row with <paramref name="label"/> on the left and the buttons on the right.</summary>
-    public AlignPicker(Transform parent, string label, Func<TextAlignmentOptions> get, Action<TextAlignmentOptions> set) {
+    public AlignPicker(Transform parent, string label, Func<TextAlignmentOptions> get, Action<TextAlignmentOptions> set,
+        Action<int, int> pickMask = null) {
         this.get = get;
         this.set = set;
+        this.pickMask = pickMask;
         var ctx = O5KitAdapters.Ctx;
         Rect = O5Factory.Row(ctx, parent, ButtonSize * 2f + Gap + 8f);
 
@@ -61,14 +79,21 @@ internal sealed class AlignPicker {
         grid.sizeDelta = new Vector2(ButtonSize * 6f + Gap * 5f, ButtonSize * 2f + Gap);
         for (int i = 0; i < 6; i++) {
             int index = i;
-            horizontal[i] = Button(grid, i, 0, (Mark)i, HorizontalNames[i], () => Pick(HorizontalValues[index], 0xFF));
-            vertical[i] = Button(grid, i, 1, (Mark)(i + 6), VerticalNames[i], () => Pick(VerticalValues[index], 0xFF00));
+            var h = HorizontalNames[i];
+            var v = VerticalNames[i];
+            horizontal[i] = Button(grid, i, 0, (Mark)i, () => MainCore.Tr.Get(h.Key, h.Fallback), () => Pick(HorizontalValues[index], 0xFF));
+            vertical[i] = Button(grid, i, 1, (Mark)(i + 6), () => MainCore.Tr.Get(v.Key, v.Fallback), () => Pick(VerticalValues[index], 0xFF00));
         }
         Refresh();
     }
 
     // Swap one half (horizontal or vertical), keep the other.
     private void Pick(int value, int mask) {
+        if (pickMask != null) {
+            pickMask(value, mask);
+            Refresh();
+            return;
+        }
         int current = (int)get();
         set((TextAlignmentOptions)((current & ~mask) | value));
         Refresh();
@@ -83,7 +108,7 @@ internal sealed class AlignPicker {
         }
     }
 
-    private static Image Button(RectTransform grid, int column, int row, Mark mark, string tooltip, Action onClick) {
+    private static Image Button(RectTransform grid, int column, int row, Mark mark, Func<string> tooltip, Action onClick) {
         var back = UiStyle.NewRect(mark.ToString(), grid).gameObject.AddComponent<Image>();
         back.raycastTarget = true;
         var r = back.rectTransform;
@@ -185,7 +210,7 @@ internal sealed class AlignPicker {
         }
     }
 
-    private static readonly Color Accent = new(0.62f, 0.66f, 1f, 1f);
+    private static Color Accent => UIColors.ObjectActiveBright;
 
     // Four 2px text lines, 4px apart, centered in the icon; x lines them up (0 left, 0.5 middle, 1 right).
     private static void Lines(RectTransform icon, float[] widths, float x) {

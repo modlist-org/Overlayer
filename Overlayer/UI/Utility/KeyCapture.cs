@@ -13,8 +13,10 @@ internal static class KeyCapture {
 
     private static Action<KeyBind?> pending;
     private static int startFrame;
+    private static int lastCaptureFrame = -1;
 
     public static bool Active => pending != null;
+    public static bool SuppressShortcuts => pending != null || Time.frameCount == lastCaptureFrame;
 
     /// <summary><paramref name="onDone"/> gets the bind, or null when cancelled.</summary>
     public static void Begin(Action onStart, Action<KeyBind?> onDone) {
@@ -45,6 +47,7 @@ internal static class KeyCapture {
             }
             var done = pending;
             pending = null;
+            lastCaptureFrame = Time.frameCount;
             try {
                 done(new KeyBind(key, KeyBind.HeldModifiers()));
             } catch (Exception e) {

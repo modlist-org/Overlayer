@@ -47,6 +47,11 @@ public static class UICore {
 
     private static Action<TranslationFailState> _onPageSettings;
     private static Action<TranslationFailState> _onRefresh;
+    private static Action _onPaletteChanged;
+    private static Image panelBgImage;
+    private static Image menuBgImage;
+    private static Image topBarImage;
+    private static Image outlineImage;
 
     public static void Initialize() {
         CanvasObj = new GameObject("OverlayerUICanvas");
@@ -55,7 +60,7 @@ public static class UICore {
 
         Canvas = CanvasObj.AddComponent<Canvas>();
         Canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        Canvas.sortingOrder = 32767;
+        Canvas.sortingOrder = 32765;
 
         CanvasScaler = CanvasObj.AddComponent<CanvasScaler>();
         CanvasScaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
@@ -80,6 +85,12 @@ public static class UICore {
             );
         }
         O5KitAdapters.Ctx.Tooltip.Initialize(CanvasObj.transform);
+        var tooltipTr = CanvasObj.transform.Find("Tooltip");
+        if (tooltipTr != null) {
+            var tooltipCanvas = tooltipTr.gameObject.AddComponent<Canvas>();
+            tooltipCanvas.overrideSorting = true;
+            tooltipCanvas.sortingOrder = 32767;
+        }
         RegisterToggleShortcut();
         HudEdit.HudEditor.RegisterShortcut();
 
@@ -95,8 +106,10 @@ public static class UICore {
             }
         };
 
+        _onPaletteChanged = RefreshTheme;
         MainCore.Tr.OnLoadEnd += _onPageSettings;
         MainCore.Tr.OnLoadEnd += _onRefresh;
+        UIColors.OnPaletteChanged += _onPaletteChanged;
 
         TextLocalization.RefreshAll();
 
@@ -173,6 +186,7 @@ public static class UICore {
             image.color = UIColors.PanelBG;
             image.type = Image.Type.Sliced;
             image.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P1024);
+            panelBgImage = image;
         }
 
         Panel = panel.GetComponent<RectTransform>();
@@ -229,6 +243,7 @@ public static class UICore {
 
             var image = menu.AddComponent<Image>();
             image.color = UIColors.MenuBG;
+            menuBgImage = image;
 
             menuCanvasGroup = Menu.gameObject.AddComponent<CanvasGroup>();
 
@@ -324,6 +339,7 @@ public static class UICore {
         topImage.color = UIColors.TopBar;
         topImage.type = Image.Type.Sliced;
         topImage.sprite = MainCore.Spr.Get(UISliceSprite.CircleHalf256P1024);
+        topBarImage = topImage;
 
         var topRect = topBar.GetComponent<RectTransform>();
         topRect.anchorMin = new(0, 1);
@@ -452,10 +468,11 @@ public static class UICore {
             outlineObj.transform.SetSiblingIndex(outlineObj.transform.parent.childCount - 1);
 
             var outline = outlineObj.AddComponent<Image>();
-            outline.color = Color.white;
+            outline.color = UIColors.WindowOutline;
             outline.sprite = MainCore.Spr.Get(UISliceSprite.CircleOutline256O32P1024);
             outline.type = Image.Type.Sliced;
             outline.raycastTarget = false;
+            outlineImage = outline;
 
             var outlineRect = outlineObj.GetComponent<RectTransform>();
             outlineRect.anchorMin = Vector2.zero;
@@ -468,92 +485,20 @@ public static class UICore {
     private const string ToggleShortcutId = "overlayer.toggle_panel";
     private const float ToggleHoldSeconds = 0.4f;
 
-    private static readonly string[] ToggleShortcutIds = [
-        ToggleShortcutId,
-        ToggleShortcutId + "_right_alt",
-        ToggleShortcutId + "_ctrl",
-        ToggleShortcutId + "_right_ctrl",
-        ToggleShortcutId + "_tilde_alt",
-        ToggleShortcutId + "_tilde_right_alt",
-        ToggleShortcutId + "_tilde_ctrl",
-        ToggleShortcutId + "_tilde_right_ctrl"
-    ];
+    internal static Utility.KeyBind WindowKey => Utility.KeyBind.Parse(MainCore.Conf.WindowKey.Value);
 
-    private static void RegisterToggleShortcut() {
-        foreach (var id in ToggleShortcutIds) {
-            O5ShortcutManager.Unregister(id);
-        }
-
-        Action<O5Shortcut> onToggle = _ => Toggle();
-        Action<O5Shortcut> onReset = _ => ResetScalePosition(!isOpen);
-
-        // Alt + ` (BackQuote)
-        O5ShortcutManager.Register(
-            ToggleShortcutId,
-            new O5KeyCombo(O5KitAdapters.Ctx.Config.ToggleKey, KeyCode.LeftAlt),
-            ToggleHoldSeconds,
-            onPressed: onToggle,
-            onHeld: onReset
-        );
-        O5ShortcutManager.Register(
-            ToggleShortcutId + "_right_alt",
-            new O5KeyCombo(O5KitAdapters.Ctx.Config.ToggleKey, KeyCode.RightAlt),
-            ToggleHoldSeconds,
-            onPressed: onToggle,
-            onHeld: onReset
-        );
-
-        // Ctrl + ` (BackQuote)
-        O5ShortcutManager.Register(
-            ToggleShortcutId + "_ctrl",
-            new O5KeyCombo(O5KitAdapters.Ctx.Config.ToggleKey, KeyCode.LeftControl),
-            ToggleHoldSeconds,
-            onPressed: onToggle,
-            onHeld: onReset
-        );
-        O5ShortcutManager.Register(
-            ToggleShortcutId + "_right_ctrl",
-            new O5KeyCombo(O5KitAdapters.Ctx.Config.ToggleKey, KeyCode.RightControl),
-            ToggleHoldSeconds,
-            onPressed: onToggle,
-            onHeld: onReset
-        );
-
-        // KeyCode.Tilde fallbacks (in case layout maps ` to Tilde)
-        O5ShortcutManager.Register(
-            ToggleShortcutId + "_tilde_alt",
-            new O5KeyCombo(KeyCode.Tilde, KeyCode.LeftAlt),
-            ToggleHoldSeconds,
-            onPressed: onToggle,
-            onHeld: onReset
-        );
-        O5ShortcutManager.Register(
-            ToggleShortcutId + "_tilde_right_alt",
-            new O5KeyCombo(KeyCode.Tilde, KeyCode.RightAlt),
-            ToggleHoldSeconds,
-            onPressed: onToggle,
-            onHeld: onReset
-        );
-        O5ShortcutManager.Register(
-            ToggleShortcutId + "_tilde_ctrl",
-            new O5KeyCombo(KeyCode.Tilde, KeyCode.LeftControl),
-            ToggleHoldSeconds,
-            onPressed: onToggle,
-            onHeld: onReset
-        );
-        O5ShortcutManager.Register(
-            ToggleShortcutId + "_tilde_right_ctrl",
-            new O5KeyCombo(KeyCode.Tilde, KeyCode.RightControl),
-            ToggleHoldSeconds,
-            onPressed: onToggle,
-            onHeld: onReset
-        );
+    internal static void RegisterToggleShortcut() {
+        WindowKey.Register(ToggleShortcutId, () => Toggle(), ToggleHoldSeconds, () => ResetScalePosition(!isOpen));
     }
+
+    internal static void UnregisterToggleShortcut() => Utility.KeyBind.Unregister(ToggleShortcutId);
 
     private static ITweenHandle panelTweener;
     private static ITweenHandle resetSequence;
 
     private static bool isOpen = false;
+    public static bool IsOpen => isOpen;
+    private static bool isPanelHiddenForHudEditor;
     private static bool isPanelMaximized;
     private static Vector2 preMaximizePanelPosition;
     private static Vector2 preMaximizePanelSize;
@@ -563,7 +508,7 @@ public static class UICore {
     public static Vector2 LastPanelSize;
 
     private static void HandleTopBarPointerClick(BaseEventData eventData) {
-        PointerEventData pointer = eventData as PointerEventData;
+        PointerEventData pointer = UnityUtils.AsPointerEventData(eventData);
         if (pointer == null || pointer.button != PointerEventData.InputButton.Left) {
             return;
         }
@@ -668,8 +613,10 @@ public static class UICore {
         return pos;
     }
 
-    private static Vector2 GetRandomOffscreenPosition() {        float halfW = Screen.width * 0.5f;
-        float halfH = Screen.height * 0.5f;
+    private static Vector2 GetRandomOffscreenPosition() {
+        float scale = Canvas != null && Canvas.scaleFactor > 0f ? Canvas.scaleFactor : 1f;
+        float halfW = Screen.width * 0.5f / scale;
+        float halfH = Screen.height * 0.5f / scale;
 
         int side = Random.Range(0, 4);
 
@@ -774,6 +721,17 @@ public static class UICore {
         }
     }
 
+    // Only record the panel's resting position when it is actually visible and not mid-slide off/onscreen.
+    private static void SavePanelBoundsIfStable() {
+        if (Panel == null || !Panel.gameObject.activeSelf || isPanelHiddenForHudEditor
+            || HudEdit.HudEditor.IsOpen || (panelTweener != null && panelTweener.IsAlive)) {
+            return;
+        }
+        resetSequence?.Kill(true);
+        LastPanelPosition = ClampPanelPosition(Panel.anchoredPosition);
+        LastPanelSize = Panel.sizeDelta;
+    }
+
     public static void Open(bool noAnimate = false) {
         if (isOpen) {
             return;
@@ -785,6 +743,7 @@ public static class UICore {
         LastPanelPosition = ClampPanelPosition(LastPanelPosition);
 
         isOpen = true;
+        isPanelHiddenForHudEditor = false;
         if (!noAnimate) {
             UISound.PlayOpen();
         }
@@ -795,13 +754,8 @@ public static class UICore {
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
 
-        if (panelTweener != null) {
-            panelTweener.Kill(true);
-        }
-
-        if (resetSequence != null) {
-            resetSequence.Kill(true);
-        }
+        panelTweener?.Kill();
+        resetSequence?.Kill();
 
         if (noAnimate) {
             if (Panel != null && !Panel.gameObject.activeSelf) {
@@ -833,15 +787,15 @@ public static class UICore {
             return;
         }
 
+        bool wasHiddenForHud = isPanelHiddenForHudEditor;
+        SavePanelBoundsIfStable();
         isOpen = false;
+        isPanelHiddenForHudEditor = false;
         if (!noAnimate) {
             UISound.PlayClose();
         }
 
         ReleaseEventSystem();
-
-        LastPanelPosition = Panel.anchoredPosition;
-        LastPanelSize = Panel.sizeDelta;
 
         CloseImage.color = new Color(
             CloseImage.color.r,
@@ -850,12 +804,12 @@ public static class UICore {
             0f
         );
 
-        if (panelTweener != null) {
-            panelTweener.Kill(true);
-        }
+        panelTweener?.Kill();
+        resetSequence?.Kill();
 
-        if (resetSequence != null) {
-            resetSequence.Kill(true);
+        if (wasHiddenForHud && Panel != null) {
+            Panel.anchoredPosition = LastPanelPosition;
+            Panel.sizeDelta = LastPanelSize;
         }
 
         if (noAnimate) {
@@ -871,24 +825,30 @@ public static class UICore {
         }
         Vector2 targetPos = GetRandomOffscreenPosition();
 
-        panelTweener = Panel.TAnchorPos(targetPos, 0.1f, O5Ease.OutExpo, () => CanvasObj.SetActive(false));
+        panelTweener = Panel.TAnchorPos(targetPos, 0.1f, O5Ease.OutExpo, () => {
+            if (!isOpen && CanvasObj != null) {
+                CanvasObj.SetActive(false);
+            }
+        });
     }
 
     public static void HidePanelForHudEditor(bool immediate = false) {
         if (Panel == null) {
             return;
         }
+        if (!immediate) {
+            SavePanelBoundsIfStable();
+        }
         panelTweener?.Kill();
         resetSequence?.Kill();
+        isPanelHiddenForHudEditor = true;
         if (immediate) {
             Panel.gameObject.SetActive(false);
             return;
         }
-        LastPanelPosition = ClampPanelPosition(Panel.anchoredPosition);
-        LastPanelSize = Panel.sizeDelta;
         Vector2 offscreen = GetRandomOffscreenPosition();
         panelTweener = Panel.TAnchorPos(offscreen, 0.3f, O5Ease.OutExpo, () => {
-            if (Panel != null) {
+            if (Panel != null && isPanelHiddenForHudEditor) {
                 Panel.gameObject.SetActive(false);
             }
         });
@@ -898,8 +858,10 @@ public static class UICore {
         if (Panel == null) {
             return;
         }
+        isPanelHiddenForHudEditor = false;
         panelTweener?.Kill();
         resetSequence?.Kill();
+        LastPanelPosition = ClampPanelPosition(LastPanelPosition);
         Panel.gameObject.SetActive(true);
         if (immediate) {
             Panel.anchoredPosition = LastPanelPosition;
@@ -908,6 +870,7 @@ public static class UICore {
         }
         if (!Panel.gameObject.activeInHierarchy) {
             Panel.anchoredPosition = LastPanelPosition;
+            Panel.sizeDelta = LastPanelSize;
             return;
         }
         if (Vector2.Distance(Panel.anchoredPosition, LastPanelPosition) < 4f) {
@@ -917,7 +880,17 @@ public static class UICore {
         panelTweener = Panel.TAnchorPos(LastPanelPosition, 0.3f, O5Ease.OutExpo);
     }
 
+    private static int lastToggleFrame = -1;
+
     public static void Toggle(bool noAnimate = false) {
+        // Guard against multiple registered key variants (e.g. BackQuote + Tilde) firing in the same frame.
+        if (lastToggleFrame == Time.frameCount) {
+            return;
+        }
+        lastToggleFrame = Time.frameCount;
+        if (HudEdit.HudEditor.HandlePanelToggle()) {
+            return;
+        }
         if (isOpen) {
             Close(noAnimate);
         } else {
@@ -935,7 +908,7 @@ public static class UICore {
         panelTweener?.Kill();
         resetSequence?.Kill();
 
-        if (noAnimate) {
+        if (noAnimate || isPanelHiddenForHudEditor || (Panel != null && !Panel.gameObject.activeSelf)) {
             Panel.anchoredPosition = LastPanelPosition;
             Panel.sizeDelta = LastPanelSize;
             return;
@@ -1008,13 +981,21 @@ public static class UICore {
     }
 
     public static void Dispose() {
-        foreach (var id in ToggleShortcutIds) {
-            O5ShortcutManager.Unregister(id);
-        }
+        UnregisterToggleShortcut();
         HudEdit.HudEditor.Close();
         HudEdit.HudEditor.UnregisterShortcut();
+        PageDocs.Dispose();
+        Easing.CurveEditor.Dispose();
         MainCore.Tr.OnLoadEnd -= _onPageSettings;
         MainCore.Tr.OnLoadEnd -= _onRefresh;
+        if (_onPaletteChanged != null) {
+            UIColors.OnPaletteChanged -= _onPaletteChanged;
+            _onPaletteChanged = null;
+        }
+        panelBgImage = null;
+        menuBgImage = null;
+        topBarImage = null;
+        outlineImage = null;
         O5KitAdapters.Ctx.Tooltip.Dispose();
         try {
             ReleaseEventSystem();
@@ -1025,6 +1006,21 @@ public static class UICore {
         menuScroller = null;
         UnityEngine.Object.Destroy(CanvasObj);
         CanvasObj = null;
+    }
+
+    internal static void RefreshTheme() {
+        if (panelBgImage) {
+            panelBgImage.color = UIColors.PanelBG;
+        }
+        if (menuBgImage) {
+            menuBgImage.color = UIColors.MenuBG;
+        }
+        if (topBarImage) {
+            topBarImage.color = UIColors.TopBar;
+        }
+        if (outlineImage) {
+            outlineImage.color = UIColors.WindowOutline;
+        }
     }
 
     /// <summary>
@@ -1057,6 +1053,7 @@ public static class UICore {
 
         wasCanvasActive = false;
         isOpen = false;
+        isPanelHiddenForHudEditor = false;
         isMenuOpen = false;
         uiEventSystem = null;
         gameEventSystem = null;

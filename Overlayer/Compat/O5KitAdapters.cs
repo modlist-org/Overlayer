@@ -52,12 +52,73 @@ public sealed class OverlayerFontProvider : IFontProvider {
     private TMP_FontAsset _monospace;
     private bool _useUserResources;
 
-    public TMP_FontAsset Regular => _regular = ResolveSlot(
-        "regular", Asset.SUIT_Regular, MainCore.Conf.SystemFontKey.Value, MainCore.Conf.SystemFontFallbacks.Value);
+    public TMP_FontAsset Regular {
+        get {
+            _regular = ResolveSlot("regular", Asset.SUIT_Regular, EffectiveRegularKey(), MainCore.Conf.SystemFontFallbacks.Value);
+            AttachBoldWeight(_regular, Medium);
+            return _regular;
+        }
+    }
     public TMP_FontAsset Medium => _medium = ResolveSlot(
-        "medium", Asset.SUIT_Medium, MainCore.Conf.SystemFontKey.Value, MainCore.Conf.SystemFontFallbacks.Value);
+        "medium", Asset.SUIT_Medium, EffectiveMediumKey(), EffectiveMediumFallbacks());
     public TMP_FontAsset Monospace => _monospace = ResolveSlot(
         "monospace", Asset.JetBrainsMonoNL_Medium, MainCore.Conf.CodeFontKey.Value, MainCore.Conf.CodeFontFallbacks.Value);
+
+    private static List<string> EffectiveMediumFallbacks() {
+        var med = MainCore.Conf.SystemMediumFontFallbacks.Value;
+        var reg = MainCore.Conf.SystemFontFallbacks.Value;
+        var combined = new List<string>();
+        if (med != null) {
+            foreach (string k in med) {
+                if (!string.IsNullOrEmpty(k) && !combined.Contains(k)) {
+                    combined.Add(k);
+                }
+            }
+        }
+        // Fall back to Regular and Regular's fallbacks if missing from Medium.
+        string regPrimary = EffectiveRegularKey();
+        if (!string.IsNullOrEmpty(regPrimary) && !combined.Contains(regPrimary)) {
+            combined.Add(regPrimary);
+        }
+        if (reg != null) {
+            foreach (string k in reg) {
+                if (!string.IsNullOrEmpty(k) && !combined.Contains(k)) {
+                    combined.Add(k);
+                }
+            }
+        }
+        return combined;
+    }
+
+    private static void AttachBoldWeight(TMP_FontAsset regular, TMP_FontAsset medium) {
+        if (regular == null || medium == null) {
+            return;
+        }
+        try {
+            var table = regular.fontWeightTable;
+            if (table != null && table.Length > 7) {
+                var pair = table[7];
+                pair.regularTypeface = medium;
+                table[7] = pair;
+            }
+        } catch {
+        }
+    }
+
+    private static string EffectiveRegularKey() {
+        string reg = MainCore.Conf.SystemFontKey.Value;
+        // Medium alone is ignored unless Regular is also set.
+        return string.IsNullOrEmpty(reg) ? null : reg;
+    }
+
+    private static string EffectiveMediumKey() {
+        string reg = MainCore.Conf.SystemFontKey.Value;
+        if (string.IsNullOrEmpty(reg)) {
+            return null;
+        }
+        string med = MainCore.Conf.SystemMediumFontKey.Value;
+        return string.IsNullOrEmpty(med) ? reg : med;
+    }
 
     public void SetUseUserResources(bool enabled) {
         if (_useUserResources == enabled) {
@@ -210,7 +271,7 @@ public sealed class OverlayerFontProvider : IFontProvider {
             return null;
         }
         try {
-            return UserResourceManager.Fnt.TryGet(key, out var font) ? font : null;
+            return UserResourceManager.TryGetFont(key, out var font) ? font : null;
         } catch {
             return null;
         }
@@ -230,16 +291,15 @@ public static class O5KitAdapters {
         RegisterO5KitBehaviours();
 #endif
         _fonts = new OverlayerFontProvider();
+        UI.UIColors.ApplyConfigured(MainCore.Conf.UIBaseColor.Value, refreshLiveUI: false);
         Ctx = new O5Context(
             config: new O5Config(),
-            theme: O5Theme.Dark with {
-                ControlOutlineIdle = new Color32(255, 255, 255, 0),
-            },
+            theme: UI.UIColors.BuildCurrentTheme(),
             sprites: new OverlayerSpriteProvider(),
             fonts: _fonts);
         SyncConfig();
 
-        O5ShortcutManager.IsSuspended = () => O5Kit.Control.O5InputBlocker.IsEditing;
+        O5ShortcutManager.IsSuspended = () => O5Kit.Control.O5InputBlocker.IsEditing || UI.Utility.KeyCapture.SuppressShortcuts;
         O5Kit.Control.O5Slider.EnableWheelAdjust = () => HudEdit.HudEditor.IsOpen;
         O5Kit.Control.O5Slider.OnAnyWheelChanged = s => UI.UISound.PlaySliderTick((float)s.Normalize());
         O5Kit.Control.O5UiEvents.OnDropdownToggled = UI.UISound.PlayDropdownToggle;
@@ -292,6 +352,7 @@ public static class O5KitAdapters {
         Ctx.Config.MiddleClickToDefault = MainCore.Conf.MiddleClickToDefault.Value;
         Ctx.Config.SliderSensitivity = MainCore.Conf.SliderSensitivity.Value;
         Ctx.Config.AnimationSpeed = MainCore.Conf.AnimationSpeed.Value;
+        Ctx.Config.ScrollEasing = MainCore.Conf.ScrollEasing.Value;
     }
 
     public static void Teardown() {

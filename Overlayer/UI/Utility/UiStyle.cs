@@ -18,17 +18,41 @@ namespace Overlayer.UI.Utility;
 // Quieter look for the HUD / curve editors on top of O5: ghost buttons (accent only on
 // hover / primary actions), small caption-style section labels, hairline separators.
 internal static class UiStyle {
-    public static readonly Color Surface = new(0.09f, 0.09f, 0.11f, 0.94f);
+    public static Color Surface => UIColors.Surface;
     public static readonly Color Ghost = new(1f, 1f, 1f, 0.05f);
     public static readonly Color Line = new(1f, 1f, 1f, 0.08f);
     public static readonly Color Caption = new(1f, 1f, 1f, 0.42f);
     public static readonly Color Muted = new(1f, 1f, 1f, 0.6f);
     public static readonly Color Danger = new(1f, 0.42f, 0.45f, 1f);
+    public static readonly Color IconStroke = new(1f, 1f, 1f, 0.9f);
+    public static readonly Color IconStrokeFaint = new(1f, 1f, 1f, 0.4f);
 
     public static RectTransform NewRect(string name, Transform parent) {
         var go = new GameObject(name);
         go.transform.SetParent(parent, false);
         return go.AddComponent<RectTransform>();
+    }
+
+    public static RectTransform AddDrawnIcon(O5Button button, Action<RectTransform> draw, float size = 20f) {
+        var icon = NewRect("Icon", button.Rect);
+        icon.anchorMin = icon.anchorMax = new Vector2(0.5f, 0.5f);
+        icon.sizeDelta = new Vector2(size, size);
+        draw(icon);
+        return icon;
+    }
+
+    public static void Polyline(RectTransform icon, Color color, float thickness, params Vector2[] points) {
+        for (int i = 1; i < points.Length; i++) {
+            AlignPicker.Segment(icon, points[i - 1], points[i], thickness, color);
+        }
+    }
+
+    // A hook with its head on the left; mirrored for redo.
+    public static void DrawUndo(RectTransform icon, bool redo) {
+        float s = redo ? -1f : 1f;
+        Vector2 P(float x, float y) => new(x * s, y);
+        Polyline(icon, IconStroke, 2f, P(-6f, 4f), P(2f, 4f), P(5.5f, 2.5f), P(7f, -0.5f), P(5.5f, -3.5f), P(2f, -5f), P(-2f, -5f));
+        Polyline(icon, IconStroke, 2f, P(-2.5f, 7.5f), P(-6f, 4f), P(-2.5f, 0.5f));
     }
 
     public static Image Rounded(string name, Transform parent, Color color) {
@@ -71,10 +95,17 @@ internal static class UiStyle {
         }
     }
 
+    public static void Tooltip(O5Kit.Core.O5Object control, Func<string> text) {
+        if (text != null) {
+            control.Rect.AddToolTip(O5KitAdapters.Ctx, text);
+        }
+    }
+
     /// <summary>Small grey caption above a group of controls.</summary>
     public static TextMeshProUGUI Section(Transform parent, string text) {
         var row = O5Factory.Row(O5KitAdapters.Ctx, parent, 22f);
         var label = O5Factory.ControlText(O5KitAdapters.Ctx, row, 13f, true);
+        label.font = O5KitAdapters.Ctx.Fonts.Medium;
         label.rectTransform.anchorMin = Vector2.zero;
         label.rectTransform.anchorMax = Vector2.one;
         label.rectTransform.offsetMin = new Vector2(4f, 0f);
@@ -160,6 +191,7 @@ internal static class UiStyle {
         }
 
         public RectTransform this[int index] => pages[index];
+        public O5Button TabButton(int index) => buttons[index];
 
         public void Select(int index) {
             if (index == Current) {

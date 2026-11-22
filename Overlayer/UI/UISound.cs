@@ -610,10 +610,10 @@ internal static class UISound {
     private static void BuildAllClips() {
         Clips[(int)ClipId.Click] = BuildClickClip();
         Clips[(int)ClipId.Back] = BuildBackClip();
-        Clips[(int)ClipId.Open] = BuildPanelClip("MSFS_Open", 0.195f, opening: true, includeChime: true);
-        Clips[(int)ClipId.Close] = BuildPanelClip("MSFS_Close", 0.160f, opening: false, includeChime: true);
-        Clips[(int)ClipId.MenuOpen] = BuildPanelClip("MSFS_MenuOpen", 0.180f, opening: true, includeChime: false);
-        Clips[(int)ClipId.MenuClose] = BuildPanelClip("MSFS_MenuClose", 0.150f, opening: false, includeChime: false);
+        Clips[(int)ClipId.Open] = BuildPanelClip("MSFS_Open", 0.195f, opening: true);
+        Clips[(int)ClipId.Close] = BuildPanelClip("MSFS_Close", 0.160f, opening: false);
+        Clips[(int)ClipId.MenuOpen] = BuildPanelClip("MSFS_MenuOpen", 0.180f, opening: true);
+        Clips[(int)ClipId.MenuClose] = BuildPanelClip("MSFS_MenuClose", 0.150f, opening: false);
         Clips[(int)ClipId.SliderTick] = BuildSliderTickClip();
         Clips[(int)ClipId.OllyVoice] = BuildOllyVoiceClip();
         Clips[(int)ClipId.KeyType] = BuildKeyClip(backspace: false);
@@ -1065,7 +1065,7 @@ internal static class UISound {
         return CreateClip(name, data);
     }
 
-    private static AudioClip BuildPanelClip(string name, float duration, bool opening, bool includeChime) {
+    private static AudioClip BuildPanelClip(string name, float duration, bool opening) {
         int n = (int)(SampleRate * duration);
         var data = new float[n];
         float lp = 0f, lp2 = 0f, hp = 0f, prev = 0f;
@@ -1075,7 +1075,7 @@ internal static class UISound {
             float t = (float)i / SampleRate;
             float u = t / duration;
 
-            // Smooth satin air sweep (pure wind for Menu drawer)
+            // Smooth satin air sweep
             float cutoff = opening ? Mathf.Lerp(220f, 900f, u) : Mathf.Lerp(760f, 220f, u);
             float alpha = Mathf.Clamp01((2f * Mathf.PI * cutoff) / (SampleRate + 2f * Mathf.PI * cutoff));
             float noise = NextNoise(ref rng);
@@ -1086,25 +1086,9 @@ internal static class UISound {
             float airEnv = Mathf.Pow(Mathf.Sin(u * Mathf.PI), 1.45f);
             float air = hp * airEnv * (opening ? 0.26f : 0.22f);
 
-            float tone = 0f;
-            if (includeChime) {
-                tone = opening
-                    ? BellTone(t, 0.000f, 293.66f, 0.015f, 0.048f, 0.036f) + BellTone(t, 0.018f, 440.00f, 0.015f, 0.055f, 0.030f)
-                    : BellTone(t, 0.000f, 440.00f, 0.012f, 0.042f, 0.030f) + BellTone(t, 0.018f, 293.66f, 0.014f, 0.048f, 0.034f);
-            }
-
-            data[i] = FinishSample(air + tone, i, n, 0.006f);
+            data[i] = FinishSample(air, i, n, 0.006f);
         }
         return CreateClip(name, data);
-    }
-
-    private static float BellTone(float t, float delay, float freq, float attack, float decay, float gain) {
-        float lt = t - delay;
-        if (lt <= 0f) {
-            return 0f;
-        }
-        float env = (1f - Mathf.Exp(-lt / attack)) * Mathf.Exp(-lt / decay);
-        return Mathf.Sin(2f * Mathf.PI * freq * lt) * env * gain;
     }
 
     private static float FinishSample(float sample, int idx, int total, float tailFadeSec, int sampleRate = SampleRate) {

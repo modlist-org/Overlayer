@@ -306,7 +306,7 @@ internal static class PageOverlayer {
         textRect.offsetMax = new Vector2(-20, -20);
 
         var txt = textGo.AddComponent<TextMeshProUGUI>();
-        txt.text = string.IsNullOrEmpty(canvas.Config.Name) ? "(Empty)" : canvas.Config.Name;
+        txt.text = string.IsNullOrEmpty(canvas.Config.Name) ? MainCore.Tr.Get("EMPTY", "(Empty)") : canvas.Config.Name;
         txt.font = MainCore.Res.Get<TMP_FontAsset>(Asset.SUIT_Medium);
         txt.fontSize = 22;
         txt.alignment = TextAlignmentOptions.Center;
@@ -337,7 +337,7 @@ internal static class PageOverlayer {
             }
         };
 
-        O5Button exportBtn = TileButton(bg.transform, TileIcon("Upload128.png", UISprite.Upload128), "Export",
+        O5Button exportBtn = TileButton(bg.transform, TileIcon("Upload128.png", UISprite.Upload128), MainCore.Tr.Get("O5CP_EXPORT", "Export"),
             $"tile_export_{canvas.GetHashCode()}", () => { });
         exportBtn.OnClick = () => {
             BeginExportCanvas(canvas);
@@ -349,7 +349,7 @@ internal static class PageOverlayer {
         exportRect.anchoredPosition = new Vector2(-10f, 10f);
         exportRect.sizeDelta = new Vector2(110f, 34f);
 
-        var cloneRect = TileButton(bg.transform, BuiltinIcon(UISprite.Clone128), "Clone",
+        var cloneRect = TileButton(bg.transform, BuiltinIcon(UISprite.Clone128), MainCore.Tr.Get("BUTTON_CLONE", "Clone"),
             $"tile_clone_{canvas.GetHashCode()}", () => {
                 if (OverlayCore.CloneCanvas(canvas) != null) {
                     onChanged?.Invoke();
@@ -534,7 +534,7 @@ internal static class PageOverlayer {
         var txt = textGo.AddComponent<TextMeshProUGUI>();
         string pkgName = entry.Manifest?.Package?.Name;
         if (string.IsNullOrEmpty(pkgName)) {
-            pkgName = "(Empty)";
+            pkgName = MainCore.Tr.Get("EMPTY", "(Empty)");
         }
         txt.text = pkgName;
         txt.font = MainCore.Res.Get<TMP_FontAsset>(Asset.SUIT_Medium);
@@ -566,7 +566,7 @@ internal static class PageOverlayer {
 
         var tileControls = new List<GameObject>();
 
-        var copyRect = TileButton(bg.transform, BuiltinIcon(UISprite.Download128), "Copy",
+        var copyRect = TileButton(bg.transform, BuiltinIcon(UISprite.Download128), MainCore.Tr.Get("O5CP_IMPORT_ACTION", "Copy"),
             $"tile_promote_{entry.Id}", () => BeginPromote(entry)).Rect;
         copyRect.anchorMin = new Vector2(0f, 0f);
         copyRect.anchorMax = new Vector2(0f, 0f);
@@ -596,7 +596,7 @@ internal static class PageOverlayer {
                 var toggleWarnings = PackageStore.SetEnabled(entry, toggle);
                 ApplyTileEnabledVisual(bgImg, txt, entry.Enabled);
                 if (toggleWarnings.Count > 0) {
-                    O5cpDialogs.ShowWarnings("Package warnings", toggleWarnings);
+                    O5cpDialogs.ShowWarnings(MainCore.Tr.Get("O5CP_PACKAGE_WARNINGS", "Package warnings"), toggleWarnings);
                 }
             }, Text = string.Empty });
         var hoverOutline = enabledToggle.Rect.transform.Find("Hover");
@@ -637,7 +637,7 @@ internal static class PageOverlayer {
         textRect.offsetMax = new Vector2(-20, -20);
 
         var txt = textGo.AddComponent<TextMeshProUGUI>();
-        txt.text = string.IsNullOrEmpty(obj.Config.Name) ? "(Empty)" : obj.Config.Name;
+        txt.text = string.IsNullOrEmpty(obj.Config.Name) ? MainCore.Tr.Get("EMPTY", "(Empty)") : obj.Config.Name;
         txt.font = MainCore.Res.Get<TMP_FontAsset>(Asset.SUIT_Medium);
         txt.fontSize = 22;
         txt.alignment = TextAlignmentOptions.Center;
@@ -698,7 +698,7 @@ internal static class PageOverlayer {
         background.raycastTarget = true;
 
         CreateTileActionIcon(go.transform, BuiltinIcon(UISprite.Box128), 0.5f);
-        go.transform.AddToolTip(O5KitAdapters.Ctx, "New 3D Object");
+        go.transform.AddToolTip(O5KitAdapters.Ctx, () => MainCore.Tr.Get("NEW_3D_OBJECT", "New 3D Object"));
 
         var trigger = go.AddComponent<EventTrigger>();
         AddTileHoverScale(go, trigger);
@@ -718,7 +718,7 @@ internal static class PageOverlayer {
         }
         var lines = new List<string>();
         if (!string.IsNullOrWhiteSpace(pkg.Author)) {
-            lines.Add($"by {pkg.Author.Trim()}");
+            lines.Add(string.Format(MainCore.Tr.Get("O5CP_BY_AUTHOR", "by {0}"), pkg.Author.Trim()));
         }
         if (!string.IsNullOrWhiteSpace(pkg.Version)) {
             lines.Add(pkg.Version.Trim());
@@ -744,14 +744,14 @@ internal static class PageOverlayer {
             O5cpDialogs.ShowPromoteConflicts(entry, plan, () => {
                 var canvas = OverlayCore.PromotePackage(entry, plan, out var warnings);
                 if (canvas != null && warnings.Count > 0) {
-                    O5cpDialogs.ShowWarnings("Copy warnings", warnings);
+                    O5cpDialogs.ShowWarnings(MainCore.Tr.Get("O5CP_COPY_WARNINGS", "Copy warnings"), warnings);
                 }
             });
             return;
         }
         var promoted = OverlayCore.PromotePackage(entry, plan, out var promoteWarnings);
         if (promoted != null && promoteWarnings.Count > 0) {
-            O5cpDialogs.ShowWarnings("Copy warnings", promoteWarnings);
+            O5cpDialogs.ShowWarnings(MainCore.Tr.Get("O5CP_COPY_WARNINGS", "Copy warnings"), promoteWarnings);
         }
     }
 
@@ -1095,7 +1095,7 @@ internal static class PageOverlayer {
                         }
                         MainCore.Log.Msg($"[CanvasExport] Exported package to {path}");
                         if (result.Warnings.Count > 0) {
-                            O5cpDialogs.ShowWarnings("Export warnings", result.Warnings);
+                            O5cpDialogs.ShowWarnings(MainCore.Tr.Get("O5CP_EXPORT_WARNINGS", "Export warnings"), result.Warnings);
                         }
                     } catch (Exception e) {
                         MainCore.Log.Err($"[CanvasExport] Package export failed: {e.Message}");
@@ -1150,7 +1150,7 @@ internal static class PageOverlayer {
                 data = preset.ReadBytes?.Invoke();
             } catch (Exception e) {
                 MainCore.Log.Err($"[CanvasImport] Preset read failed: {e.Message}");
-                O5cpDialogs.ShowWarnings("Import warnings", [$"preset read failed: {e.Message}"]);
+                O5cpDialogs.ShowWarnings(MainCore.Tr.Get("O5CP_IMPORT_WARNINGS", "Import warnings"), [string.Format(MainCore.Tr.Get("O5CP_PRESET_READ_FAILED", "Preset read failed: {0}"), e.Message)]);
                 return;
             }
             PackageEntry entry;
@@ -1172,13 +1172,13 @@ internal static class PageOverlayer {
     private static void ShowInstallResult(PackageEntry entry, List<string> warnings) {
         if (entry != null) {
             if (warnings.Count > 0) {
-                O5cpDialogs.ShowWarnings("Import warnings", warnings);
+                O5cpDialogs.ShowWarnings(MainCore.Tr.Get("O5CP_IMPORT_WARNINGS", "Import warnings"), warnings);
             }
             return;
         }
-        var reasons = new List<string> { "The package could not be installed." };
-        reasons.AddRange(warnings.Count > 0 ? warnings : ["No reason was given; see the log for details."]);
-        O5cpDialogs.ShowWarnings("Import failed", reasons);
+        var reasons = new List<string> { MainCore.Tr.Get("O5CP_INSTALL_FAILED_DESC", "The package could not be installed.") };
+        reasons.AddRange(warnings.Count > 0 ? warnings : [MainCore.Tr.Get("O5CP_INSTALL_FAILED_NO_REASON", "No reason was given; see the log for details.")]);
+        O5cpDialogs.ShowWarnings(MainCore.Tr.Get("O5CP_IMPORT_FAILED", "Import failed"), reasons);
     }
 
     private static string ExportDialogDir() {

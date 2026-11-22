@@ -97,7 +97,7 @@ internal static class HoldToConfirm {
         UnityUtils.AddEvents(trigger,
             (EventTriggerType.PointerEnter, _ => entry.Hovered = true),
             (EventTriggerType.PointerDown, e => {
-                if (e is PointerEventData pe && pe.button == PointerEventData.InputButton.Left
+                if (UnityUtils.AsPointerEventData(e) is { } pe && pe.button == PointerEventData.InputButton.Left
                     && (entry.CanConfirm == null || entry.CanConfirm())) {
                     if (IsShiftHeld()) {
                         ConfirmNow(entry);
@@ -110,7 +110,7 @@ internal static class HoldToConfirm {
                 }
             }),
             (EventTriggerType.PointerClick, e => {
-                if (e is PointerEventData pe && pe.button == PointerEventData.InputButton.Left
+                if (UnityUtils.AsPointerEventData(e) is { } pe && pe.button == PointerEventData.InputButton.Left
                     && entry.CanConfirm != null && !entry.CanConfirm()) {
                     entry.OnBlockedClick?.Invoke();
                 }

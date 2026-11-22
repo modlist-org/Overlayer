@@ -40,6 +40,7 @@ internal static class PageJS {
         layout.childForceExpandHeight = false;
 
         var title = CreateText(root, T("JS", "JavaScript"), 30f, TextAlignmentOptions.Left);
+        title.gameObject.AddComponent<TextLocalization>().Init("JS", "JavaScript");
         var titleLe = title.gameObject.AddComponent<LayoutElement>();
         titleLe.minHeight = 46f;
         titleLe.flexibleHeight = 0f;
@@ -52,9 +53,8 @@ internal static class PageJS {
         toolbarLayout.childForceExpandWidth = true;
         toolbarLayout.childForceExpandHeight = false;
         toolbarLayout.childAlignment = TextAnchor.MiddleLeft;
-        ToolbarButton(toolbar, T("JS_RELOAD_ALL", "Reload All"), "js_reload_all", ReloadAll);
-        ToolbarButton(toolbar, T("JS_OPEN_FOLDER", "Open Folder"), "js_open_folder", OpenFolder);
-        ToolbarButton(toolbar, T("JS_REFRESH", "Refresh"), "js_refresh", Refresh);
+        ToolbarButton(toolbar, "JS_RELOAD_ALL", "Reload All", "js_reload_all", ReloadAll);
+        ToolbarButton(toolbar, "JS_OPEN_FOLDER", "Open Folder", "js_open_folder", OpenFolder);
 
         RectTransform toggleRow = O5Factory.Row(O5KitAdapters.Ctx, root, 50f);
         CoreSettings defSet = new();
@@ -84,12 +84,14 @@ internal static class PageJS {
                 Refresh();
             }
         };
+        MainCore.V8.OnScriptsReloaded += QueueRefresh;
 
         Refresh();
     }
 
-    private static void ToolbarButton(Transform parent, string text, string id, Action onClick) {
-        O5Factory.Button(O5KitAdapters.Ctx, parent, id, new O5ButtonOptions { Text = text, OnClick = onClick });
+    private static void ToolbarButton(Transform parent, string key, string fallback, string id, Action onClick) {
+        var btn = O5Factory.Button(O5KitAdapters.Ctx, parent, id, new O5ButtonOptions { Text = T(key, fallback), OnClick = onClick });
+        btn.Label.gameObject.AddComponent<TextLocalization>().Init(key, fallback);
     }
 
     private static void ToggleUIStateByMod(bool isEnabled) {
@@ -172,7 +174,7 @@ internal static class PageJS {
         }
         int tags = MainCore.V8.ScriptFileTags(file).Count;
         int patches = JSPatchManager.GetFilePatches(file).Count;
-        status.text = $"{tags} tags · {patches} patches";
+        status.text = T("JS_COUNTS", "{0} tags · {1} patches", tags, patches);
     }
 
     private static void QueueRefresh() {
@@ -292,7 +294,7 @@ internal static class PageJS {
 
         var counts = O5Factory.ControlText(O5KitAdapters.Ctx, row, 22f, true);
         counts.text = enabled
-            ? $"{tags} tags · {patches} patches"
+            ? T("JS_COUNTS", "{0} tags · {1} patches", tags, patches)
             : T("JS_DISABLED", "Disabled");
         counts.alignment = TextAlignmentOptions.Right;
         var countsLe = counts.gameObject.AddComponent<LayoutElement>();

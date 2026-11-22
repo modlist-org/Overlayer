@@ -2,36 +2,43 @@ using Newtonsoft.Json.Linq;
 using Overlayer.IO.Fx;
 using Overlayer.IO.Interface;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 
 namespace Overlayer.IO;
 
 public sealed class CoreSettings : ISettingsFile {
+    public static string DefaultWindowKey =>
+        RuntimeInformation.IsOSPlatform(OSPlatform.Linux) ? "Ctrl+BackQuote" : "Alt+BackQuote";
+
     public FxValue<bool> Active = new(true);
     public FxValue<string> Language = FxValue<string>.FromValue("en-US");
     public FxValue<bool> IsFirstRun = new(true);
     public FxValue<bool> ShowOnStartup = new(false);
     public FxValue<bool> Tooltip = new(true);
-    public FxValue<bool> AdvancedTooltip = new(false);
     public FxValue<bool> MiddleClickToDefault = new(true);
     public FxValue<bool> Enable3DFeatures = new(false);
+    public FxValue<bool> ShowInternalImages = new(false);
+    public FxValue<bool> ShowInternalFonts = new(false);
+    public FxValue<bool> ReferenceResources = new(false);
     public FxValue<float> UIScale = new(1.0f);
+    public FxValue<string> UIBaseColor = FxValue<string>.FromValue(O5Kit.Core.O5Palette.DefaultBaseHex);
     public FxValue<float> SliderSensitivity = new(1.0f);
     public FxValue<float> AnimationSpeed = new(1.0f);
+    public FxValue<bool> ScrollEasing = new(true);
     public FxValue<float> UISoundVolume = new(0.4f);
     public FxValue<bool> EnableJSScriptWatcher = new(true);
-    public FxValue<bool> AutoUpdate = new(false);
-    public FxValue<bool> UpdateBeta = new(false);
     public FxValue<string> SystemFontKey = FxValue<string>.FromValue(null);
+    public FxValue<string> SystemMediumFontKey = FxValue<string>.FromValue(null);
     public FxValue<string> CodeFontKey = FxValue<string>.FromValue(null);
     public FxValue<List<string>> SystemFontFallbacks = new([]);
+    public FxValue<List<string>> SystemMediumFontFallbacks = new([]);
     public FxValue<List<string>> CodeFontFallbacks = new([]);
     public FxValue<bool> UseRawInput = new(true);
+    public FxValue<string> WindowKey = FxValue<string>.FromValue(DefaultWindowKey);
     public FxValue<string> HudEditorKey = FxValue<string>.FromValue("Alt+H");
-    public FxValue<bool> HudEditorInPlay = new(false);
     public FxValue<bool> HudSnap = new(true);
     public FxValue<float> HudSnapDistance = new(8f);
-    public FxValue<bool> HudShowHints = new(true);
-    public FxValue<string> HudMainCanvas = FxValue<string>.FromValue("HUD");
+    public FxValue<string> HudMainCanvas = FxValue<string>.FromValue("Canvas");
     public FxValue<string> HudPlacement = FxValue<string>.FromValue("MainCanvas");
     public FxValue<float> HudPanelWidth = new(520f);
     public FxValue<float> HudPanelHeight = new(0f);
@@ -42,9 +49,8 @@ public sealed class CoreSettings : ISettingsFile {
     public FxValue<bool> HudLayersShown = new(true);
     public FxValue<float> HudLayersWidth = new(300f);
     public FxValue<bool> HudRulers = new(true);
+    public FxValue<bool> HudAutoAnchor = new(false);
     public FxValue<List<string>> HudGuides = new([]);
-    public FxValue<float> HudPreviewWidth = new(760f);
-    public FxValue<float> HudPreviewHeight = new(520f);
     public FxValue<List<string>> HudDetached = new([]);
     public FxValue<List<string>> TutorialDone = new([]);
     public FxValue<bool> TutorialOffered = new(false);
@@ -57,26 +63,29 @@ public sealed class CoreSettings : ISettingsFile {
             [nameof(IsFirstRun)] = IOUtils.WriteFx(IsFirstRun),
             [nameof(ShowOnStartup)] = IOUtils.WriteFx(ShowOnStartup),
             [nameof(Tooltip)] = IOUtils.WriteFx(Tooltip),
-            [nameof(AdvancedTooltip)] = IOUtils.WriteFx(AdvancedTooltip),
             [nameof(MiddleClickToDefault)] = IOUtils.WriteFx(MiddleClickToDefault),
             [nameof(Enable3DFeatures)] = IOUtils.WriteFx(Enable3DFeatures),
+            [nameof(ShowInternalImages)] = IOUtils.WriteFx(ShowInternalImages),
+            [nameof(ShowInternalFonts)] = IOUtils.WriteFx(ShowInternalFonts),
+            [nameof(ReferenceResources)] = IOUtils.WriteFx(ReferenceResources),
             [nameof(UIScale)] = IOUtils.WriteFx(UIScale),
+            [nameof(UIBaseColor)] = IOUtils.WriteFx(UIBaseColor),
             [nameof(SliderSensitivity)] = IOUtils.WriteFx(SliderSensitivity),
             [nameof(AnimationSpeed)] = IOUtils.WriteFx(AnimationSpeed),
+            [nameof(ScrollEasing)] = IOUtils.WriteFx(ScrollEasing),
             [nameof(UISoundVolume)] = IOUtils.WriteFx(UISoundVolume),
             [nameof(EnableJSScriptWatcher)] = IOUtils.WriteFx(EnableJSScriptWatcher),
-            [nameof(AutoUpdate)] = IOUtils.WriteFx(AutoUpdate),
-            [nameof(UpdateBeta)] = IOUtils.WriteFx(UpdateBeta),
             [nameof(SystemFontKey)] = IOUtils.WriteFx(SystemFontKey),
+            [nameof(SystemMediumFontKey)] = IOUtils.WriteFx(SystemMediumFontKey),
             [nameof(CodeFontKey)] = IOUtils.WriteFx(CodeFontKey),
             [nameof(SystemFontFallbacks)] = IOUtils.WriteFx(SystemFontFallbacks),
+            [nameof(SystemMediumFontFallbacks)] = IOUtils.WriteFx(SystemMediumFontFallbacks),
             [nameof(CodeFontFallbacks)] = IOUtils.WriteFx(CodeFontFallbacks),
             [nameof(UseRawInput)] = IOUtils.WriteFx(UseRawInput),
+            [nameof(WindowKey)] = IOUtils.WriteFx(WindowKey),
             [nameof(HudEditorKey)] = IOUtils.WriteFx(HudEditorKey),
-            [nameof(HudEditorInPlay)] = IOUtils.WriteFx(HudEditorInPlay),
             [nameof(HudSnap)] = IOUtils.WriteFx(HudSnap),
             [nameof(HudSnapDistance)] = IOUtils.WriteFx(HudSnapDistance),
-            [nameof(HudShowHints)] = IOUtils.WriteFx(HudShowHints),
             [nameof(HudMainCanvas)] = IOUtils.WriteFx(HudMainCanvas),
             [nameof(HudPlacement)] = IOUtils.WriteFx(HudPlacement),
             [nameof(HudPanelWidth)] = IOUtils.WriteFx(HudPanelWidth),
@@ -88,9 +97,8 @@ public sealed class CoreSettings : ISettingsFile {
             [nameof(HudLayersShown)] = IOUtils.WriteFx(HudLayersShown),
             [nameof(HudLayersWidth)] = IOUtils.WriteFx(HudLayersWidth),
             [nameof(HudRulers)] = IOUtils.WriteFx(HudRulers),
+            [nameof(HudAutoAnchor)] = IOUtils.WriteFx(HudAutoAnchor),
             [nameof(HudGuides)] = IOUtils.WriteFx(HudGuides),
-            [nameof(HudPreviewWidth)] = IOUtils.WriteFx(HudPreviewWidth),
-            [nameof(HudPreviewHeight)] = IOUtils.WriteFx(HudPreviewHeight),
             [nameof(HudDetached)] = IOUtils.WriteFx(HudDetached),
             [nameof(TutorialDone)] = IOUtils.WriteFx(TutorialDone),
             [nameof(TutorialOffered)] = IOUtils.WriteFx(TutorialOffered),
@@ -104,26 +112,35 @@ public sealed class CoreSettings : ISettingsFile {
         IsFirstRun = IOUtils.ReadFx(token, nameof(IsFirstRun), IsFirstRun);
         ShowOnStartup = IOUtils.ReadFx(token, nameof(ShowOnStartup), ShowOnStartup);
         Tooltip = IOUtils.ReadFx(token, nameof(Tooltip), Tooltip);
-        AdvancedTooltip = IOUtils.ReadFx(token, nameof(AdvancedTooltip), AdvancedTooltip);
         MiddleClickToDefault = IOUtils.ReadFx(token, nameof(MiddleClickToDefault), MiddleClickToDefault);
         Enable3DFeatures = IOUtils.ReadFx(token, nameof(Enable3DFeatures), Enable3DFeatures);
+        ShowInternalImages = IOUtils.ReadFx(token, nameof(ShowInternalImages), ShowInternalImages);
+        ShowInternalFonts = IOUtils.ReadFx(token, nameof(ShowInternalFonts), ShowInternalFonts);
+        if (token is JObject obj && obj[nameof(ReferenceResources)] != null) {
+            ReferenceResources = IOUtils.ReadFx(token, nameof(ReferenceResources), ReferenceResources);
+        } else {
+            var legacyImg = IOUtils.ReadFx(token, "ReferenceImages", new FxValue<bool>(false));
+            var legacyFont = IOUtils.ReadFx(token, "ReferenceFonts", new FxValue<bool>(false));
+            ReferenceResources = new FxValue<bool>(legacyImg.Value || legacyFont.Value);
+        }
         UIScale = IOUtils.ReadFx(token, nameof(UIScale), UIScale);
+        UIBaseColor = IOUtils.ReadFx(token, nameof(UIBaseColor), UIBaseColor);
         SliderSensitivity = IOUtils.ReadFx(token, nameof(SliderSensitivity), SliderSensitivity);
         AnimationSpeed = IOUtils.ReadFx(token, nameof(AnimationSpeed), AnimationSpeed);
+        ScrollEasing = IOUtils.ReadFx(token, nameof(ScrollEasing), ScrollEasing);
         UISoundVolume = IOUtils.ReadFx(token, nameof(UISoundVolume), UISoundVolume);
         EnableJSScriptWatcher = IOUtils.ReadFx(token, nameof(EnableJSScriptWatcher), EnableJSScriptWatcher);
-        AutoUpdate = IOUtils.ReadFx(token, nameof(AutoUpdate), AutoUpdate);
-        UpdateBeta = IOUtils.ReadFx(token, nameof(UpdateBeta), UpdateBeta);
         SystemFontKey = IOUtils.ReadFx(token, nameof(SystemFontKey), SystemFontKey);
+        SystemMediumFontKey = IOUtils.ReadFx(token, nameof(SystemMediumFontKey), SystemMediumFontKey);
         CodeFontKey = IOUtils.ReadFx(token, nameof(CodeFontKey), CodeFontKey);
         SystemFontFallbacks = IOUtils.ReadFx(token, nameof(SystemFontFallbacks), SystemFontFallbacks);
+        SystemMediumFontFallbacks = IOUtils.ReadFx(token, nameof(SystemMediumFontFallbacks), SystemMediumFontFallbacks);
         CodeFontFallbacks = IOUtils.ReadFx(token, nameof(CodeFontFallbacks), CodeFontFallbacks);
         UseRawInput = IOUtils.ReadFx(token, nameof(UseRawInput), UseRawInput);
+        WindowKey = IOUtils.ReadFx(token, nameof(WindowKey), WindowKey);
         HudEditorKey = IOUtils.ReadFx(token, nameof(HudEditorKey), HudEditorKey);
-        HudEditorInPlay = IOUtils.ReadFx(token, nameof(HudEditorInPlay), HudEditorInPlay);
         HudSnap = IOUtils.ReadFx(token, nameof(HudSnap), HudSnap);
         HudSnapDistance = IOUtils.ReadFx(token, nameof(HudSnapDistance), HudSnapDistance);
-        HudShowHints = IOUtils.ReadFx(token, nameof(HudShowHints), HudShowHints);
         HudMainCanvas = IOUtils.ReadFx(token, nameof(HudMainCanvas), HudMainCanvas);
         HudPlacement = IOUtils.ReadFx(token, nameof(HudPlacement), HudPlacement);
         HudPanelWidth = IOUtils.ReadFx(token, nameof(HudPanelWidth), HudPanelWidth);
@@ -135,9 +152,8 @@ public sealed class CoreSettings : ISettingsFile {
         HudLayersShown = IOUtils.ReadFx(token, nameof(HudLayersShown), HudLayersShown);
         HudLayersWidth = IOUtils.ReadFx(token, nameof(HudLayersWidth), HudLayersWidth);
         HudRulers = IOUtils.ReadFx(token, nameof(HudRulers), HudRulers);
+        HudAutoAnchor = IOUtils.ReadFx(token, nameof(HudAutoAnchor), HudAutoAnchor);
         HudGuides = IOUtils.ReadFx(token, nameof(HudGuides), HudGuides);
-        HudPreviewWidth = IOUtils.ReadFx(token, nameof(HudPreviewWidth), HudPreviewWidth);
-        HudPreviewHeight = IOUtils.ReadFx(token, nameof(HudPreviewHeight), HudPreviewHeight);
         HudDetached = IOUtils.ReadFx(token, nameof(HudDetached), HudDetached);
         TutorialDone = IOUtils.ReadFx(token, nameof(TutorialDone), TutorialDone);
         TutorialOffered = IOUtils.ReadFx(token, nameof(TutorialOffered), TutorialOffered);
