@@ -35,6 +35,7 @@ internal static class CurveEditor {
     private static O5Dropdown<EaseLibrary.Entry> savedDropdown;
     private static Action refreshCompareCurves, refreshSavedCurves;
     private static O5Button loadButton, deleteButton;
+    private static O5Button copyTagButton;
     private static TextMeshProUGUI exampleText;
     private static string comparePreset = string.Empty;
     private static bool endpointHeights;
@@ -122,6 +123,7 @@ internal static class CurveEditor {
         model.Changed -= OnModelChanged;
         langRefreshers.Clear();
         tangentButtons.Clear();
+        copyTagButton = null;
         graph = null;
     }
 
@@ -160,6 +162,7 @@ internal static class CurveEditor {
         presetDropdown = O5Factory.DropDown(Ctx, O5Factory.Row(Ctx, parent), "easing_preset", new O5DropdownOptions<string> {
             Values = [NoPreset, .. Presets],
             Value = NoPreset,
+            ShowIndexIndicator = false,
             Display = v => v == NoPreset ? Tr("EASING_START_PRESET", "Start from a preset…") : v,
             OnChanged = v => {
                 if (string.IsNullOrEmpty(v) || v == NoPreset) {
@@ -211,8 +214,8 @@ internal static class CurveEditor {
         exampleText.enableWordWrapping = false;
         exampleText.overflowMode = TextOverflowModes.Ellipsis;
         var copy = UiStyle.HRow(parent, 4f, 36f);
-        LocButton(copy, "copy_curve", "EASING_COPY_CURVE", "Copy curve", () => Copy(model.Text));
-        LocButton(copy, "copy_tag", "EASING_COPY_TAG", "Copy example tag", () => Copy(ExampleTag()));
+        CopyButton(copy, "copy_curve", "EASING_COPY_CURVE", "Copy curve", () => model.Text);
+        copyTagButton = CopyButton(copy, "copy_tag", "EASING_COPY_TAG", "Copy example tag", ExampleTag);
 
         BuildSaved(parent);
     }
@@ -533,9 +536,59 @@ internal static class CurveEditor {
 
     private static string ExampleTag() => $"{{EasedValue(Combo,0,300,{model.Text})}}";
 
+    /// <summary>The Copy example tag button's rect while the page is showing, for the tutorial to point at.</summary>
+    internal static RectTransform CopyTagRect {
+        get {
+            if (copyTagButton == null || copyTagButton.IsDisposed) {
+                return null;
+            }
+            var r = copyTagButton.Rect;
+            return r != null && r.gameObject.activeInHierarchy ? r : null;
+        }
+    }
+
     private static void Copy(string text) {
         GUIUtility.systemCopyBuffer = text;
         MainCore.Log.Msg($"[Easing] Copied: {text}");
+    }
+
+    // Docs-style copy button: label swaps to a check for a moment, then back.
+    private static O5Button CopyButton(Transform row, string id, string key, string fallback, Func<string> getText) {
+        var button = LocButton(row, id, key, fallback, () => { });
+        Image check = null;
+        ITweenHandle reset = null;
+        button.OnClick = () => {
+            Copy(getText());
+            if (button?.Label == null) {
+                return;
+            }
+            if (check == null) {
+                var go = new GameObject("Check");
+                go.transform.SetParent(button.Rect, false);
+                check = go.AddComponent<Image>();
+                check.sprite = UI.Factory.Page.PageDocs.GetCheckSprite();
+                check.preserveAspect = true;
+                var r = check.rectTransform;
+                r.anchorMin = r.anchorMax = new Vector2(0.5f, 0.5f);
+                r.pivot = new Vector2(0.5f, 0.5f);
+                r.anchoredPosition = Vector2.zero;
+                r.sizeDelta = new Vector2(20f, 20f);
+                check.raycastTarget = false;
+                check.gameObject.SetActive(false);
+            }
+            button.Label.gameObject.SetActive(false);
+            check.gameObject.SetActive(true);
+            reset?.Kill();
+            reset = Ctx.Tween.TweenFloat(() => 0f, _ => { }, 1f, 0.85f, () => {
+                if (check != null) {
+                    check.gameObject.SetActive(false);
+                }
+                if (button?.Label != null) {
+                    button.Label.gameObject.SetActive(true);
+                }
+            });
+        };
+        return button;
     }
 
     // ---- layout helpers ----

@@ -17,6 +17,14 @@ internal static partial class HudEditor {
         return r != null && r.gameObject.activeInHierarchy ? r : null;
     }
 
+    /// <summary>The open inspector's property area (the column of ƒ buttons), while All properties is shown.</summary>
+    internal static RectTransform FxArea() {
+        if (!allPropsShown || inspectorHost == null || !inspectorHost.activeInHierarchy) {
+            return null;
+        }
+        return inspectorContent != null && inspectorContent.gameObject.activeInHierarchy ? inspectorContent : null;
+    }
+
     internal static OvObject SelectedObject => Primary?.Object;
 
     internal static int SelectedCount => selection.Count;
@@ -131,6 +139,26 @@ internal static partial class HudEditor {
             text.Expression = expression;
         }
         text.UseFx = expression != null;
+        obj.ApplyConfig();
+        if (IsOpen) {
+            RefreshPanel();
+        }
+    }
+
+    /// <summary>Rotation (degrees) from a formula (null: back to the plain value).</summary>
+    internal static void DemoRotationFx(OvObject obj, string expression) => DemoFx(obj, obj?.Config.RectTransformConfig?.Rotation, expression);
+
+    /// <summary>Text color from a formula (null: back to the plain color).</summary>
+    internal static void DemoTextColorFx(OvObject obj, string expression) => DemoFx(obj, obj?.Config.TextConfig?.Color, expression);
+
+    private static void DemoFx<T>(OvObject obj, IO.Fx.FxValue<T> fx, string expression) {
+        if (fx == null || obj.GameObject == null) {
+            return;
+        }
+        if (expression != null) {
+            fx.Expression = expression;
+        }
+        fx.UseFx = expression != null;
         obj.ApplyConfig();
         if (IsOpen) {
             RefreshPanel();

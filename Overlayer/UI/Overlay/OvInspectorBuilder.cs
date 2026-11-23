@@ -898,7 +898,7 @@ internal sealed class OvInspectorBuilder(
         }
 
         var row = O5Factory.Row(O5KitAdapters.Ctx, content, 50f);
-        var dropdown = O5Factory.DropDown(O5KitAdapters.Ctx, row, "add_component", new O5DropdownOptions<string> { DefaultValue = options[0], Value = options[0], Values = options, Display = ComponentDisplayLabel, OnChanged = selected => {
+        var dropdown = O5Factory.DropDown(O5KitAdapters.Ctx, row, "add_component", new O5DropdownOptions<string> { DefaultValue = options[0], Value = options[0], Values = options, ShowIndexIndicator = false, Display = ComponentDisplayLabel, OnChanged = selected => {
             switch (selected) {
                 case "Text":
                     obj.Config.RectTransformConfig ??= new RectTransformSettings();

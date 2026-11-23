@@ -189,12 +189,11 @@ internal static class UISound {
 
         bool resetHandled = false;
         if (current != null && O5Input.GetMouseButtonDown(2)
-            && MainCore.Conf != null && MainCore.Conf.MiddleClickToDefault.Value
-            && !IsToggleTarget(current)) {
+            && MainCore.Conf != null && MainCore.Conf.MiddleClickToDefault.Value) {
             if (IsSliderTarget(current)) {
                 resetHandled = TryPlaySliderReset(current);
             } else {
-                PlayDefault();
+                resetHandled = TryPlayValueReset(current);
             }
         }
 
@@ -452,8 +451,6 @@ internal static class UISound {
         return previewState;
     }
 
-    private static bool IsToggleTarget(GameObject go) => go != null && go.transform.Find("ToggleCircle") != null;
-
     private static bool IsSpecializedClickTarget(GameObject go) {
         if (go == null) {
             return false;
@@ -513,6 +510,70 @@ internal static class UISound {
             PlaySliderTick((float)slider.Normalize(target));
         }
         return true;
+    }
+
+    // Middle-click default sound for value controls (toggle/bool, dropdowns, segmented,
+    // input, color picker): plays only when the value actually differs from default,
+    // so plain buttons and already-default controls stay silent.
+    private static bool TryPlayValueReset(GameObject current) {
+        var control = FindValueControl(current);
+        if (control == null) {
+            return false;
+        }
+        var type = control.GetType();
+        if (type.GetProperty("HasDefault")?.GetValue(control) is bool hasDefault && !hasDefault) {
+            return true;
+        }
+        var defProp = type.GetProperty("DefaultValue");
+        if (defProp == null) {
+            return true;
+        }
+        object def = defProp.GetValue(control);
+        if (def == null) {
+            return true;
+        }
+        object val = type.GetProperty("Value")?.GetValue(control);
+        if (!Equals(val, def)) {
+            PlayDefault();
+        }
+        return true;
+    }
+
+    private static O5Object FindValueControl(GameObject current) {
+        if (TickablesField?.GetValue(null) is not System.Collections.IList list) {
+            return null;
+        }
+        O5Object best = null;
+        int bestDepth = -1;
+        Transform curT = current.transform;
+        foreach (object item in list) {
+            if (item is not O5Object o || o.IsDisposed || o.Rect == null || !o.Rect) {
+                continue;
+            }
+            if (o is O5Slider) {
+                continue;
+            }
+            RectTransform r = o.Rect;
+            if (r.gameObject != current && !curT.IsChildOf(r)) {
+                continue;
+            }
+            // Dropdown list rows are buttons, not reset targets.
+            if (o.GetType().GetProperty("ListObject")?.GetValue(o) is GameObject listObj && listObj != null) {
+                Transform lt = listObj.transform;
+                if (curT == lt || curT.IsChildOf(lt)) {
+                    continue;
+                }
+            }
+            int depth = 0;
+            for (Transform t = r.transform; t != null; t = t.parent) {
+                depth++;
+            }
+            if (depth > bestDepth) {
+                bestDepth = depth;
+                best = o;
+            }
+        }
+        return best;
     }
 
     private static void PlayTransition(ClipId clip, float volumeScale) {
