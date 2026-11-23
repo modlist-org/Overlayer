@@ -401,7 +401,7 @@
     "INTERNAL_RESOURCES": "Internal",
     "INTERNAL_RESOURCE_LABEL": "Built-in (Read-only)",
     "RESOURCE_STORAGE_COPY": "Copy",
-    "RESOURCE_STORAGE_REFERENCE": "Reference",
+    "RESOURCE_STORAGE_REFERENCE": "Ref",
     "RESOURCE_STORAGE_MODE_TOOLTIP": "Choose whether newly added resources are copied into Overlayer or only referenced from their original file path.\nReferenced resources are marked with a dot at the top-left.",
     "UNSUPPORTED_FONT_FORMAT": "Unsupported font format.",
     "UNSUPPORTED_IMAGE_FORMAT": "Unsupported image format.",

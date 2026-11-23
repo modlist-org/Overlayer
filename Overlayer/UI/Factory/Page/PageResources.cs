@@ -832,7 +832,7 @@ internal static class PageResources {
 
     private static string FormatStorageModeButtonLabel() {
         string copy = T("RESOURCE_STORAGE_COPY", "Copy");
-        string reference = T("RESOURCE_STORAGE_REFERENCE", "Reference");
+        string reference = T("RESOURCE_STORAGE_REFERENCE", "Ref");
         const string inactiveColor = "#B8BCC8";
         return CurrentStorageIsReference
             ? $"<color={inactiveColor}>{copy}</color> / {reference}"
