@@ -41,7 +41,7 @@ internal static partial class HudEditor {
     private static bool AutoAnchorOn => MainCore.Conf.HudAutoAnchor.Value;
 
     private static void BuildAutoAnchorGizmos() {
-        autoAnchorLineImage = NewImage("AutoAnchorLine", gizmoLayer, AutoAnchorLineColor);
+        autoAnchorLineImage = NewImage("AutoAnchorLine", gizmoLayer, AutoAnchorLineColor, Overlayer.UI.Utility.UILineSprite.AntialiasedLine);
         autoAnchorLine = autoAnchorLineImage.rectTransform;
         autoAnchorLine.gameObject.SetActive(false);
 
@@ -302,7 +302,7 @@ internal static partial class HudEditor {
             if (autoAnchorLineImage != null) {
                 autoAnchorLineImage.color = AutoAnchorLineColor;
             }
-            PlacePixelLine(autoAnchorLine, objPt, refPt, 1.5f);
+            PlacePixelLine(autoAnchorLine, objPt, refPt, 2.5f);
             autoAnchorLine.SetAsLastSibling();
         } else {
             autoAnchorLine.gameObject.SetActive(false);

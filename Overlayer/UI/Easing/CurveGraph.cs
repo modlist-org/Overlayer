@@ -107,13 +107,13 @@ internal sealed class CurveGraph {
         bg.color = new Color(0f, 0f, 0f, 0.35f);
         bg.raycastTarget = true;
 
-        grid = new Lines(Rect, "Grid", GridColor, 1f, false);
-        guides = new Lines(Rect, "Guides", GuideColor, 1.5f, false);
+        grid = new Lines(Rect, "Grid", GridColor, 1f, false, false);
+        guides = new Lines(Rect, "Guides", GuideColor, 1.5f, false, true);
         startLabel = GuideLabel("StartLabel", MainCore.Tr.Get("EASING_START", "Start"), TextAlignmentOptions.TopLeft, new Vector2(0f, 1f));
         endLabel = GuideLabel("EndLabel", MainCore.Tr.Get("EASING_END", "End"), TextAlignmentOptions.BottomLeft, new Vector2(0f, 0f));
-        compare = new Lines(Rect, "Compare", CompareColor, 2f, true);
-        curve = new Lines(Rect, "Curve", () => CurveColor, 3f, true);
-        handleLines = new Lines(Rect, "HandleLines", HandleColor, 1.5f, false);
+        compare = new Lines(Rect, "Compare", CompareColor, 2f, true, true);
+        curve = new Lines(Rect, "Curve", () => CurveColor, 3f, true, true);
+        handleLines = new Lines(Rect, "HandleLines", HandleColor, 1.5f, false, true);
 
         progressDot = Dot("Progress", CurveColor);
         progressDot.sizeDelta = new Vector2(10f, 10f);
@@ -729,14 +729,15 @@ internal sealed class CurveGraph {
         private readonly Func<Color> colorProvider;
         private readonly float width;
         private readonly bool strip;
+        private readonly bool antialiased;
 
-        public Lines(RectTransform parent, string name, Color color, float width, bool strip)
-            : this(parent, name, null, color, width, strip) { }
+        public Lines(RectTransform parent, string name, Color color, float width, bool strip, bool antialiased = false)
+            : this(parent, name, null, color, width, strip, antialiased) { }
 
-        public Lines(RectTransform parent, string name, Func<Color> colorProvider, float width, bool strip)
-            : this(parent, name, colorProvider, colorProvider(), width, strip) { }
+        public Lines(RectTransform parent, string name, Func<Color> colorProvider, float width, bool strip, bool antialiased = false)
+            : this(parent, name, colorProvider, colorProvider(), width, strip, antialiased) { }
 
-        private Lines(RectTransform parent, string name, Func<Color> colorProvider, Color color, float width, bool strip) {
+        private Lines(RectTransform parent, string name, Func<Color> colorProvider, Color color, float width, bool strip, bool antialiased) {
             root = NewRect(name, parent);
             root.anchorMin = root.pivot = Vector2.zero;
             root.anchorMax = Vector2.one;
@@ -745,12 +746,13 @@ internal sealed class CurveGraph {
             this.color = color;
             this.width = width;
             this.strip = strip;
+            this.antialiased = antialiased;
         }
 
         private Color CurrentColor => colorProvider != null ? colorProvider() : color;
 
         public void Set(List<Vector2> points, float minThickness = 0f) {
-            float w = Mathf.Max(width, minThickness);
+            float w = Mathf.Max(width, minThickness) + (antialiased ? 1f : 0f);
             Color currentColor = CurrentColor;
             int used = 0;
             int step = strip ? 1 : 2;
@@ -777,6 +779,9 @@ internal sealed class CurveGraph {
                 var seg = NewRect("Segment", root);
                 seg.anchorMin = seg.anchorMax = Vector2.zero;
                 var img = seg.gameObject.AddComponent<Image>();
+                if (antialiased) {
+                    img.sprite = Overlayer.UI.Utility.UILineSprite.AntialiasedLine;
+                }
                 img.color = currentColor;
                 img.raycastTarget = false;
                 pool.Add(seg);
