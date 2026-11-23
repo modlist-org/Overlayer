@@ -156,6 +156,7 @@ public static class UICore {
     public static RectTransform Panel;
     public static Image CloseImage;
     public const float MENU_WIDTH = 210f;
+    public const float MENU_COLLAPSED_WIDTH = 66f;
     public static RectTransform MenuPanel;
     public static RectTransform Menu;
     public static RectTransform MenuContent;
@@ -238,8 +239,9 @@ public static class UICore {
             Menu.anchorMax = new(0, 1);
             Menu.pivot = new(0, 0.5f);
 
-            Menu.sizeDelta = new(MENU_WIDTH, 0);
-            Menu.anchoredPosition = new(-MENU_WIDTH, 0);
+            float initialMenuWidth = MainCore.Conf.TabLabelMode.Value == IO.TabLabelMode.Show ? MENU_WIDTH : MENU_COLLAPSED_WIDTH;
+            Menu.sizeDelta = new(initialMenuWidth, 0);
+            Menu.anchoredPosition = new(-initialMenuWidth, 0);
 
             var image = menu.AddComponent<Image>();
             image.color = UIColors.MenuBG;
@@ -251,9 +253,10 @@ public static class UICore {
             (_, MenuContent, menuScroller) = O5Factory.ScrollView(
                 O5KitAdapters.Ctx,
                 Menu,
-                spacing: 0f,
+                spacing: 6f,
                 viewportOffsetMin: new Vector2(0f, 60f),
-                viewportOffsetMax: new Vector2(0f, -60f)
+                viewportOffsetMax: new Vector2(0f, -60f),
+                contentPadding: new RectOffset(10, 10, 10, 10)
             );
             // Menu items size themselves via RectTransform.sizeDelta.y (54px) without LayoutElement.
             MenuContent.GetComponent<VerticalLayoutGroup>().childControlHeight = false;
@@ -362,7 +365,7 @@ public static class UICore {
             logoRect.anchorMin = new(0, 0.5f);
             logoRect.anchorMax = new(0, 0.5f);
             logoRect.pivot = new(0, 0.5f);
-            logoRect.anchoredPosition = new(14, 0);
+            logoRect.anchoredPosition = new((MENU_COLLAPSED_WIDTH - 46f) * 0.5f, 0);
             logoRect.sizeDelta = new(46f, 46f);
 
             var btn = logo.AddComponent<NonRaycastButton>();
@@ -575,6 +578,9 @@ public static class UICore {
         // Controls only live under the UI canvas; skip ticking them while it is hidden.
         // One trailing tick after hiding lets input fields release their input block.
         bool active = CanvasObj.activeSelf;
+        if (active) {
+            UpdateMenuHover();
+        }
         if (active || wasCanvasActive) {
             O5Object.TickAll();
         }
@@ -921,17 +927,86 @@ public static class UICore {
     }
 
     private static bool isMenuOpen = false;
+    private static bool isMenuExpanded = false;
     private static ITweenHandle menuSequence;
+    private static ITweenHandle menuHoverSequence;
 
     public static bool IsMenuOpen => isMenuOpen;
 
-    public static void OpenMenu() {
+    private static IO.TabLabelMode CurrentTabLabelMode => MainCore.Conf.TabLabelMode.Value;
+    private static bool IsPinnedExpanded => CurrentTabLabelMode == IO.TabLabelMode.Show;
+    private static float RestingMenuWidth => IsPinnedExpanded ? MENU_WIDTH : MENU_COLLAPSED_WIDTH;
+
+    private static void UpdateMenuHover() {
+        if (!isMenuOpen || Menu == null || CurrentTabLabelMode != IO.TabLabelMode.Hover) {
+            return;
+        }
+
+        bool hovered = RectTransformUtility.RectangleContainsScreenPoint(Menu, O5Input.MousePosition, null);
+        if (hovered != isMenuExpanded) {
+            SetMenuExpanded(hovered);
+        }
+    }
+
+    public static void ApplyTabMode(IO.TabLabelMode mode, bool animate = true) {
+        if (Menu == null) {
+            return;
+        }
+        menuHoverSequence?.Kill();
         menuSequence?.Kill();
 
+        bool show = mode == IO.TabLabelMode.Show;
+        float targetWidth = show ? MENU_WIDTH : MENU_COLLAPSED_WIDTH;
+        isMenuExpanded = show;
+        MenuFactory.SetLabelsVisible(show, !animate);
+
+        if (!isMenuOpen) {
+            Menu.sizeDelta = new(targetWidth, 0f);
+            Menu.anchoredPosition = new(-targetWidth, 0f);
+            return;
+        }
+
+        if (!animate) {
+            Menu.sizeDelta = new(targetWidth, 0f);
+            if (Page != null) {
+                Page.offsetMin = new(targetWidth, 0f);
+            }
+            return;
+        }
+
+        menuHoverSequence = O5Seq.New()
+            .Join(done => Menu.TSizeDelta(new Vector2(targetWidth, 0f), 0.28f, O5Ease.OutExpo, done))
+            .Join(done => Page.TOffsetMin(new Vector2(targetWidth, 0f), 0.28f, O5Ease.OutExpo, done))
+            .Play();
+    }
+
+    private static void SetMenuExpanded(bool expanded) {
+        isMenuExpanded = expanded;
+        menuHoverSequence?.Kill();
+
+        float targetWidth = expanded ? MENU_WIDTH : MENU_COLLAPSED_WIDTH;
+        MenuFactory.SetLabelsVisible(expanded);
+
+        menuHoverSequence = O5Seq.New()
+            .Join(done => Menu.TSizeDelta(new Vector2(targetWidth, 0f), 0.28f, O5Ease.OutExpo, done))
+            .Play();
+    }
+
+    public static void OpenMenu() {
+        menuSequence?.Kill();
+        menuHoverSequence?.Kill();
+
         isMenuOpen = true;
+        bool show = IsPinnedExpanded;
+        float width = show ? MENU_WIDTH : MENU_COLLAPSED_WIDTH;
+        isMenuExpanded = show;
         UISound.PlayMenuOpen();
 
-        Menu.anchoredPosition = new(-MENU_WIDTH, 0);
+        if (menuCanvasGroup.alpha <= 0.01f) {
+            Menu.sizeDelta = new(width, 0);
+            Menu.anchoredPosition = new(-width, 0);
+        }
+        MenuFactory.SetLabelsVisible(show, true);
         menuCanvasGroup.interactable = true;
         menuCanvasGroup.blocksRaycasts = true;
         if (menuScroller != null) {
@@ -939,9 +1014,10 @@ public static class UICore {
         }
 
         menuSequence = O5Seq.New()
+            .Join(done => Menu.TSizeDelta(new Vector2(width, 0), 0.4f, O5Ease.OutExpo, done))
             .Join(done => Menu.TAnchorPos(Vector2.zero, 0.6f, O5Ease.OutExpo, done))
             .Join(done => menuCanvasGroup.TFade(1f, 0.4f, O5Ease.OutSine, done))
-            .Join(done => Page.TOffsetMin(new Vector2(MENU_WIDTH, 0), 0.6f, O5Ease.OutExpo, done))
+            .Join(done => Page.TOffsetMin(new Vector2(width, 0), 0.6f, O5Ease.OutExpo, done))
             .Play();
 
         isMenuOpen = true;
@@ -949,6 +1025,11 @@ public static class UICore {
 
     public static void CloseMenu() {
         menuSequence?.Kill();
+        menuHoverSequence?.Kill();
+        isMenuExpanded = false;
+        if (!IsPinnedExpanded) {
+            MenuFactory.SetLabelsVisible(false, false);
+        }
 
         menuCanvasGroup.interactable = false;
         menuCanvasGroup.blocksRaycasts = false;
@@ -959,8 +1040,9 @@ public static class UICore {
             UISound.PlayMenuClose();
         }
 
+        float hideX = -MENU_WIDTH;
         menuSequence = O5Seq.New()
-            .Join(done => Menu.TAnchorPos(new Vector2(-MENU_WIDTH, 0), 0.4f, O5Ease.OutExpo, done))
+            .Join(done => Menu.TAnchorPos(new Vector2(hideX, 0), 0.4f, O5Ease.OutExpo, done))
             .Join(done => menuCanvasGroup.TFade(0f, 0.3f, O5Ease.OutSine, done))
             .Join(done => Page.TOffsetMin(new Vector2(0, 0), 0.4f, O5Ease.OutExpo, done))
             .Play();

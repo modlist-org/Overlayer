@@ -38,8 +38,22 @@ internal static class PageSettings {
     private static readonly Dictionary<TextLocalization, (GameObject LabelRow, GameObject MainRow)> objects = [];
     private static O5Dropdown<string> languageDropdown;
     private static O5Slider uiScaleSlider;
+    private static O5Slider sliderSensitivitySlider;
+    private static O5Slider animationSpeedSlider;
+    private static O5Slider soundVolSlider;
+    private static O5Slider snapDistanceSlider;
+    private static O5Slider gridSizeSlider;
+    private static O5Toggle startupToggle;
+    private static O5Toggle tooltipToggle;
+    private static O5Toggle middleClickToggle;
+    private static O5Toggle threeDToggle;
+    private static O5Toggle rawInputToggle;
+    private static O5Toggle wheelAdjustToggle;
+    private static O5Toggle snapToggle;
     private static O5Toggle showInternalImagesToggle;
     private static O5Toggle showInternalFontsToggle;
+    private static O5Toggle hideTutorialToggle;
+    private static O5Dropdown<TabLabelMode> tabLabelModeDropdown;
     private static O5Toggle scrollEasingToggle;
     private static O5Dropdown<string> palettePresetDropdown;
     private static O5ColorPicker paletteColorPicker;
@@ -47,6 +61,7 @@ internal static class PageSettings {
     private static Action refreshWindowKey;
     private static Action refreshHudKey;
     private static Action refreshPaletteLabels;
+    private static Action refreshTabLabelDropdown;
 
     internal static void ClearSearch() {
         if (findInput != null && !string.IsNullOrEmpty(findInput.Value)) {
@@ -58,8 +73,22 @@ internal static class PageSettings {
     internal static void SyncValues() {
         languageDropdown?.Set(MainCore.Tr.Language, false);
         uiScaleSlider?.Set(MainCore.Conf.UIScale, false);
+        startupToggle?.Set(MainCore.Conf.ShowOnStartup, false);
+        tooltipToggle?.Set(MainCore.Conf.Tooltip, false);
+        middleClickToggle?.Set(MainCore.Conf.MiddleClickToDefault, false);
+        threeDToggle?.Set(MainCore.Conf.Enable3DFeatures, false);
+        rawInputToggle?.Set(MainCore.Conf.UseRawInput, false);
+        wheelAdjustToggle?.Set(MainCore.Conf.WheelAdjustSlider, false);
+        sliderSensitivitySlider?.Set(MainCore.Conf.SliderSensitivity, false);
+        animationSpeedSlider?.Set(MainCore.Conf.AnimationSpeed, false);
+        soundVolSlider?.Set(MainCore.Conf.UISoundVolume, false);
+        snapToggle?.Set(MainCore.Conf.HudSnap, false);
+        snapDistanceSlider?.Set(MainCore.Conf.HudSnapDistance, false);
+        gridSizeSlider?.Set(MainCore.Conf.HudGridSize, false);
         showInternalImagesToggle?.Set(MainCore.Conf.ShowInternalImages.Value, false);
         showInternalFontsToggle?.Set(MainCore.Conf.ShowInternalFonts.Value, false);
+        hideTutorialToggle?.Set(MainCore.Conf.HideTutorial.Value, false);
+        tabLabelModeDropdown?.Set(MainCore.Conf.TabLabelMode.Value, false);
         scrollEasingToggle?.Set(MainCore.Conf.ScrollEasing.Value, false);
         string configuredColor = MainCore.Conf.UIBaseColor.Value;
         Color baseColor = UIColors.IsStaticToken(configuredColor)
@@ -70,6 +99,7 @@ internal static class PageSettings {
         refreshWindowKey?.Invoke();
         refreshHudKey?.Invoke();
         refreshPaletteLabels?.Invoke();
+        refreshTabLabelDropdown?.Invoke();
     }
 
     public static void Create(RectTransform parent) {
@@ -193,7 +223,7 @@ internal static class PageSettings {
         var overlayerTextTr = overlayerText.gameObject.AddComponent<TextLocalization>().Init("OVERLAYER", "Overlayer");
 
         var startupRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
-        var startupToggle = O5Factory.Toggle(O5KitAdapters.Ctx, startupRow, "show_on_startup", new O5ToggleOptions { DefaultValue = defSet.ShowOnStartup, Value = MainCore.Conf.ShowOnStartup, OnChanged = toggle => {
+        startupToggle = O5Factory.Toggle(O5KitAdapters.Ctx, startupRow, "show_on_startup", new O5ToggleOptions { DefaultValue = defSet.ShowOnStartup, Value = MainCore.Conf.ShowOnStartup, OnChanged = toggle => {
                 MainCore.Conf.ShowOnStartup = toggle;
                 MainCore.ConfMgr.RequestSave();
             }, Text = "Show Overlayer Panel at Startup" });
@@ -224,7 +254,7 @@ internal static class PageSettings {
             out refreshWindowKey);
 
         var tooltipRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
-        var tooltipToggle = O5Factory.Toggle(O5KitAdapters.Ctx, tooltipRow, "show_tooltip", new O5ToggleOptions { DefaultValue = defSet.Tooltip, Value = MainCore.Conf.Tooltip, Text = "Show Tooltip" });
+        tooltipToggle = O5Factory.Toggle(O5KitAdapters.Ctx, tooltipRow, "show_tooltip", new O5ToggleOptions { DefaultValue = defSet.Tooltip, Value = MainCore.Conf.Tooltip, Text = "Show Tooltip" });
         tooltipToggle.OnChanged = toggle => {
             O5KitAdapters.Ctx.Tooltip.Hide();
             MainCore.Conf.Tooltip = toggle;
@@ -236,7 +266,7 @@ internal static class PageSettings {
         objects[tooltipToggleTr] = (overlayerText.gameObject, tooltipRow.gameObject);
 
         var middleClickRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
-        O5Toggle middleClickToggle = O5Factory.Toggle(O5KitAdapters.Ctx, middleClickRow, "middle_click_default", new O5ToggleOptions { DefaultValue = defSet.MiddleClickToDefault, Value = MainCore.Conf.MiddleClickToDefault, OnChanged = toggle => {
+        middleClickToggle = O5Factory.Toggle(O5KitAdapters.Ctx, middleClickRow, "middle_click_default", new O5ToggleOptions { DefaultValue = defSet.MiddleClickToDefault, Value = MainCore.Conf.MiddleClickToDefault, OnChanged = toggle => {
                 MainCore.Conf.MiddleClickToDefault = toggle;
                 MainCore.ConfMgr.RequestSave();
             }, Text = "Middle-click to set as default" });
@@ -249,7 +279,7 @@ internal static class PageSettings {
         objects[middleClickToggleTr] = (overlayerText.gameObject, middleClickRow.gameObject);
 
         var threeDRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
-        O5Toggle threeDToggle = O5Factory.Toggle(O5KitAdapters.Ctx, threeDRow, "enable_3d_features", new O5ToggleOptions { DefaultValue = defSet.Enable3DFeatures, Value = MainCore.Conf.Enable3DFeatures, OnChanged = toggle => {
+        threeDToggle = O5Factory.Toggle(O5KitAdapters.Ctx, threeDRow, "enable_3d_features", new O5ToggleOptions { DefaultValue = defSet.Enable3DFeatures, Value = MainCore.Conf.Enable3DFeatures, OnChanged = toggle => {
                 MainCore.Conf.Enable3DFeatures = toggle;
                 MainCore.ConfMgr.RequestSave();
             }, Text = "Enable 3D Features" });
@@ -261,7 +291,7 @@ internal static class PageSettings {
         objects[threeDToggleTr] = (overlayerText.gameObject, threeDRow.gameObject);
 
         var rawInputRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
-        O5Toggle rawInputToggle = O5Factory.Toggle(O5KitAdapters.Ctx, rawInputRow, "use_raw_input", new O5ToggleOptions { DefaultValue = defSet.UseRawInput, Value = MainCore.Conf.UseRawInput, OnChanged = toggle => {
+        rawInputToggle = O5Factory.Toggle(O5KitAdapters.Ctx, rawInputRow, "use_raw_input", new O5ToggleOptions { DefaultValue = defSet.UseRawInput, Value = MainCore.Conf.UseRawInput, OnChanged = toggle => {
                 MainCore.Conf.UseRawInput = toggle;
                 MainCore.ConfMgr.RequestSave();
                 if (toggle) {
@@ -308,6 +338,54 @@ internal static class PageSettings {
         var internalFontTr = showInternalFontsToggle.Label.gameObject.AddComponent<TextLocalization>().Init("SHOW_INTERNAL_FONTS", "Show Internal Fonts");
         objects[internalFontTr] = (overlayerText.gameObject, internalFontRow.gameObject);
 
+        var hideTutorialRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
+        hideTutorialToggle = O5Factory.Toggle(O5KitAdapters.Ctx, hideTutorialRow, "hide_tutorial", new O5ToggleOptions { DefaultValue = defSet.HideTutorial, Value = MainCore.Conf.HideTutorial, OnChanged = toggle => {
+                MainCore.Conf.HideTutorial.Value = toggle;
+                MainCore.ConfMgr.RequestSave();
+                MenuFactory.SetItemVisible((int)OriginalMenuState.Tutorial, !toggle);
+            }, Text = "Hide Tutorial" });
+        hideTutorialToggle.Rect.AddToolTip(O5KitAdapters.Ctx, () => MainCore.Tr.Get(
+            "DESC_HIDE_TUTORIAL",
+            "Hide the Tutorial tab from the left menu."
+        ));
+        var hideTutorialTr = hideTutorialToggle.Label.gameObject.AddComponent<TextLocalization>().Init("HIDE_TUTORIAL", "Hide Tutorial");
+        objects[hideTutorialTr] = (overlayerText.gameObject, hideTutorialRow.gameObject);
+
+        var tabLabelRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
+        string TabLabelModeDisplay(TabLabelMode mode) {
+            string modeLabel = mode switch {
+                TabLabelMode.Show => MainCore.Tr.Get("TAB_LABELS_SHOW", "Show Always"),
+                TabLabelMode.Hover => MainCore.Tr.Get("TAB_LABELS_HOVER", "Show when Hover"),
+                TabLabelMode.Hide => MainCore.Tr.Get("TAB_LABELS_HIDE", "Hide Always"),
+                _ => mode.ToString(),
+            };
+            return $"{MainCore.Tr.Get("TAB_LABELS", "Tab Labels")}: {modeLabel}";
+        }
+        tabLabelModeDropdown = O5Factory.DropDown(O5KitAdapters.Ctx, tabLabelRow, "tab_label_mode", new O5DropdownOptions<TabLabelMode> {
+            DefaultValue = defSet.TabLabelMode.Value,
+            Value = MainCore.Conf.TabLabelMode.Value,
+            Values = [TabLabelMode.Hover, TabLabelMode.Show, TabLabelMode.Hide],
+            Display = TabLabelModeDisplay,
+            OnChanged = mode => {
+                MainCore.Conf.TabLabelMode.Value = mode;
+                MainCore.ConfMgr.RequestSave();
+                UICore.ApplyTabMode(mode);
+            }
+        });
+        tabLabelModeDropdown.Rect.AddToolTip(O5KitAdapters.Ctx, () => MainCore.Tr.Get(
+            "DESC_TAB_LABELS",
+            "Controls whether the left menu shows tab labels always, only on hover, or stays icons-only."
+        ));
+        var tabLabelTr = tabLabelModeDropdown.Label.gameObject.AddComponent<TextLocalization>().Init("TAB_LABELS", "Tab Labels");
+        refreshTabLabelDropdown = () => {
+            if (tabLabelModeDropdown != null) {
+                tabLabelModeDropdown.RebuildList();
+                tabLabelModeDropdown.Label.text = TabLabelModeDisplay(tabLabelModeDropdown.Value);
+            }
+        };
+        refreshTabLabelDropdown();
+        objects[tabLabelTr] = (overlayerText.gameObject, tabLabelRow.gameObject);
+
 
         var uiScaleRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
         var uiScale = O5Factory.Slider(O5KitAdapters.Ctx, uiScaleRow, "ui_scale", new O5SliderOptions { DefaultValue = defSet.UIScale, Min = 0.8f, Max = 1.6f, Value = MainCore.Conf.UIScale, Format = "0.00x", Label = "UI Scale", ClampDrag = true, ClampInput = true, DragFilter = value => Math.Round(value, 2), InputFilter = value => Math.Round(value, 2), OnChanged = value => {
@@ -325,7 +403,7 @@ internal static class PageSettings {
         objects[uiScaleTr] = (overlayerText.gameObject, uiScaleRow.gameObject);
 
         var sliderSensitivityRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
-        var sliderSensitivity = O5Factory.Slider(O5KitAdapters.Ctx, sliderSensitivityRow, "slider_sensitivity", new O5SliderOptions { DefaultValue = defSet.SliderSensitivity, Min = 0.1f, Max = 2.0f, Value = MainCore.Conf.SliderSensitivity, Format = "0.00x", Label = "Slider Sensitivity", ClampDrag = true, ClampInput = false, DragFilter = value => Math.Round(value, 2), InputFilter = value => Math.Round(value, 2), OnChanged = value => {
+        sliderSensitivitySlider = O5Factory.Slider(O5KitAdapters.Ctx, sliderSensitivityRow, "slider_sensitivity", new O5SliderOptions { DefaultValue = defSet.SliderSensitivity, Min = 0.1f, Max = 2.0f, Value = MainCore.Conf.SliderSensitivity, Format = "0.00x", Label = "Slider Sensitivity", ClampDrag = true, ClampInput = false, DragFilter = value => Math.Round(value, 2), InputFilter = value => Math.Round(value, 2), OnChanged = value => {
                 MainCore.Conf.SliderSensitivity = (float)value;
                 O5KitAdapters.SyncConfig();
             }, OnComplete = value => {
@@ -333,11 +411,19 @@ internal static class PageSettings {
                 O5KitAdapters.SyncConfig();
                 MainCore.ConfMgr.RequestSave();
             } });
-        var sliderSensitivityTr = sliderSensitivity.Label.gameObject.AddComponent<TextLocalization>().Init("SLIDER_SENSITIVITY", "Slider Sensitivity");
+        var sliderSensitivityTr = sliderSensitivitySlider.Label.gameObject.AddComponent<TextLocalization>().Init("SLIDER_SENSITIVITY", "Slider Sensitivity");
         objects[sliderSensitivityTr] = (overlayerText.gameObject, sliderSensitivityRow.gameObject);
 
+        var wheelAdjustRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
+        wheelAdjustToggle = O5Factory.Toggle(O5KitAdapters.Ctx, wheelAdjustRow, "wheel_adjust_slider", new O5ToggleOptions { DefaultValue = defSet.WheelAdjustSlider, Value = MainCore.Conf.WheelAdjustSlider, OnChanged = toggle => {
+                MainCore.Conf.WheelAdjustSlider = toggle;
+                MainCore.ConfMgr.RequestSave();
+            }, Text = "Adjust Sliders & Dropdowns with Scroll" });
+        var wheelAdjustTr = wheelAdjustToggle.Label.gameObject.AddComponent<TextLocalization>().Init("WHEEL_ADJUST_SLIDER", "Adjust Sliders & Dropdowns with Scroll");
+        objects[wheelAdjustTr] = (overlayerText.gameObject, wheelAdjustRow.gameObject);
+
         var animationSpeedRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
-        var animationSpeed = O5Factory.Slider(O5KitAdapters.Ctx, animationSpeedRow, "animation_speed", new O5SliderOptions { DefaultValue = defSet.AnimationSpeed, Min = 0.0f, Max = 3.0f, Value = MainCore.Conf.AnimationSpeed, Format = "0.00x", Label = "Animation Speed", ClampDrag = true, ClampInput = false, DragFilter = value => Math.Round(value, 2), InputFilter = value => Math.Round(value, 2), OnChanged = value => {
+        animationSpeedSlider = O5Factory.Slider(O5KitAdapters.Ctx, animationSpeedRow, "animation_speed", new O5SliderOptions { DefaultValue = defSet.AnimationSpeed, Min = 0.0f, Max = 3.0f, Value = MainCore.Conf.AnimationSpeed, Format = "0.00x", Label = "Animation Speed", ClampDrag = true, ClampInput = false, DragFilter = value => Math.Round(value, 2), InputFilter = value => Math.Round(value, 2), OnChanged = value => {
                 MainCore.Conf.AnimationSpeed = (float)value;
                 O5KitAdapters.SyncConfig();
             }, OnComplete = value => {
@@ -345,7 +431,7 @@ internal static class PageSettings {
                 O5KitAdapters.SyncConfig();
                 MainCore.ConfMgr.RequestSave();
             } });
-        var animationSpeedTr = animationSpeed.Label.gameObject.AddComponent<TextLocalization>().Init("ANIMATION_SPEED", "Animation Speed");
+        var animationSpeedTr = animationSpeedSlider.Label.gameObject.AddComponent<TextLocalization>().Init("ANIMATION_SPEED", "Animation Speed");
         objects[animationSpeedTr] = (overlayerText.gameObject, animationSpeedRow.gameObject);
 
         var scrollEasingRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
@@ -367,13 +453,13 @@ internal static class PageSettings {
         objects[scrollEasingTr] = (overlayerText.gameObject, scrollEasingRow.gameObject);
 
         var soundVolRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
-        var soundVol = O5Factory.Slider(O5KitAdapters.Ctx, soundVolRow, "ui_sound_volume", new O5SliderOptions { DefaultValue = defSet.UISoundVolume, Min = 0.0f, Max = 1.0f, Value = MainCore.Conf.UISoundVolume, Format = "F2", Label = "UI Sound Volume", ClampDrag = true, ClampInput = true, DragFilter = value => Math.Round(value, 2), InputFilter = value => Math.Round(value, 2), OnChanged = value => {
+        soundVolSlider = O5Factory.Slider(O5KitAdapters.Ctx, soundVolRow, "ui_sound_volume", new O5SliderOptions { DefaultValue = defSet.UISoundVolume, Min = 0.0f, Max = 1.0f, Value = MainCore.Conf.UISoundVolume, Format = "F2", Label = "UI Sound Volume", ClampDrag = true, ClampInput = true, DragFilter = value => Math.Round(value, 2), InputFilter = value => Math.Round(value, 2), OnChanged = value => {
                 MainCore.Conf.UISoundVolume = Mathf.Clamp01((float)value);
             }, OnComplete = value => {
                 MainCore.Conf.UISoundVolume = Mathf.Clamp01((float)value);
                 MainCore.ConfMgr.RequestSave();
             } });
-        var soundVolTr = soundVol.Label.gameObject.AddComponent<TextLocalization>().Init("UI_SOUND_VOLUME", "UI Sound Volume");
+        var soundVolTr = soundVolSlider.Label.gameObject.AddComponent<TextLocalization>().Init("UI_SOUND_VOLUME", "UI Sound Volume");
         objects[soundVolTr] = (overlayerText.gameObject, soundVolRow.gameObject);
 
         BuildPaletteSettings(content, overlayerText);
@@ -381,6 +467,8 @@ internal static class PageSettings {
         BuildFontPickers(content, objects, overlayerText);
 
         BuildHudEditor(content, defSet);
+
+        BuildResetAll(content);
     }
 
     private static void BuildPaletteSettings(GameObject content, TextMeshProUGUI overlayerText) {
@@ -499,7 +587,7 @@ internal static class PageSettings {
             out refreshHudKey);
 
         var snapRow = O5Factory.Row(ctx, content.transform);
-        var snapToggle = O5Factory.Toggle(ctx, snapRow, "hud_snap", new O5ToggleOptions { DefaultValue = defSet.HudSnap, Value = MainCore.Conf.HudSnap, OnChanged = toggle => {
+        snapToggle = O5Factory.Toggle(ctx, snapRow, "hud_snap", new O5ToggleOptions { DefaultValue = defSet.HudSnap, Value = MainCore.Conf.HudSnap, OnChanged = toggle => {
                 MainCore.Conf.HudSnap = toggle;
                 MainCore.ConfMgr.RequestSave();
             }, Text = "Snap to Edges and Other Objects" });
@@ -508,21 +596,67 @@ internal static class PageSettings {
         objects[snapTr] = (headerRow.gameObject, snapRow.gameObject);
 
         var distanceRow = O5Factory.Row(ctx, content.transform);
-        var distance = O5Factory.Slider(ctx, distanceRow, "hud_snap_distance", new O5SliderOptions { DefaultValue = defSet.HudSnapDistance, Min = 2f, Max = 32f, Value = MainCore.Conf.HudSnapDistance, Format = "0 px", Label = "Snap Distance", ClampDrag = true, ClampInput = true, DragFilter = value => Math.Round(value), OnComplete = value => {
+        snapDistanceSlider = O5Factory.Slider(ctx, distanceRow, "hud_snap_distance", new O5SliderOptions { DefaultValue = defSet.HudSnapDistance, Min = 2f, Max = 32f, Value = MainCore.Conf.HudSnapDistance, Format = "0 px", Label = "Snap Distance", ClampDrag = true, ClampInput = true, DragFilter = value => Math.Round(value), OnComplete = value => {
                 MainCore.Conf.HudSnapDistance = (float)value;
                 MainCore.ConfMgr.RequestSave();
             } });
-        var distanceTr = distance.Label.gameObject.AddComponent<TextLocalization>().Init("HUD_SNAP_DISTANCE", "Snap Distance");
+        var distanceTr = snapDistanceSlider.Label.gameObject.AddComponent<TextLocalization>().Init("HUD_SNAP_DISTANCE", "Snap Distance");
         objects[distanceTr] = (headerRow.gameObject, distanceRow.gameObject);
 
         var gridRow = O5Factory.Row(ctx, content.transform);
-        var grid = O5Factory.Slider(ctx, gridRow, "hud_grid_size", new O5SliderOptions { DefaultValue = defSet.HudGridSize, Min = 8f, Max = 200f, Value = MainCore.Conf.HudGridSize, Format = "0", Label = "Grid Size", ClampDrag = true, ClampInput = true, DragFilter = value => Math.Round(value), OnComplete = value => {
+        gridSizeSlider = O5Factory.Slider(ctx, gridRow, "hud_grid_size", new O5SliderOptions { DefaultValue = defSet.HudGridSize, Min = 8f, Max = 200f, Value = MainCore.Conf.HudGridSize, Format = "0", Label = "Grid Size", ClampDrag = true, ClampInput = true, DragFilter = value => Math.Round(value), OnComplete = value => {
                 MainCore.Conf.HudGridSize = (float)value;
                 MainCore.ConfMgr.RequestSave();
             } });
-        grid.Rect.AddToolTip(ctx, () => MainCore.Tr.Get("DESC_HUD_GRID_SIZE", "Spacing of the HUD editor grid, in HUD units."));
-        var gridTr = grid.Label.gameObject.AddComponent<TextLocalization>().Init("HUD_GRID_SIZE", "Grid Size");
+        gridSizeSlider.Rect.AddToolTip(ctx, () => MainCore.Tr.Get("DESC_HUD_GRID_SIZE", "Spacing of the HUD editor grid, in HUD units."));
+        var gridTr = gridSizeSlider.Label.gameObject.AddComponent<TextLocalization>().Init("HUD_GRID_SIZE", "Grid Size");
         objects[gridTr] = (headerRow.gameObject, gridRow.gameObject);
+    }
+
+    private static void BuildResetAll(GameObject content) {
+        var ctx = O5KitAdapters.Ctx;
+        var headerRow = O5Factory.Row(ctx, content.transform);
+        var header = O5Factory.ControlTextH1(ctx, headerRow);
+        var headerTr = header.gameObject.AddComponent<TextLocalization>().Init("RESET", "Reset");
+
+        var btnRow = O5Factory.Row(ctx, content.transform);
+        var btn = O5Factory.Button(ctx, btnRow, "reset_all_settings",
+            new O5ButtonOptions { Text = MainCore.Tr.Get("RESET_ALL_SETTINGS", "Reset All Settings"), OnClick = () => { } });
+        var btnTr = btn.Label.gameObject.AddComponent<TextLocalization>().Init("RESET_ALL_SETTINGS", "Reset All Settings");
+        btn.Rect.AddToolTip(ctx, () => MainCore.Tr.Get(
+            "DESC_RESET_ALL_SETTINGS",
+            "Restores every setting to its default. Hold to confirm."
+        ));
+        HoldToConfirm.Attach(btn, ResetAllSettings);
+        objects[headerTr] = (headerRow.gameObject, btnRow.gameObject);
+        objects[btnTr] = (headerRow.gameObject, btnRow.gameObject);
+    }
+
+    private static void ResetAllSettings() {
+        var def = new CoreSettings();
+        MainCore.Conf.Deserialize(def.Serialize());
+        // shortcut: state flags, not settings; keeps the setup wizard from popping on the next scene load.
+        MainCore.Conf.IsFirstRun = false;
+        MainCore.ConfMgr.RequestSave();
+        MainCore.Tr.Language = MainCore.Conf.Language.Value;
+        O5KitAdapters.SyncConfig();
+        UIColors.ApplyConfigured(MainCore.Conf.UIBaseColor.Value, true);
+        O5KitAdapters.RefreshFonts();
+        UICore.RegisterToggleShortcut();
+        HudEdit.HudEditor.RegisterShortcut();
+        if (MainCore.Conf.UseRawInput.Value) {
+            OvRawInput.Start();
+        } else {
+            OvRawInput.Stop();
+        }
+        UICore.AnimateUiScale(MainCore.Conf.UIScale.Value);
+        TextLocalization.RefreshAll();
+        SyncValues();
+        foreach (var refresh in fontOptionRefreshers.ToArray()) {
+            refresh();
+        }
+        PageDocs.RefreshHotkeys();
+        Tutorial.Tutorial.RefreshTexts();
     }
 
     private static void BuildFontPickers(GameObject content, Dictionary<TextLocalization, (GameObject, GameObject)> objects, TextMeshProUGUI overlayerText) {
@@ -880,6 +1014,7 @@ internal static class PageSettings {
         refreshWindowKey?.Invoke();
         refreshHudKey?.Invoke();
         refreshPaletteLabels?.Invoke();
+        refreshTabLabelDropdown?.Invoke();
         foreach (var refresh in fontOptionRefreshers.ToArray()) {
             refresh();
         }

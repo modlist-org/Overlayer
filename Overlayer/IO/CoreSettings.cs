@@ -6,6 +6,12 @@ using System.Runtime.InteropServices;
 
 namespace Overlayer.IO;
 
+public enum TabLabelMode {
+    Show,
+    Hover,
+    Hide,
+}
+
 public sealed class CoreSettings : ISettingsFile {
     public static string DefaultWindowKey =>
         RuntimeInformation.IsOSPlatform(OSPlatform.Linux) ? "Ctrl+BackQuote" : "Alt+BackQuote";
@@ -23,6 +29,7 @@ public sealed class CoreSettings : ISettingsFile {
     public FxValue<float> UIScale = new(1.0f);
     public FxValue<string> UIBaseColor = FxValue<string>.FromValue(O5Kit.Core.O5Palette.DefaultBaseHex);
     public FxValue<float> SliderSensitivity = new(1.0f);
+    public FxValue<bool> WheelAdjustSlider = new(true);
     public FxValue<float> AnimationSpeed = new(1.0f);
     public FxValue<bool> ScrollEasing = new(true);
     public FxValue<float> UISoundVolume = new(0.4f);
@@ -54,6 +61,8 @@ public sealed class CoreSettings : ISettingsFile {
     public FxValue<List<string>> HudDetached = new([]);
     public FxValue<List<string>> TutorialDone = new([]);
     public FxValue<bool> TutorialOffered = new(false);
+    public FxValue<bool> HideTutorial = new(false);
+    public FxValue<TabLabelMode> TabLabelMode = new(IO.TabLabelMode.Hover);
     public FxValue<bool> SetupPending = new(false);
 
     public JToken Serialize() {
@@ -71,6 +80,7 @@ public sealed class CoreSettings : ISettingsFile {
             [nameof(UIScale)] = IOUtils.WriteFx(UIScale),
             [nameof(UIBaseColor)] = IOUtils.WriteFx(UIBaseColor),
             [nameof(SliderSensitivity)] = IOUtils.WriteFx(SliderSensitivity),
+            [nameof(WheelAdjustSlider)] = IOUtils.WriteFx(WheelAdjustSlider),
             [nameof(AnimationSpeed)] = IOUtils.WriteFx(AnimationSpeed),
             [nameof(ScrollEasing)] = IOUtils.WriteFx(ScrollEasing),
             [nameof(UISoundVolume)] = IOUtils.WriteFx(UISoundVolume),
@@ -102,6 +112,8 @@ public sealed class CoreSettings : ISettingsFile {
             [nameof(HudDetached)] = IOUtils.WriteFx(HudDetached),
             [nameof(TutorialDone)] = IOUtils.WriteFx(TutorialDone),
             [nameof(TutorialOffered)] = IOUtils.WriteFx(TutorialOffered),
+            [nameof(HideTutorial)] = IOUtils.WriteFx(HideTutorial),
+            [nameof(TabLabelMode)] = IOUtils.WriteFx(TabLabelMode),
             [nameof(SetupPending)] = IOUtils.WriteFx(SetupPending)
         };
     }
@@ -126,6 +138,7 @@ public sealed class CoreSettings : ISettingsFile {
         UIScale = IOUtils.ReadFx(token, nameof(UIScale), UIScale);
         UIBaseColor = IOUtils.ReadFx(token, nameof(UIBaseColor), UIBaseColor);
         SliderSensitivity = IOUtils.ReadFx(token, nameof(SliderSensitivity), SliderSensitivity);
+        WheelAdjustSlider = IOUtils.ReadFx(token, nameof(WheelAdjustSlider), WheelAdjustSlider);
         AnimationSpeed = IOUtils.ReadFx(token, nameof(AnimationSpeed), AnimationSpeed);
         ScrollEasing = IOUtils.ReadFx(token, nameof(ScrollEasing), ScrollEasing);
         UISoundVolume = IOUtils.ReadFx(token, nameof(UISoundVolume), UISoundVolume);
@@ -157,6 +170,8 @@ public sealed class CoreSettings : ISettingsFile {
         HudDetached = IOUtils.ReadFx(token, nameof(HudDetached), HudDetached);
         TutorialDone = IOUtils.ReadFx(token, nameof(TutorialDone), TutorialDone);
         TutorialOffered = IOUtils.ReadFx(token, nameof(TutorialOffered), TutorialOffered);
+        HideTutorial = IOUtils.ReadFx(token, nameof(HideTutorial), HideTutorial);
+        TabLabelMode = IOUtils.ReadFx(token, nameof(TabLabelMode), TabLabelMode);
         SetupPending = IOUtils.ReadFx(token, nameof(SetupPending), SetupPending);
     }
 }
