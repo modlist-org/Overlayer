@@ -334,10 +334,10 @@ public static class UIColors {
             ComponentHeader = theme.CardHeader;
             ComponentPanel = theme.CardPanel;
 
-            ComponentFxOff = O5Palette.Shade(baseColor, 0.20f, 0.160f);
-            ComponentFxEditor = O5Palette.Shade(baseColor, 0.18f, 0.095f);
-            FxField = O5Palette.Shade(baseColor, 0.22f, 0.220f);
-            FxOff = O5Palette.Shade(baseColor, 0.32f, 0.340f, 1f, adaptLuminance: true);
+            ComponentFxOff = O5Palette.ShadeOklch(baseColor, 0.022f, 0.220f);
+            ComponentFxEditor = O5Palette.ShadeOklch(baseColor, 0.014f, 0.165f);
+            FxField = O5Palette.ShadeOklch(baseColor, 0.032f, 0.270f);
+            FxOff = O5Palette.ShadeOklch(baseColor, 0.068f, 0.370f, 1f, adaptBaseLightness: true);
             FxOn = ObjectActive;
 
             MenuNormal = O5Palette.Transparent(theme.MenuHover);
@@ -345,22 +345,22 @@ public static class UIColors {
             MenuSelected = O5Palette.WithAlpha(ObjectActive, 0.92f);
             MenuHighlight = ObjectActiveBright;
 
-            SurfaceOpaque = O5Palette.Shade(baseColor, 0.18f, 0.110f);
+            SurfaceOpaque = O5Palette.ShadeOklch(baseColor, 0.015f, 0.175f);
             Surface = O5Palette.WithAlpha(SurfaceOpaque, 0.95f);
 
-            DocsSidebarBg = O5Palette.Shade(baseColor, 0.18f, 0.100f);
+            DocsSidebarBg = O5Palette.ShadeOklch(baseColor, 0.015f, 0.168f);
             DocsStageBg = PanelBG;
             DocsCardBg = ComponentPanel;
             DocsSurfaceBg = SurfaceOpaque;
             DocsCodeBg = ComponentFxEditor;
-            DocsCodeHeaderBg = O5Palette.Shade(baseColor, 0.20f, 0.132f);
+            DocsCodeHeaderBg = O5Palette.ShadeOklch(baseColor, 0.020f, 0.195f);
             DocsTextPrimary = theme.Text;
-            DocsTextBody = O5Palette.Shade(baseColor, 0.07f, 0.880f);
-            DocsTextMuted = O5Palette.Shade(baseColor, 0.13f, 0.650f);
-            DocsTextDim = O5Palette.Shade(baseColor, 0.15f, 0.480f);
+            DocsTextBody = O5Palette.ShadeOklch(baseColor, 0.018f, 0.895f);
+            DocsTextMuted = O5Palette.ShadeOklch(baseColor, 0.026f, 0.690f);
+            DocsTextDim = O5Palette.ShadeOklch(baseColor, 0.028f, 0.540f);
 
-            AnchorCellHeader = O5Palette.Shade(baseColor, 0.20f, 0.165f);
-            AnchorCell = O5Palette.Shade(baseColor, 0.18f, 0.115f);
+            AnchorCellHeader = O5Palette.ShadeOklch(baseColor, 0.022f, 0.225f);
+            AnchorCell = O5Palette.ShadeOklch(baseColor, 0.015f, 0.180f);
         }
 
         private PaletteSnapshot(
