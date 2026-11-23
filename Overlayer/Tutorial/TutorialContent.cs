@@ -164,6 +164,8 @@ internal static class TutorialContent {
         HudEditor.DemoTextFx(s, null);
         HudEditor.DemoWobble(s, false);
         HudEditor.DemoSetAlphaFx(s, null);
+        HudEditor.DemoRotationFx(s, null);
+        HudEditor.DemoTextColorFx(s, null);
         HudEditor.DemoSetAlpha(s, 1f);
         return s;
     }
@@ -636,23 +638,23 @@ internal static class TutorialContent {
             OpenEditor(),
             new TutorialStep("FX_WHAT", "The ƒ button",
                 "Any property with an <b>ƒ</b> button in <b>All properties</b> can run a JavaScript formula instead of a fixed value—like this pulsing opacity.",
-                "Every tag works as a function: «Fps()», «Second()». Vectors and colors use «[ ]».")
+                "Inside a formula, every tag is called as a function: «Fps()», «Second()».")
                 .Looks(Face.Talk)
                 .OnEnter(() => PlainSample("{Fps:0} FPS"))
-                .At(() => HudEditor.Control("allprops"))
+                .At(() => HudEditor.FxArea() ?? HudEditor.Control("allprops"))
                 .Shows(new TutorialDemo()
                     .Wait(0.3f)
                     .Do(() => {
                         PlainSample("{Fps:0} FPS");
                         HudEditor.DemoSetAlphaFx(sample, "0.55 + 0.45 * Math.sin(Time() * 4)");
                     })
-                    .Point(() => HudEditor.Control("allprops"))
+                    .Point(() => HudEditor.FxArea() ?? HudEditor.Control("allprops"))
                     .Wait(0.9f)
                     .HidePointer())
                 .NeedEditor(),
             new TutorialStep("FX_POSITION", "Dynamic position",
                 "Position takes two numbers «[x, y]»—here adding a sine wave to x.",
-                "Write «[x + Math.sin(Time() * 3) * 40, y]», where x and y are the base position and «Time()» is elapsed seconds.")
+                "Write «[x + Math.sin(Time() * 3) * 40, y]» with the base position's numbers in place of x and y. «Time()» is elapsed seconds.")
                 .Looks(Face.Grin)
                 .At(() => SampleRect)
                 .Shows(new TutorialDemo()
@@ -663,23 +665,32 @@ internal static class TutorialContent {
                     })
                     .Wait(0.8f))
                 .NeedEditor(),
-            new TutorialStep("FX_TEXT", "Dynamic text",
-                "Enable ƒ on the Text property to dynamically build the displayed string with JavaScript.",
-                "Example: «Fps() < 60 ? 'slow... {Fps:0}' : 'smooth! {Fps:0}'». Tags like «{Fps:0}» inside the returned string also evaluate live.")
+            new TutorialStep("FX_MORE", "Number or array",
+                "What a formula returns depends on the property. Single values like rotation take one number, and values with several parts take an «[ ]» array—like this color.",
+                "Rotation is in degrees, like «Math.sin(Time() * 2) * 15». Colors are «[r, g, b, a]» from 0 to 1, position and size «[x, y]», scale «[x, y, z]». If the result doesn't fit, the plain value is used.")
                 .Looks(new(Eye.Normal, Brow.NormalHigh, Mouth.Shift))
                 .At(() => SampleRect)
                 .Shows(new TutorialDemo()
                     .Wait(0.3f)
                     .Do(() => {
                         PlainSample("{Fps:0} FPS");
-                        HudEditor.DemoTextFx(sample, "Fps() < 60 ? 'slow... {Fps:0}' : 'smooth! {Fps:0}'");
+                        HudEditor.DemoRotationFx(sample, "Math.sin(Time() * 2) * 15");
+                        HudEditor.DemoTextColorFx(sample, "[1, 0.6 + 0.4 * Math.sin(Time() * 3), 0.3, 1]");
                     })
                     .Wait(0.8f))
                 .NeedEditor(),
-            new TutorialStep("FX_EXAMPLES", "Formula examples",
-                "Common ƒ patterns:",
-                "Show only while held with «IsKeyHeld('Space') ? 1 : 0», or drive RGBA colors like «[1, Fps() / 144, 0, 1]». Multi-line scripts return the result of the last expression.")
+            new TutorialStep("FX_EXAMPLES", "Switches and text",
+                "Formulas can react to what you do, too. Hold <b>Space</b>—this opacity is «IsKeyHeld('Space') ? 1 : 0.3».",
+                "On/off switches take «true» or «false», and Text takes a string, like «Fps() < 60 ? 'slow' : 'smooth'». Multi-line scripts return the result of the last expression.")
                 .Looks(Face.Smile)
+                .At(() => SampleRect)
+                .Shows(new TutorialDemo()
+                    .Wait(0.3f)
+                    .Do(() => {
+                        PlainSample("{Fps:0} FPS");
+                        HudEditor.DemoSetAlphaFx(sample, "IsKeyHeld('Space') ? 1 : 0.3");
+                    })
+                    .Wait(0.8f))
                 .OnExit(PutSampleAway)
                 .NeedEditor()),
 
@@ -755,6 +766,7 @@ internal static class TutorialContent {
                 "<b>Copy example tag</b> copies a tag with your curve so you can paste it into any HUD text.",
                 "Use it directly like «{EasedValue(Second,0,300,curve(0,0;0.4,1.1;1,1))}». Click Save to store the curve and reference it by name in tags.")
                 .Looks(Face.Talk)
+                .At(() => UI.Easing.CurveEditor.CopyTagRect)
                 .NeedPage(OriginalMenuState.Easing)),
 
         new("settings", "Settings worth knowing", "Language, scale, tooltips, fonts, HUD editor options",

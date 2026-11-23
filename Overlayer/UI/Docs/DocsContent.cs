@@ -149,7 +149,7 @@ internal static class DocsContent {
     private static DocChapter BuildTagsAndText() => new(
         "tags",
         UISprite.Text128,
-        T("태그 & 텍스트 엔진", "Tags & Text Engine"),
+        T("태그 & 텍스트 엔진", "Text Engine"),
         T("{Tag} 문법, 인자 전달, 숫자 포맷, 인라인 수식, TMP 리치 텍스트, 내장 이펙트 태그를 다룹니다.",
           "Covers {Tag} syntax, arguments, numeric formatting, inline expressions, TMP rich text, and built-in effect tags."),
         DocSpecialKind.TagPlayground,
@@ -337,7 +337,7 @@ internal static class DocsContent {
     private static DocChapter BuildComponentsAndFx() => new(
         "components",
         UISprite.Cube128,
-        T("컴포넌트 & Fx 수식", "Components & Fx Expressions"),
+        T("컴포넌트 & Fx 수식", "Component & Fx"),
         T("Overlayer 전용 컴포넌트와 인스펙터 속성에 JavaScript 수식을 연결하는 Fx 기능을 설명합니다.",
           "Overlayer custom components and reactive Fx JavaScript expressions for inspector properties."),
         DocSpecialKind.None,
@@ -407,7 +407,7 @@ internal static class DocsContent {
     private static DocChapter BuildEasingAndCurves() => new(
         "easing",
         UISprite.Ease128,
-        T("가감속 & 커브 에디터", "Easing & Curve Editor"),
+        T("가감속 & 커브 에디터", "Easing"),
         T("31종 내장 이징 프리셋과 4가지 커스텀 커브 포맷, 저장된 커브 사용법을 다룹니다.",
           "Covers all 31 built-in O5Ease presets, 4 custom curve formats, and saved curves."),
         DocSpecialKind.None,
@@ -474,7 +474,7 @@ internal static class DocsContent {
     private static DocChapter BuildJavaScriptApi() => new(
         "js",
         UISprite.CodeBlock128,
-        T("JavaScript & V8 API", "JavaScript & V8 API"),
+        T("Javascript", "Javascript"),
         T("JS/Script 폴더에 .js 파일을 넣어 커스텀 태그, 설정 탭, 런타임 패치, Unity/CLR 제어를 작성할 수 있습니다.",
           "Author .js scripts in JS/Script for custom tags, settings tabs, runtime patches, and Unity/CLR interop."),
         DocSpecialKind.None,
@@ -603,7 +603,7 @@ internal static class DocsContent {
     private static DocChapter BuildPackagesAndModules() => new(
         "packages",
         UISprite.Box128,
-        T("패키지 (.o5cp) & 모듈", "Packages (.o5cp) & Modules"),
+        T("패키지 (.o5cp) & 모듈", "Packages & Modules"),
         T("캔버스와 리소스를 하나로 묶는 .o5cp 패키지와 게임별 모듈 확장 구조를 다룹니다.",
           "Covers .o5cp canvas packages with bundled assets and game-specific OverlayerModule extensions."),
         DocSpecialKind.None,

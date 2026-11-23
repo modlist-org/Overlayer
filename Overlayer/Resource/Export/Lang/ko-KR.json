@@ -334,6 +334,9 @@
     "REMOVE": "제거",
     "RENAME": "이름 바꾸기",
     "RENAMED_RESOURCE": "{0}의 이름을 변경했습니다.",
+    "RESET": "초기화",
+    "RESET_ALL_SETTINGS": "모든 설정 초기화",
+    "DESC_RESET_ALL_SETTINGS": "모든 설정을 기본값으로 되돌립니다. 길게 눌러 확인하세요.",
     "MOVED_RESOURCE": "{0}을(를) 이동했습니다.",
     "RENAMED_RESOURCE_TO": "{0}을 {1}(으)로 변경했습니다.",
     "RESOURCES": "자원",
@@ -397,6 +400,13 @@
     "DESC_SHOW_INTERNAL_IMAGES": "자원 탭과 이미지 선택 목록에 Overlayer의 내장 사진을 표시합니다.",
     "SHOW_INTERNAL_FONTS": "내부적 서체 표시",
     "DESC_SHOW_INTERNAL_FONTS": "자원 탭과 서체 선택 목록에 Overlayer의 내장 서체를 표시합니다.",
+    "HIDE_TUTORIAL": "튜토리얼 숨기기",
+    "DESC_HIDE_TUTORIAL": "왼쪽 메뉴에서 튜토리얼 탭을 숨깁니다.",
+    "TAB_LABELS": "탭 라벨",
+    "DESC_TAB_LABELS": "왼쪽 메뉴의 탭 라벨을 항상 표시할지, 마우스를 올렸을 때만 표시할지, 항상 숨길지 선택합니다.",
+    "TAB_LABELS_SHOW": "항상 표시",
+    "TAB_LABELS_HOVER": "호버 시 표시",
+    "TAB_LABELS_HIDE": "항상 숨기기",
     "INTERNAL_RESOURCES": "내부 리소스",
     "INTERNAL_RESOURCE_LABEL": "내장 리소스 (읽기 전용)",
     "RESOURCE_STORAGE_COPY": "복사",
@@ -666,6 +676,7 @@
     "O5CP_PRESET_READ_FAILED": "프리셋을 읽지 못했습니다: {0}",
     "O5CP_INSTALL_FAILED_DESC": "패키지를 설치할 수 없습니다.",
     "O5CP_INSTALL_FAILED_NO_REASON": "자세한 원인이 기록되지 않았습니다. 로그를 확인해 주세요.",
+    "WHEEL_ADJUST_SLIDER": "스크롤로 슬라이더 및 드롭다운 조정",
     "WINDOW_KEY": "단축키"
   }
 }

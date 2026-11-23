@@ -17,7 +17,7 @@ namespace Overlayer.Tutorial;
 internal static class TutorialPage {
     private static RectTransform list;
     private static TextMeshProUGUI intro;
-    private static O5Kit.Control.O5Button continueButton, resetButton;
+    private static O5Kit.Control.O5Button continueButton, resetButton, hideButton;
     internal static O5Kit.Behaviour.UIScrollController Scroller { get; private set; }
     private static readonly List<O5Kit.Core.O5Object> controls = [];
 
@@ -37,8 +37,19 @@ internal static class TutorialPage {
             Core.MainCore.ConfMgr.RequestSave();
             Refresh();
         });
+        var spacer = UiStyle.NewRect("Spacer", top);
+        spacer.gameObject.AddComponent<LayoutElement>().flexibleWidth = 1f;
+        hideButton = UiStyle.Button(UiStyle.Cell(top, 96f), "tutorial_hide", string.Empty, null);
+        HoldToConfirm.Attach(hideButton, () => {
+            Core.MainCore.Conf.HideTutorial.Value = true;
+            Core.MainCore.ConfMgr.RequestSave();
+            UI.Factory.MenuFactory.SetItemVisible((int)UI.OriginalMenuState.Tutorial, false);
+            UI.Factory.Page.PageSettings.SyncValues();
+        });
+        UiStyle.Tooltip(hideButton, () => Tutorial.Tr("TUTORIAL_HIDE_TIP", "Hold to hide the Tutorial tab. You can re-enable it in Settings."));
         controls.Add(continueButton);
         controls.Add(resetButton);
+        controls.Add(hideButton);
 
         list = UiStyle.NewRect("Chapters", content);
         var layout = UiStyle.Vertical(list.gameObject, 10f);
@@ -66,6 +77,7 @@ internal static class TutorialPage {
         continueButton.Text = Tutorial.Tr("TUTORIAL_CONTINUE", "Start / continue");
         continueButton.SetBlocked(Tutorial.Chapters.All(Tutorial.IsDone));
         resetButton.Text = Tutorial.Tr("TUTORIAL_RESET", "Mark all as not done");
+        hideButton.Text = Tutorial.Tr("TUTORIAL_HIDE", "Hide");
         foreach (var control in rowControls) {
             control.Dispose();
         }

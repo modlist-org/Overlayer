@@ -334,6 +334,9 @@
     "REMOVE": "Remove",
     "RENAME": "Rename",
     "RENAMED_RESOURCE": "Renamed {0}.",
+    "RESET": "Reset",
+    "RESET_ALL_SETTINGS": "Reset All Settings",
+    "DESC_RESET_ALL_SETTINGS": "Restores every setting to its default. Hold to confirm.",
     "MOVED_RESOURCE": "Moved {0}.",
     "RENAMED_RESOURCE_TO": "Renamed {0} to {1}.",
     "RESOURCES": "Resources",
@@ -398,6 +401,13 @@
     "DESC_SHOW_INTERNAL_IMAGES": "Show Overlayer's built-in images in the Resources tab and image pickers.",
     "SHOW_INTERNAL_FONTS": "Show Internal Fonts",
     "DESC_SHOW_INTERNAL_FONTS": "Show Overlayer's built-in fonts in the Resources tab and font pickers.",
+    "HIDE_TUTORIAL": "Hide Tutorial",
+    "DESC_HIDE_TUTORIAL": "Hide the Tutorial tab from the left menu.",
+    "TAB_LABELS": "Tab Labels",
+    "DESC_TAB_LABELS": "Controls whether the left menu shows tab labels always, only on hover, or stays icons-only.",
+    "TAB_LABELS_SHOW": "Show Always",
+    "TAB_LABELS_HOVER": "Show when Hover",
+    "TAB_LABELS_HIDE": "Hide Always",
     "INTERNAL_RESOURCES": "Internal",
     "INTERNAL_RESOURCE_LABEL": "Built-in (Read-only)",
     "RESOURCE_STORAGE_COPY": "Copy",
@@ -666,6 +676,7 @@
     "O5CP_PRESET_READ_FAILED": "Preset read failed: {0}",
     "O5CP_INSTALL_FAILED_DESC": "The package could not be installed.",
     "O5CP_INSTALL_FAILED_NO_REASON": "No reason was given; see the log for details.",
+    "WHEEL_ADJUST_SLIDER": "Adjust Sliders & Dropdowns with Scroll",
     "WINDOW_KEY": "Shortcut"
   }
 }

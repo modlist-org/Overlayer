@@ -403,7 +403,8 @@ internal static class PageDocs {
             label.rectTransform.anchorMax = Vector2.one;
             label.rectTransform.offsetMin = new Vector2(37f, 0f);
             label.rectTransform.offsetMax = new Vector2(-10f, 0f);
-            label.alignment = TextAlignmentOptions.MidlineLeft;
+            label.alignment = TextAlignmentOptions.Left;
+            label.verticalAlignment = VerticalAlignmentOptions.Middle;
             label.overflowMode = TextOverflowModes.Ellipsis;
             TmpCompat.SetNoWrap(label);
             label.raycastTarget = false;
@@ -475,6 +476,8 @@ internal static class PageDocs {
         if (!string.IsNullOrWhiteSpace(globalQuery)) {
             globalQuery = string.Empty;
             globalSearchInput?.Set(string.Empty, false);
+        } else if (chapterId == activeChapterId) {
+            return;
         }
         activeChapterId = chapterId;
         UpdateAllNavVisuals(animate: true);
@@ -2447,7 +2450,7 @@ internal static class PageDocs {
         return button;
     }
 
-    private static Sprite GetCheckSprite() {
+    internal static Sprite GetCheckSprite() {
         if (checkIconSprite != null) {
             return checkIconSprite;
         }
