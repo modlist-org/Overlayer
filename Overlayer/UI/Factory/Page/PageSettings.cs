@@ -240,7 +240,14 @@ internal static class PageSettings {
         objects[startupToggleTr] = (overlayerText.gameObject, startupRow.gameObject);
 
         var setupRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
-        var setupButton = O5Factory.Button(O5KitAdapters.Ctx, setupRow, "run_setup", new O5ButtonOptions { Text = "Run Setup Again", OnClick = Setup.SetupWizard.Open });
+        var setupButton = O5Factory.Button(O5KitAdapters.Ctx, setupRow, "run_setup", new O5ButtonOptions { Text = "Run Setup Again", OnClick = () => {
+                // The intro belongs to the first run; Shift replays it.
+                if (O5Kit.Input.O5Input.GetKey(KeyCode.LeftShift) || O5Kit.Input.O5Input.GetKey(KeyCode.RightShift)) {
+                    Setup.SetupIntro.Play();
+                } else {
+                    Setup.SetupWizard.Open();
+                }
+            } });
         var setupButtonTr = setupButton.Label.gameObject.AddComponent<TextLocalization>().Init("SETUP_RUN_AGAIN", "Run Setup Again");
         objects[setupButtonTr] = (overlayerText.gameObject, setupRow.gameObject);
 

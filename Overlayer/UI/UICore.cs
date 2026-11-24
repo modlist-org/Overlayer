@@ -156,6 +156,8 @@ public static class UICore {
     }
 
     public static RectTransform Panel;
+    /// <summary>Top-left window logo (the setup intro lands its logo here).</summary>
+    public static RectTransform TopBarLogo;
     public static Image CloseImage;
     public const float MENU_WIDTH = 210f;
     public const float MENU_COLLAPSED_WIDTH = 66f;
@@ -363,6 +365,7 @@ public static class UICore {
             logoImage.sprite = MainCore.Spr.Get(UISprite.OV5LogoOutline128);
 
             var logoRect = logo.GetComponent<RectTransform>();
+            TopBarLogo = logoRect;
             logoRect.anchorMin = new(0, 0.5f);
             logoRect.anchorMax = new(0, 0.5f);
             logoRect.pivot = new(0, 0.5f);
@@ -548,6 +551,44 @@ public static class UICore {
         resetSequence = O5Seq.New()
             .Append(done => Panel.TAnchorPos(targetPosition, 0.26f, O5Ease.OutExpo, done))
             .Join(done => Panel.TSizeDelta(targetSize, 0.26f, O5Ease.OutExpo, done))
+            .Play();
+    }
+
+    /// <summary>Instantly fills the screen with the window (the setup intro plays full screen).</summary>
+    public static void FillScreenNow() {
+        if (Panel == null || CanvasObj == null) {
+            return;
+        }
+        panelTweener?.Kill();
+        PanelTransition.Kill();
+        resetSequence?.Kill();
+        Canvas.ForceUpdateCanvases();
+        Panel.anchoredPosition = Vector2.zero;
+        Panel.sizeDelta = CanvasObj.GetComponent<RectTransform>().rect.size;
+        isPanelMaximized = true;
+    }
+
+    /// <summary>When the window is maximized (or fills the screen), eases it back to its default
+    /// size, centered. Used by the setup intro's reveal.</summary>
+    public static void RestoreDefaultBoundsIfFull(float duration, O5Ease ease) {
+        if (Panel == null || CanvasObj == null) {
+            return;
+        }
+        Vector2 canvasSize = CanvasObj.GetComponent<RectTransform>().rect.size;
+        bool full = isPanelMaximized
+            || (Panel.sizeDelta.x >= canvasSize.x * 0.95f && Panel.sizeDelta.y >= canvasSize.y * 0.95f);
+        if (!full) {
+            return;
+        }
+        isPanelMaximized = false;
+        panelTweener?.Kill();
+        resetSequence?.Kill();
+        Vector2 size = DefaultPanelSize;
+        LastPanelPosition = Vector2.zero;
+        LastPanelSize = size;
+        resetSequence = O5Seq.New()
+            .Append(done => Panel.TAnchorPos(Vector2.zero, duration, ease, done))
+            .Join(done => Panel.TSizeDelta(size, duration, ease, done))
             .Play();
     }
 

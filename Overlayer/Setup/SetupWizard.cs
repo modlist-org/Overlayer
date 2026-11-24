@@ -80,6 +80,17 @@ internal static class SetupWizard {
 
     public static bool IsOpen => root != null;
 
+    /// <summary>Set by <see cref="SetupIntro"/>: keeps the opened wizard invisible (its open
+    /// animation waits) until the intro's title and logo have landed.</summary>
+    internal static bool HoldReveal;
+
+    /// <summary>Ends <see cref="HoldReveal"/> with the wizard fully opaque at once: the intro's
+    /// backdrop fade then reveals it, so the page under the wizard never shows through.</summary>
+    internal static void RevealNow() {
+        HoldReveal = false;
+        openTime = OpenSeconds;
+    }
+
     private static string T(string key, string fallback) => MainCore.Tr.Get(key, fallback);
 
     private static float OutQuint(float t) => 1f - Mathf.Pow(1f - Mathf.Clamp01(t), 5f);
@@ -101,6 +112,40 @@ internal static class SetupWizard {
         Build();
         Show(Step.Welcome);
         UISound.PlayOpen();
+    }
+
+    /// <summary>For <see cref="SetupIntro"/>: the current page title and where its top-left
+    /// corner rests once the page has finished sliding in (world space).</summary>
+    internal static bool TryGetTitleRest(out TextMeshProUGUI title, out Vector3 restTopLeft) {
+        title = null;
+        restTopLeft = Vector3.zero;
+        if (page == null || page.Title == null || column == null || card == null) {
+            return false;
+        }
+        title = page.Title;
+        RectTransform rt = title.rectTransform;
+        Rect r = rt.rect;
+        Vector3 topLeft = rt.TransformPoint(new Vector3(r.xMin, r.yMax, 0f));
+        // Undo the page's current slide offset and the card's opening scale (it rests at 1),
+        // otherwise the spot lands slightly toward the card's center.
+        Vector3 slide = page.Rect.parent.TransformVector(new Vector3(page.Rect.anchoredPosition.x, 0f, 0f));
+        Vector3 center = card.TransformPoint(card.rect.center);
+        float cardScale = Mathf.Max(0.0001f, card.localScale.x);
+        restTopLeft = center + (topLeft - slide - center) / cardScale;
+        return true;
+    }
+
+    /// <summary>Current opening scale of the wizard content (1 once open).</summary>
+    internal static float ContentScale => card != null ? card.localScale.x : 1f;
+
+    /// <summary>Settles the wizard's layout right away (the intro measures it on the first frame).</summary>
+    internal static void ForceLayout() {
+        if (column != null) {
+            LayoutRebuilder.ForceRebuildLayoutImmediate(column);
+        }
+        if (page != null && page.Host != null) {
+            LayoutRebuilder.ForceRebuildLayoutImmediate(page.Host);
+        }
     }
 
     private static void Close(bool startTutorial) {
@@ -188,11 +233,11 @@ internal static class SetupWizard {
             pendingSince = Time.realtimeSinceStartup;
         }
         if (Time.realtimeSinceStartup - pendingSince < StartDelay || PlaybackState.IsPlaying
-            || HudEditor.IsOpen || Tutorial.Tutorial.IsRunning) {
+            || HudEditor.IsOpen || Tutorial.Tutorial.IsRunning || SetupIntro.IsPlaying) {
             return;
         }
-        UICore.Open();
-        Open();
+        // The intro opens the window, plays, then hands over to Open().
+        SetupIntro.Play();
     }
 
     public static void Tick() {
@@ -212,7 +257,7 @@ internal static class SetupWizard {
             root.SetAsLastSibling();
         }
         float dt = Mathf.Min(Time.unscaledDeltaTime, 0.1f);
-        openTime += dt;
+        openTime = HoldReveal ? 0f : openTime + dt;
         float opened = OutQuint(openTime / OpenSeconds);
         rootGroup.alpha = opened;
         float cardScale = Mathf.Lerp(RestingScale, 1f, opened);

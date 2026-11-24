@@ -133,6 +133,7 @@ public sealed class OverlayerRuntime {
         UI.Factory.Page.PageDocs.Tick();
         Tutorial.Tutorial.Tick();
         Setup.SetupWizard.Tick();
+        Setup.SetupIntro.Tick();
         UI.UISound.Tick();
     }
 
