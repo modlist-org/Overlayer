@@ -277,7 +277,8 @@ public static class O5KitAdapters {
             config: new O5Config(),
             theme: UI.UIColors.BuildCurrentTheme(),
             sprites: new OverlayerSpriteProvider(),
-            fonts: _fonts);
+            fonts: _fonts,
+            shapes: MainCore.Spr.Shapes);
         SyncConfig();
 
         O5ShortcutManager.IsSuspended = () => O5Kit.Control.O5InputBlocker.IsEditing || UI.Utility.KeyCapture.SuppressShortcuts;

@@ -114,6 +114,12 @@ public static class MainCore {
             }
         }
         try {
+            if (UI.UICore.Canvas != null && UI.UICore.CanvasObj.activeInHierarchy) {
+                Spr.Shapes.Tick(UI.UICore.Canvas.scaleFactor);
+            }
+        } catch {
+        }
+        try {
             OverlayCore.Tick();
         } catch (Exception e) {
             try {

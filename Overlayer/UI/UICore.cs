@@ -70,6 +70,7 @@ public static class UICore {
         CanvasScaler.matchWidthOrHeight = 0.5f;
 
         CanvasObj.AddComponent<GraphicRaycaster>();
+        MainCore.Spr.Shapes.Track(CanvasObj.transform);
 
         CreatePanel();
         ResizeHandle.CreateResizeHandles(O5KitAdapters.Ctx, Panel, CanvasObj.GetComponent<RectTransform>());

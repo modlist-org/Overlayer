@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using Object = UnityEngine.Object;
+using O5Kit.Core;
 using O5Kit.Resource;
 
 namespace Overlayer.Resource;
@@ -27,6 +28,9 @@ public sealed class SpriteManager(ResourceManager resource) : IDisposable {
     private readonly O5Resources o5 = O5Resources.Bundled();
     private readonly Dictionary<object, Sprite> cache = [];
     private Texture2D smoothCircleTex;
+
+    /// <summary>Scale-aware rounded slice sprites (shared with the O5Kit context).</summary>
+    public O5ShapeSprites Shapes { get; } = new();
 
     public static Sprite Create(Texture2D texture)
         => texture == null ? null : Sprite.Create(
@@ -179,23 +183,6 @@ public sealed class SpriteManager(ResourceManager resource) : IDisposable {
         return sprite;
     }
 
-    private Sprite GetSliced(O5Asset asset, float ppui, Vector4 border) {
-        object key = (asset, ppui, border);
-        if (cache.TryGetValue(key, out Sprite sprite)) {
-            return sprite;
-        }
-
-        Texture2D tex = o5.GetTexture(asset);
-        if (tex == null) {
-            return null;
-        }
-
-        tex.wrapMode = TextureWrapMode.Clamp;
-        sprite = CreateSliced(tex, ppui, border);
-        cache[key] = sprite;
-        return sprite;
-    }
-
     public Sprite Get(UISprite sprite) {
         if (sprite == UISprite.Circle128) {
             if (cache.TryGetValue(sprite, out Sprite cached)) {
@@ -209,29 +196,8 @@ public sealed class SpriteManager(ResourceManager resource) : IDisposable {
         return spriteMap.TryGetValue(sprite, out Asset asset) ? Get(asset) : null;
     }
 
-    public Sprite Get(UISliceSprite sprite) {
-        Vector4 border = sprite == UISliceSprite.CircleHalf128P512
-            ? new Vector4(64, 0, 64, 64)
-            : new Vector4(64, 64, 64, 64);
-
-        if (o5SliceMap.TryGetValue(sprite, out (O5Asset asset, float ppui) o5Data)) {
-            return GetSliced(
-                o5Data.asset,
-                o5Data.ppui,
-                border
-            );
-        }
-
-        if (!sliceMap.TryGetValue(sprite, out (Asset asset, float ppui) data)) {
-            return null;
-        }
-
-        return GetSliced(
-            data.asset,
-            data.ppui,
-            border
-        );
-    }
+    public Sprite Get(UISliceSprite sprite)
+        => shapeMap.TryGetValue(sprite, out O5Shape shape) ? Shapes.Get(shape) : null;
 
     public void Dispose() {
         foreach (Sprite sprite in cache.Values) {
@@ -243,6 +209,7 @@ public sealed class SpriteManager(ResourceManager resource) : IDisposable {
             Object.Destroy(smoothCircleTex);
             smoothCircleTex = null;
         }
+        Shapes.Dispose();
         o5.Dispose();
     }
 
@@ -250,15 +217,13 @@ public sealed class SpriteManager(ResourceManager resource) : IDisposable {
         [UISprite.OV5LogoOutline128] = Asset.OV5LogoOutline128,
     };
 
-    private readonly Dictionary<UISliceSprite, (Asset asset, float ppui)> sliceMap = new() {
-        [UISliceSprite.CircleOutline128O16P512] = (Asset.CircleOutline128O16, 512f),
-    };
-
-    private readonly Dictionary<UISliceSprite, (O5Asset asset, float ppui)> o5SliceMap = new() {
-        [UISliceSprite.Circle128P512] = (O5Asset.Circle128, 512f),
-        [UISliceSprite.Circle128P1024] = (O5Asset.Circle128, 1024f),
-        [UISliceSprite.CircleHalf128P512] = (O5Asset.CircleHalf128, 512f),
-        [UISliceSprite.CircleOutline128O32P512] = (O5Asset.CircleOutline128O32, 512f),
-        [UISliceSprite.CircleOutline128O32P1024] = (O5Asset.CircleOutline128O32, 1024f),
+    // Canvas units = texels * 100 / PPU of the former 128px art (64px corner border).
+    private static readonly Dictionary<UISliceSprite, O5Shape> shapeMap = new() {
+        [UISliceSprite.Circle128P512] = new(12.5f),
+        [UISliceSprite.Circle128P1024] = new(6.25f),
+        [UISliceSprite.CircleHalf128P512] = new(12.5f, 0f, true),
+        [UISliceSprite.CircleOutline128O16P512] = new(12.5f, 3.125f),
+        [UISliceSprite.CircleOutline128O32P512] = new(12.5f, 6.25f),
+        [UISliceSprite.CircleOutline128O32P1024] = new(6.25f, 3.125f),
     };
 }
