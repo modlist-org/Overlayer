@@ -235,6 +235,24 @@ public static class MenuFactory {
             if (UnityUtils.AsPointerEventData(e) is { } ped && ped.button != PointerEventData.InputButton.Left) {
                 return;
             }
+            if (state == (int)OriginalMenuState.Credits) {
+                bool shift = O5Kit.Input.O5Input.GetKey(KeyCode.LeftShift) || O5Kit.Input.O5Input.GetKey(KeyCode.RightShift);
+                if (shift && !Page.KkitutRoom.Active) {
+                    UISound.PlayConfirm();
+                    if (UICore.CurrentMenuState != state) {
+                        Page.KkitutRoom.Enter(instant: true);
+                        SetState(state);
+                    } else {
+                        Page.KkitutRoom.Enter();
+                    }
+                    return;
+                }
+                if (UICore.CurrentMenuState == state && Page.KkitutRoom.Active) {
+                    UISound.PlayConfirm();
+                    Page.KkitutRoom.Exit(false);
+                    return;
+                }
+            }
             if (UICore.CurrentMenuState != state) {
                 UISound.PlayConfirm();
                 SetState(state);
@@ -242,6 +260,48 @@ public static class MenuFactory {
         });
 
         return menuItem;
+    }
+
+    private static Image creditsSecretIcon;
+
+    /// <summary>Cross-fades the Credits star with <paramref name="sprite"/> while the secret room is open.</summary>
+    internal static void SetCreditsSecretIcon(Sprite sprite, bool on) {
+        MenuItem credits = null;
+        foreach (var it in items) {
+            if (it.state == (int)OriginalMenuState.Credits && it.obj != null) {
+                credits = it;
+                break;
+            }
+        }
+        if (credits == null) {
+            return;
+        }
+        Transform starTr = credits.obj.transform.Find("Icon");
+        RectTransform starRect = starTr != null ? starTr.GetComponent<RectTransform>() : null;
+        if (on && creditsSecretIcon == null && sprite != null && starRect != null) {
+            var go = new GameObject("SecretIcon");
+            go.transform.SetParent(credits.obj.transform, false);
+            var r = go.AddComponent<RectTransform>();
+            r.anchorMin = starRect.anchorMin;
+            r.anchorMax = starRect.anchorMax;
+            r.pivot = starRect.pivot;
+            r.anchoredPosition = starRect.anchoredPosition;
+            r.sizeDelta = starRect.sizeDelta;
+            creditsSecretIcon = go.AddComponent<Image>();
+            creditsSecretIcon.sprite = sprite;
+            creditsSecretIcon.preserveAspect = true;
+            creditsSecretIcon.raycastTarget = false;
+            creditsSecretIcon.canvasRenderer.SetAlpha(0f);
+        }
+        if (starRect != null) {
+            var star = starRect.GetComponent<Graphic>();
+            if (star != null) {
+                star.CrossFadeAlpha(on ? 0f : 1f, 0.25f, true);
+            }
+        }
+        if (creditsSecretIcon != null) {
+            creditsSecretIcon.CrossFadeAlpha(on ? 1f : 0f, 0.25f, true);
+        }
     }
 
     /// <summary>Fades all menu item labels in or out.</summary>

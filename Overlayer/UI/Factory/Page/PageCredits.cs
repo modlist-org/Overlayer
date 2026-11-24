@@ -12,6 +12,32 @@ using TMPro;
 namespace Overlayer.UI.Factory.Page;
 
 internal static class PageCredits {
+    private static Sprite logoSprite;
+
+    // Large art loaded by manifest path (not an Asset enum, so never listed
+    // as an internal resource), with a mip chain so it stays sharp and
+    // alias-free at any UI scale.
+    internal static Sprite LoadMipSprite(string path) {
+        byte[] data = MainCore.Res.Load(path);
+        if (data == null || data.Length == 0) {
+            return null;
+        }
+        var tex = new Texture2D(2, 2, TextureFormat.RGBA32, true, false);
+        if (!O5Kit.Compat.O5Texture.LoadImage(tex, data)) {
+            UnityEngine.Object.Destroy(tex);
+            return null;
+        }
+        tex.filterMode = FilterMode.Trilinear;
+        tex.wrapMode = TextureWrapMode.Clamp;
+        tex.hideFlags = HideFlags.HideAndDontSave;
+        var sprite = Sprite.Create(tex, new Rect(0f, 0f, tex.width, tex.height), new Vector2(0.5f, 0.5f));
+        sprite.hideFlags = HideFlags.HideAndDontSave;
+        return sprite;
+    }
+
+    // 512px render of ov5_logo.svg (the 128px icon upscales blocky).
+    private static Sprite LogoSprite() => logoSprite != null ? logoSprite : logoSprite = LoadMipSprite("Image.OV5Logo512.png");
+
     public static void Create(RectTransform parent) {
         GameObject logo = new("Logo");
         logo.transform.SetParent(parent, false);
@@ -24,7 +50,7 @@ internal static class PageCredits {
         logoRect.anchoredPosition = new Vector2(0, 150);
 
         var logoImg = logo.AddComponent<Image>();
-        logoImg.sprite = MainCore.Spr.Get(UISprite.OV5LogoOutline128);
+        logoImg.sprite = LogoSprite() ?? MainCore.Spr.Get(UISprite.OV5LogoOutline128);
         logoImg.preserveAspect = true;
 
         GameObject title = new("Title");
@@ -81,5 +107,7 @@ internal static class PageCredits {
         creditsTmp.color = Color.white;
         creditsTmp.lineSpacing = 18;
         creditsTmp.alignment = TextAlignmentOptions.Center;
+
+        KkitutRoom.Build(parent);
     }
 }
