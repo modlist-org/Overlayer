@@ -40,6 +40,9 @@ internal static class PageSettings {
     private static O5Slider uiScaleSlider;
     private static O5Slider sliderSensitivitySlider;
     private static O5Slider animationSpeedSlider;
+    private static O5Slider windowOpacitySlider;
+    private static O5Slider hudOpacitySlider;
+    private static O5Slider tooltipOpacitySlider;
     private static O5Slider soundVolSlider;
     private static O5Slider snapDistanceSlider;
     private static O5Slider gridSizeSlider;
@@ -54,6 +57,7 @@ internal static class PageSettings {
     private static O5Toggle showInternalFontsToggle;
     private static O5Toggle hideTutorialToggle;
     private static O5Dropdown<TabLabelMode> tabLabelModeDropdown;
+    private static O5Dropdown<PanelFadeMode> fadeModeDropdown;
     private static O5Toggle scrollEasingToggle;
     private static O5Dropdown<string> palettePresetDropdown;
     private static O5ColorPicker paletteColorPicker;
@@ -81,6 +85,10 @@ internal static class PageSettings {
         wheelAdjustToggle?.Set(MainCore.Conf.WheelAdjustSlider, false);
         sliderSensitivitySlider?.Set(MainCore.Conf.SliderSensitivity, false);
         animationSpeedSlider?.Set(MainCore.Conf.AnimationSpeed, false);
+        windowOpacitySlider?.Set(MainCore.Conf.WindowOpacity, false);
+        hudOpacitySlider?.Set(MainCore.Conf.HudWindowOpacity, false);
+        tooltipOpacitySlider?.Set(MainCore.Conf.TooltipOpacity, false);
+        tooltipOpacitySlider?.SetBlocked(!MainCore.Conf.Tooltip.Value, true);
         soundVolSlider?.Set(MainCore.Conf.UISoundVolume, false);
         snapToggle?.Set(MainCore.Conf.HudSnap, false);
         snapDistanceSlider?.Set(MainCore.Conf.HudSnapDistance, false);
@@ -89,6 +97,7 @@ internal static class PageSettings {
         showInternalFontsToggle?.Set(MainCore.Conf.ShowInternalFonts.Value, false);
         hideTutorialToggle?.Set(MainCore.Conf.HideTutorial.Value, false);
         tabLabelModeDropdown?.Set(MainCore.Conf.TabLabelMode.Value, false);
+        fadeModeDropdown?.Set(MainCore.Conf.PanelFadeMode.Value, false);
         scrollEasingToggle?.Set(MainCore.Conf.ScrollEasing.Value, false);
         string configuredColor = MainCore.Conf.UIBaseColor.Value;
         Color baseColor = UIColors.IsStaticToken(configuredColor)
@@ -260,6 +269,7 @@ internal static class PageSettings {
             MainCore.Conf.Tooltip = toggle;
             O5KitAdapters.SyncConfig();
             MainCore.ConfMgr.RequestSave();
+            tooltipOpacitySlider?.SetBlocked(!toggle);
         };
         tooltipToggle.Rect.AddToolTip(O5KitAdapters.Ctx, () => MainCore.Tr.Get("DESC_SHOW_TOOLTIP", "This is a Tooltip!"));
         var tooltipToggleTr = tooltipToggle.Label.gameObject.AddComponent<TextLocalization>().Init("SHOW_TOOLTIP", "Show Tooltip");
@@ -389,6 +399,34 @@ internal static class PageSettings {
         refreshTabLabelDropdown();
         objects[tabLabelTr] = (overlayerText.gameObject, tabLabelRow.gameObject);
 
+        var fadeModeRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
+        static string FadeModeDisplay(PanelFadeMode mode) {
+            string modeLabel = mode switch {
+                PanelFadeMode.FlyIn => "Fly In",
+                PanelFadeMode.Fade => "Fade",
+                PanelFadeMode.DiagonalSwipe => "Diagonal Swipe",
+                PanelFadeMode.Taskbar => "Taskbar",
+                PanelFadeMode.Clock => "Clock",
+                _ => mode.ToString(),
+            };
+            return $"Fade Mode: {modeLabel}";
+        }
+        fadeModeDropdown = O5Factory.DropDown(O5KitAdapters.Ctx, fadeModeRow, "panel_fade_mode", new O5DropdownOptions<PanelFadeMode> {
+            DefaultValue = defSet.PanelFadeMode.Value,
+            Value = MainCore.Conf.PanelFadeMode.Value,
+            Values = [PanelFadeMode.FlyIn, PanelFadeMode.Fade, PanelFadeMode.DiagonalSwipe, PanelFadeMode.Taskbar, PanelFadeMode.Clock],
+            Display = FadeModeDisplay,
+            OnChanged = mode => {
+                MainCore.Conf.PanelFadeMode.Value = mode;
+                MainCore.ConfMgr.RequestSave();
+            }
+        });
+        fadeModeDropdown.Rect.AddToolTip(O5KitAdapters.Ctx, () => "How the Overlayer panel appears and disappears when toggled.");
+        var fadeModeTr = fadeModeDropdown.Label.gameObject.AddComponent<TextLocalization>();
+        fadeModeTr.Format = _ => FadeModeDisplay(fadeModeDropdown.Value);
+        fadeModeTr.Init("FADE_MODE", "Fade Mode");
+        objects[fadeModeTr] = (overlayerText.gameObject, fadeModeRow.gameObject);
+
 
         var uiScaleRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
         var uiScale = O5Factory.Slider(O5KitAdapters.Ctx, uiScaleRow, "ui_scale", new O5SliderOptions { DefaultValue = defSet.UIScale, Min = 0.8f, Max = 1.6f, Value = MainCore.Conf.UIScale, Format = "0.00x", Label = "UI Scale", ClampDrag = true, ClampInput = true, DragFilter = value => Math.Round(value, 2), InputFilter = value => Math.Round(value, 2), OnChanged = value => {
@@ -437,6 +475,32 @@ internal static class PageSettings {
         var animationSpeedTr = animationSpeedSlider.Label.gameObject.AddComponent<TextLocalization>().Init("ANIMATION_SPEED", "Animation Speed");
         objects[animationSpeedTr] = (overlayerText.gameObject, animationSpeedRow.gameObject);
 
+        var windowOpacityRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
+        windowOpacitySlider = O5Factory.Slider(O5KitAdapters.Ctx, windowOpacityRow, "window_opacity", new O5SliderOptions { DefaultValue = defSet.WindowOpacity, Min = 0.2f, Max = 1.0f, Value = MainCore.Conf.WindowOpacity, Format = "0.00", Label = "Window Opacity", ClampDrag = true, ClampInput = true, DragFilter = value => Math.Round(value, 2), InputFilter = value => Math.Round(value, 2), OnChanged = value => {
+                MainCore.Conf.WindowOpacity = (float)value;
+                PanelTransition.ApplyOpacity();
+            }, OnComplete = value => {
+                MainCore.Conf.WindowOpacity = (float)value;
+                PanelTransition.ApplyOpacity();
+                MainCore.ConfMgr.RequestSave();
+            } });
+        windowOpacitySlider.Rect.AddToolTip(O5KitAdapters.Ctx, () => "Opacity of the Overlayer window.");
+        objects[windowOpacitySlider.Label.gameObject.AddComponent<TextLocalization>().Init("WINDOW_OPACITY", "Window Opacity")] = (overlayerText.gameObject, windowOpacityRow.gameObject);
+
+        var tooltipOpacityRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
+        tooltipOpacitySlider = O5Factory.Slider(O5KitAdapters.Ctx, tooltipOpacityRow, "tooltip_opacity", new O5SliderOptions { DefaultValue = defSet.TooltipOpacity, Min = 0.2f, Max = 1.0f, Value = MainCore.Conf.TooltipOpacity, Format = "0.00", Label = "Tooltip Opacity", ClampDrag = true, ClampInput = true, DragFilter = value => Math.Round(value, 2), InputFilter = value => Math.Round(value, 2), OnChanged = value => {
+                MainCore.Conf.TooltipOpacity = (float)value;
+                O5KitAdapters.SyncConfig();
+            }, OnComplete = value => {
+                MainCore.Conf.TooltipOpacity = (float)value;
+                O5KitAdapters.SyncConfig();
+                MainCore.ConfMgr.RequestSave();
+            } });
+        tooltipOpacitySlider.SetBlocked(!MainCore.Conf.Tooltip.Value, true);
+        tooltipOpacitySlider.Rect.AddToolTip(O5KitAdapters.Ctx, () => "Opacity of tooltips.");
+        objects[tooltipOpacitySlider.Label.gameObject.AddComponent<TextLocalization>().Init("TOOLTIP_OPACITY", "Tooltip Opacity")] = (overlayerText.gameObject, tooltipOpacityRow.gameObject);
+
+
         var scrollEasingRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
         scrollEasingToggle = O5Factory.Toggle(O5KitAdapters.Ctx, scrollEasingRow, "scroll_easing", new O5ToggleOptions {
             DefaultValue = defSet.ScrollEasing,
@@ -465,6 +529,13 @@ internal static class PageSettings {
         var soundVolTr = soundVolSlider.Label.gameObject.AddComponent<TextLocalization>().Init("UI_SOUND_VOLUME", "UI Sound Volume");
         objects[soundVolTr] = (overlayerText.gameObject, soundVolRow.gameObject);
 
+        // Split the long Overlayer block into sections (rows are re-ordered under new headers).
+        MoveToSection(content, "INTERFACE", "Interface", [
+            tabLabelRow, fadeModeRow, uiScaleRow, windowOpacityRow, tooltipOpacityRow,
+            animationSpeedRow, scrollEasingRow, soundVolRow]);
+        MoveToSection(content, "INPUT", "Input", [
+            middleClickRow, rawInputRow, sliderSensitivityRow, wheelAdjustRow]);
+
         BuildPaletteSettings(content, overlayerText);
 
         BuildFontPickers(content, objects, overlayerText);
@@ -472,6 +543,23 @@ internal static class PageSettings {
         BuildHudEditor(content, defSet);
 
         BuildResetAll(content);
+    }
+
+    // Appends an H1 header plus the given rows (in order) to the end of
+    // content, and points their search entries at the new header.
+    private static void MoveToSection(GameObject content, string key, string title, RectTransform[] rows) {
+        var headerRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
+        O5Factory.ControlTextH1(O5KitAdapters.Ctx, headerRow).gameObject.AddComponent<TextLocalization>().Init(key, title);
+        var moved = new HashSet<GameObject>();
+        foreach (var row in rows) {
+            row.SetAsLastSibling();
+            moved.Add(row.gameObject);
+        }
+        foreach (var loc in objects.Keys.ToList()) {
+            if (moved.Contains(objects[loc].MainRow)) {
+                objects[loc] = (headerRow.gameObject, objects[loc].MainRow);
+            }
+        }
     }
 
     private static void BuildPaletteSettings(GameObject content, TextMeshProUGUI overlayerText) {
@@ -614,6 +702,16 @@ internal static class PageSettings {
         gridSizeSlider.Rect.AddToolTip(ctx, () => MainCore.Tr.Get("DESC_HUD_GRID_SIZE", "Spacing of the HUD editor grid, in HUD units."));
         var gridTr = gridSizeSlider.Label.gameObject.AddComponent<TextLocalization>().Init("HUD_GRID_SIZE", "Grid Size");
         objects[gridTr] = (headerRow.gameObject, gridRow.gameObject);
+
+        var hudOpacityRow = O5Factory.Row(ctx, content.transform);
+        hudOpacitySlider = O5Factory.Slider(ctx, hudOpacityRow, "hud_window_opacity", new O5SliderOptions { DefaultValue = defSet.HudWindowOpacity, Min = 0.2f, Max = 1.0f, Value = MainCore.Conf.HudWindowOpacity, Format = "0.00", Label = "HUD Window Opacity", ClampDrag = true, ClampInput = true, DragFilter = value => Math.Round(value, 2), InputFilter = value => Math.Round(value, 2), OnChanged = value => {
+                MainCore.Conf.HudWindowOpacity = (float)value;
+            }, OnComplete = value => {
+                MainCore.Conf.HudWindowOpacity = (float)value;
+                MainCore.ConfMgr.RequestSave();
+            } });
+        hudOpacitySlider.Rect.AddToolTip(ctx, () => "Opacity of the HUD editor's toolbar, panels and bottom bar.");
+        objects[hudOpacitySlider.Label.gameObject.AddComponent<TextLocalization>().Init("HUD_WINDOW_OPACITY", "HUD Window Opacity")] = (headerRow.gameObject, hudOpacityRow.gameObject);
     }
 
     private static void BuildResetAll(GameObject content) {

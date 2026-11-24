@@ -12,6 +12,14 @@ public enum TabLabelMode {
     Hide,
 }
 
+public enum PanelFadeMode {
+    FlyIn,
+    Fade,
+    DiagonalSwipe,
+    Taskbar,
+    Clock,
+}
+
 public sealed class CoreSettings : ISettingsFile {
     public static string DefaultWindowKey =>
         RuntimeInformation.IsOSPlatform(OSPlatform.Linux) ? "Ctrl+BackQuote" : "Alt+BackQuote";
@@ -31,6 +39,9 @@ public sealed class CoreSettings : ISettingsFile {
     public FxValue<float> SliderSensitivity = new(1.0f);
     public FxValue<bool> WheelAdjustSlider = new(true);
     public FxValue<float> AnimationSpeed = new(1.0f);
+    public FxValue<float> WindowOpacity = new(1.0f);
+    public FxValue<float> HudWindowOpacity = new(1.0f);
+    public FxValue<float> TooltipOpacity = new(1.0f);
     public FxValue<bool> ScrollEasing = new(true);
     public FxValue<float> UISoundVolume = new(0.4f);
     public FxValue<bool> EnableJSScriptWatcher = new(true);
@@ -63,6 +74,7 @@ public sealed class CoreSettings : ISettingsFile {
     public FxValue<bool> TutorialOffered = new(false);
     public FxValue<bool> HideTutorial = new(false);
     public FxValue<TabLabelMode> TabLabelMode = new(IO.TabLabelMode.Hover);
+    public FxValue<PanelFadeMode> PanelFadeMode = new(IO.PanelFadeMode.FlyIn);
     public FxValue<bool> SetupPending = new(false);
 
     public JToken Serialize() {
@@ -82,6 +94,9 @@ public sealed class CoreSettings : ISettingsFile {
             [nameof(SliderSensitivity)] = IOUtils.WriteFx(SliderSensitivity),
             [nameof(WheelAdjustSlider)] = IOUtils.WriteFx(WheelAdjustSlider),
             [nameof(AnimationSpeed)] = IOUtils.WriteFx(AnimationSpeed),
+            [nameof(WindowOpacity)] = IOUtils.WriteFx(WindowOpacity),
+            [nameof(HudWindowOpacity)] = IOUtils.WriteFx(HudWindowOpacity),
+            [nameof(TooltipOpacity)] = IOUtils.WriteFx(TooltipOpacity),
             [nameof(ScrollEasing)] = IOUtils.WriteFx(ScrollEasing),
             [nameof(UISoundVolume)] = IOUtils.WriteFx(UISoundVolume),
             [nameof(EnableJSScriptWatcher)] = IOUtils.WriteFx(EnableJSScriptWatcher),
@@ -114,6 +129,7 @@ public sealed class CoreSettings : ISettingsFile {
             [nameof(TutorialOffered)] = IOUtils.WriteFx(TutorialOffered),
             [nameof(HideTutorial)] = IOUtils.WriteFx(HideTutorial),
             [nameof(TabLabelMode)] = IOUtils.WriteFx(TabLabelMode),
+            [nameof(PanelFadeMode)] = IOUtils.WriteFx(PanelFadeMode),
             [nameof(SetupPending)] = IOUtils.WriteFx(SetupPending)
         };
     }
@@ -140,6 +156,9 @@ public sealed class CoreSettings : ISettingsFile {
         SliderSensitivity = IOUtils.ReadFx(token, nameof(SliderSensitivity), SliderSensitivity);
         WheelAdjustSlider = IOUtils.ReadFx(token, nameof(WheelAdjustSlider), WheelAdjustSlider);
         AnimationSpeed = IOUtils.ReadFx(token, nameof(AnimationSpeed), AnimationSpeed);
+        WindowOpacity = IOUtils.ReadFx(token, nameof(WindowOpacity), WindowOpacity);
+        HudWindowOpacity = IOUtils.ReadFx(token, nameof(HudWindowOpacity), HudWindowOpacity);
+        TooltipOpacity = IOUtils.ReadFx(token, nameof(TooltipOpacity), TooltipOpacity);
         ScrollEasing = IOUtils.ReadFx(token, nameof(ScrollEasing), ScrollEasing);
         UISoundVolume = IOUtils.ReadFx(token, nameof(UISoundVolume), UISoundVolume);
         EnableJSScriptWatcher = IOUtils.ReadFx(token, nameof(EnableJSScriptWatcher), EnableJSScriptWatcher);
@@ -172,6 +191,7 @@ public sealed class CoreSettings : ISettingsFile {
         TutorialOffered = IOUtils.ReadFx(token, nameof(TutorialOffered), TutorialOffered);
         HideTutorial = IOUtils.ReadFx(token, nameof(HideTutorial), HideTutorial);
         TabLabelMode = IOUtils.ReadFx(token, nameof(TabLabelMode), TabLabelMode);
+        PanelFadeMode = IOUtils.ReadFx(token, nameof(PanelFadeMode), PanelFadeMode);
         SetupPending = IOUtils.ReadFx(token, nameof(SetupPending), SetupPending);
     }
 }

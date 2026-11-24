@@ -334,6 +334,7 @@ public static class O5KitAdapters {
 
         Ctx.Config.UIScale = MainCore.Conf.UIScale.Value;
         Ctx.Config.TooltipEnabled = MainCore.Conf.Tooltip.Value;
+        Ctx.Config.TooltipOpacity = Mathf.Clamp(MainCore.Conf.TooltipOpacity.Value, 0.2f, 1f);
         Ctx.Config.MiddleClickToDefault = MainCore.Conf.MiddleClickToDefault.Value;
         Ctx.Config.SliderSensitivity = MainCore.Conf.SliderSensitivity.Value;
         Ctx.Config.AnimationSpeed = MainCore.Conf.AnimationSpeed.Value;

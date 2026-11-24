@@ -91,12 +91,13 @@ internal static partial class HudEditor {
     private static void FadeBottomBarWhileDragging() {
         bool dragging = drag != DragMode.None;
         float step = Time.unscaledDeltaTime * 8f;
+        float opacity = Mathf.Clamp(Core.MainCore.Conf.HudWindowOpacity.Value, 0.2f, 1f);
         if (bottomGroup != null) {
-            bottomGroup.alpha = Mathf.MoveTowards(bottomGroup.alpha, dragging ? 0.12f : 1f, step);
+            bottomGroup.alpha = Mathf.MoveTowards(bottomGroup.alpha, dragging ? 0.12f : opacity, step);
             bottomGroup.blocksRaycasts = !dragging;
         }
         bool draggingObj = dragChanged && drag is DragMode.Move or DragMode.Scale or DragMode.Rotate or DragMode.Resize;
-        float panelAlpha = draggingObj ? 0.08f : 1f;
+        float panelAlpha = draggingObj ? 0.08f : opacity;
         if (toolbarGroup != null) {
             toolbarGroup.alpha = Mathf.MoveTowards(toolbarGroup.alpha, panelAlpha, step);
             toolbarGroup.blocksRaycasts = !draggingObj;

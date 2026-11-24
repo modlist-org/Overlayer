@@ -73,6 +73,7 @@ public static class UICore {
         MainCore.Spr.Shapes.Track(CanvasObj.transform);
 
         CreatePanel();
+        PanelTransition.ApplyOpacity();
         ResizeHandle.CreateResizeHandles(O5KitAdapters.Ctx, Panel, CanvasObj.GetComponent<RectTransform>());
         for (int i = 0; i < Panel.childCount; i++) {
             Transform child = Panel.GetChild(i);
@@ -526,6 +527,7 @@ public static class UICore {
         }
 
         panelTweener?.Kill();
+        PanelTransition.Kill();
         resetSequence?.Kill();
         Vector2 targetPosition;
         Vector2 targetSize;
@@ -725,7 +727,7 @@ public static class UICore {
     // Only record the panel's resting position when it is actually visible and not mid-slide off/onscreen.
     private static void SavePanelBoundsIfStable() {
         if (Panel == null || !Panel.gameObject.activeSelf || isPanelHiddenForHudEditor
-            || HudEdit.HudEditor.IsOpen || (panelTweener != null && panelTweener.IsAlive)) {
+            || HudEdit.HudEditor.IsOpen || (panelTweener != null && panelTweener.IsAlive) || PanelTransition.IsPlaying) {
             return;
         }
         resetSequence?.Kill(true);
@@ -756,6 +758,7 @@ public static class UICore {
         Cursor.lockState = CursorLockMode.None;
 
         panelTweener?.Kill();
+        PanelTransition.Kill();
         resetSequence?.Kill();
 
         if (noAnimate) {
@@ -773,10 +776,16 @@ public static class UICore {
             Panel.gameObject.SetActive(true);
         }
 
-        Vector2 startPos = GetRandomOffscreenPosition();
-
-        Panel.anchoredPosition = startPos;
         Panel.sizeDelta = LastPanelSize;
+        IO.PanelFadeMode fadeMode = MainCore.Conf.PanelFadeMode.Value;
+        if (fadeMode != IO.PanelFadeMode.FlyIn) {
+            Panel.anchoredPosition = LastPanelPosition;
+            CanvasObj.SetActive(true);
+            PanelTransition.Play(fadeMode, true, LastPanelPosition, null);
+            return;
+        }
+
+        Panel.anchoredPosition = GetRandomOffscreenPosition();
 
         CanvasObj.SetActive(true);
 
@@ -806,6 +815,7 @@ public static class UICore {
         );
 
         panelTweener?.Kill();
+        PanelTransition.Kill();
         resetSequence?.Kill();
 
         if (wasHiddenForHud && Panel != null) {
@@ -824,6 +834,16 @@ public static class UICore {
         if (Panel != null && !Panel.gameObject.activeSelf) {
             Panel.gameObject.SetActive(true);
         }
+        IO.PanelFadeMode fadeMode = MainCore.Conf.PanelFadeMode.Value;
+        if (fadeMode != IO.PanelFadeMode.FlyIn) {
+            PanelTransition.Play(fadeMode, false, LastPanelPosition, () => {
+                if (!isOpen && CanvasObj != null) {
+                    CanvasObj.SetActive(false);
+                }
+            });
+            return;
+        }
+
         Vector2 targetPos = GetRandomOffscreenPosition();
 
         panelTweener = Panel.TAnchorPos(targetPos, 0.1f, O5Ease.OutExpo, () => {
@@ -841,10 +861,20 @@ public static class UICore {
             SavePanelBoundsIfStable();
         }
         panelTweener?.Kill();
+        PanelTransition.Kill();
         resetSequence?.Kill();
         isPanelHiddenForHudEditor = true;
         if (immediate) {
             Panel.gameObject.SetActive(false);
+            return;
+        }
+        IO.PanelFadeMode fadeMode = MainCore.Conf.PanelFadeMode.Value;
+        if (fadeMode != IO.PanelFadeMode.FlyIn && Panel.gameObject.activeInHierarchy) {
+            PanelTransition.Play(fadeMode, false, LastPanelPosition, () => {
+                if (Panel != null && isPanelHiddenForHudEditor) {
+                    Panel.gameObject.SetActive(false);
+                }
+            });
             return;
         }
         Vector2 offscreen = GetRandomOffscreenPosition();
@@ -861,6 +891,7 @@ public static class UICore {
         }
         isPanelHiddenForHudEditor = false;
         panelTweener?.Kill();
+        PanelTransition.Kill();
         resetSequence?.Kill();
         LastPanelPosition = ClampPanelPosition(LastPanelPosition);
         Panel.gameObject.SetActive(true);
@@ -874,10 +905,15 @@ public static class UICore {
             Panel.sizeDelta = LastPanelSize;
             return;
         }
+        Panel.sizeDelta = LastPanelSize;
+        IO.PanelFadeMode fadeMode = MainCore.Conf.PanelFadeMode.Value;
+        if (fadeMode != IO.PanelFadeMode.FlyIn) {
+            PanelTransition.Play(fadeMode, true, LastPanelPosition, null);
+            return;
+        }
         if (Vector2.Distance(Panel.anchoredPosition, LastPanelPosition) < 4f) {
             Panel.anchoredPosition = GetRandomOffscreenPosition();
         }
-        Panel.sizeDelta = LastPanelSize;
         panelTweener = Panel.TAnchorPos(LastPanelPosition, 0.3f, O5Ease.OutExpo);
     }
 
@@ -907,6 +943,7 @@ public static class UICore {
         LastPanelSize = targetSize;
 
         panelTweener?.Kill();
+        PanelTransition.Kill();
         resetSequence?.Kill();
 
         if (noAnimate || isPanelHiddenForHudEditor || (Panel != null && !Panel.gameObject.activeSelf)) {
@@ -1114,6 +1151,7 @@ public static class UICore {
         }
         try {
             panelTweener?.Kill();
+            PanelTransition.Kill();
         } catch {
         }
         try {
