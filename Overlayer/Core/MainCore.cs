@@ -28,6 +28,7 @@ public static class MainCore {
     public static Translator Tr => Runtime.Localization.Translator;
     public static ResourceManager Res => Runtime.Resource;
     public static SpriteManager Spr => Runtime.Sprite;
+    public static IconManager Icons => Runtime.Icons;
     public static IOverlayerHost Host => Runtime.Host;
     public static UnityEngine.GameObject Root => Runtime.RootObject;
     public static V8Manager V8 => Runtime.V8Manager;

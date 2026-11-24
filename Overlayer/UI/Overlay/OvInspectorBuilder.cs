@@ -1528,7 +1528,7 @@ internal sealed class OvInspectorBuilder(
     }
 
     private O5Button FillWindowButton(Transform parent, Action onClick, string id, bool active) {
-        var button = O5Factory.Button(O5KitAdapters.Ctx, parent, id, new O5ButtonOptions { Icon = MainCore.Spr.Get(UISprite.Expand128), OnClick = onClick, IconPadding = 4f });
+        var button = O5Factory.Button(O5KitAdapters.Ctx, parent, id, new O5ButtonOptions { Icon = MainCore.Icons.Get(UIIcon.Expand), OnClick = onClick, IconPadding = 4f });
         button.NormalColor = active ? UIColors.FxOn : UIColors.FxOff;
         button.Icon.color = Color.white;
         button.Icon.rectTransform.offsetMin = new Vector2(9f, 9f);
@@ -1954,7 +1954,7 @@ internal sealed class OvInspectorBuilder(
         slotLayout.preferredWidth = 36f;
         slotLayout.flexibleWidth = 0f;
         slotLayout.flexibleHeight = 0f;
-        var button = O5Factory.Button(O5KitAdapters.Ctx, buttonSlot, id + "_use_fx", new O5ButtonOptions { Icon = MainCore.Spr.Get(UISprite.F128), OnClick = () => {
+        var button = O5Factory.Button(O5KitAdapters.Ctx, buttonSlot, id + "_use_fx", new O5ButtonOptions { Icon = MainCore.Icons.Get(UIIcon.F), OnClick = () => {
             if (switching) return;
             switching = true;
             fade.interactable = false;

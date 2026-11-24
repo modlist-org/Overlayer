@@ -34,6 +34,7 @@ public sealed class OverlayerRuntime {
 
     public ResourceManager Resource { get; }
     public SpriteManager Sprite { get; }
+    public IconManager Icons { get; }
 
     public GameObject RootObject { get; private set; }
 
@@ -74,6 +75,7 @@ public sealed class OverlayerRuntime {
             "Overlayer.Resource.Embedded."
         );
         Sprite = new SpriteManager(Resource);
+        Icons = new IconManager(Assembly);
         V8Manager = new V8Manager();
         CameraManager = new CameraManager();
         services = new RuntimeServices();
@@ -148,6 +150,7 @@ public sealed class OverlayerRuntime {
 
         services.Dispose();
 
+        Icons.Dispose();
         Sprite.Dispose();
         Resource.Dispose();
 

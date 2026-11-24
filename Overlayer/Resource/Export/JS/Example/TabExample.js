@@ -4,7 +4,7 @@
 //
 // Globals:
 //   AddTab(name, build, options?) -> handle (or -1)
-//       options: { icon: "Gear128" }  (any UISprite name, default CodeBlock128)
+//       options: { icon: "Gear" }  (any UIIcon or legacy UISprite name, default CodeBlock)
 //   RebuildTab(handle, build?)       clear the tab and run build again next frame;
 //                                    passing build replaces the old one
 //   RemoveTab(handle)                remove the tab now

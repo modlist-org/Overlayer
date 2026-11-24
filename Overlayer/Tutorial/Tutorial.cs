@@ -898,7 +898,7 @@ internal static class Tutorial {
 
         var buttons = UiStyle.HRow(bubble, 6f, 34f);
         backButton = Track(UiStyle.Button(UiStyle.Cell(buttons, 70f), "tutorial_back", Tr("TUTORIAL_BACK", "Back"), Back));
-        closeButton = Track(UiStyle.IconButton(UiStyle.Cell(buttons, 34f), "tutorial_close", MainCore.Spr.Get(UISprite.X128), null, 9f));
+        closeButton = Track(UiStyle.IconButton(UiStyle.Cell(buttons, 34f), "tutorial_close", UIIcon.X, null, 9f));
         HoldToConfirm.Attach(closeButton, BeginClose, canConfirm: () => !closing);
         closeButton.Rect.AddToolTip(ctx, () => Tr("TUTORIAL_CLOSE_TIP", "Hold to close the tutorial. You can restart it from the Tutorial page."));
         UiStyle.Cell(buttons, 0f);

@@ -86,7 +86,7 @@ internal static partial class HudEditor {
         addHost.anchorMin = addHost.anchorMax = addHost.pivot = new Vector2(1f, 1f);
         addHost.anchoredPosition = new Vector2(-8f, -6f);
         addHost.sizeDelta = new Vector2(28f, 28f);
-        var add = Track(UiStyle.IconButton(addHost, "plus_hud_new_canvas", MainCore.Spr.Get(UISprite.Plus128), AddCanvas, 8f));
+        var add = Track(UiStyle.IconButton(addHost, "plus_hud_new_canvas", UIIcon.Plus, AddCanvas, 8f));
         UiStyle.Tooltip(add, Tr("HUD_NEW_CANVAS", "New canvas"));
 
         var scrollHost = NewRect("Scroll", layersPanel);
@@ -236,8 +236,7 @@ internal static partial class HudEditor {
             var arrowBack = arrowHit.gameObject.AddComponent<Image>();
             arrowBack.color = Color.clear;
             arrowBack.raycastTarget = true;
-            var arrow = NewImage("Arrow", arrowHit, UiStyle.Muted, MainCore.Spr.Get(UISprite.Triangle128));
-            arrow.preserveAspect = true;
+            var arrow = MainCore.Icons.Create(arrowHit, "Arrow", UIIcon.Triangle, UiStyle.Muted, 9f);
             arrow.rectTransform.sizeDelta = new Vector2(9f, 9f);
             arrow.rectTransform.localEulerAngles = new Vector3(0f, 0f, folded ? 90f : 0f);
             UnityUtils.AddEvents(arrowHit.gameObject.AddComponent<EventTrigger>(), (EventTriggerType.PointerClick, e => {
@@ -272,12 +271,12 @@ internal static partial class HudEditor {
 
         if (!isCanvas) {
             // Locked (padlock) and visible (eye) toggles on the right.
-            Toggle(row, -34f, locked ? UISprite.LockOn128 : UISprite.LockOff128, locked, Tr("HUD_LOCK", "Lock"), () => SetLocked(canvas, obj, !locked), 12f, 0.3f);
-            Toggle(row, -12f, hidden ? UISprite.EyeHide128 : UISprite.EyeOpen128, !hidden, Tr("HUD_VISIBLE", "Visible"), () => SetHidden([obj], !hidden), 14f, 0.42f);
+            Toggle(row, -34f, locked ? UIIcon.LockOn : UIIcon.LockOff, locked, Tr("HUD_LOCK", "Lock"), () => SetLocked(canvas, obj, !locked), 12f, 0.3f);
+            Toggle(row, -12f, hidden ? UIIcon.EyeHide : UIIcon.EyeOpen, !hidden, Tr("HUD_VISIBLE", "Visible"), () => SetHidden([obj], !hidden), 14f, 0.42f);
         } else {
             if (!canvas.Config.Enabled.UseFx) {
                 bool shown = canvas.Config.Enabled.StaticValue;
-                Toggle(row, -34f, shown ? UISprite.EyeOpen128 : UISprite.EyeHide128, shown, Tr("HUD_VISIBLE", "Visible"), () => SetCanvasHidden(canvas, shown), 14f, 0.42f);
+                Toggle(row, -34f, shown ? UIIcon.EyeOpen : UIIcon.EyeHide, shown, Tr("HUD_VISIBLE", "Visible"), () => SetCanvasHidden(canvas, shown), 14f, 0.42f);
             }
             DeleteToggle(row);
         }
@@ -319,7 +318,7 @@ internal static partial class HudEditor {
         return t;
     }
 
-    private static void Toggle(LayerRow row, float x, UISprite? sprite, bool on, string tooltip, Action toggle, float size = 9f, float offAlpha = 0.18f) {
+    private static void Toggle(LayerRow row, float x, UIIcon? icon, bool on, string tooltip, Action toggle, float size = 9f, float offAlpha = 0.18f) {
         var hit = NewRect("Toggle", row.Rect);
         hit.anchorMin = hit.anchorMax = new Vector2(1f, 0.5f);
         hit.anchoredPosition = new Vector2(x, 0f);
@@ -327,9 +326,10 @@ internal static partial class HudEditor {
         var hitImage = hit.gameObject.AddComponent<Image>();
         hitImage.color = Color.clear;
         hitImage.raycastTarget = true;
-        var mark = NewImage("Mark", hit, on ? Color.white : new Color(1f, 1f, 1f, offAlpha),
-            sprite.HasValue ? MainCore.Spr.Get(sprite.Value) : null);
-        mark.preserveAspect = true;
+        Color markColor = on ? Color.white : new Color(1f, 1f, 1f, offAlpha);
+        Graphic mark = icon.HasValue
+            ? MainCore.Icons.Create(hit, "Mark", icon.Value, markColor, size)
+            : NewImage("Mark", hit, markColor, null);
         mark.rectTransform.sizeDelta = new Vector2(size, size);
         UnityUtils.AddEvents(hit.gameObject.AddComponent<EventTrigger>(), (EventTriggerType.PointerClick, e => {
             if (UnityUtils.AsPointerEventData(e) is { } pe) {
@@ -690,7 +690,7 @@ internal static partial class HudEditor {
         var back = hit.gameObject.AddComponent<Image>();
         back.color = Color.clear;
         back.raycastTarget = true;
-        var mark = NewImage("X", hit, new Color(1f, 1f, 1f, 0.3f), MainCore.Spr.Get(UISprite.X128));
+        var mark = MainCore.Icons.Create(hit, "X", UIIcon.X, new Color(1f, 1f, 1f, 0.3f), 10f);
         mark.rectTransform.sizeDelta = new Vector2(10f, 10f);
         UnityUtils.AddEvents(hit.gameObject.AddComponent<EventTrigger>(),
             (EventTriggerType.PointerEnter, _ => mark.color = UiStyle.Danger),

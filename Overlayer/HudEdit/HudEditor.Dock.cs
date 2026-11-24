@@ -255,7 +255,7 @@ internal static partial class HudEditor {
         backCell.anchorMin = backCell.anchorMax = backCell.pivot = new Vector2(1f, 0.5f);
         backCell.anchoredPosition = new Vector2(-8f, 0f);
         backCell.sizeDelta = new Vector2(24f, 24f);
-        var back = Track(UiStyle.IconButton(backCell, "plus_hud_undock_" + dock.Id.Replace(' ', '_'), MainCore.Spr.Get(UISprite.X128), () => Attach(dock), 7f));
+        var back = Track(UiStyle.IconButton(backCell, "plus_hud_undock_" + dock.Id.Replace(' ', '_'), UIIcon.X, () => Attach(dock), 7f));
         UiStyle.Tooltip(back, Tr("HUD_DOCK_PANEL", "Dock to panel"));
 
         var scrollHost = NewRect("Scroll", window);

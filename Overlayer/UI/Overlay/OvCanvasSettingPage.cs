@@ -267,7 +267,7 @@ public partial class OvCanvasSettingPage : IDisposable {
         // Empty Row
         RectTransform emptyRow = CreateHierarchyControlRow(hierCreateToolbar.transform);
 
-        var btnEmpty = O5Factory.Button(O5KitAdapters.Ctx, emptyRow, "btn_hier_add_empty", new O5ButtonOptions { Icon = MainCore.Spr.Get(UISprite.Cube128), OnClick = () => {
+        var btnEmpty = O5Factory.Button(O5KitAdapters.Ctx, emptyRow, "btn_hier_add_empty", new O5ButtonOptions { Icon = MainCore.Icons.Get(UIIcon.Cube), OnClick = () => {
             OvObject newObj = CreateChildObject();
             if (newObj == null) {
                 return;
@@ -289,7 +289,7 @@ public partial class OvCanvasSettingPage : IDisposable {
         btnEmpty.Rect.offsetMax = Vector2.zero;
         permanentUiObjects.Add(btnEmpty);
 
-        add3DButton = O5Factory.Button(O5KitAdapters.Ctx, emptyRow, "btn_hier_add_3d", new O5ButtonOptions { Icon = MainCore.Spr.Get(UISprite.Box128), OnClick = () => {
+        add3DButton = O5Factory.Button(O5KitAdapters.Ctx, emptyRow, "btn_hier_add_3d", new O5ButtonOptions { Icon = MainCore.Icons.Get(UIIcon.Box), OnClick = () => {
             var newObj = new OvObject(bare: true);
             if (selectedObject != null) {
                 selectedObject.Attach(newObj);
@@ -320,7 +320,7 @@ public partial class OvCanvasSettingPage : IDisposable {
         // Text / Image Row
         RectTransform createRow = CreateHierarchyControlRow(hierCreateToolbar.transform);
 
-        var btnText = O5Factory.Button(O5KitAdapters.Ctx, createRow, "btn_hier_add_text", new O5ButtonOptions { Icon = MainCore.Spr.Get(UISprite.Text128), OnClick = () => {
+        var btnText = O5Factory.Button(O5KitAdapters.Ctx, createRow, "btn_hier_add_text", new O5ButtonOptions { Icon = MainCore.Icons.Get(UIIcon.Text), OnClick = () => {
             OvObject newObj = CreateChildObject();
             if (newObj == null) {
                 return;
@@ -343,7 +343,7 @@ public partial class OvCanvasSettingPage : IDisposable {
         btnText.Rect.offsetMax = Vector2.zero;
         permanentUiObjects.Add(btnText);
 
-        var btnImage = O5Factory.Button(O5KitAdapters.Ctx, createRow, "btn_hier_add_image", new O5ButtonOptions { Icon = MainCore.Spr.Get(UISprite.Image128), OnClick = () => {
+        var btnImage = O5Factory.Button(O5KitAdapters.Ctx, createRow, "btn_hier_add_image", new O5ButtonOptions { Icon = MainCore.Icons.Get(UIIcon.Image), OnClick = () => {
             OvObject newObj = CreateChildObject();
             if (newObj == null) {
                 return;
@@ -382,7 +382,7 @@ public partial class OvCanvasSettingPage : IDisposable {
         ctrlHLayout.childForceExpandHeight = true;
 
         // Clone
-        var btnClone = O5Factory.Button(O5KitAdapters.Ctx, hierCtrlToolbar.transform, "btn_hier_clone", new O5ButtonOptions { Icon = MainCore.Spr.Get(UISprite.Clone128), OnClick = () => {
+        var btnClone = O5Factory.Button(O5KitAdapters.Ctx, hierCtrlToolbar.transform, "btn_hier_clone", new O5ButtonOptions { Icon = MainCore.Icons.Get(UIIcon.Clone), OnClick = () => {
             if (selectedObject == null) {
                 if (currentCanvas == null && rootObject != null) {
                     if (OverlayCore.CloneObject(rootObject) != null) {
@@ -412,7 +412,7 @@ public partial class OvCanvasSettingPage : IDisposable {
         permanentUiObjects.Add(btnClone);
 
         // Delete (hold to confirm)
-        var btnDel = O5Factory.Button(O5KitAdapters.Ctx, hierCtrlToolbar.transform, "btn_hier_del", new O5ButtonOptions { Icon = MainCore.Spr.Get(UISprite.X128), OnClick = () => { }, Height = 36f });
+        var btnDel = O5Factory.Button(O5KitAdapters.Ctx, hierCtrlToolbar.transform, "btn_hier_del", new O5ButtonOptions { Icon = MainCore.Icons.Get(UIIcon.X), OnClick = () => { }, Height = 36f });
         Utility.HoldToConfirm.Attach(btnDel, () => {
             if (selectedObject == null) {
                 if (currentCanvas == null) {
@@ -816,18 +816,15 @@ public partial class OvCanvasSettingPage : IDisposable {
             labelLE.flexibleWidth = 1f;
             labelLE.minWidth = 40f;
 
-            GameObject closeObject = new("CloseTab");
-            closeObject.transform.SetParent(tabObject.transform, false);
-            var closeRect = closeObject.AddComponent<RectTransform>();
+            var closeIcon = MainCore.Icons.Create(tabObject.transform, "CloseTab", UIIcon.X, Color.white, 12f);
+            closeIcon.raycastTarget = true;
+            GameObject closeObject = closeIcon.gameObject;
+            var closeRect = closeIcon.rectTransform;
             var closeLE = closeObject.AddComponent<LayoutElement>();
             closeLE.preferredWidth = 12f;
             closeLE.minWidth = 12f;
             closeLE.preferredHeight = 12f;
             closeLE.minHeight = 12f;
-            var closeImage = closeObject.AddComponent<Image>();
-            closeImage.sprite = MainCore.Spr.Get(UISprite.X128);
-            closeImage.preserveAspect = true;
-            closeImage.color = Color.white;
             var closeTrigger = closeObject.AddComponent<EventTrigger>();
             UnityUtils.AddEvents(closeTrigger,
                 (EventTriggerType.PointerClick, e => {
@@ -1217,19 +1214,14 @@ public partial class OvCanvasSettingPage : IDisposable {
 
         RectTransform foldoutRect = null;
         if (hasChildren) {
-            GameObject foldout = new("Foldout");
-            foldout.transform.SetParent(itemBtn.transform, false);
-            foldoutRect = foldout.AddComponent<RectTransform>();
+            var foldoutTmp = MainCore.Icons.Create(itemBtn.transform, "Foldout", UIIcon.Triangle, Color.white, 12f);
+            GameObject foldout = foldoutTmp.gameObject;
+            foldoutRect = foldoutTmp.rectTransform;
             foldoutRect.anchorMin = new Vector2(0f, 0.5f);
             foldoutRect.anchorMax = new Vector2(0f, 0.5f);
             foldoutRect.pivot = new Vector2(0.5f, 0.5f);
             foldoutRect.anchoredPosition = new Vector2(14f, 0f);
             foldoutRect.sizeDelta = new Vector2(12f, 12f);
-
-            var foldoutImg = foldout.AddComponent<Image>();
-            foldoutImg.sprite = O5KitAdapters.Ctx.Sprites.Icon("Triangle128");
-            foldoutImg.color = Color.white;
-            foldoutImg.preserveAspect = true;
             float targetRot = collapsed ? 0f : 180f;
             foldout.transform.localRotation = Quaternion.Euler(0f, 0f, targetRot);
             if (obj == foldoutAnimTarget) {

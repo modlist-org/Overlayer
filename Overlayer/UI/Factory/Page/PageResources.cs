@@ -142,7 +142,7 @@ internal static class PageResources {
         searchRow.anchorMax = new Vector2(1f, 1f);
         searchRow.offsetMin = new Vector2(18f, -352f);
         searchRow.offsetMax = new Vector2(-18f, -302f);
-        searchInput = O5Factory.Input(O5KitAdapters.Ctx, searchRow, "resource_search", new O5InputOptions { DefaultValue = string.Empty, Value = string.Empty, OnChanged = _ => BuildList(), Placeholder = T("SEARCH_RESOURCE", "Search resources"), Icon = MainCore.Spr.Get(UISprite.MagnifyingGlass128) });
+        searchInput = O5Factory.Input(O5KitAdapters.Ctx, searchRow, "resource_search", new O5InputOptions { DefaultValue = string.Empty, Value = string.Empty, OnChanged = _ => BuildList(), Placeholder = T("SEARCH_RESOURCE", "Search resources"), Icon = MainCore.Icons.Get(UIIcon.MagnifyingGlass) });
         searchInput.Placeholder.gameObject.AddComponent<TextLocalization>().Init("SEARCH_RESOURCE", "Search resources");
         searchInput.Rect.AddToolTip(O5KitAdapters.Ctx, () => MainCore.Tr.Get(
             "SEARCH_RESOURCE_TOOLTIP",

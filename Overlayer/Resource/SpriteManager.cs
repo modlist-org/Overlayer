@@ -7,50 +7,6 @@ namespace Overlayer.Resource;
 public enum UISprite {
     OV5LogoOutline128,
     Circle128,
-    X128,
-    Monitor128,
-    Gear128,
-    Text128,
-    Image128,
-    Book128,
-    Star128,
-    ToggleCircle128,
-    Triangle128,
-    Power128,
-    MagnifyingGlass128,
-    Box128,
-    Cube128,
-    Clone128,
-    Plus128,
-    Ping128,
-    CodeBlock128,
-    F128,
-    Expand128,
-    Upload128,
-    Download128,
-    EyeOpen128,
-    EyeHide128,
-    LockOff128,
-    LockOn128,
-    Ease128,
-    DotInCircle128,
-    AliLeft128,
-    AliCenter128,
-    AliJustified128,
-    AliFlush128,
-    AliGeometry128,
-    AliTop128,
-    AliMiddle128,
-    AliBaseline128,
-    AliMidline128,
-    AliCapline128,
-    Canvas128,
-    Check128,
-    Ruler128,
-    TurnArrow128,
-    AnchorCorner128,
-    AnchorSide128,
-    Grid128,
 }
 
 public enum UISliceSprite {
@@ -250,10 +206,6 @@ public sealed class SpriteManager(ResourceManager resource) : IDisposable {
             return smooth;
         }
 
-        if (o5SpriteMap.TryGetValue(sprite, out O5Asset o5Asset)) {
-            return Get(o5Asset);
-        }
-
         return spriteMap.TryGetValue(sprite, out Asset asset) ? Get(asset) : null;
     }
 
@@ -296,53 +248,6 @@ public sealed class SpriteManager(ResourceManager resource) : IDisposable {
 
     private readonly Dictionary<UISprite, Asset> spriteMap = new() {
         [UISprite.OV5LogoOutline128] = Asset.OV5LogoOutline128,
-        [UISprite.Monitor128] = Asset.Monitor128,
-        [UISprite.Gear128] = Asset.Gear128,
-        [UISprite.Text128] = Asset.Text128,
-        [UISprite.Image128] = Asset.Image128,
-        [UISprite.Book128] = Asset.Book128,
-        [UISprite.Star128] = Asset.Star128,
-        [UISprite.Power128] = Asset.Power128,
-        [UISprite.MagnifyingGlass128] = Asset.MagnifyingGlass128,
-        [UISprite.Box128] = Asset.Box128,
-        [UISprite.Cube128] = Asset.Cube128,
-        [UISprite.Clone128] = Asset.Clone128,
-        [UISprite.Plus128] = Asset.Plus128,
-        [UISprite.Ping128] = Asset.Ping128,
-        [UISprite.CodeBlock128] = Asset.CodeBlock128,
-        [UISprite.F128] = Asset.F128,
-        [UISprite.Expand128] = Asset.Expand128,
-        [UISprite.Upload128] = Asset.Upload128,
-        [UISprite.Download128] = Asset.Download128,
-        [UISprite.EyeOpen128] = Asset.EyeOpen128,
-        [UISprite.EyeHide128] = Asset.EyeHide128,
-        [UISprite.LockOff128] = Asset.LockOff128,
-        [UISprite.LockOn128] = Asset.LockOn128,
-        [UISprite.Ease128] = Asset.Ease128,
-        [UISprite.DotInCircle128] = Asset.DotInCircle128,
-        [UISprite.AliLeft128] = Asset.AliLeft128,
-        [UISprite.AliCenter128] = Asset.AliCenter128,
-        [UISprite.AliJustified128] = Asset.AliJustified128,
-        [UISprite.AliFlush128] = Asset.AliFlush128,
-        [UISprite.AliGeometry128] = Asset.AliGeometry128,
-        [UISprite.AliTop128] = Asset.AliTop128,
-        [UISprite.AliMiddle128] = Asset.AliMiddle128,
-        [UISprite.AliBaseline128] = Asset.AliBaseline128,
-        [UISprite.AliMidline128] = Asset.AliMidline128,
-        [UISprite.AliCapline128] = Asset.AliCapline128,
-        [UISprite.Canvas128] = Asset.Canvas128,
-        [UISprite.Check128] = Asset.Check128,
-        [UISprite.Ruler128] = Asset.Ruler128,
-        [UISprite.TurnArrow128] = Asset.TurnArrow128,
-        [UISprite.AnchorCorner128] = Asset.AnchorCorner128,
-        [UISprite.AnchorSide128] = Asset.AnchorSide128,
-        [UISprite.Grid128] = Asset.Grid128,
-    };
-
-    private readonly Dictionary<UISprite, O5Asset> o5SpriteMap = new() {
-        [UISprite.X128] = O5Asset.X128,
-        [UISprite.ToggleCircle128] = O5Asset.ToggleCircle128,
-        [UISprite.Triangle128] = O5Asset.Triangle128,
     };
 
     private readonly Dictionary<UISliceSprite, (Asset asset, float ppui)> sliceMap = new() {
