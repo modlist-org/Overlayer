@@ -1347,8 +1347,16 @@ internal static partial class HudEditor {
             var (bg, txt) = measureLabels[i];
             bg.color = color;
             txt.text = label;
-            bg.rectTransform.sizeDelta = new Vector2(12f + label.Length * 8f, 18f);
-            bg.rectTransform.anchoredPosition = ToLocal((a + b) * 0.5f);
+            // Pixel-snapped pill: even pixel height, radius exactly half of it,
+            // so the rounded ends stay circular instead of squashed corners.
+            float sf = UiScale;
+            float heightPx = 2f * Mathf.Max(1f, Mathf.Round(9f * sf));
+            Vector2 size = new(Mathf.Round((12f + label.Length * 8f) * sf) / sf, heightPx / sf);
+            bg.sprite = MainCore.Spr.Shapes.Get(new O5Kit.Core.O5Shape(size.y * 0.5f));
+            bg.rectTransform.sizeDelta = size;
+            Vector2 corner = ToLocal((a + b) * 0.5f) - size * 0.5f;
+            corner = new Vector2(Mathf.Round(corner.x * sf) / sf, Mathf.Round(corner.y * sf) / sf);
+            bg.rectTransform.anchoredPosition = corner + size * 0.5f;
             bg.gameObject.SetActive(true);
             bg.rectTransform.SetAsLastSibling();
             i++;

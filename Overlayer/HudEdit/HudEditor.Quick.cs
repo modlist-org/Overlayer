@@ -80,8 +80,8 @@ internal static partial class HudEditor {
         var row = UiStyle.HRow(parent, 10f, AnchorGridSize);
         row.name = "PinTo";
         anchorRow = row.gameObject;
-        var label = O5Factory.ControlText(ctx, Cell(row, 0f), 15f);
-        label.text = $"{Tr("HUD_PIN_TO", "Pin to")}\n<size=12><alpha=#88>{Tr("HUD_PIN_TO_DESC", "keeps its spot when the\nscreen size changes")}</size>";
+        var label = O5Factory.ControlText(ctx, Cell(row, 0f), 22f);
+        label.text = Tr("HUD_PIVOT", "Pivot");
         label.alignment = TextAlignmentOptions.MidlineLeft;
         label.enableWordWrapping = true;
         var grid = Cell(row, AnchorGridSize);
