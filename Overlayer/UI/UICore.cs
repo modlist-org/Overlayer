@@ -34,6 +34,8 @@ public enum OriginalMenuState {
     JS,
     Easing,
     Tutorial,
+    /// <summary>Tutorial practice room: has no menu item, only the tutorial opens it.</summary>
+    Practice,
 }
 
 public static class UICore {
@@ -481,6 +483,8 @@ public static class UICore {
             outlineRect.anchorMax = Vector2.one;
             outlineRect.offsetMin = Vector2.zero;
             outlineRect.offsetMax = Vector2.zero;
+
+            ScrollIndicator.Create(Panel, outlineObj.transform);
         }
     }
 
@@ -490,7 +494,17 @@ public static class UICore {
     internal static Utility.KeyBind WindowKey => Utility.KeyBind.Parse(MainCore.Conf.WindowKey.Value);
 
     internal static void RegisterToggleShortcut() {
-        WindowKey.Register(ToggleShortcutId, () => Toggle(), ToggleHoldSeconds, () => ResetScalePosition(!isOpen));
+        // Press toggles right away; holding then resets size/position and always leaves the window shown.
+        WindowKey.Register(ToggleShortcutId, () => Toggle(), ToggleHoldSeconds, OnToggleHeld);
+    }
+
+    private static void OnToggleHeld() {
+        if (!isOpen) {
+            ResetScalePosition(true);
+            Toggle();
+        } else {
+            ResetScalePosition();
+        }
     }
 
     internal static void UnregisterToggleShortcut() => Utility.KeyBind.Unregister(ToggleShortcutId);
@@ -553,6 +567,35 @@ public static class UICore {
             .Join(done => Panel.TSizeDelta(targetSize, 0.26f, O5Ease.OutExpo, done))
             .Play();
     }
+
+    /// <summary>Tutorial: throws the window mostly off-screen and shrinks it, so the user can practice
+    /// restoring it by holding the toggle key. <paramref name="done"/> runs once it has landed.</summary>
+    public static void DemoScramble(Action done) {
+        if (Panel == null || CanvasObj == null) {
+            return;
+        }
+        panelTweener?.Kill();
+        PanelTransition.Kill();
+        resetSequence?.Kill();
+        isPanelMaximized = false;
+        Vector2 canvas = CanvasObj.GetComponent<RectTransform>().rect.size;
+        Vector2 size = DefaultPanelSize * 0.55f;
+        // Pushed up past the top edge, top bar and all: the lower part stays visible, but there's
+        // nothing left to grab, so only holding the toggle key brings it back.
+        Vector2 position = new(0f, canvas.y * 0.5f + size.y * 0.15f);
+        resetSequence = O5Seq.New()
+            .Append(d => Panel.TAnchorPos(position, 0.5f, O5Ease.OutExpo, d))
+            .Join(d => Panel.TSizeDelta(size, 0.5f, O5Ease.OutExpo, d))
+            .Play();
+        LastPanelPosition = position;
+        LastPanelSize = size;
+        O5KitAdapters.Ctx.Tween.TweenFloat(() => 0f, _ => { }, 1f, 0.55f, done);
+    }
+
+    /// <summary>Whether the window sits at its default size, centered (after a reset).</summary>
+    public static bool AtDefaultBounds => Panel != null
+        && Panel.anchoredPosition.magnitude < 2f
+        && (Panel.sizeDelta - DefaultPanelSize).magnitude < 2f;
 
     /// <summary>Instantly fills the screen with the window (the setup intro plays full screen).</summary>
     public static void FillScreenNow() {
@@ -833,10 +876,14 @@ public static class UICore {
         panelTweener = Panel.TAnchorPos(LastPanelPosition, 0.1f, O5Ease.OutExpo);
     }
 
+    /// <summary>Unscaled time of the last <see cref="Close"/> (the tutorial waits a moment before calling the window lost).</summary>
+    public static float LastCloseTime = float.NegativeInfinity;
+
     public static void Close(bool noAnimate = false) {
         if (!isOpen) {
             return;
         }
+        LastCloseTime = Time.unscaledTime;
 
         bool wasHiddenForHud = isPanelHiddenForHudEditor;
         SavePanelBoundsIfStable();

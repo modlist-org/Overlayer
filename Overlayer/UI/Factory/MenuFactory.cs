@@ -479,6 +479,13 @@ public static class MenuFactory {
         }
 
         UICore.CurrentMenuState = to;
+        if (to == (int)OriginalMenuState.Practice) {
+            Page.PagePractice.ResetAll();
+        }
+        // Entering/leaving the practice room flips its forced middle-click reset.
+        if (to == (int)OriginalMenuState.Practice || from == (int)OriginalMenuState.Practice) {
+            O5KitAdapters.SyncConfig();
+        }
 
         O5PageSwitcher.SwitchPage(O5KitAdapters.Ctx, UICore.Pages, from, to);
         ApplyState(to);

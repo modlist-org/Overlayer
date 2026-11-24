@@ -227,7 +227,8 @@ internal static class Tutorial {
             rootGroup.blocksRaycasts = false;
             rootGroup.interactable = false;
         }
-        if (olly != null) {
+        // Closing the one-chapter "done!" card is the expected way out, so Olly isn't startled there; it just shrinks away.
+        if (olly != null && chapter != TutorialContent.ChapterEnd) {
             olly.ForceFace(Face.Shocked);
             olly.Tick(0f, interactive: false);
         }
@@ -267,6 +268,13 @@ internal static class Tutorial {
         olly.Rect.localScale = Vector3.one * (OllyScale * (0.9f + 0.1f * e));
 
         if (doneAt >= 0f) {
+            // Done, but wait until the mouse has been let go (and the wheel still) for the whole delay,
+            // so a step never jumps ahead mid-drag, mid-click, mid-scroll or mid-typing.
+            // anyKey covers mouse buttons and the keyboard (typing a formula, pressing Enter).
+            if (Input.anyKey
+                || Mathf.Abs(Input.mouseScrollDelta.y) > 0.0001f || Mathf.Abs(Input.mouseScrollDelta.x) > 0.0001f) {
+                doneAt = Time.unscaledTime;
+            }
             if (Time.unscaledTime - doneAt >= AdvanceDelay) {
                 Next();
                 return;

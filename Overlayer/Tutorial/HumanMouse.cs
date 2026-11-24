@@ -37,8 +37,9 @@ internal sealed class HumanMouse {
     }
 
     public float Speed = 1.0f;      // 0.5x .. 2.0x
-    public float BaseMs = 105f;
-    public float SlopeMs = 85f;
+    // Fitts's law MT = a + b*log2(1 + D/24): ~0.45 s for short hops, ~0.8 s across a 1080p screen.
+    public float BaseMs = 180f;
+    public float SlopeMs = 120f;
     public float PaceVar = 0.26f;
     public float Warp = 0.22f;
     public float Noise = 0.35f;

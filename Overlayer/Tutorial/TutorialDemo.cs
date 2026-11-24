@@ -8,7 +8,8 @@ namespace Overlayer.Tutorial;
 // with a pointer that glides to buttons and "clicks" them.
 internal sealed class TutorialDemo {
     internal sealed class Beat(float duration, Action start, Action<float> update) {
-        public readonly float Duration = duration;
+        // Moves set this on start to their trajectory's human-paced length.
+        public float Duration = duration;
         public readonly Action Start = start;
         public readonly Action<float> Update = update;
     }
@@ -24,25 +25,31 @@ internal sealed class TutorialDemo {
 
     public TutorialDemo Do(Action action) => Add(0f, action, null);
 
-    public static readonly HumanMouse Mouse = new() { Speed = 1.4f };
+    // Human pace: Fitts's-law timing at 1x (no speed-up).
+    public static readonly HumanMouse Mouse = new() { Speed = 1f };
+
+    // Hand settles briefly on the target before acting.
+    private const float Settle = 0.12f;
     public static readonly HumanKeyboard Keyboard = new();
 
-    /// <summary>The pointer glides to a screen point like a human hand (stays put on null).</summary>
+    /// <summary>The pointer glides to a screen point like a human hand (stays put on null). The beat
+    /// lasts as long as the move takes at human pace; <paramref name="seconds"/> is only a minimum.</summary>
     public TutorialDemo PointAt(Func<Vector2?> screen, float seconds = 0.7f) {
         HumanMouse.Trajectory path = null;
-        return Add(seconds, () => {
+        Beat beat = null;
+        beat = new Beat(seconds, () => {
             Tutorial.PointerShown = true;
             var from = Tutorial.PointerAt;
             var to = Safe(screen) ?? from;
             path = Mouse.Move(from, to);
+            beat.Duration = Mathf.Max(seconds, path.Duration + Settle);
         }, t => {
-            if (path == null) {
-                return;
+            if (path != null) {
+                Tutorial.PointerAt = path.Evaluate(t * beat.Duration);
             }
-            float moveTime = Mathf.Min(path.Duration, seconds);
-            float mt = moveTime > 0f ? Mathf.Clamp01((t * seconds) / moveTime) : 1f;
-            Tutorial.PointerAt = path.Sample(mt);
         });
+        Beats.Add(beat);
+        return this;
     }
 
     public TutorialDemo Point(Func<RectTransform> target, float seconds = 0.7f) => PointAt(() => Center(target()), seconds);
@@ -57,22 +64,26 @@ internal sealed class TutorialDemo {
     /// <summary>Moves the cursor off-screen before hiding it (no-op if already hidden, e.g. after slider drag).</summary>
     public TutorialDemo HidePointer() {
         HumanMouse.Trajectory path = null;
-        return Add(0.26f, () => {
+        Beat beat = null;
+        beat = new Beat(0.26f, () => {
             if (!Tutorial.PointerShown) {
                 path = null;
                 return;
             }
             var from = Tutorial.PointerAt;
-            path = Mouse.Move(from, OffscreenExit(from), speed: 1.6f);
+            path = Mouse.Move(from, OffscreenExit(from));
+            beat.Duration = Mathf.Max(0.26f, path.Duration);
         }, t => {
             if (path == null) {
                 return;
             }
-            Tutorial.PointerAt = path.Sample(t);
+            Tutorial.PointerAt = path.Evaluate(t * beat.Duration);
             if (t >= 1f) {
                 Tutorial.PointerShown = false;
             }
         });
+        Beats.Add(beat);
+        return this;
     }
 
     private static Vector2 OffscreenExit(Vector2 p) {

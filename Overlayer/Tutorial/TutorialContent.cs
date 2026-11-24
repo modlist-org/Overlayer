@@ -116,18 +116,24 @@ internal static class TutorialContent {
         ? ("TUTORIAL_LOST_EDITOR", "The HUD editor was closed. Press «{HudKey}» or click <b>Return</b> to continue.")
         : null);
 
-    private static (string Key, string Fallback)? LostWindow() => !WindowOpen
+    // Holding the toggle key closes the window on press and reopens it at the hold, so a fresh close
+    // gets a grace period before it counts as lost (longer than the 0.4 s hold).
+    private const float WindowLostGrace = 1f;
+
+    private static bool WindowJustClosed => !WindowOpen && Time.unscaledTime - UICore.LastCloseTime < WindowLostGrace;
+
+    private static (string Key, string Fallback)? LostWindow() => !WindowOpen && !WindowJustClosed
         ? ("TUTORIAL_LOST_WINDOW", "The Overlayer window was closed. Press «{WindowKey}» or click <b>Return</b> to continue.")
         : null;
 
-    private static (string Key, string Fallback)? LostMenu() => LostWindow() ?? (!MenuOpen
+    private static (string Key, string Fallback)? LostMenu() => WindowJustClosed ? null : LostWindow() ?? (!MenuOpen
         ? ("TUTORIAL_LOST_MENU", "The menu was closed. Open the top-left menu or click <b>Return</b> to continue.")
         : null);
 
     private static (string Key, string Fallback)? LostPage(OriginalMenuState page, bool needEnabled = false, bool closeSubpages = false)
-        => (needEnabled ? LostEnabled() : null) ?? LostWindow() ?? (!On(page) || (closeSubpages && PageOverlayer.IsSubpageOpen)
+        => (needEnabled ? LostEnabled() : null) ?? (WindowJustClosed ? null : LostWindow() ?? (!On(page) || (closeSubpages && PageOverlayer.IsSubpageOpen)
             ? ("TUTORIAL_LOST_PAGE", "You moved to another screen. Click <b>Return</b> to go back and continue.")
-            : null);
+            : null));
 
     private static TutorialStep NeedEnabled(this TutorialStep s) => s.Needs(LostEnabled, EnsureEnabled);
     private static TutorialStep NeedEditor(this TutorialStep s) => s.Needs(LostEditor, ToEditor);
@@ -146,6 +152,13 @@ internal static class TutorialContent {
     private static Vector2 SamplePoint => new(Screen.width * 0.36f, Screen.height * 0.6f);
 
     private static RectTransform SampleRect => Alive(sample) ? sample.RectTransform : null;
+
+    private static RectTransform DemoRowRect(int i)
+        => i < demoRow.Length && Alive(demoRow[i]) ? demoRow[i].RectTransform : null;
+
+    // Selection grows one Shift+click at a time.
+    private static void SelectDemoRow(int count)
+        => HudEditor.DemoSelectAll(demoRow.Take(count).Where(o => o != null));
 
     // The sample with this text: the one already there, or a new one.
     private static OvObject Sample(string text) {
@@ -215,14 +228,13 @@ internal static class TutorialContent {
         .AutoInCourse(ToEditor)
         .NeedEnabled();
 
-    private static int textsAtStart, objectsAtStart;
+    private static int textsAtStart;
     private static OvObject moved;
     private static OvObject[] demoRow = [];
     private static Vector2 movedFrom;
     private static float rightDragScrollDistance;
+    private static bool scrambled;
     private static Action<UIScrollController, float> onRightDragScrollHandler;
-    private static bool fallbackRightDragging;
-    private static float fallbackLastY;
 
     public static TutorialChapter Hello => Chapters[0];
 
@@ -251,7 +263,7 @@ internal static class TutorialContent {
                 .At(() => MenuTarget(OriginalMenuState.Tutorial))
                 .Only(() => !Tutorial.InCourse)),
 
-        new("basics", "The Overlayer window", "Opening, moving, right-click scrolling, menu and pages",
+        new("basics", "The Overlayer window", "Opening, moving, menu and pages, then hands-on practice with every control",
             OpenWindow(),
             new TutorialStep("BASICS_MOVE", "Move and resize",
                 "You can drag the top bar to move the window, or drag any edge to resize it.",
@@ -279,21 +291,95 @@ internal static class TutorialContent {
                 .OnEnter(() => { if (WindowOpen && !MenuOpen) UICore.OpenMenu(); })
                 .At(() => UICore.Menu != null ? UICore.Menu.Find("Power") as RectTransform : null)
                 .NeedMenu(),
-            new TutorialStep("BASICS_SCROLL", "Right-click scrolling",
-                "Almost every scrollable page in Overlayer replaces scrollbars with right-click dragging. Hold <b>right-click</b> on this Tutorial page and drag up or down to try it.",
-                "Moving the cursor toward the top or bottom jumps straight to that spot, just like grabbing a scrollbar. Mouse wheel scrolling still works too.")
+            // ---- the practice room (a hidden page only the tutorial opens) ----
+            new TutorialStep("PRACTICE_ROOM", "Practice room",
+                "Overlayer's controls work a little differently from ordinary UI. Let's get used to them in a room made just for this.",
+                "Nothing you do here is saved, so try anything.")
+                .Looks(Face.Smile)
+                .OnEnter(() => {
+                    ToPage(OriginalMenuState.Practice);
+                    if (MenuOpen) UICore.CloseMenu();
+                    PagePractice.Scroller?.ScrollTo(0f, false);
+                    PagePractice.Reset();
+                })
+                .At(() => PagePart(OriginalMenuState.Practice, null))
+                .NeedPage(OriginalMenuState.Practice),
+            new TutorialStep("PRACTICE_SLIDER_DRAG", "Sliders",
+                "Drag the slider left or right.",
+                "You can keep dragging past the edge of the screen, so you never run out of room.")
+                .Looks(Face.Talk)
+                .OnEnter(() => {
+                    if (!On(OriginalMenuState.Practice)) {
+                        ToPage(OriginalMenuState.Practice);
+                    }
+                    PagePractice.Reset();
+                })
+                .At(() => PagePractice.Slider?.Rect)
+                .Until(() => PagePractice.Dragged)
+                .NeedPage(OriginalMenuState.Practice),
+            new TutorialStep("PRACTICE_SLIDER_WHEEL", "Mouse wheel",
+                "Hover over the slider and roll the mouse wheel.",
+                "Hold Shift for finer steps. You can turn this off in Settings with <b>Adjust Sliders & Dropdowns with Scroll</b>.")
                 .Looks(Face.Curious)
                 .OnEnter(() => {
-                    ToPage(OriginalMenuState.Tutorial);
-                    if (MenuOpen) UICore.CloseMenu();
-                    TutorialPage.Scroller?.ScrollTo(0f, false);
+                    if (!On(OriginalMenuState.Practice)) {
+                        ToPage(OriginalMenuState.Practice);
+                    }
+                    PagePractice.Reset();
+                })
+                .At(() => PagePractice.Slider?.Rect)
+                .Until(() => PagePractice.Wheeled)
+                .NeedPage(OriginalMenuState.Practice),
+            new TutorialStep("PRACTICE_SLIDER_MATH", "Type a formula",
+                "Click the slider's number, type a formula like «50*2» or «(10+5)/3», and press Enter.",
+                "The result previews as you type. Values outside the range are clamped, and invalid input shakes back.")
+                .Looks(new(Eye.Normal, Brow.NormalHigh, Mouth.OpenSmall))
+                .OnEnter(() => {
+                    if (!On(OriginalMenuState.Practice)) {
+                        ToPage(OriginalMenuState.Practice);
+                    }
+                    PagePractice.Reset();
+                })
+                .At(() => PagePractice.Slider?.Rect)
+                .Until(() => PagePractice.TypedMath)
+                .NeedPage(OriginalMenuState.Practice),
+            new TutorialStep("PRACTICE_MIDDLE_RESET", "Back to default",
+                "Change the slider to any value, then click it with the mouse wheel to put it back to its default.",
+                "Anything with a small dot in its top-left corner can be reset this way. You can turn this off in Settings with <b>Middle-click to set as default</b>.")
+                .Looks(Face.Smile)
+                .OnEnter(() => {
+                    if (!On(OriginalMenuState.Practice)) {
+                        ToPage(OriginalMenuState.Practice);
+                    }
+                    PagePractice.Reset();
+                })
+                .At(() => PagePractice.Slider?.Rect)
+                .Until(() => PagePractice.MiddleReset)
+                .NeedPage(OriginalMenuState.Practice),
+            new TutorialStep("PRACTICE_DROPDOWN_WHEEL", "Dropdowns too",
+                "Hover over the dropdown and roll the wheel to change it without opening the list.")
+                .Looks(Face.Talk)
+                .OnEnter(() => {
+                    if (!On(OriginalMenuState.Practice)) {
+                        ToPage(OriginalMenuState.Practice);
+                    }
+                    PagePractice.Reset();
+                })
+                .At(() => PagePractice.Dropdown?.Rect)
+                .Until(() => PagePractice.DropdownWheeled)
+                .NeedPage(OriginalMenuState.Practice),
+            new TutorialStep("BASICS_SCROLL", "Right-click scrolling",
+                "Hold <b>right-click</b> on this page and drag up or down to scroll.",
+                "Moving toward the top or bottom jumps straight there, like grabbing a scrollbar. The mouse wheel works too, and the thin bar on the window's right edge shows where you are.")
+                .Looks(Face.Curious)
+                .OnEnter(() => {
+                    PagePractice.Scroller?.ScrollTo(0f, false);
                     rightDragScrollDistance = 0f;
-                    fallbackRightDragging = false;
                     if (onRightDragScrollHandler != null) {
                         UIScrollController.OnRightDragScrolled -= onRightDragScrollHandler;
                     }
                     onRightDragScrollHandler = (sc, delta) => {
-                        if (sc == TutorialPage.Scroller) {
+                        if (sc == PagePractice.Scroller) {
                             rightDragScrollDistance += delta;
                         }
                     };
@@ -304,35 +390,46 @@ internal static class TutorialContent {
                         UIScrollController.OnRightDragScrolled -= onRightDragScrollHandler;
                         onRightDragScrollHandler = null;
                     }
-                    fallbackRightDragging = false;
                 })
-                .At(() => PagePart(OriginalMenuState.Tutorial, null))
-                .Until(() => {
-                    if (rightDragScrollDistance >= 60f) {
-                        return true;
-                    }
-                    var sc = TutorialPage.Scroller;
-                    if (sc != null && sc.MaxOffset <= 1f) {
-                        bool down = O5Input.GetMouseButton(1);
-                        if (down) {
-                            Vector2 pos = O5Input.MousePosition;
-                            bool over = sc.viewport == null || RectTransformUtility.RectangleContainsScreenPoint(sc.viewport, pos, null);
-                            if (!fallbackRightDragging) {
-                                if (over) {
-                                    fallbackRightDragging = true;
-                                    fallbackLastY = pos.y;
-                                }
-                            } else {
-                                rightDragScrollDistance += Mathf.Abs(pos.y - fallbackLastY);
-                                fallbackLastY = pos.y;
-                            }
-                        } else {
-                            fallbackRightDragging = false;
-                        }
-                    }
-                    return rightDragScrollDistance >= 60f;
+                .At(() => PagePractice.ScrollArea)
+                .Until(() => rightDragScrollDistance >= 60f)
+                .NeedPage(OriginalMenuState.Practice),
+            new TutorialStep("PRACTICE_DELETE_HOLD", "Hold to delete",
+                "Buttons that delete things need a hold. Press and hold an <b>X</b> until it fills red.",
+                "Let go early and it drains back without doing anything.")
+                .Looks(Face.Surprised)
+                .OnEnter(() => {
+                    PagePractice.RefillRows();
+                    PagePractice.Reset();
                 })
-                .NeedPage(OriginalMenuState.Tutorial)),
+                .Keeping(() => { if (PagePractice.RowsLeft == 0) PagePractice.RefillRows(); })
+                .At(() => PagePractice.DeleteArea)
+                .Until(() => PagePractice.HeldDelete)
+                .NeedPage(OriginalMenuState.Practice),
+            new TutorialStep("PRACTICE_DELETE_SHIFT", "Shift to skip",
+                "In a hurry? Hold <b>Shift</b> and click an <b>X</b> to delete right away.")
+                .Looks(Face.Grin)
+                .OnEnter(() => {
+                    if (!On(OriginalMenuState.Practice)) {
+                        ToPage(OriginalMenuState.Practice);
+                    }
+                    PagePractice.Reset();
+                })
+                .Keeping(() => { if (PagePractice.RowsLeft == 0) PagePractice.RefillRows(); })
+                .At(() => PagePractice.DeleteArea)
+                .Until(() => PagePractice.ShiftDelete)
+                .NeedPage(OriginalMenuState.Practice),
+            new TutorialStep("PRACTICE_RESET", "Bring the window back",
+                "Oops, I knocked the window out of place. Hold «{WindowKey}» for a moment to put it back.",
+                "A quick tap opens or closes the window; holding it resets the size and position. Handy if the window ever ends up out of reach.")
+                .Looks(new(Eye.Small, Brow.NormalHigh, Mouth.Clenched))
+                .OnEnter(() => {
+                    scrambled = false;
+                    UICore.DemoScramble(() => scrambled = true);
+                })
+                .OnExit(() => { if (On(OriginalMenuState.Practice)) MenuFactory.GoTo((int)OriginalMenuState.Tutorial); })
+                .Until(() => scrambled && UICore.AtDefaultBounds)
+                .NeedWindow()),
 
         new("first", "Your first HUD text", "Create, tag, move, and style a HUD text",
             new TutorialStep("FIRST_OPEN", "Open the HUD editor",
@@ -539,21 +636,34 @@ internal static class TutorialContent {
                 "You can also select a group and set Auto layout to Row or Column, and adjust gap and padding directly in the inspector panel.")
                 .Looks(new(Eye.Small, Brow.NormalHigh, Mouth.Clenched))
                 .At(() => HudEditor.PartNamed("Dock_layout") ?? HudEditor.Control("group_row") ?? SampleRect)
+                // Three scattered texts appear, get Shift+clicked into one selection, then
+                // "Group as row" lines them up; the pointer ends on the group's layout settings.
                 .Shows(new TutorialDemo()
-                    .Wait(0.3f)
+                    .Wait(0.5f)
                     .Do(() => {
                         PutSampleAway();
-                        var a = HudEditor.DemoAddText(SamplePoint + new Vector2(-120f, 40f), "{Hour:00}");
-                        var b = HudEditor.DemoAddText(SamplePoint + new Vector2(10f, -50f), ":");
-                        var c = HudEditor.DemoAddText(SamplePoint + new Vector2(130f, 20f), "{Minute:00}");
-                        demoRow = [a, b, c];
+                        demoRow = [HudEditor.DemoAddText(SamplePoint + new Vector2(-150f, 50f), "{Hour:00}"), null, null];
                     })
-                    .Wait(1f)
-                    .Do(() => HudEditor.DemoSelectAll(demoRow.Where(o => o != null)))
-                    .Wait(0.5f)
-                    .Point(() => HudEditor.Control("group_row"))
-                    .Click(() => sample = HudEditor.DemoGroupAsRow(demoRow.Where(o => o != null)))
+                    .Wait(0.35f)
+                    .Do(() => demoRow[1] = HudEditor.DemoAddText(SamplePoint + new Vector2(0f, -45f), ":"))
+                    .Wait(0.35f)
+                    .Do(() => demoRow[2] = HudEditor.DemoAddText(SamplePoint + new Vector2(150f, 25f), "{Minute:00}"))
                     .Wait(0.8f)
+                    .Point(() => DemoRowRect(0))
+                    .Click(() => SelectDemoRow(1))
+                    .Point(() => DemoRowRect(1), 0.55f)
+                    .Click(() => SelectDemoRow(2))
+                    .Point(() => DemoRowRect(2), 0.55f)
+                    .Click(() => SelectDemoRow(3))
+                    // Let the inspector switch to the multi-selection before reaching for its button.
+                    .Wait(0.7f)
+                    .Point(() => HudEditor.Control("group_row") ?? HudEditor.PartNamed("Dock_layout"), 0.9f)
+                    .Wait(0.3f)
+                    .Click(() => sample = HudEditor.DemoGroupAsRow(demoRow.Where(o => o != null)))
+                    // Watch them line up.
+                    .Wait(1.6f)
+                    .Point(() => HudEditor.PartNamed("Dock_layout"), 0.8f)
+                    .Wait(1.4f)
                     .HidePointer())
                 .OnExit(PutSampleAway)
                 .NeedEditor(),
@@ -575,13 +685,11 @@ internal static class TutorialContent {
                 .Until(() => HudEditor.PresetMenuOpen)
                 .Only(() => !HudEditor.PresetMenuOpen)
                 .NeedEditor(),
-            new TutorialStep("PRESETS_PICK", "Insert a preset",
-                "Pick any preset from the list.",
-                "Presets are added as normal objects, so you can customize anything about them.")
+            new TutorialStep("PRESETS_PICK", "Add a preset",
+                "Clicking a preset here adds it to the <b>current canvas</b>.",
+                "Pick the current canvas by clicking it in the canvas list on the left; its settings open in the inspector panel. Presets are added as normal objects, so you can customize anything about them.")
                 .Looks(Face.Talk)
-                .OnEnter(() => objectsAtStart = CountObjects())
-                .Until(() => CountObjects() > objectsAtStart)
-                .Keeping(() => { if (!HudEditor.PresetMenuOpen) Tutorial.Jump("PRESETS_MENU"); })
+                .At(() => HudEditor.PresetMenuOpen ? HudEditor.ContextMenuRect : HudEditor.Control("presets"))
                 .NeedEditor()),
 
         new("tags", "Tags: the useful tricks", "Arguments, math, styling, colors, animated numbers",

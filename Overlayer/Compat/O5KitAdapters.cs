@@ -282,15 +282,15 @@ public static class O5KitAdapters {
         SyncConfig();
 
         O5ShortcutManager.IsSuspended = () => O5Kit.Control.O5InputBlocker.IsEditing || UI.Utility.KeyCapture.SuppressShortcuts;
-        O5Kit.Control.O5Slider.EnableWheelAdjust = () => MainCore.Conf.WheelAdjustSlider.Value;
+        O5Kit.Control.O5Slider.EnableWheelAdjust = () => WheelAdjust;
         O5Kit.Control.O5Slider.OnAnyWheelChanged = s => UI.UISound.PlaySliderTick((float)s.Normalize());
-        O5Kit.Control.O5Dropdown.EnableWheelAdjust = () => MainCore.Conf.WheelAdjustSlider.Value;
+        O5Kit.Control.O5Dropdown.EnableWheelAdjust = () => WheelAdjust;
         O5Kit.Control.O5Dropdown.OnAnyWheelChanged = UI.UISound.PlayDropdownPick;
         O5Kit.Control.O5UiEvents.OnDropdownToggled = UI.UISound.PlayDropdownToggle;
         O5Kit.Control.O5UiEvents.OnDropdownPicked = UI.UISound.PlayDropdownPick;
         O5Kit.Control.O5UiEvents.OnToggleChanged = UI.UISound.PlayToggle;
         O5Kit.Behaviour.UIScrollController.ShouldConsumeParentScroll = () =>
-            UICodeInputField.ShouldConsumeParentScroll || (MainCore.Conf.WheelAdjustSlider.Value && O5Kit.Control.O5Slider.AnyHovered)
+            UICodeInputField.ShouldConsumeParentScroll || (WheelAdjust && O5Kit.Control.O5Slider.AnyHovered)
             || O5Kit.Control.O5Dropdown.AnyWheelTarget;
         if (!_wired) {
             _wired = true;
@@ -327,6 +327,12 @@ public static class O5KitAdapters {
 #endif
 
     /// <summary>Copies live settings into the O5Kit runtime config. Call after any related setting changes (O5Kit reads <see cref="O5Context.Config"/> live).</summary>
+    // The tutorial's practice room teaches wheel adjusting and middle-click reset, so both stay on
+    // there even when turned off in Settings (otherwise those steps could never be completed).
+    private static bool OnPracticePage => UI.UICore.CurrentMenuState == (int)UI.OriginalMenuState.Practice;
+
+    private static bool WheelAdjust => MainCore.Conf.WheelAdjustSlider.Value || OnPracticePage;
+
     public static void SyncConfig() {
         if (Ctx == null) {
             return;
@@ -335,7 +341,7 @@ public static class O5KitAdapters {
         Ctx.Config.UIScale = MainCore.Conf.UIScale.Value;
         Ctx.Config.TooltipEnabled = MainCore.Conf.Tooltip.Value;
         Ctx.Config.TooltipOpacity = Mathf.Clamp(MainCore.Conf.TooltipOpacity.Value, 0.2f, 1f);
-        Ctx.Config.MiddleClickToDefault = MainCore.Conf.MiddleClickToDefault.Value;
+        Ctx.Config.MiddleClickToDefault = MainCore.Conf.MiddleClickToDefault.Value || OnPracticePage;
         Ctx.Config.SliderSensitivity = MainCore.Conf.SliderSensitivity.Value;
         Ctx.Config.AnimationSpeed = MainCore.Conf.AnimationSpeed.Value;
         Ctx.Config.ScrollEasing = MainCore.Conf.ScrollEasing.Value;

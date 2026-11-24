@@ -130,6 +130,8 @@ public static class MainCore {
         try {
             UI.Factory.Page.PageOverlayer.Tick();
             UI.Factory.Page.KkitutRoom.Tick();
+            UI.ScrollIndicator.Tick();
+            UI.Factory.Page.PagePractice.Tick();
         } catch (Exception e) {
             try {
                 Runtime?.Logger?.Err($"[MainCore] Page tick failed: {e.Message}");
