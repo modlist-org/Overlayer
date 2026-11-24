@@ -24,6 +24,9 @@ public class TextLocalization
     public string Default;
     public string Value => tr?.Get(Key, Default) ?? Default;
 
+    /// <summary>Optional display transform applied to <see cref="Value"/> before it is written to the text (e.g. to append a current setting). <see cref="Value"/> itself stays the plain translation.</summary>
+    public Func<string, string> Format;
+
     private Translator tr;
 
     private TMP_Text tmp;
@@ -61,7 +64,7 @@ public class TextLocalization
             return;
         }
 
-        tmp.text = Value;
+        tmp.text = Format != null ? Format(Value) : Value;
     }
 
     public static void RefreshAll() {

@@ -376,7 +376,10 @@ internal static class PageSettings {
             "DESC_TAB_LABELS",
             "Controls whether the left menu shows tab labels always, only on hover, or stays icons-only."
         ));
-        var tabLabelTr = tabLabelModeDropdown.Label.gameObject.AddComponent<TextLocalization>().Init("TAB_LABELS", "Tab Labels");
+        var tabLabelTr = tabLabelModeDropdown.Label.gameObject.AddComponent<TextLocalization>();
+        // The label shows "Tab Labels: <mode>"; without Format, OnEnable/RefreshAll would reset it to just "Tab Labels".
+        tabLabelTr.Format = _ => TabLabelModeDisplay(tabLabelModeDropdown.Value);
+        tabLabelTr.Init("TAB_LABELS", "Tab Labels");
         refreshTabLabelDropdown = () => {
             if (tabLabelModeDropdown != null) {
                 tabLabelModeDropdown.RebuildList();
