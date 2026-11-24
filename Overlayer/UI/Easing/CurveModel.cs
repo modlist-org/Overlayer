@@ -16,9 +16,13 @@ internal sealed class CurveModel {
     public readonly List<Vector2> Tangents = [new(1f, 1f), new(1f, 1f)];
     public CustomEaseKind Kind = CustomEaseKind.Curve;
     public event Action Changed;
+    public event Action HistoryChanged;
 
     private readonly List<(Vector2[] Points, Vector2[] Tangents, CustomEaseKind Kind)> history = [];
     private int cursor = -1;
+
+    public bool CanUndo => cursor > 0;
+    public bool CanRedo => cursor >= 0 && cursor < history.Count - 1;
 
     public CurveModel() => Snapshot();
 
@@ -47,6 +51,7 @@ internal sealed class CurveModel {
             history.RemoveAt(0);
         }
         cursor = history.Count - 1;
+        HistoryChanged?.Invoke();
     }
 
     private bool Same((Vector2[] Points, Vector2[] Tangents, CustomEaseKind Kind) state)
@@ -66,6 +71,7 @@ internal sealed class CurveModel {
         Tangents.AddRange(history[index].Tangents);
         Kind = history[index].Kind;
         NotifyChanged();
+        HistoryChanged?.Invoke();
         return true;
     }
 

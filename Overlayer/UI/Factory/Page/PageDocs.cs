@@ -32,7 +32,7 @@ using TMPro;
 namespace Overlayer.UI.Factory.Page;
 
 internal static class PageDocs {
-    private const float SidebarWidth = 236f;
+    private const float SidebarWidth = 280f;
     private const float LivePollInterval = 0.15f;
 
     // Monochrome palette derived dynamically from UIColors.BaseColor
@@ -92,7 +92,7 @@ internal static class PageDocs {
         public ITweenHandle TagCheckReset;
     }
 
-    private const float ExplorerCardSpacing = 6f;
+    private const float ExplorerCardSpacing = 8f;
     private const int ExplorerOverscan = 2;
 
     private static RectTransform pageRoot;
@@ -156,7 +156,6 @@ internal static class PageDocs {
 
     // Ease live hover preview popup
     private static EasePreviewPopup easePopup;
-    private static Sprite checkIconSprite;
     private static Sprite sharpFillSprite;
     private static Sprite sharpOutlineSprite;
 
@@ -300,12 +299,12 @@ internal static class PageDocs {
 
         var railInner = UiStyle.NewRect("RailInner", sidebar);
         Stretch(railInner);
-        var railLayout = UiStyle.Vertical(railInner.gameObject, 8f, new RectOffset(12, 12, 14, 12));
+        var railLayout = UiStyle.Vertical(railInner.gameObject, 10f, new RectOffset(14, 14, 16, 14));
         railLayout.childForceExpandHeight = false;
 
         // Clean top-left brand: Wiki | vX.Y.Z
-        var brandRow = O5Factory.Row(Ctx, railInner, 30f);
-        var brandText = O5Factory.ControlText(Ctx, brandRow, 15.5f, true);
+        var brandRow = O5Factory.Row(Ctx, railInner, 44f);
+        var brandText = O5Factory.ControlText(Ctx, brandRow, Ctx.Theme.FontSizeBody, true);
         brandText.font = Ctx.Fonts.Medium;
         brandText.color = Color.white;
         brandText.rectTransform.anchorMin = Vector2.zero;
@@ -315,10 +314,10 @@ internal static class PageDocs {
         brandText.alignment = TextAlignmentOptions.MidlineLeft;
         brandText.raycastTarget = false;
         brandText.richText = true;
-        brandText.text = $"Wiki <color=#5A5D6B>|</color> <size=13><color=#8F93A6>v{DocsHighlight.Escape(MainCore.Version.ToString())}</color></size>";
+        brandText.text = $"Wiki <color=#5A5D6B>|</color> <size=17><color=#8F93A6>v{DocsHighlight.Escape(MainCore.Version.ToString())}</color></size>";
 
         // Global search input (uses default UI border)
-        var searchRow = O5Factory.Row(Ctx, railInner, 36f);
+        var searchRow = O5Factory.Row(Ctx, railInner);
         globalSearchInput = TrackFrame(O5Factory.Input(Ctx, searchRow, "docs_global_search", new O5InputOptions {
             Placeholder = "Find Some..",
             Value = globalQuery,
@@ -327,13 +326,11 @@ internal static class PageDocs {
                 RenderActiveView(animate: false);
             },
         }));
-        globalSearchInput.InputField.textComponent.fontSize = 13.5f;
-        globalSearchInput.Placeholder.fontSize = 13.5f;
 
         UiStyle.Separator(railInner);
 
         // Scrollable chapter list
-        var (_, navScrollContent, _) = O5Factory.ScrollView(Ctx, railInner, spacing: 3f, expandLayout: true);
+        var (_, navScrollContent, _) = O5Factory.ScrollView(Ctx, railInner, spacing: 6f, expandLayout: true);
         navContent = navScrollContent;
 
         // Right hairline border of sidebar
@@ -357,8 +354,8 @@ internal static class PageDocs {
         (_, bodyContent, bodyScroller) = O5Factory.ScrollView(
             Ctx,
             stage,
-            spacing: 14f,
-            contentPadding: new RectOffset(24, 24, 20, 28)
+            spacing: 16f,
+            contentPadding: new RectOffset(24, 24, 22, 32)
         );
         bodyGroup = bodyContent.gameObject.AddComponent<CanvasGroup>();
     }
@@ -375,15 +372,15 @@ internal static class PageDocs {
             var item = SharpRounded("Nav_" + chapter.Id, navContent, NavIdleBg);
             item.raycastTarget = true;
             var le = item.gameObject.AddComponent<LayoutElement>();
-            le.preferredHeight = 36f;
-            le.minHeight = 36f;
+            le.preferredHeight = 48f;
+            le.minHeight = 48f;
 
             var bar = NewImage("Bar", item.rectTransform, Color.clear);
             bar.rectTransform.anchorMin = new Vector2(0f, 0.22f);
             bar.rectTransform.anchorMax = new Vector2(0f, 0.78f);
             bar.rectTransform.pivot = new Vector2(0f, 0.5f);
             bar.rectTransform.anchoredPosition = new Vector2(3f, 0f);
-            bar.rectTransform.sizeDelta = new Vector2(2f, 0f);
+            bar.rectTransform.sizeDelta = new Vector2(3f, 0f);
 
             bool isLogo = chapter.Icon == UISprite.OV5LogoOutline256;
             var icon = NewImage(
@@ -395,13 +392,13 @@ internal static class PageDocs {
             icon.preserveAspect = true;
             icon.rectTransform.anchorMin = icon.rectTransform.anchorMax = new Vector2(0f, 0.5f);
             icon.rectTransform.pivot = new Vector2(0f, 0.5f);
-            icon.rectTransform.anchoredPosition = new Vector2(13f, 0f);
-            icon.rectTransform.sizeDelta = new Vector2(16f, 16f);
+            icon.rectTransform.anchoredPosition = new Vector2(12f, 0f);
+            icon.rectTransform.sizeDelta = new Vector2(22f, 22f);
 
-            var label = O5Factory.ControlText(Ctx, item.rectTransform, 13.5f, true);
+            var label = O5Factory.ControlText(Ctx, item.rectTransform, 18f, true);
             label.rectTransform.anchorMin = Vector2.zero;
             label.rectTransform.anchorMax = Vector2.one;
-            label.rectTransform.offsetMin = new Vector2(37f, 0f);
+            label.rectTransform.offsetMin = new Vector2(44f, 0f);
             label.rectTransform.offsetMax = new Vector2(-10f, 0f);
             label.alignment = TextAlignmentOptions.Left;
             label.verticalAlignment = VerticalAlignmentOptions.Middle;
@@ -556,11 +553,11 @@ internal static class PageDocs {
     // Clean chapter header: Title + Description only, no icon box, no eyebrow
     private static void RenderHeader(DocChapter chapter) {
         var wrap = UiStyle.NewRect("Header_" + chapter.Id, bodyContent);
-        var layout = UiStyle.Vertical(wrap.gameObject, 6f, new RectOffset(2, 2, 2, 6));
+        var layout = UiStyle.Vertical(wrap.gameObject, 8f, new RectOffset(2, 2, 2, 8));
         layout.childForceExpandHeight = false;
 
-        AddWrappedText(wrap, chapter.Title, 24f, Color.white, medium: true);
-        AddWrappedText(wrap, chapter.Subtitle, 14f, TextMuted, lineSpacing: 4f);
+        AddWrappedText(wrap, chapter.Title, Ctx.Theme.FontSizeH1, Color.white, medium: true);
+        AddWrappedText(wrap, chapter.Subtitle, 20f, TextMuted, lineSpacing: 5f);
 
         var sep = NewImage("HeaderRule", wrap, BorderSubtle);
         var sepLe = sep.gameObject.AddComponent<LayoutElement>();
@@ -572,7 +569,7 @@ internal static class PageDocs {
     // ------------------------------------------------------------------
 
     private static void RenderOverviewDashboard() {
-        var statsRow = UiStyle.HRow(bodyContent, 10f, 70f);
+        var statsRow = UiStyle.HRow(bodyContent, 12f, 96f);
         overviewTagCountText = AddStatCard(statsRow, T("등록된 태그", "TAGS"));
         overviewCanvasCountText = AddStatCard(statsRow, T("활성 캔버스", "CANVASES"));
         overviewModuleCountText = AddStatCard(statsRow, T("로드된 모듈", "MODULES"));
@@ -585,25 +582,25 @@ internal static class PageDocs {
         card.raycastTarget = false;
         Stretch(card.rectTransform);
 
-        var caption = O5Factory.ControlText(Ctx, card.rectTransform, 11f, true);
+        var caption = O5Factory.ControlText(Ctx, card.rectTransform, 15f, true);
         caption.font = Ctx.Fonts.Monospace;
         caption.color = TextDim;
         caption.rectTransform.anchorMin = new Vector2(0f, 1f);
         caption.rectTransform.anchorMax = new Vector2(1f, 1f);
         caption.rectTransform.pivot = new Vector2(0f, 1f);
-        caption.rectTransform.offsetMin = new Vector2(14f, -26f);
-        caption.rectTransform.offsetMax = new Vector2(-14f, -10f);
+        caption.rectTransform.offsetMin = new Vector2(16f, -34f);
+        caption.rectTransform.offsetMax = new Vector2(-16f, -12f);
         caption.alignment = TextAlignmentOptions.MidlineLeft;
         caption.raycastTarget = false;
         caption.text = label;
 
-        var value = O5Factory.ControlText(Ctx, card.rectTransform, 21f, true);
+        var value = O5Factory.ControlText(Ctx, card.rectTransform, 28f, true);
         value.font = Ctx.Fonts.Medium;
         value.color = Color.white;
         value.rectTransform.anchorMin = new Vector2(0f, 0f);
         value.rectTransform.anchorMax = new Vector2(1f, 1f);
-        value.rectTransform.offsetMin = new Vector2(14f, 8f);
-        value.rectTransform.offsetMax = new Vector2(-14f, -24f);
+        value.rectTransform.offsetMin = new Vector2(16f, 10f);
+        value.rectTransform.offsetMax = new Vector2(-16f, -34f);
         value.alignment = TextAlignmentOptions.MidlineLeft;
         value.overflowMode = TextOverflowModes.Ellipsis;
         TmpCompat.SetNoWrap(value);
@@ -640,29 +637,29 @@ internal static class PageDocs {
         var card = SharpRounded("TagPlayground", bodyContent, CardBg, BorderSubtle);
         card.raycastTarget = false;
         playgroundCard = card.rectTransform;
-        var layout = UiStyle.Vertical(card.gameObject, 10f, new RectOffset(16, 16, 14, 14));
+        var layout = UiStyle.Vertical(card.gameObject, 12f, new RectOffset(18, 18, 16, 16));
         layout.childForceExpandHeight = false;
 
         // Header row: title + copy icon + fullscreen icon
-        var headerRow = UiStyle.HRow(card.rectTransform, 6f, 30f);
-        var headLabel = O5Factory.ControlText(Ctx, UiStyle.Cell(headerRow, 0f), 15f, true);
+        var headerRow = UiStyle.HRow(card.rectTransform, 8f, 44f);
+        var headLabel = O5Factory.ControlText(Ctx, UiStyle.Cell(headerRow, 0f), Ctx.Theme.FontSizeBody, true);
         headLabel.font = Ctx.Fonts.Medium;
         headLabel.color = Color.white;
         headLabel.alignment = TextAlignmentOptions.MidlineLeft;
         headLabel.raycastTarget = false;
         headLabel.text = "PlayGround";
 
-        AddCopyIconButton(UiStyle.Cell(headerRow, 30f), "docs_sandbox_copy", () => sandboxTemplate);
+        AddCopyIconButton(UiStyle.Cell(headerRow, 44f), "docs_sandbox_copy", () => sandboxTemplate, padding: 10f);
         playgroundExpandBtn = TrackPage(MakeIconButton(
-            UiStyle.Cell(headerRow, 30f),
+            UiStyle.Cell(headerRow, 44f),
             "docs_sandbox_expand",
             MainCore.Spr.Get(UISprite.Expand128),
             () => SetPlaygroundFullscreen(playgroundFullscreenOverlay == null),
-            padding: 7f
+            padding: 10f
         ));
 
         // Preset buttons row
-        var presetsRow = UiStyle.HRow(card.rectTransform, 6f, 28f);
+        var presetsRow = UiStyle.HRow(card.rectTransform, 8f, 44f);
         var presets = new (string Label, string Template)[] {
             ("Clock", "{Hour:00}:{Minute:00}:{Second:00}"),
             ("ColorRange", "<color=#{ColorRange(Fps,30,144,FF5555,96FF91,OutCubic)}>{EasedValue(Fps,0,300,OutExpo)} FPS</color>"),
@@ -678,14 +675,14 @@ internal static class PageDocs {
                 if (sandboxEngine != null) {
                     sandboxEngine.Text = sandboxTemplate;
                 }
-            }, active: false, fontSize: 12f));
+            }, active: false, fontSize: 18f));
         }
 
         // Code Editor (UICodeInputField with syntax highlighting, gutter, completion)
-        var editorHost = O5Factory.Row(Ctx, card.rectTransform, 176f);
+        var editorHost = O5Factory.Row(Ctx, card.rectTransform, 220f);
         playgroundEditorLayout = editorHost.GetComponent<LayoutElement>();
-        playgroundEditorLayout.minHeight = 176f;
-        playgroundEditorLayout.preferredHeight = 176f;
+        playgroundEditorLayout.minHeight = 220f;
+        playgroundEditorLayout.preferredHeight = 220f;
         playgroundEditorLayout.flexibleHeight = 0f;
 
         BuildPlaygroundCodeEditor(editorHost);
@@ -695,12 +692,12 @@ internal static class PageDocs {
         previewBox.raycastTarget = false;
         previewBox.gameObject.AddComponent<RectMask2D>();
         playgroundPreviewLayout = previewBox.gameObject.AddComponent<LayoutElement>();
-        playgroundPreviewLayout.minHeight = 96f;
+        playgroundPreviewLayout.minHeight = 120f;
         playgroundPreviewLayout.flexibleHeight = 0f;
-        var previewLayout = UiStyle.Vertical(previewBox.gameObject, 6f, new RectOffset(14, 14, 12, 12));
+        var previewLayout = UiStyle.Vertical(previewBox.gameObject, 6f, new RectOffset(16, 16, 14, 14));
         previewLayout.childForceExpandHeight = false;
 
-        sandboxPreviewText = AddWrappedText(previewBox.rectTransform, sandboxEngine.Get(), 22f, Color.white, medium: true, lineSpacing: 5f);
+        sandboxPreviewText = AddWrappedText(previewBox.rectTransform, sandboxEngine.Get(), 28f, Color.white, medium: true, lineSpacing: 6f);
         sandboxPreviewText.richText = true;
 
         // Dedicated clipped single-line diagnostics bar (only visible on errors/warnings)
@@ -709,17 +706,17 @@ internal static class PageDocs {
         diagBox.gameObject.AddComponent<RectMask2D>();
         sandboxDiagBox = diagBox.gameObject;
         var diagLe = diagBox.gameObject.AddComponent<LayoutElement>();
-        diagLe.minHeight = 30f;
-        diagLe.preferredHeight = 30f;
+        diagLe.minHeight = 42f;
+        diagLe.preferredHeight = 42f;
         diagLe.flexibleHeight = 0f;
 
         sandboxDiagDot = NewImage("DiagDot", diagBox.rectTransform, StatusErr, MainCore.Spr.Get(UISprite.Circle256));
         sandboxDiagDot.rectTransform.anchorMin = sandboxDiagDot.rectTransform.anchorMax = new Vector2(0f, 0.5f);
         sandboxDiagDot.rectTransform.pivot = new Vector2(0f, 0.5f);
-        sandboxDiagDot.rectTransform.anchoredPosition = new Vector2(10f, 0f);
-        sandboxDiagDot.rectTransform.sizeDelta = new Vector2(6f, 6f);
+        sandboxDiagDot.rectTransform.anchoredPosition = new Vector2(12f, 0f);
+        sandboxDiagDot.rectTransform.sizeDelta = new Vector2(8f, 8f);
 
-        sandboxDiagText = O5Factory.ControlText(Ctx, diagBox.rectTransform, 12f, true);
+        sandboxDiagText = O5Factory.ControlText(Ctx, diagBox.rectTransform, 16f, true);
         sandboxDiagText.font = Ctx.Fonts.Monospace;
         sandboxDiagText.alignment = TextAlignmentOptions.MidlineLeft;
         sandboxDiagText.overflowMode = TextOverflowModes.Ellipsis;
@@ -727,14 +724,14 @@ internal static class PageDocs {
         sandboxDiagText.raycastTarget = false;
         sandboxDiagText.rectTransform.anchorMin = Vector2.zero;
         sandboxDiagText.rectTransform.anchorMax = Vector2.one;
-        sandboxDiagText.rectTransform.offsetMin = new Vector2(24f, 0f);
-        sandboxDiagText.rectTransform.offsetMax = new Vector2(-10f, 0f);
+        sandboxDiagText.rectTransform.offsetMin = new Vector2(28f, 0f);
+        sandboxDiagText.rectTransform.offsetMax = new Vector2(-12f, 0f);
 
         UpdateSandboxDiagnostics();
     }
 
     private static void BuildPlaygroundCodeEditor(RectTransform row) {
-        const float gutterWidth = 40f;
+        const float gutterWidth = 52f;
         string displayedText = sandboxTemplate ?? string.Empty;
         TagSyntaxSpan[] syntaxSpans = TagSyntaxHighlighter.GetSpans(displayedText);
         bool lineNumbersDirty = true;
@@ -763,12 +760,12 @@ internal static class PageDocs {
         codeInput.richText = false;
         var text = codeInput.textComponent;
         text.richText = false;
-        text.fontSize = 15f;
+        text.fontSize = 18f;
         text.characterSpacing = 0f;
-        text.lineSpacing = 4f;
+        text.lineSpacing = 5f;
         TmpCompat.SetWrappingMode(text, TmpCompat.Normal);
 
-        sandboxInput.Placeholder.fontSize = 15f;
+        sandboxInput.Placeholder.fontSize = 18f;
         sandboxInput.Placeholder.characterSpacing = 0f;
         TmpCompat.SetWrappingMode(sandboxInput.Placeholder, TmpCompat.Normal);
 
@@ -798,7 +795,7 @@ internal static class PageDocs {
         sep.rectTransform.pivot = new Vector2(1f, 0.5f);
         sep.rectTransform.sizeDelta = new Vector2(1f, 0f);
 
-        var lineNumbers = O5Factory.ControlText(Ctx, gutterRect, 15f, true);
+        var lineNumbers = O5Factory.ControlText(Ctx, gutterRect, 18f, true);
         lineNumbers.font = text.font;
         lineNumbers.fontSize = text.fontSize;
         lineNumbers.characterSpacing = 0f;
@@ -898,12 +895,12 @@ internal static class PageDocs {
             playgroundCard.offsetMax = new Vector2(-18f, -18f);
 
             if (playgroundEditorLayout != null) {
-                playgroundEditorLayout.minHeight = 240f;
+                playgroundEditorLayout.minHeight = 280f;
                 playgroundEditorLayout.preferredHeight = -1f;
                 playgroundEditorLayout.flexibleHeight = 1.3f;
             }
             if (playgroundPreviewLayout != null) {
-                playgroundPreviewLayout.minHeight = 140f;
+                playgroundPreviewLayout.minHeight = 160f;
                 playgroundPreviewLayout.flexibleHeight = 0.7f;
             }
             if (playgroundExpandBtn != null) {
@@ -919,12 +916,12 @@ internal static class PageDocs {
                 UnityEngine.Object.Destroy(playgroundSlot.gameObject);
             }
             if (playgroundEditorLayout != null) {
-                playgroundEditorLayout.minHeight = 176f;
-                playgroundEditorLayout.preferredHeight = 176f;
+                playgroundEditorLayout.minHeight = 220f;
+                playgroundEditorLayout.preferredHeight = 220f;
                 playgroundEditorLayout.flexibleHeight = 0f;
             }
             if (playgroundPreviewLayout != null) {
-                playgroundPreviewLayout.minHeight = 96f;
+                playgroundPreviewLayout.minHeight = 120f;
                 playgroundPreviewLayout.flexibleHeight = 0f;
             }
             if (playgroundExpandBtn != null) {
@@ -981,10 +978,10 @@ internal static class PageDocs {
     private static void RenderTagExplorer() {
         var barCard = SharpRounded("ExplorerBar", bodyContent, CardBg, BorderSubtle);
         barCard.raycastTarget = false;
-        var barLayout = UiStyle.Vertical(barCard.gameObject, 8f, new RectOffset(14, 14, 12, 12));
+        var barLayout = UiStyle.Vertical(barCard.gameObject, 10f, new RectOffset(16, 16, 14, 14));
         barLayout.childForceExpandHeight = false;
 
-        var searchRow = UiStyle.HRow(barCard.rectTransform, 8f, 36f);
+        var searchRow = UiStyle.HRow(barCard.rectTransform, 8f, Ctx.Theme.ControlHeight);
         var expInput = TrackPage(O5Factory.Input(Ctx, UiStyle.Cell(searchRow, 0f), "docs_explorer_search", new O5InputOptions {
             Placeholder = T("태그 이름, 설명, 모듈 검색...", "Filter by tag name, description, or module..."),
             Value = explorerQuery,
@@ -993,17 +990,15 @@ internal static class PageDocs {
                 RebuildTagExplorerList();
             },
         }));
-        expInput.InputField.textComponent.fontSize = 13.5f;
-        expInput.Placeholder.fontSize = 13.5f;
 
-        TrackPage(MakeMonoButton(UiStyle.Cell(searchRow, 92f), "docs_explorer_refresh",
-            T("새로고침", "Refresh"), () => RenderActiveView(animate: false), active: false, fontSize: 13f));
+        TrackPage(MakeMonoButton(UiStyle.Cell(searchRow, 136f), "docs_explorer_refresh",
+            T("새로고침", "Refresh"), () => RenderActiveView(animate: false), active: false, fontSize: 22f));
 
         if (explorerFilter == "Params") {
             explorerFilter = "All";
         }
 
-        var filterRow = UiStyle.HRow(barCard.rectTransform, 6f, 30f);
+        var filterRow = UiStyle.HRow(barCard.rectTransform, 8f, 46f);
         string[] filters = ["All", "Core", "Module", "JS"];
         string[] filterLabels = [
             T("전체", "All"),
@@ -1017,7 +1012,7 @@ internal static class PageDocs {
             TrackPage(MakeMonoButton(UiStyle.Cell(filterRow, 0f), "docs_exp_f_" + f, filterLabels[i], () => {
                 explorerFilter = f;
                 RenderActiveView(animate: false);
-            }, active: active, fontSize: 12.5f));
+            }, active: active, fontSize: 20f));
         }
 
         if (explorerFilter == "Module") {
@@ -1048,11 +1043,11 @@ internal static class PageDocs {
         }
 
         var listHost = UiStyle.NewRect("ExplorerList", bodyContent);
-        var listLayout = UiStyle.Vertical(listHost.gameObject, 6f);
+        var listLayout = UiStyle.Vertical(listHost.gameObject, ExplorerCardSpacing);
         listLayout.childForceExpandHeight = false;
         explorerListRoot = listHost;
 
-        explorerCountText = AddWrappedText(explorerListRoot, string.Empty, 12.5f, TextMuted);
+        explorerCountText = AddWrappedText(explorerListRoot, string.Empty, 18f, TextMuted);
         explorerCountText.margin = new Vector4(2f, 0f, 0f, 2f);
 
         var emptyWrap = UiStyle.NewRect("ExplorerEmpty", explorerListRoot);
@@ -1150,13 +1145,13 @@ internal static class PageDocs {
 
     private static float MeasureExplorerCardHeight(TagCore tag) {
         if (string.IsNullOrWhiteSpace(tag?.Description)) {
-            return 46f;
+            return 64f;
         }
         string desc = tag.Description.Trim();
-        if (!desc.Contains('\n') && desc.Length <= 84) {
-            return 68f;
+        if (!desc.Contains('\n') && desc.Length <= 58) {
+            return 96f;
         }
-        return 86f;
+        return 124f;
     }
 
     private static void UpdateExplorerVirtualWindow(bool force) {
@@ -1295,10 +1290,10 @@ internal static class PageDocs {
         var card = SharpRounded(cardName, parent, CardBg, BorderSubtle);
         card.raycastTarget = false;
 
-        var layout = UiStyle.Vertical(card.gameObject, 5f, new RectOffset(12, 12, 9, 9));
+        var layout = UiStyle.Vertical(card.gameObject, 8f, new RectOffset(14, 14, 12, 12));
         layout.childForceExpandHeight = false;
 
-        var topRow = UiStyle.HRow(card.rectTransform, 8f, 28f);
+        var topRow = UiStyle.HRow(card.rectTransform, 10f, 40f);
 
         // Invisible button: only the label is visible and highlights on hover/click
         var tagHit = NewImage("TagCopyBtn", topRow, Color.clear);
@@ -1306,7 +1301,7 @@ internal static class PageDocs {
         var tagBtnLe = tagHit.gameObject.AddComponent<LayoutElement>();
         tagBtnLe.flexibleWidth = 0f;
 
-        var tagTmp = O5Factory.ControlText(Ctx, tagHit.rectTransform, 13.5f, true);
+        var tagTmp = O5Factory.ControlText(Ctx, tagHit.rectTransform, 19f, true);
         tagTmp.font = Ctx.Fonts.Monospace;
         tagTmp.color = TextBody;
         tagTmp.alignment = TextAlignmentOptions.MidlineLeft;
@@ -1315,15 +1310,15 @@ internal static class PageDocs {
         tagTmp.raycastTarget = false;
         Stretch(tagTmp.rectTransform);
 
-        var tagCheck = NewImage("Check", tagHit.rectTransform, Color.white, GetCheckSprite());
+        var tagCheck = NewImage("Check", tagHit.rectTransform, Color.white, MainCore.Spr.Get(UISprite.Check128));
         tagCheck.preserveAspect = true;
         tagCheck.rectTransform.anchorMin = tagCheck.rectTransform.anchorMax = new Vector2(0f, 0.5f);
         tagCheck.rectTransform.pivot = new Vector2(0f, 0.5f);
         tagCheck.rectTransform.anchoredPosition = new Vector2(2f, 0f);
-        tagCheck.rectTransform.sizeDelta = new Vector2(14f, 14f);
+        tagCheck.rectTransform.sizeDelta = new Vector2(20f, 20f);
         tagCheck.gameObject.SetActive(false);
 
-        var metaText = O5Factory.ControlText(Ctx, UiStyle.Cell(topRow, 0f), 12.5f, true);
+        var metaText = O5Factory.ControlText(Ctx, UiStyle.Cell(topRow, 0f), 17f, true);
         metaText.font = Ctx.Fonts.Monospace;
         metaText.alignment = TextAlignmentOptions.MidlineLeft;
         metaText.overflowMode = TextOverflowModes.Ellipsis;
@@ -1331,22 +1326,22 @@ internal static class PageDocs {
         metaText.raycastTarget = false;
         metaText.color = TextMuted;
 
-        var valCell = UiStyle.Cell(topRow, 120f);
+        var valCell = UiStyle.Cell(topRow, 156f);
         var valPill = SharpRounded("LiveVal", valCell, CodeBg, BorderSubtle);
         valPill.raycastTarget = false;
         Stretch(valPill.rectTransform);
-        var valTmp = O5Factory.ControlText(Ctx, valPill.rectTransform, 12f, true);
+        var valTmp = O5Factory.ControlText(Ctx, valPill.rectTransform, 17f, true);
         valTmp.font = Ctx.Fonts.Monospace;
         valTmp.color = TextBody;
         valTmp.alignment = TextAlignmentOptions.MidlineRight;
         valTmp.overflowMode = TextOverflowModes.Ellipsis;
         TmpCompat.SetNoWrap(valTmp);
-        valTmp.rectTransform.offsetMin = new Vector2(6f, 0f);
-        valTmp.rectTransform.offsetMax = new Vector2(-8f, 0f);
+        valTmp.rectTransform.offsetMin = new Vector2(8f, 0f);
+        valTmp.rectTransform.offsetMax = new Vector2(-10f, 0f);
         valTmp.raycastTarget = false;
 
-        var tryCell = UiStyle.Cell(topRow, 28f);
-        var descTmp = AddWrappedText(card.rectTransform, string.Empty, 12.5f, TextMuted, lineSpacing: 3f);
+        var tryCell = UiStyle.Cell(topRow, 40f);
+        var descTmp = AddWrappedText(card.rectTransform, string.Empty, 17f, TextMuted, lineSpacing: 4f);
 
         var slot = new ExplorerCardSlot {
             Root = card.gameObject,
@@ -1367,7 +1362,7 @@ internal static class PageDocs {
                 if (!string.IsNullOrEmpty(slot.Snippet)) {
                     OpenInPlayground(slot.Snippet);
                 }
-            }, padding: 6f);
+            }, padding: 9f);
 
         void TweenTagColor(Color target, float duration) {
             slot.TagFlash?.Kill();
@@ -1424,7 +1419,7 @@ internal static class PageDocs {
         slot.LastLiveText = null;
 
         string tagLabel = $"{{{tag.Name}}}";
-        float approxWidth = Mathf.Clamp(tagLabel.Length * 8.2f + 6f, 44f, 240f);
+        float approxWidth = Mathf.Clamp(tagLabel.Length * 11.6f + 10f, 64f, 320f);
         slot.TagBtnLayout.minWidth = approxWidth;
         slot.TagBtnLayout.preferredWidth = approxWidth;
 
@@ -1439,7 +1434,7 @@ internal static class PageDocs {
         string flags = FormatTagFlags(tag.TagType);
         slot.MetaTmp.text =
             (string.IsNullOrEmpty(sig) ? string.Empty : $"<color=#D6DAE8>{DocsHighlight.Escape(sig)}</color>  ")
-            + $"<size=11><color=#8E92A4>{DocsHighlight.Escape(source)} · {DocsHighlight.Escape(ret)}"
+            + $"<size=15><color=#8E92A4>{DocsHighlight.Escape(source)} · {DocsHighlight.Escape(ret)}"
             + (string.IsNullOrEmpty(flags) ? string.Empty : $" · {DocsHighlight.Escape(flags)}")
             + "</color></size>";
 
@@ -1533,10 +1528,10 @@ internal static class PageDocs {
         string norm = NormalizeSearch(query);
 
         var header = UiStyle.NewRect("SearchHeader", bodyContent);
-        var hl = UiStyle.Vertical(header.gameObject, 4f, new RectOffset(2, 2, 2, 6));
+        var hl = UiStyle.Vertical(header.gameObject, 6f, new RectOffset(2, 2, 2, 8));
         hl.childForceExpandHeight = false;
-        AddWrappedText(header, T("검색 결과", "Search Results"), 22f, Color.white, medium: true);
-        AddWrappedText(header, $"\"{DocsHighlight.Escape(query)}\"", 13.5f, TextMuted);
+        AddWrappedText(header, T("검색 결과", "Search Results"), Ctx.Theme.FontSizeH1, Color.white, medium: true);
+        AddWrappedText(header, $"\"{DocsHighlight.Escape(query)}\"", 20f, TextMuted);
 
         var matchedSections = new List<(DocChapter Chapter, DocSection Section)>();
         foreach (var ch in chapters) {
@@ -1548,28 +1543,28 @@ internal static class PageDocs {
         }
 
         if (matchedSections.Count > 0) {
-            AddWrappedText(bodyContent, T($"문서 섹션 ({matchedSections.Count})", $"Sections ({matchedSections.Count})"), 13.5f, TextMuted, medium: true);
+            AddWrappedText(bodyContent, T($"문서 섹션 ({matchedSections.Count})", $"Sections ({matchedSections.Count})"), 20f, TextMuted, medium: true);
             int idx = 0;
             foreach (var (ch, sec) in matchedSections) {
                 var capturedCh = ch;
                 var card = SharpRounded("ResSec_" + idx, bodyContent, CardBg, BorderSubtle);
                 card.raycastTarget = false;
-                var cl = UiStyle.Vertical(card.gameObject, 4f, new RectOffset(14, 14, 11, 11));
+                var cl = UiStyle.Vertical(card.gameObject, 8f, new RectOffset(18, 18, 14, 14));
                 cl.childForceExpandHeight = false;
 
-                var row = UiStyle.HRow(card.rectTransform, 8f, 28f);
-                var titleTmp = O5Factory.ControlText(Ctx, UiStyle.Cell(row, 0f), 14.5f, true);
+                var row = UiStyle.HRow(card.rectTransform, 10f, 44f);
+                var titleTmp = O5Factory.ControlText(Ctx, UiStyle.Cell(row, 0f), 20f, true);
                 titleTmp.font = Ctx.Fonts.Medium;
                 titleTmp.color = Color.white;
                 titleTmp.alignment = TextAlignmentOptions.MidlineLeft;
                 titleTmp.raycastTarget = false;
                 titleTmp.text = $"<color=#8F93A6>[{DocsHighlight.Escape(ch.Title)}]</color>  {DocsHighlight.Escape(sec.Title)}";
 
-                TrackPage(MakeMonoButton(UiStyle.Cell(row, 74f), "docs_res_open_" + idx,
-                    T("열기", "Open"), () => SelectChapter(capturedCh.Id), active: false, fontSize: 12f));
+                TrackPage(MakeMonoButton(UiStyle.Cell(row, 104f), "docs_res_open_" + idx,
+                    T("열기", "Open"), () => SelectChapter(capturedCh.Id), active: false, fontSize: 18f));
 
                 if (!string.IsNullOrEmpty(sec.Summary)) {
-                    AddWrappedText(card.rectTransform, sec.Summary, 13f, TextMuted);
+                    AddWrappedText(card.rectTransform, sec.Summary, 18f, TextMuted, lineSpacing: 4f);
                 }
                 idx++;
             }
@@ -1583,7 +1578,7 @@ internal static class PageDocs {
             .ToList();
 
         if (matchedTags.Count > 0) {
-            AddWrappedText(bodyContent, T($"태그 ({matchedTags.Count})", $"Tags ({matchedTags.Count})"), 13.5f, TextMuted, medium: true);
+            AddWrappedText(bodyContent, T($"태그 ({matchedTags.Count})", $"Tags ({matchedTags.Count})"), 20f, TextMuted, medium: true);
             for (int i = 0; i < matchedTags.Count; i++) {
                 var tag = matchedTags[i];
                 var slot = CreateTagCardSlot(bodyContent, "TagCard_" + tag.Name, $"docs_tag_try_{1000 + i}");
@@ -1609,13 +1604,13 @@ internal static class PageDocs {
     private static void RenderSectionCard(DocSection section) {
         var card = SharpRounded("Sec_" + section.Title, bodyContent, CardBg, BorderSubtle);
         card.raycastTarget = false;
-        var layout = UiStyle.Vertical(card.gameObject, 10f, new RectOffset(16, 16, 14, 16));
+        var layout = UiStyle.Vertical(card.gameObject, 12f, new RectOffset(20, 20, 18, 20));
         layout.childForceExpandHeight = false;
 
-        AddWrappedText(card.rectTransform, section.Title, 17f, Color.white, medium: true);
+        AddWrappedText(card.rectTransform, section.Title, Ctx.Theme.FontSizeBody, Color.white, medium: true);
 
         if (!string.IsNullOrWhiteSpace(section.Summary)) {
-            AddWrappedText(card.rectTransform, section.Summary, 13.5f, TextMuted, lineSpacing: 4f);
+            AddWrappedText(card.rectTransform, section.Summary, 19f, TextMuted, lineSpacing: 5f);
         }
 
         var hr = NewImage("Hr", card.rectTransform, BorderSubtle);
@@ -1625,7 +1620,7 @@ internal static class PageDocs {
         foreach (var block in section.Blocks) {
             switch (block) {
                 case DocParagraph p:
-                    AddWrappedText(card.rectTransform, p.Text, 13.5f, TextBody, lineSpacing: 4f);
+                    AddWrappedText(card.rectTransform, p.Text, 20f, TextBody, lineSpacing: 5f);
                     break;
                 case DocCallout c:
                     RenderCallout(card.rectTransform, c);
@@ -1649,12 +1644,12 @@ internal static class PageDocs {
     private static void RenderCallout(RectTransform parent, DocCallout callout) {
         var box = SharpRounded("Callout", parent, SurfaceBg, BorderSubtle);
         box.raycastTarget = false;
-        var layout = UiStyle.Vertical(box.gameObject, 4f, new RectOffset(14, 14, 10, 10));
+        var layout = UiStyle.Vertical(box.gameObject, 6f, new RectOffset(18, 18, 14, 14));
         layout.childForceExpandHeight = false;
 
         Color titleCol = callout.Kind == DocCalloutKind.Warning ? StatusWarn : TextPrimary;
-        AddWrappedText(box.rectTransform, callout.Title, 13.5f, titleCol, medium: true);
-        AddWrappedText(box.rectTransform, callout.Text, 13f, TextMuted, lineSpacing: 4f);
+        AddWrappedText(box.rectTransform, callout.Title, 20f, titleCol, medium: true);
+        AddWrappedText(box.rectTransform, callout.Text, 18f, TextMuted, lineSpacing: 5f);
     }
 
     // Code block: icon Copy button + read-only drag-selectable UICodeInputField with vertex syntax highlighting
@@ -1667,8 +1662,8 @@ internal static class PageDocs {
 
         // Top bar
         var bar = NewImage("Header", box.rectTransform, CodeHeaderBg);
-        bar.gameObject.AddComponent<LayoutElement>().preferredHeight = 32f;
-        var barLayout = UiStyle.Horizontal(bar.gameObject, 6f, new RectOffset(12, 6, 3, 3));
+        bar.gameObject.AddComponent<LayoutElement>().preferredHeight = 44f;
+        var barLayout = UiStyle.Horizontal(bar.gameObject, 8f, new RectOffset(14, 8, 4, 4));
         barLayout.childAlignment = TextAnchor.MiddleLeft;
 
         string lang = code.Mode switch {
@@ -1676,7 +1671,7 @@ internal static class PageDocs {
             DocsHighlight.Mode.Js => "JS",
             _ => "CODE",
         };
-        var cap = O5Factory.ControlText(Ctx, UiStyle.Cell(bar.rectTransform, 0f), 12f, true);
+        var cap = O5Factory.ControlText(Ctx, UiStyle.Cell(bar.rectTransform, 0f), 17f, true);
         cap.font = Ctx.Fonts.Monospace;
         cap.alignment = TextAlignmentOptions.MidlineLeft;
         cap.overflowMode = TextOverflowModes.Ellipsis;
@@ -1686,10 +1681,10 @@ internal static class PageDocs {
         cap.text = $"<color=#EAECEF>{lang}</color>  {DocsHighlight.Escape(code.Caption)}";
 
         if (code.TryInSandbox) {
-            TrackPage(MakeIconButton(UiStyle.Cell(bar.rectTransform, 26f), "docs_try_" + id,
-                MainCore.Spr.Get(UISprite.CodeBlock128), () => OpenInPlayground(code.Code), padding: 6f));
+            TrackPage(MakeIconButton(UiStyle.Cell(bar.rectTransform, 36f), "docs_try_" + id,
+                MainCore.Spr.Get(UISprite.CodeBlock128), () => OpenInPlayground(code.Code), padding: 8f));
         }
-        AddCopyIconButton(UiStyle.Cell(bar.rectTransform, 26f), "docs_copy_" + id, () => code.Code);
+        AddCopyIconButton(UiStyle.Cell(bar.rectTransform, 36f), "docs_copy_" + id, () => code.Code);
 
         var sep = NewImage("CodeSep", box.rectTransform, BorderSubtle);
         sep.gameObject.AddComponent<LayoutElement>().preferredHeight = 1f;
@@ -1702,7 +1697,7 @@ internal static class PageDocs {
                 lineCount++;
             }
         }
-        float initHeight = Mathf.Max(42f, (lineCount * 20f) + 22f);
+        float initHeight = Mathf.Max(52f, (lineCount * 27f) + 26f);
 
         var bodyRow = O5Factory.Row(Ctx, box.rectTransform, initHeight);
         var bodyLe = bodyRow.GetComponent<LayoutElement>();
@@ -1739,15 +1734,15 @@ internal static class PageDocs {
         var tmp = codeField.textComponent;
         tmp.richText = false;
         tmp.font = Ctx.Fonts.Monospace;
-        tmp.fontSize = 13.5f;
+        tmp.fontSize = 18f;
         tmp.color = new Color(0.90f, 0.92f, 0.96f, 1f);
         tmp.characterSpacing = 0f;
-        tmp.lineSpacing = 4f;
+        tmp.lineSpacing = 5f;
         TmpCompat.SetWrappingMode(tmp, TmpCompat.Normal);
 
         if (codeField.textViewport != null) {
-            codeField.textViewport.offsetMin = new Vector2(12f, 8f);
-            codeField.textViewport.offsetMax = new Vector2(-12f, -8f);
+            codeField.textViewport.offsetMin = new Vector2(14f, 10f);
+            codeField.textViewport.offsetMax = new Vector2(-14f, -10f);
         }
 
         // Apply syntax vertex highlighting (preserves raw copyable text without <color> tags)
@@ -1765,7 +1760,7 @@ internal static class PageDocs {
 
         codeField.AfterLabelUpdate = (sourceText, _) => {
             int geomKey = BuildTextGeometryKey(sourceText, ref layoutKey);
-            float needed = Mathf.Max(40f, Mathf.Ceil(sourceText.preferredHeight + 22f));
+            float needed = Mathf.Max(52f, Mathf.Ceil(sourceText.preferredHeight + 26f));
             if (Mathf.Abs(needed - lastMeasuredHeight) > 2f) {
                 lastMeasuredHeight = needed;
                 bodyLe.minHeight = needed;
@@ -1798,21 +1793,21 @@ internal static class PageDocs {
 
     private static void AddTableRow(RectTransform parent, string key, string value, Color bgColor, bool isHeader) {
         var row = NewImage(isHeader ? "Head" : "Row", parent, bgColor);
-        var h = UiStyle.Horizontal(row.gameObject, 12f, new RectOffset(12, 12, 8, 8));
+        var h = UiStyle.Horizontal(row.gameObject, 16f, new RectOffset(16, 16, 11, 11));
         h.childAlignment = TextAnchor.UpperLeft;
         h.childForceExpandHeight = false;
 
-        var keyCol = UiStyle.Cell(row.rectTransform, 204f);
+        var keyCol = UiStyle.Cell(row.rectTransform, 268f);
         var keyLayout = UiStyle.Vertical(keyCol.gameObject, 0f);
         keyLayout.childForceExpandHeight = false;
         AddWrappedText(
             keyCol,
             DocsHighlight.Escape(key),
-            isHeader ? 12f : 13f,
+            isHeader ? 17f : 18f,
             isHeader ? TextMuted : TextPrimary,
             monospace: !isHeader,
             medium: isHeader,
-            lineSpacing: 3f
+            lineSpacing: 4f
         );
 
         var valCol = UiStyle.Cell(row.rectTransform, 0f);
@@ -1821,25 +1816,25 @@ internal static class PageDocs {
         AddWrappedText(
             valCol,
             DocsHighlight.Escape(value),
-            isHeader ? 12f : 13f,
+            isHeader ? 17f : 18f,
             isHeader ? TextMuted : TextBody,
             medium: isHeader,
-            lineSpacing: 4f
+            lineSpacing: 5f
         );
     }
 
     private static void RenderBadges(RectTransform parent, DocBadges badges) {
         var wrap = UiStyle.NewRect("Badges", parent);
-        var layout = UiStyle.Vertical(wrap.gameObject, 6f);
+        var layout = UiStyle.Vertical(wrap.gameObject, 8f);
         layout.childForceExpandHeight = false;
 
         if (!string.IsNullOrEmpty(badges.Title)) {
-            AddWrappedText(wrap, badges.Title, 12.5f, TextMuted, medium: true);
+            AddWrappedText(wrap, badges.Title, 18f, TextMuted, medium: true);
         }
 
-        int perRow = badges.Items.Any(s => s.Length > 18) ? 3 : 6;
+        int perRow = badges.Items.Any(s => s.Length > 18) ? 2 : badges.Items.Any(s => s.Length > 10) ? 4 : 5;
         for (int i = 0; i < badges.Items.Length; i += perRow) {
-            var row = UiStyle.HRow(wrap, 6f, 28f);
+            var row = UiStyle.HRow(wrap, 8f, 42f);
             int end = Math.Min(i + perRow, badges.Items.Length);
             for (int j = i; j < end; j++) {
                 string item = badges.Items[j];
@@ -1847,20 +1842,22 @@ internal static class PageDocs {
                 var pill = SharpRounded("Pill", cell, PillBg, BorderSubtle);
                 pill.raycastTarget = true;
                 Stretch(pill.rectTransform);
-                var tmp = O5Factory.ControlText(Ctx, pill.rectTransform, 12f, true);
+                var tmp = O5Factory.ControlText(Ctx, pill.rectTransform, 16f, true);
                 tmp.font = Ctx.Fonts.Monospace;
                 tmp.color = TextPrimary;
                 tmp.alignment = TextAlignmentOptions.Center;
                 tmp.overflowMode = TextOverflowModes.Ellipsis;
                 TmpCompat.SetNoWrap(tmp);
+                tmp.rectTransform.offsetMin = new Vector2(8f, 0f);
+                tmp.rectTransform.offsetMax = new Vector2(-8f, 0f);
                 tmp.raycastTarget = false;
                 tmp.text = DocsHighlight.Escape(item);
 
-                var checkImg = NewImage("Check", pill.rectTransform, Color.white, GetCheckSprite());
+                var checkImg = NewImage("Check", pill.rectTransform, Color.white, MainCore.Spr.Get(UISprite.Check128));
                 checkImg.preserveAspect = true;
                 checkImg.rectTransform.anchorMin = checkImg.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
                 checkImg.rectTransform.pivot = new Vector2(0.5f, 0.5f);
-                checkImg.rectTransform.sizeDelta = new Vector2(14f, 14f);
+                checkImg.rectTransform.sizeDelta = new Vector2(20f, 20f);
                 checkImg.gameObject.SetActive(false);
 
                 string captured = item;
@@ -1909,15 +1906,15 @@ internal static class PageDocs {
     // Underline-only link with smooth highlight hover (only the link part after prefix is clickable)
     private static void RenderLink(RectTransform parent, DocLink link) {
         var row = UiStyle.NewRect("LinkRow", parent);
-        var rowLayout = UiStyle.Horizontal(row.gameObject, 5f, new RectOffset(2, 2, 2, 0));
+        var rowLayout = UiStyle.Horizontal(row.gameObject, 6f, new RectOffset(2, 2, 2, 0));
         rowLayout.childForceExpandWidth = false;
         rowLayout.childForceExpandHeight = false;
 
         if (!string.IsNullOrEmpty(link.Prefix)) {
-            AddWrappedText(row, DocsHighlight.Escape(link.Prefix.TrimEnd()), 13f, TextMuted);
+            AddWrappedText(row, DocsHighlight.Escape(link.Prefix.TrimEnd()), 19f, TextMuted);
         }
 
-        var tmp = AddWrappedText(row, $"<u>{DocsHighlight.Escape(link.Label)}</u>", 13f, TextMuted);
+        var tmp = AddWrappedText(row, $"<u>{DocsHighlight.Escape(link.Label)}</u>", 19f, TextMuted);
         tmp.raycastTarget = true;
 
         Color idleCol = TextMuted;
@@ -2393,7 +2390,7 @@ internal static class PageDocs {
         string text,
         Action onClick,
         bool active = false,
-        float fontSize = 13f
+        float fontSize = 18f
     ) {
         var button = SharpenControl(O5Factory.Button(Ctx, parent, id, new O5ButtonOptions { Text = text, OnClick = onClick }));
         button.NormalColor = active ? BtnActiveBg : BtnIdleBg;
@@ -2412,7 +2409,7 @@ internal static class PageDocs {
         string id,
         Sprite icon,
         Action onClick,
-        float padding = 6f
+        float padding = 8f
     ) {
         var button = SharpenControl(O5Factory.Button(Ctx, parent, id, new O5ButtonOptions {
             Icon = icon,
@@ -2427,11 +2424,11 @@ internal static class PageDocs {
         return button;
     }
 
-    private static O5Button AddCopyIconButton(RectTransform slot, string id, Func<string> getText) {
+    private static O5Button AddCopyIconButton(RectTransform slot, string id, Func<string> getText, float padding = 8f) {
         O5Button button = null;
         ITweenHandle resetTimer = null;
         Sprite cloneSprite = MainCore.Spr.Get(UISprite.Clone128);
-        Sprite checkSprite = GetCheckSprite();
+        Sprite checkSprite = MainCore.Spr.Get(UISprite.Check128);
         button = MakeIconButton(slot, id, cloneSprite, () => {
             GUIUtility.systemCopyBuffer = getText() ?? string.Empty;
             if (button?.Icon == null) {
@@ -2445,48 +2442,9 @@ internal static class PageDocs {
                 }
                 button.Icon.sprite = cloneSprite;
             });
-        }, padding: 6f);
+        }, padding: padding);
         TrackPage(button);
         return button;
-    }
-
-    internal static Sprite GetCheckSprite() {
-        if (checkIconSprite != null) {
-            return checkIconSprite;
-        }
-        const int size = 64;
-        var tex = new Texture2D(size, size, TextureFormat.RGBA32, false) {
-            filterMode = FilterMode.Bilinear,
-            wrapMode = TextureWrapMode.Clamp,
-        };
-        var pixels = new Color32[size * size];
-        Vector2 a = new(0.22f, 0.50f);
-        Vector2 b = new(0.42f, 0.30f);
-        Vector2 c = new(0.78f, 0.70f);
-        const float radius = 0.065f;
-        const float aa = 0.025f;
-
-        static float DistSeg(Vector2 p, Vector2 p0, Vector2 p1) {
-            Vector2 d = p1 - p0;
-            float lenSq = d.sqrMagnitude;
-            float t = lenSq > 1e-6f ? Mathf.Clamp01(Vector2.Dot(p - p0, d) / lenSq) : 0f;
-            return Vector2.Distance(p, p0 + d * t);
-        }
-
-        for (int y = 0; y < size; y++) {
-            float py = (y + 0.5f) / size;
-            for (int x = 0; x < size; x++) {
-                float px = (x + 0.5f) / size;
-                Vector2 p = new(px, py);
-                float dist = Mathf.Min(DistSeg(p, a, b), DistSeg(p, b, c));
-                float alpha = Mathf.Clamp01(1f - Mathf.InverseLerp(radius - aa, radius + aa, dist));
-                pixels[(y * size) + x] = new Color32(255, 255, 255, (byte)Mathf.RoundToInt(alpha * 255f));
-            }
-        }
-        tex.SetPixels32(pixels);
-        tex.Apply(false, true);
-        checkIconSprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f));
-        return checkIconSprite;
     }
 
     private static TextMeshProUGUI AddWrappedText(

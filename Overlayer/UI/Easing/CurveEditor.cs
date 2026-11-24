@@ -34,7 +34,7 @@ internal static class CurveEditor {
     private static O5Dropdown<string> presetDropdown, compareDropdown;
     private static O5Dropdown<EaseLibrary.Entry> savedDropdown;
     private static Action refreshCompareCurves, refreshSavedCurves;
-    private static O5Button loadButton, deleteButton;
+    private static O5Button undoButton, redoButton, loadButton, deleteButton;
     private static O5Button copyTagButton;
     private static TextMeshProUGUI exampleText;
     private static string comparePreset = string.Empty;
@@ -78,10 +78,11 @@ internal static class CurveEditor {
         BuildPreview(content);
 
         var tools = UiStyle.HRow(content, 4f, 36f);
-        var undoBtn = UiStyle.Button(UiStyle.Cell(tools, 36f), "easing_undo", string.Empty, () => graph.ApplyHistory(model.Undo()));
-        UiStyle.AddDrawnIcon(undoBtn, icon => UiStyle.DrawUndo(icon, false));
-        var redoBtn = UiStyle.Button(UiStyle.Cell(tools, 36f), "easing_redo", string.Empty, () => graph.ApplyHistory(model.Redo()));
-        UiStyle.AddDrawnIcon(redoBtn, icon => UiStyle.DrawUndo(icon, true));
+        undoButton = UiStyle.IconButton(UiStyle.Cell(tools, 36f), "easing_undo", MainCore.Spr.Get(UISprite.TurnArrow128), () => graph.ApplyHistory(model.Undo()));
+        redoButton = UiStyle.IconButton(UiStyle.Cell(tools, 36f), "easing_redo", MainCore.Spr.Get(UISprite.TurnArrow128), () => graph.ApplyHistory(model.Redo()));
+        if (redoButton.Icon != null) {
+            redoButton.Icon.rectTransform.localScale = new Vector3(-1f, 1f, 1f);
+        }
         UiStyle.Cell(tools, 0f);
         LocButton(tools, "tidy", "EASING_TIDY", "Tidy points", () => {
             model.Tidy();
@@ -112,7 +113,10 @@ internal static class CurveEditor {
         MainCore.Tr.OnLoadEnd += onLangLoadEnd;
         model.Changed -= OnModelChanged;
         model.Changed += OnModelChanged;
+        model.HistoryChanged -= UpdateHistoryButtons;
+        model.HistoryChanged += UpdateHistoryButtons;
         OnModelChanged();
+        UpdateHistoryButtons();
     }
 
     public static void Dispose() {
@@ -121,9 +125,10 @@ internal static class CurveEditor {
             onLangLoadEnd = null;
         }
         model.Changed -= OnModelChanged;
+        model.HistoryChanged -= UpdateHistoryButtons;
         langRefreshers.Clear();
         tangentButtons.Clear();
-        copyTagButton = null;
+        undoButton = redoButton = loadButton = deleteButton = copyTagButton = null;
         graph = null;
     }
 
@@ -491,6 +496,11 @@ internal static class CurveEditor {
         SyncPoint();
     }
 
+    private static void UpdateHistoryButtons() {
+        undoButton?.SetBlocked(!model.CanUndo, true);
+        redoButton?.SetBlocked(!model.CanRedo, true);
+    }
+
     private static Vector2 Selected() {
         int i = graph != null ? graph.Selected : -1;
         return i >= 0 && i < model.Points.Count ? model.Points[i] : Vector2.zero;
@@ -566,7 +576,7 @@ internal static class CurveEditor {
                 var go = new GameObject("Check");
                 go.transform.SetParent(button.Rect, false);
                 check = go.AddComponent<Image>();
-                check.sprite = UI.Factory.Page.PageDocs.GetCheckSprite();
+                check.sprite = MainCore.Spr.Get(UISprite.Check128);
                 check.preserveAspect = true;
                 var r = check.rectTransform;
                 r.anchorMin = r.anchorMax = new Vector2(0.5f, 0.5f);
