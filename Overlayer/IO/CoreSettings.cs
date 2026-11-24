@@ -56,7 +56,7 @@ public sealed class CoreSettings : ISettingsFile {
     public FxValue<bool> HudLayersShown = new(true);
     public FxValue<float> HudLayersWidth = new(300f);
     public FxValue<bool> HudRulers = new(true);
-    public FxValue<bool> HudAutoAnchor = new(false);
+    public FxValue<bool> HudAutoAnchor = new(true);
     public FxValue<List<string>> HudGuides = new([]);
     public FxValue<List<string>> HudDetached = new([]);
     public FxValue<List<string>> TutorialDone = new([]);

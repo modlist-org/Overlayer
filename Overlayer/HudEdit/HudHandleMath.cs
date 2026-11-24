@@ -178,6 +178,25 @@ internal static class HudHandleMath {
         return widthAxis ? (r, 1f) : (1f, r);
     }
 
+    /// <summary>
+    /// Computes the new <c>anchoredPosition</c> (in parent local space) that keeps a RectTransform's
+    /// world/parent corners stationary when switching <c>anchorMin = anchorMax = pivot</c> to <paramref name="targetAnchor"/>.
+    /// </summary>
+    internal static Pt ComputeReanchoredPosition(
+        Pt oldLocalPos, Pt oldPivot, Pt size, Pt localScale, float rotationDeg,
+        Pt parentRectMin, Pt parentRectSize, Pt targetAnchor) {
+        float lx = (targetAnchor.X - oldPivot.X) * size.X * localScale.X;
+        float ly = (targetAnchor.Y - oldPivot.Y) * size.Y * localScale.Y;
+        float rad = rotationDeg * (MathF.PI / 180f);
+        float cos = MathF.Cos(rad);
+        float sin = MathF.Sin(rad);
+        float px = oldLocalPos.X + (lx * cos - ly * sin);
+        float py = oldLocalPos.Y + (lx * sin + ly * cos);
+        float anchorX = parentRectMin.X + targetAnchor.X * parentRectSize.X;
+        float anchorY = parentRectMin.Y + targetAnchor.Y * parentRectSize.Y;
+        return new Pt(px - anchorX, py - anchorY);
+    }
+
     public static int QuantizeResizeAngle(float angleDeg) {
         float a = angleDeg % 180f;
         if (a < 0f) {

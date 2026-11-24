@@ -33,6 +33,7 @@ internal static partial class HudEditor {
 
     private static RectTransform layersPanel;
     private static RectTransform layersContent;
+    private static UIScrollController layersScroller;
     private static CanvasGroup layersGroup;
     private static bool layersDirty = true;
     private static string layersSignature;
@@ -92,8 +93,10 @@ internal static partial class HudEditor {
         Stretch(scrollHost);
         scrollHost.offsetMin = new Vector2(6f, 8f);
         scrollHost.offsetMax = new Vector2(-6f, -36f);
-        var (_, content, _) = O5Factory.ScrollView(O5KitAdapters.Ctx, scrollHost, 1f, 0f);
+        var (_, content, scroller) = O5Factory.ScrollView(O5KitAdapters.Ctx, scrollHost, 1f, 0f);
         layersContent = content;
+        layersScroller = scroller;
+        layersScroller.rightDragRelativeOnly = true;
 
         dropMarker = NewImage("DropMarker", layersPanel, SelectedColor);
         dropMarker.gameObject.SetActive(false);
@@ -439,7 +442,7 @@ internal static partial class HudEditor {
     }
 
     private static void OnRowRightClick(LayerRow row, PointerEventData e) {
-        if (row == null) {
+        if (row == null || (layersScroller != null && layersScroller.RightDragConsumed)) {
             return;
         }
         if (KeysBubbleOpen) {

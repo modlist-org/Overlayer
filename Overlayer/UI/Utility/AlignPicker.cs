@@ -2,6 +2,7 @@ using O5Kit.Behaviour;
 using O5Kit.Factory;
 using Overlayer.Compat;
 using Overlayer.Core;
+using Overlayer.Resource;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -16,7 +17,7 @@ namespace Overlayer.UI.Utility;
 
 /// <summary>
 /// Text alignment as two rows of icon buttons (like Unity's TextMeshPro inspector):
-/// horizontal on top, vertical below. Icons are drawn from plain bars, no sprites needed.
+/// horizontal on top, vertical below. Alignment icons use bundled sprites (flipped for Right and Bottom).
 /// </summary>
 internal sealed class AlignPicker {
     private const float ButtonSize = 30f;
@@ -45,7 +46,6 @@ internal sealed class AlignPicker {
     ];
 
     private static readonly Color Bar = new(1f, 1f, 1f, 0.85f);
-    private static readonly Color Faint = new(1f, 1f, 1f, 0.3f);
 
     private readonly Func<TextAlignmentOptions> get;
     private readonly Action<TextAlignmentOptions> set;
@@ -117,7 +117,7 @@ internal sealed class AlignPicker {
         r.anchoredPosition = new Vector2(column * (ButtonSize + Gap), -row * (ButtonSize + Gap));
         var icon = UiStyle.NewRect("Icon", r);
         icon.anchorMin = icon.anchorMax = new Vector2(0.5f, 0.5f);
-        icon.sizeDelta = new Vector2(20f, 20f);
+        icon.sizeDelta = new Vector2(18f, 18f);
         DrawIcon(icon, mark);
         var hover = UiStyle.NewRect("Hover", r).gameObject.AddComponent<Image>();
         hover.rectTransform.anchorMin = Vector2.zero;
@@ -135,47 +135,45 @@ internal sealed class AlignPicker {
 
     // ---- icons: 18 x 16 ----
 
-    /// <summary>Draws one of the marks into <paramref name="icon"/>, centered (about 18 x 16).</summary>
+    /// <summary>Draws one of the marks into <paramref name="icon"/>, centered (18 x 18).</summary>
     internal static void DrawIcon(RectTransform icon, Mark mark) {
         switch (mark) {
             case Mark.Left:
-                Lines(icon, [1f, 0.6f, 0.85f, 0.45f], 0f);
+                SpriteIcon(icon, UISprite.AliLeft128);
                 break;
             case Mark.Center:
-                Lines(icon, [1f, 0.6f, 0.85f, 0.45f], 0.5f);
+                SpriteIcon(icon, UISprite.AliCenter128);
                 break;
             case Mark.Right:
-                Lines(icon, [1f, 0.6f, 0.85f, 0.45f], 1f);
+                SpriteIcon(icon, UISprite.AliLeft128, flipX: true);
                 break;
             case Mark.Justified:
-                // Full lines, the last one short (where a paragraph ends).
-                Lines(icon, [1f, 1f, 1f, 0.45f], 0f);
+                SpriteIcon(icon, UISprite.AliJustified128);
                 break;
             case Mark.Flush:
-                // Every line full, the last one too.
-                Lines(icon, [1f, 1f, 1f, 1f], 0f);
+                SpriteIcon(icon, UISprite.AliFlush128);
                 break;
             case Mark.Geometry:
-                Lines(icon, [0.55f, 0.95f, 0.4f, 0.75f], 0.5f);
-                Segment(icon, new Vector2(0f, -9f), new Vector2(0f, 9f), 1f, Accent);
+                SpriteIcon(icon, UISprite.AliGeometry128);
                 break;
             case Mark.Top:
-            case Mark.Middle:
-            case Mark.Bottom: {
-                // The box edge (accent) and a short paragraph held against it; middle: around it.
-                float edge = mark == Mark.Top ? 8f : mark == Mark.Bottom ? -8f : 0f;
-                Segment(icon, new Vector2(-9f, edge), new Vector2(9f, edge), 1.5f, Accent);
-                float[] ys = mark switch {
-                    Mark.Top => [4.5f, 1f, -2.5f],
-                    Mark.Bottom => [2.5f, -1f, -4.5f],
-                    _ => [4f, -4f],
-                };
-                for (int i = 0; i < ys.Length; i++) {
-                    float half = ys.Length == 3 && i == 1 ? 4.5f : 6.5f;
-                    Segment(icon, new Vector2(-half, ys[i]), new Vector2(half, ys[i]), 2f, Bar);
-                }
+                SpriteIcon(icon, UISprite.AliTop128);
                 break;
-            }
+            case Mark.Middle:
+                SpriteIcon(icon, UISprite.AliMiddle128);
+                break;
+            case Mark.Bottom:
+                SpriteIcon(icon, UISprite.AliTop128, flipY: true);
+                break;
+            case Mark.Baseline:
+                SpriteIcon(icon, UISprite.AliBaseline128);
+                break;
+            case Mark.Midline:
+                SpriteIcon(icon, UISprite.AliMidline128);
+                break;
+            case Mark.Capline:
+                SpriteIcon(icon, UISprite.AliCapline128);
+                break;
             case Mark.DistributeX:
             case Mark.DistributeY:
                 // Three blocks spread evenly, across or down.
@@ -185,49 +183,18 @@ internal sealed class AlignPicker {
                     block.anchoredPosition = mark == Mark.DistributeX ? new Vector2(i * 7f, 0f) : new Vector2(0f, i * 6f);
                 }
                 break;
-            default: {
-                // "A" with a line on its baseline / middle / cap height, measured from the glyph.
-                var a = O5Factory.ControlText(O5KitAdapters.Ctx, icon, 18f, true);
-                a.rectTransform.anchorMin = a.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
-                a.rectTransform.pivot = new Vector2(0.5f, 0.5f);
-                a.rectTransform.sizeDelta = new Vector2(24f, 24f);
-                a.alignment = TextAlignmentOptions.Center;
-                a.fontStyle = FontStyles.Bold;
-                a.color = Bar;
-                a.raycastTarget = false;
-                a.text = "A";
-                a.ForceMeshUpdate();
-                float baseline = -5f, cap = 6f;
-                if (a.textInfo.characterCount > 0) {
-                    var ch = a.textInfo.characterInfo[0];
-                    baseline = ch.baseLine;
-                    cap = ch.topLeft.y;
-                }
-                float at = mark == Mark.Baseline ? baseline : mark == Mark.Midline ? (baseline + cap) * 0.5f : cap;
-                Segment(icon, new Vector2(-9f, at), new Vector2(9f, at), 1.5f, Accent);
-                break;
-            }
         }
     }
 
-    private static Color Accent => UIColors.ObjectActiveBright;
-
-    // Four 2px text lines, 4px apart, centered in the icon; x lines them up (0 left, 0.5 middle, 1 right).
-    private static void Lines(RectTransform icon, float[] widths, float x) {
-        for (int i = 0; i < widths.Length; i++) {
-            float w = 18f * widths[i];
-            float left = x switch { 0f => -9f, 1f => 9f - w, _ => -w * 0.5f };
-            float y = 6f - i * 4f;
-            Segment(icon, new Vector2(left, y), new Vector2(left + w, y), 2f, Bar);
+    private static void SpriteIcon(RectTransform icon, UISprite sprite, bool flipX = false, bool flipY = false) {
+        var image = icon.gameObject.AddComponent<Image>();
+        image.sprite = MainCore.Spr.Get(sprite);
+        image.preserveAspect = true;
+        image.color = Bar;
+        image.raycastTarget = false;
+        if (flipX || flipY) {
+            icon.localScale = new Vector3(flipX ? -1f : 1f, flipY ? -1f : 1f, 1f);
         }
-    }
-
-    /// <summary>A straight stroke from a to b (offsets from the icon's middle).</summary>
-    internal static RectTransform Segment(RectTransform icon, Vector2 a, Vector2 b, float thickness, Color color) {
-        var r = Box(icon, color, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2((b - a).magnitude + (a.y == b.y || a.x == b.x ? 0f : thickness * 0.5f), thickness));
-        r.anchoredPosition = (a + b) * 0.5f;
-        r.localEulerAngles = new Vector3(0f, 0f, Mathf.Atan2(b.y - a.y, b.x - a.x) * Mathf.Rad2Deg);
-        return r;
     }
 
     private static RectTransform Box(RectTransform parent, Color color, Vector2 anchorMin, Vector2 anchorMax, Vector2 size) {

@@ -6,6 +6,7 @@ using Overlayer.Core;
 using Overlayer.IO.Overlay;
 using Overlayer.IO.UnityComponent.Impl;
 using Overlayer.Overlay;
+using Overlayer.Resource;
 using Overlayer.UI;
 using Overlayer.UI.Utility;
 using UnityEngine;
@@ -29,8 +30,7 @@ internal static partial class HudEditor {
     private static AlignPicker textAlign;
     private static GameObject textRows, imageRows, anchorRow, allPropsRow, multiPropsRow;
     private static readonly Image[] anchorHits = new Image[9];
-    private static readonly Image[][] anchorMarks = new Image[9][];
-    private static Sprite anchorCornerSprite;
+    private static readonly Image[] anchorMarks = new Image[9];
     private static int anchorSelected = -1;
     private static int anchorHovered = -1;
     private static O5Button allPropsButton, multiPropsButton;
@@ -54,51 +54,6 @@ internal static partial class HudEditor {
         ("HUD_ANCHOR_L", "Left"), ("HUD_ANCHOR_C", "Center"), ("HUD_ANCHOR_R", "Right"),
         ("HUD_ANCHOR_BL", "Bottom Left"), ("HUD_ANCHOR_B", "Bottom"), ("HUD_ANCHOR_BR", "Bottom Right"),
     ];
-    // Non-overlapping rects in the 25x25 unit box (top-left origin):
-    // corners use EnsureAnchorCornerSprite() (6u L-bracket + inward diagonal arrow tail);
-    // edges = 7u bar + 3u inward tick; center = 5u crosshair (+).
-    private static readonly (float x, float y, float w, float h)[][] AnchorGlyphs = [
-        [],                                                 // 0: Top-Left (corner sprite)
-        [(9, 0, 7, 1), (12, 1, 1, 3)],                      // 1: Top
-        [],                                                 // 2: Top-Right (corner sprite)
-        [(0, 9, 1, 7), (1, 12, 3, 1)],                      // 3: Left
-        [(10, 12, 5, 1), (12, 10, 1, 2), (12, 13, 1, 2)],   // 4: Center (+)
-        [(24, 9, 1, 7), (21, 12, 3, 1)],                    // 5: Right
-        [],                                                 // 6: Bottom-Left (corner sprite)
-        [(9, 24, 7, 1), (12, 21, 1, 3)],                    // 7: Bottom
-        [],                                                 // 8: Bottom-Right (corner sprite)
-    ];
-
-    private static Sprite EnsureAnchorCornerSprite() {
-        if (anchorCornerSprite != null) {
-            return anchorCornerSprite;
-        }
-        const int size = 96;
-        const float pxPerUnit = size / 6f;
-        var tex = new Texture2D(size, size, TextureFormat.RGBA32, false, false) {
-            filterMode = FilterMode.Bilinear,
-            wrapMode = TextureWrapMode.Clamp,
-            hideFlags = HideFlags.HideAndDontSave,
-        };
-        var pixels = new Color32[size * size];
-        for (int py = 0; py < size; py++) {
-            float uy = (size - 1 - py + 0.5f) / pxPerUnit;
-            for (int px = 0; px < size; px++) {
-                float ux = (px + 0.5f) / pxPerUnit;
-                float aOrtho = (uy <= 1f || ux <= 1f) ? 1f : 0f;
-                float along = (ux + uy) * 0.70710678f;
-                float perp = Mathf.Abs(ux - uy) * 0.70710678f;
-                float dDiag = Mathf.Max(perp - 0.5f, along - 5.15f);
-                float aDiag = Mathf.Clamp01(0.5f - dDiag / 0.125f);
-                byte a = (byte)Mathf.RoundToInt(Mathf.Max(aOrtho, aDiag) * 255f);
-                pixels[py * size + px] = new Color32(255, 255, 255, a);
-            }
-        }
-        tex.SetPixels32(pixels);
-        tex.Apply(false, true);
-        anchorCornerSprite = Overlayer.Resource.SpriteManager.Create(tex);
-        return anchorCornerSprite;
-    }
 
     private static void BuildQuickName(O5Kit.Core.O5Context ctx, Transform parent) {
         nameInput = Track(O5Factory.Input(ctx, O5Factory.Row(ctx, parent, 44f), "plus_hud_name", new O5InputOptions {
@@ -169,38 +124,29 @@ internal static partial class HudEditor {
         }
 
         // Draw corner arrows, edge brackets, and center crosshair above the tiles.
-        var cornerSprite = EnsureAnchorCornerSprite();
+        var cornerSprite = MainCore.Spr.Get(UISprite.AnchorCorner128);
+        var sideSprite = MainCore.Spr.Get(UISprite.AnchorSide128);
+        var centerSprite = MainCore.Spr.Get(UISprite.Plus128);
         for (int i = 0; i < 9; i++) {
             int col = i % 3, line = i / 3;
-            if (col != 1 && line != 1) {
-                var mark = NewImage("Mark", frameRect, AnchorIdle, cornerSprite);
-                var mr = mark.rectTransform;
-                mr.anchorMin = mr.anchorMax = new Vector2(0f, 1f);
-                mr.pivot = new Vector2(0.5f, 0.5f);
-                mr.sizeDelta = new Vector2(6f * AnchorUnit, 6f * AnchorUnit);
-                mr.anchoredPosition = new Vector2((col == 0 ? 3f : 22f) * AnchorUnit, -(line == 0 ? 3f : 22f) * AnchorUnit);
-                float angle = i switch {
-                    2 => -90f,
-                    6 => 90f,
-                    8 => 180f,
-                    _ => 0f,
-                };
-                mr.localEulerAngles = new Vector3(0f, 0f, angle);
-                anchorMarks[i] = [mark];
-                continue;
-            }
-            var glyphs = AnchorGlyphs[i];
-            var marks = new Image[glyphs.Length];
-            for (int j = 0; j < glyphs.Length; j++) {
-                var (gx, gy, gw, gh) = glyphs[j];
-                var mark = NewImage("Mark", frameRect, AnchorIdle);
-                var mr = mark.rectTransform;
-                mr.anchorMin = mr.anchorMax = mr.pivot = new Vector2(0f, 1f);
-                mr.anchoredPosition = new Vector2(gx * AnchorUnit, -gy * AnchorUnit);
-                mr.sizeDelta = new Vector2(gw * AnchorUnit, gh * AnchorUnit);
-                marks[j] = mark;
-            }
-            anchorMarks[i] = marks;
+            var sprite = i == 4 ? centerSprite : (col != 1 && line != 1) ? cornerSprite : sideSprite;
+            var mark = NewImage("Mark", frameRect, AnchorIdle, sprite);
+            mark.preserveAspect = true;
+            var mr = mark.rectTransform;
+            mr.anchorMin = mr.anchorMax = new Vector2(0f, 1f);
+            mr.pivot = new Vector2(0.5f, 0.5f);
+            mr.sizeDelta = new Vector2(6f * AnchorUnit, 6f * AnchorUnit);
+            mr.anchoredPosition = new Vector2(
+                (col == 0 ? 3f : col == 1 ? 12.5f : 22f) * AnchorUnit,
+                -(line == 0 ? 3f : line == 1 ? 12.5f : 22f) * AnchorUnit);
+            float angle = i switch {
+                2 or 5 => -90f,
+                3 or 6 => 90f,
+                7 or 8 => 180f,
+                _ => 0f,
+            };
+            mr.localEulerAngles = new Vector3(0f, 0f, angle);
+            anchorMarks[i] = mark;
         }
     }
 
@@ -211,13 +157,8 @@ internal static partial class HudEditor {
             if (anchorHits[i] != null) {
                 anchorHits[i].color = hover ? AnchorTileHover : Color.clear;
             }
-            if (anchorMarks[i] is { } marks) {
-                Color color = on ? SelectedColor : hover ? AnchorHover : AnchorIdle;
-                for (int j = 0; j < marks.Length; j++) {
-                    if (marks[j] != null) {
-                        marks[j].color = color;
-                    }
-                }
+            if (anchorMarks[i] != null) {
+                anchorMarks[i].color = on ? SelectedColor : hover ? AnchorHover : AnchorIdle;
             }
         }
     }
@@ -553,15 +494,25 @@ internal static partial class HudEditor {
             var cfg = el.Config;
             var before = PinOf(cfg);
             // Keep the real size (a stretched box gets its current size) and the spot on screen.
+            el.SyncFittedLayout();
             Vector2 size = el.Rect.rect.size;
+            bool fitX = el.IsFitterDriven(0);
+            bool fitY = el.IsFitterDriven(1);
             el.Rect.GetWorldCorners(corners);
             Vector2 cornerBefore = corners[0];
             cfg.AnchorMin.StaticValue = cfg.AnchorMax.StaticValue = cfg.Pivot.StaticValue = anchor;
-            cfg.SizeDelta.StaticValue = size;
+            if (!fitX || !fitY) {
+                cfg.SizeDelta.StaticValue = new Vector2(
+                    fitX ? cfg.SizeDelta.StaticValue.x : size.x,
+                    fitY ? cfg.SizeDelta.StaticValue.y : size.y);
+            }
             cfg.ToUnity(obj.GameObject);
+            el.SyncFittedLayout();
             el.Rect.GetWorldCorners(corners);
             cfg.AnchoredPosition.StaticValue += el.ScreenToParentDelta(cornerBefore - (Vector2)corners[0]);
             cfg.ToUnity(obj.GameObject);
+            el.SyncFittedLayout();
+            el.RefreshTextBounds();
             changes.Add((obj, before, PinOf(cfg)));
         }
 

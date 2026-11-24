@@ -211,18 +211,42 @@ internal static partial class HudEditor {
             && (cfg.Pivot.StaticValue - target).sqrMagnitude < 1e-6f) {
             return false;
         }
+        el.SyncFittedLayout();
         Vector2 size = el.Rect.rect.size;
+        bool fitX = el.IsFitterDriven(0);
+        bool fitY = el.IsFitterDriven(1);
+        Vector2 preservedSizeDelta = new(
+            fitX ? cfg.SizeDelta.StaticValue.x : size.x,
+            fitY ? cfg.SizeDelta.StaticValue.y : size.y);
+
         if (el.Rect.parent is RectTransform parentRect) {
-            Vector2 oldPivot = el.Rect.pivot;
-            Vector3 localNewPivot = new((target.x - oldPivot.x) * size.x, (target.y - oldPivot.y) * size.y, 0f);
-            Vector3 parentLocalPoint = el.Rect.localPosition + (el.Rect.localRotation * Vector3.Scale(localNewPivot, el.Rect.localScale));
-            Rect pRect = parentRect.rect;
-            Vector2 anchorInParent = new(pRect.xMin + target.x * pRect.width, pRect.yMin + target.y * pRect.height);
+            Vector2 newAnchoredPosition;
+            if (cfg.RotationXY.StaticValue.sqrMagnitude < 1e-6f) {
+                Pt result = HudHandleMath.ComputeReanchoredPosition(
+                    ToPt(el.Rect.localPosition),
+                    ToPt(el.Rect.pivot),
+                    ToPt(size),
+                    ToPt(el.Rect.localScale),
+                    el.Rect.localEulerAngles.z,
+                    ToPt(parentRect.rect.min),
+                    ToPt(parentRect.rect.size),
+                    ToPt(target));
+                newAnchoredPosition = new Vector2(result.X, result.Y);
+            } else {
+                Vector2 oldPivot = el.Rect.pivot;
+                Vector3 localNewPivot = new((target.x - oldPivot.x) * size.x, (target.y - oldPivot.y) * size.y, 0f);
+                Vector3 parentLocalPoint = el.Rect.localPosition + (el.Rect.localRotation * Vector3.Scale(localNewPivot, el.Rect.localScale));
+                Rect pRect = parentRect.rect;
+                Vector2 anchorInParent = new(pRect.xMin + target.x * pRect.width, pRect.yMin + target.y * pRect.height);
+                newAnchoredPosition = (Vector2)parentLocalPoint - anchorInParent;
+            }
             cfg.AnchorMin.StaticValue = target;
             cfg.AnchorMax.StaticValue = target;
             cfg.Pivot.StaticValue = target;
-            cfg.SizeDelta.StaticValue = size;
-            cfg.AnchoredPosition.StaticValue = (Vector2)parentLocalPoint - anchorInParent;
+            if (!fitX || !fitY) {
+                cfg.SizeDelta.StaticValue = preservedSizeDelta;
+            }
+            cfg.AnchoredPosition.StaticValue = newAnchoredPosition;
             cfg.ToUnity(el.Object.GameObject);
         } else {
             el.Rect.GetWorldCorners(autoAnchorCorners);
@@ -230,12 +254,17 @@ internal static partial class HudEditor {
             cfg.AnchorMin.StaticValue = target;
             cfg.AnchorMax.StaticValue = target;
             cfg.Pivot.StaticValue = target;
-            cfg.SizeDelta.StaticValue = size;
+            if (!fitX || !fitY) {
+                cfg.SizeDelta.StaticValue = preservedSizeDelta;
+            }
             cfg.ToUnity(el.Object.GameObject);
+            el.SyncFittedLayout();
             el.Rect.GetWorldCorners(autoAnchorCorners);
             cfg.AnchoredPosition.StaticValue += el.ScreenToParentDelta(cornerBefore - (Vector2)autoAnchorCorners[0]);
             cfg.ToUnity(el.Object.GameObject);
         }
+        el.SyncFittedLayout();
+        el.RefreshTextBounds();
         return true;
     }
 

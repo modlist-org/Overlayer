@@ -39,6 +39,10 @@ internal sealed class UndoStack {
     private readonly List<IHudCommand> entries = [];
     private int cursor;
 
+    public bool CanUndo => cursor > 0;
+    public bool CanRedo => cursor < entries.Count;
+    public event Action Changed;
+
     public void Push(IHudCommand command) {
         if (entries.Count > cursor) {
             entries.RemoveRange(cursor, entries.Count - cursor);
@@ -48,6 +52,7 @@ internal sealed class UndoStack {
             entries.RemoveAt(0);
         }
         cursor = entries.Count;
+        Changed?.Invoke();
     }
 
     public bool Undo() {
@@ -55,6 +60,7 @@ internal sealed class UndoStack {
             return false;
         }
         Run(entries[--cursor].Undo);
+        Changed?.Invoke();
         return true;
     }
 
@@ -63,6 +69,7 @@ internal sealed class UndoStack {
             return false;
         }
         Run(entries[cursor++].Redo);
+        Changed?.Invoke();
         return true;
     }
 
@@ -83,10 +90,15 @@ internal sealed class UndoStack {
         }
         entries.RemoveRange(mark, entries.Count - mark);
         cursor = Math.Min(cursor, entries.Count);
+        Changed?.Invoke();
     }
 
     public void Clear() {
+        if (entries.Count == 0 && cursor == 0) {
+            return;
+        }
         entries.Clear();
         cursor = 0;
+        Changed?.Invoke();
     }
 }

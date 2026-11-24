@@ -61,14 +61,25 @@ internal sealed class HudElement {
     public bool CanResizeX => CanResize(0);
     public bool CanResizeY => CanResize(1);
 
-    private bool CanResize(int axis) {
-        if (Locked || Config.SizeDelta.UseFx || IsGroup) {
-            return false;
-        }
+    internal bool IsFitterDriven(int axis) {
         var fitter = Object.GameObject.GetComponent<ContentSizeFitter>();
-        return fitter == null || !fitter.enabled
-            || (axis == 0 ? fitter.horizontalFit : fitter.verticalFit) == ContentSizeFitter.FitMode.Unconstrained;
+        return fitter != null && fitter.enabled
+            && (axis == 0 ? fitter.horizontalFit : fitter.verticalFit) != ContentSizeFitter.FitMode.Unconstrained;
     }
+
+    internal void SyncFittedLayout() {
+        if (IsFitterDriven(0) || IsFitterDriven(1)) {
+            LayoutRebuilder.ForceRebuildLayoutImmediate(Rect);
+        }
+    }
+
+    internal void RefreshTextBounds() {
+        if (text != null && text.enabled && !string.IsNullOrEmpty(text.text)) {
+            text.ForceMeshUpdate();
+        }
+    }
+
+    private bool CanResize(int axis) => !Locked && !Config.SizeDelta.UseFx && !IsGroup && !IsFitterDriven(axis);
 
     public struct State {
         public Vector2 Position;
@@ -107,9 +118,14 @@ internal sealed class HudElement {
         if (CanRotate) {
             Config.Rotation.StaticValue = state.Rotation;
         }
-        if (CanResizeX || CanResizeY) {
-            Config.SizeDelta.StaticValue = new Vector2(CanResizeX ? state.Size.x : Config.SizeDelta.StaticValue.x,
-                CanResizeY ? state.Size.y : Config.SizeDelta.StaticValue.y);
+        if (!Locked && !Config.SizeDelta.UseFx) {
+            bool writeX = !IsFitterDriven(0);
+            bool writeY = !IsFitterDriven(1);
+            if (writeX || writeY) {
+                Config.SizeDelta.StaticValue = new Vector2(
+                    writeX ? state.Size.x : Config.SizeDelta.StaticValue.x,
+                    writeY ? state.Size.y : Config.SizeDelta.StaticValue.y);
+            }
         }
         Config.ToUnity(Object.GameObject);
     }

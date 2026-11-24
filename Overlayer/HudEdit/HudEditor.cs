@@ -791,7 +791,7 @@ internal static partial class HudEditor {
                 state.AnchorMax = el.Config.AnchorMax.StaticValue;
                 state.Pivot = el.Config.Pivot.StaticValue;
             }
-            if (el.CanResizeX || el.CanResizeY) {
+            if (!el.Config.SizeDelta.UseFx) {
                 state.Size = el.Config.SizeDelta.StaticValue;
             }
             Vector2 basePos = i < dragMoveBasePositions.Count ? dragMoveBasePositions[i] : start.Position;

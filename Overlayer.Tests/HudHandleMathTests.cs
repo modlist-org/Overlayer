@@ -172,4 +172,112 @@ public sealed class HudHandleMathTests {
             Assert.True(count > 0);
         }
     }
+
+    [Fact]
+    public void ComputeReanchoredPosition_PreservesCornersAcrossPivotAndAnchorTransitions() {
+        static (Pt[] Corners, Pt LocalPos) ComputeParentCorners(
+            Pt anchoredPos, Pt pivot, Pt size, Pt scale, float rotDeg,
+            Pt parentMin, Pt parentSize, Pt anchorMin, Pt anchorMax) {
+            Pt anchorRef = new(
+                parentMin.X + (anchorMin.X + anchorMax.X) * 0.5f * parentSize.X,
+                parentMin.Y + (anchorMin.Y + anchorMax.Y) * 0.5f * parentSize.Y);
+            Pt localPos = anchorRef + anchoredPos;
+            float rad = rotDeg * (MathF.PI / 180f);
+            float cos = MathF.Cos(rad);
+            float sin = MathF.Sin(rad);
+            Pt ToParent(float u, float v) {
+                float lx = (u - pivot.X) * size.X * scale.X;
+                float ly = (v - pivot.Y) * size.Y * scale.Y;
+                return new Pt(localPos.X + lx * cos - ly * sin, localPos.Y + lx * sin + ly * cos);
+            }
+            return ([ToParent(0f, 0f), ToParent(0f, 1f), ToParent(1f, 1f), ToParent(1f, 0f)], localPos);
+        }
+
+        Pt parentMin = new(-960f, -540f);
+        Pt parentSize = new(1920f, 1080f);
+        Pt size = new(140f, 48f);
+
+        (Pt AnchorMin, Pt AnchorMax, Pt Pivot, Pt Scale, float Rot)[] cases = [
+            (new(0.5f, 0.5f), new(0.5f, 0.5f), new(0.5f, 0.5f), new(1f, 1f), 0f),
+            (new(0.5f, 0.5f), new(0.5f, 0.5f), new(0f, 1f), new(1.25f, 0.8f), 37f),
+            (new(0f, 0f), new(1f, 1f), new(0.25f, 0.75f), new(1.5f, 2f), -25f),
+        ];
+
+        Pt[] targets = [
+            new(0f, 0f), new(0.5f, 0f), new(1f, 0f),
+            new(0f, 0.5f), new(0.5f, 0.5f), new(1f, 0.5f),
+            new(0f, 1f), new(0.5f, 1f), new(1f, 1f),
+        ];
+
+        foreach (var (aMin, aMax, oldPivot, scale, rot) in cases) {
+            Pt startAnchored = new(215f, -130f);
+            var (beforeCorners, oldLocalPos) = ComputeParentCorners(
+                startAnchored, oldPivot, size, scale, rot, parentMin, parentSize, aMin, aMax);
+
+            foreach (Pt target in targets) {
+                Pt newAnchored = HudHandleMath.ComputeReanchoredPosition(
+                    oldLocalPos, oldPivot, size, scale, rot, parentMin, parentSize, target);
+                var (afterCorners, _) = ComputeParentCorners(
+                    newAnchored, target, size, scale, rot, parentMin, parentSize, target, target);
+
+                for (int c = 0; c < 4; c++) {
+                    Assert.True(MathF.Abs(beforeCorners[c].X - afterCorners[c].X) < 1e-3f,
+                        $"Corner {c}.X drifted: {beforeCorners[c].X} vs {afterCorners[c].X}");
+                    Assert.True(MathF.Abs(beforeCorners[c].Y - afterCorners[c].Y) < 1e-3f,
+                        $"Corner {c}.Y drifted: {beforeCorners[c].Y} vs {afterCorners[c].Y}");
+                }
+            }
+        }
+    }
+
+    [Fact]
+    public void ComputeReanchoredPosition_MidDragAnchorSwitchAndSnapTracksDragDeltaWithoutJump() {
+        Pt parentMin = new(-960f, -540f);
+        Pt parentSize = new(1920f, 1080f);
+        Pt fittedSize = new(110f, 44f);
+        Pt scale = new(1.2f, 0.9f);
+        float rot = 18f;
+
+        Pt anchor = new(0.5f, 0.5f);
+        Pt pivot = new(0.5f, 0.5f);
+        Pt dragBasePos = new(0f, 0f);
+        Pt anchoredPos = dragBasePos;
+
+        Pt CornerZero(Pt a, Pt p, Pt pos) {
+            Pt aRef = new(parentMin.X + a.X * parentSize.X, parentMin.Y + a.Y * parentSize.Y);
+            Pt localPos = aRef + pos;
+            float rad = rot * (MathF.PI / 180f);
+            float cos = MathF.Cos(rad);
+            float sin = MathF.Sin(rad);
+            float lx = (0f - p.X) * fittedSize.X * scale.X;
+            float ly = (0f - p.Y) * fittedSize.Y * scale.Y;
+            return new Pt(localPos.X + lx * cos - ly * sin, localPos.Y + lx * sin + ly * cos);
+        }
+
+        Pt initialCorner = CornerZero(anchor, pivot, anchoredPos);
+
+        // Frame 1: drag moves +600, +300 (with a +12 snap on this frame) and AutoAnchor switches to top-right (1, 1).
+        Pt screenDelta1 = new(600f, 300f);
+        Pt snap1 = new(12f, 0f);
+        anchoredPos = dragBasePos + screenDelta1 + snap1;
+
+        Pt localPosBeforeSwitch = new Pt(parentMin.X + anchor.X * parentSize.X, parentMin.Y + anchor.Y * parentSize.Y) + anchoredPos;
+        Pt target1 = new(1f, 1f);
+        Pt posBefore = anchoredPos;
+        anchoredPos = HudHandleMath.ComputeReanchoredPosition(
+            localPosBeforeSwitch, pivot, fittedSize, scale, rot, parentMin, parentSize, target1);
+        anchor = pivot = target1;
+        dragBasePos += anchoredPos - posBefore;
+
+        Pt afterFrame1Corner = CornerZero(anchor, pivot, anchoredPos);
+        Assert.True(MathF.Abs((initialCorner.X + screenDelta1.X + snap1.X) - afterFrame1Corner.X) < 1e-3f);
+        Assert.True(MathF.Abs((initialCorner.Y + screenDelta1.Y + snap1.Y) - afterFrame1Corner.Y) < 1e-3f);
+
+        // Frame 2: snap is gone, pointer moved slightly more (+605, +305); must land cleanly at initial + screenDelta2.
+        Pt screenDelta2 = new(605f, 305f);
+        anchoredPos = dragBasePos + screenDelta2;
+        Pt afterFrame2Corner = CornerZero(anchor, pivot, anchoredPos);
+        Assert.True(MathF.Abs((initialCorner.X + screenDelta2.X) - afterFrame2Corner.X) < 1e-3f);
+        Assert.True(MathF.Abs((initialCorner.Y + screenDelta2.Y) - afterFrame2Corner.Y) < 1e-3f);
+    }
 }

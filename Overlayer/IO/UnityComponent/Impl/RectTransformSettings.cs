@@ -2,6 +2,7 @@ using Newtonsoft.Json.Linq;
 using Overlayer.IO.Fx;
 using Overlayer.IO.Interface;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Overlayer.IO.UnityComponent.Impl;
 
@@ -93,11 +94,26 @@ public class RectTransformSettings : UnityComponentSettingsBase, ICopyable<RectT
         _lastRotationXY = rotXY;
         _lastRotation = Rotation.Value;
         _lastScale = Scale.Value;
+        var fitter = target.GetComponent<ContentSizeFitter>();
+        bool fitX = fitter != null && fitter.enabled && fitter.horizontalFit != ContentSizeFitter.FitMode.Unconstrained;
+        bool fitY = fitter != null && fitter.enabled && fitter.verticalFit != ContentSizeFitter.FitMode.Unconstrained;
+        Vector2 fittedSize = (fitX || fitY) ? com.rect.size : default;
         com.anchorMin = _lastAnchorMin;
         com.anchorMax = _lastAnchorMax;
         com.pivot = _lastPivot;
         com.anchoredPosition3D = new Vector3(_lastAnchoredPosition.x, _lastAnchoredPosition.y, _lastAnchoredPositionZ);
-        com.sizeDelta = _lastSizeDelta;
+        if (!fitX && !fitY) {
+            com.sizeDelta = _lastSizeDelta;
+        } else {
+            var cur = com.sizeDelta;
+            com.sizeDelta = new Vector2(fitX ? cur.x : _lastSizeDelta.x, fitY ? cur.y : _lastSizeDelta.y);
+            if (fitX && fittedSize.x > 0f) {
+                com.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, fittedSize.x);
+            }
+            if (fitY && fittedSize.y > 0f) {
+                com.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, fittedSize.y);
+            }
+        }
         com.localEulerAngles = new Vector3(rotXY.x, rotXY.y, _lastRotation);
         com.localScale = _lastScale;
 

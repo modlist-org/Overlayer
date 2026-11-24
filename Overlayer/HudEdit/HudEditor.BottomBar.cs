@@ -78,7 +78,7 @@ internal static partial class HudEditor {
         var button = Button(Cell(bar, ToolbarHeight - 12f), id, string.Empty, run, tooltip);
         var icon = NewRect("Icon", button.Rect);
         icon.anchorMin = icon.anchorMax = new Vector2(0.5f, 0.5f);
-        icon.sizeDelta = new Vector2(18f, 16f);
+        icon.sizeDelta = new Vector2(18f, 18f);
         AlignPicker.DrawIcon(icon, mark);
         bottomTools.Add((button, enabled));
     }
