@@ -451,3 +451,5 @@ tool/build-refs.zip
 OllyParts/
 zig-out/
 .zig-cache/
+# Stray HOME dirs created by tools run with HOME=repo (e.g. NuGet)
+/.local/
