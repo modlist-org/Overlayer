@@ -78,8 +78,8 @@ internal static class CurveEditor {
         BuildPreview(content);
 
         var tools = UiStyle.HRow(content, 4f, 36f);
-        undoButton = UiStyle.IconButton(UiStyle.Cell(tools, 36f), "easing_undo", MainCore.Spr.Get(UISprite.TurnArrow128), () => graph.ApplyHistory(model.Undo()));
-        redoButton = UiStyle.IconButton(UiStyle.Cell(tools, 36f), "easing_redo", MainCore.Spr.Get(UISprite.TurnArrow128), () => graph.ApplyHistory(model.Redo()));
+        undoButton = UiStyle.IconButton(UiStyle.Cell(tools, 36f), "easing_undo", UIIcon.TurnArrow, () => graph.ApplyHistory(model.Undo()));
+        redoButton = UiStyle.IconButton(UiStyle.Cell(tools, 36f), "easing_redo", UIIcon.TurnArrow, () => graph.ApplyHistory(model.Redo()));
         if (redoButton.Icon != null) {
             redoButton.Icon.rectTransform.localScale = new Vector3(-1f, 1f, 1f);
         }
@@ -565,7 +565,7 @@ internal static class CurveEditor {
     // Docs-style copy button: label swaps to a check for a moment, then back.
     private static O5Button CopyButton(Transform row, string id, string key, string fallback, Func<string> getText) {
         var button = LocButton(row, id, key, fallback, () => { });
-        Image check = null;
+        Graphic check = null;
         ITweenHandle reset = null;
         button.OnClick = () => {
             Copy(getText());
@@ -573,17 +573,12 @@ internal static class CurveEditor {
                 return;
             }
             if (check == null) {
-                var go = new GameObject("Check");
-                go.transform.SetParent(button.Rect, false);
-                check = go.AddComponent<Image>();
-                check.sprite = MainCore.Spr.Get(UISprite.Check128);
-                check.preserveAspect = true;
+                check = MainCore.Icons.Create(button.Rect, "Check", UIIcon.Check, Color.white, 20f);
                 var r = check.rectTransform;
                 r.anchorMin = r.anchorMax = new Vector2(0.5f, 0.5f);
                 r.pivot = new Vector2(0.5f, 0.5f);
                 r.anchoredPosition = Vector2.zero;
                 r.sizeDelta = new Vector2(20f, 20f);
-                check.raycastTarget = false;
                 check.gameObject.SetActive(false);
             }
             button.Label.gameObject.SetActive(false);

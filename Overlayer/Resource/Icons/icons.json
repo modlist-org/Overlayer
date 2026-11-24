@@ -1,0 +1,214 @@
+{
+  "fontName": "OverlayerIcons",
+  "unitsPerEm": 1024,
+  "ascender": 896,
+  "descender": -128,
+  "sourceSize": 128,
+  "glyphs": [
+    {
+      "name": "AliBaseline",
+      "codepoint": "U+E100",
+      "svg": "AliBaseline.svg"
+    },
+    {
+      "name": "AliCapline",
+      "codepoint": "U+E101",
+      "svg": "AliCapline.svg"
+    },
+    {
+      "name": "AliCenter",
+      "codepoint": "U+E102",
+      "svg": "AliCenter.svg"
+    },
+    {
+      "name": "AliFlush",
+      "codepoint": "U+E103",
+      "svg": "AliFlush.svg"
+    },
+    {
+      "name": "AliGeometry",
+      "codepoint": "U+E104",
+      "svg": "AliGeometry.svg"
+    },
+    {
+      "name": "AliJustified",
+      "codepoint": "U+E105",
+      "svg": "AliJustified.svg"
+    },
+    {
+      "name": "AliLeft",
+      "codepoint": "U+E106",
+      "svg": "AliLeft.svg"
+    },
+    {
+      "name": "AliMiddle",
+      "codepoint": "U+E107",
+      "svg": "AliMiddle.svg"
+    },
+    {
+      "name": "AliMidline",
+      "codepoint": "U+E108",
+      "svg": "AliMidline.svg"
+    },
+    {
+      "name": "AliTop",
+      "codepoint": "U+E109",
+      "svg": "AliTop.svg"
+    },
+    {
+      "name": "AnchorCorner",
+      "codepoint": "U+E10A",
+      "svg": "AnchorCorner.svg"
+    },
+    {
+      "name": "AnchorSide",
+      "codepoint": "U+E10B",
+      "svg": "AnchorSide.svg"
+    },
+    {
+      "name": "Book",
+      "codepoint": "U+E10C",
+      "svg": "Book.svg"
+    },
+    {
+      "name": "Box",
+      "codepoint": "U+E10D",
+      "svg": "Box.svg"
+    },
+    {
+      "name": "Canvas",
+      "codepoint": "U+E10E",
+      "svg": "Canvas.svg"
+    },
+    {
+      "name": "Check",
+      "codepoint": "U+E10F",
+      "svg": "Check.svg"
+    },
+    {
+      "name": "Clone",
+      "codepoint": "U+E110",
+      "svg": "Clone.svg"
+    },
+    {
+      "name": "CodeBlock",
+      "codepoint": "U+E111",
+      "svg": "CodeBlock.svg"
+    },
+    {
+      "name": "Cube",
+      "codepoint": "U+E112",
+      "svg": "Cube.svg"
+    },
+    {
+      "name": "DotInCircle",
+      "codepoint": "U+E113",
+      "svg": "DotInCircle.svg"
+    },
+    {
+      "name": "Download",
+      "codepoint": "U+E114",
+      "svg": "Download.svg"
+    },
+    {
+      "name": "Ease",
+      "codepoint": "U+E115",
+      "svg": "Ease.svg"
+    },
+    {
+      "name": "Expand",
+      "codepoint": "U+E116",
+      "svg": "Expand.svg"
+    },
+    {
+      "name": "EyeHide",
+      "codepoint": "U+E117",
+      "svg": "EyeHide.svg"
+    },
+    {
+      "name": "EyeOpen",
+      "codepoint": "U+E118",
+      "svg": "EyeOpen.svg"
+    },
+    {
+      "name": "F",
+      "codepoint": "U+E119",
+      "svg": "F.svg"
+    },
+    {
+      "name": "Gear",
+      "codepoint": "U+E11A",
+      "svg": "Gear.svg"
+    },
+    {
+      "name": "Grid",
+      "codepoint": "U+E11B",
+      "svg": "Grid.svg"
+    },
+    {
+      "name": "Image",
+      "codepoint": "U+E11C",
+      "svg": "Image.svg"
+    },
+    {
+      "name": "LockOff",
+      "codepoint": "U+E11D",
+      "svg": "LockOff.svg"
+    },
+    {
+      "name": "LockOn",
+      "codepoint": "U+E11E",
+      "svg": "LockOn.svg"
+    },
+    {
+      "name": "MagnifyingGlass",
+      "codepoint": "U+E11F",
+      "svg": "MagnifyingGlass.svg"
+    },
+    {
+      "name": "Monitor",
+      "codepoint": "U+E120",
+      "svg": "Monitor.svg"
+    },
+    {
+      "name": "Ping",
+      "codepoint": "U+E121",
+      "svg": "Ping.svg"
+    },
+    {
+      "name": "Plus",
+      "codepoint": "U+E122",
+      "svg": "Plus.svg"
+    },
+    {
+      "name": "Power",
+      "codepoint": "U+E123",
+      "svg": "Power.svg"
+    },
+    {
+      "name": "Ruler",
+      "codepoint": "U+E124",
+      "svg": "Ruler.svg"
+    },
+    {
+      "name": "Star",
+      "codepoint": "U+E125",
+      "svg": "Star.svg"
+    },
+    {
+      "name": "Text",
+      "codepoint": "U+E126",
+      "svg": "Text.svg"
+    },
+    {
+      "name": "TurnArrow",
+      "codepoint": "U+E127",
+      "svg": "TurnArrow.svg"
+    },
+    {
+      "name": "Upload",
+      "codepoint": "U+E128",
+      "svg": "Upload.svg"
+    }
+  ]
+}

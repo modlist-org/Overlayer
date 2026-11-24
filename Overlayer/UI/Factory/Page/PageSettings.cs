@@ -155,7 +155,7 @@ internal static class PageSettings {
                 }
 
                 LayoutRebuilder.ForceRebuildLayoutImmediate(contentRect);
-            }, Placeholder = "Find", Icon = MainCore.Spr.Get(UISprite.MagnifyingGlass128) });
+            }, Placeholder = "Find", Icon = MainCore.Icons.Get(UIIcon.MagnifyingGlass) });
         findInput.Placeholder.gameObject.AddComponent<TextLocalization>().Init("FIND", "Find");
         findInput.InputField.characterLimit = 22;
 
@@ -902,9 +902,9 @@ internal static class PageSettings {
                 dropLe = dropdown.Rect.gameObject.AddComponent<LayoutElement>();
             }
             dropLe.flexibleWidth = 1f;
-            list.Controls.Add(IconButton(row, MainCore.Spr.Get(UISprite.Triangle128), 180f, $"fallback_up_{index}", () => MoveFallback(list, fallbacks, index, -1, primaryKey)));
-            list.Controls.Add(IconButton(row, MainCore.Spr.Get(UISprite.Triangle128), 0f, $"fallback_down_{index}", () => MoveFallback(list, fallbacks, index, 1, primaryKey)));
-            var delBtn = IconButton(row, MainCore.Spr.Get(UISprite.X128), 0f, $"fallback_del_{index}", () => { });
+            list.Controls.Add(IconButton(row, UIIcon.Triangle, 180f, $"fallback_up_{index}", () => MoveFallback(list, fallbacks, index, -1, primaryKey)));
+            list.Controls.Add(IconButton(row, UIIcon.Triangle, 0f, $"fallback_down_{index}", () => MoveFallback(list, fallbacks, index, 1, primaryKey)));
+            var delBtn = IconButton(row, UIIcon.X, 0f, $"fallback_del_{index}", () => { });
             HoldToConfirm.Attach(delBtn, () => {
                 var next = fallbacks.Value ?? [];
                 if (index < next.Count) {
@@ -934,8 +934,8 @@ internal static class PageSettings {
         RefreshFallbackRows(list, fallbacks, primaryKey);
     }
 
-    private static O5Button IconButton(Transform parent, Sprite sprite, float rotationDeg, string id, Action onClick) {
-        var button = O5Factory.Button(O5KitAdapters.Ctx, parent, id, new O5ButtonOptions { Icon = sprite, OnClick = onClick, IconPadding = 5f, Height = 44f });
+    private static O5Button IconButton(Transform parent, UIIcon icon, float rotationDeg, string id, Action onClick) {
+        var button = O5Factory.Button(O5KitAdapters.Ctx, parent, id, new O5ButtonOptions { Icon = MainCore.Icons.Get(icon), OnClick = onClick, IconPadding = 5f, Height = 44f });
         if (rotationDeg != 0f && button.Icon != null) {
             button.Icon.rectTransform.localEulerAngles = new Vector3(0f, 0f, rotationDeg);
         }

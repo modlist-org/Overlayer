@@ -8,8 +8,9 @@ Attribution is not required, though crediting the Overlayer team would be
 truly appreciated!
 
 Scope:
-- Covers the UI icon and geometric shape assets under
-  Overlayer/Resource/Embedded/Image/
+- Covers the UI geometric shape assets under Overlayer/Resource/Embedded/Image/
+  and the monochrome vector icon SVGs under Overlayer/Resource/Icons/
+  (compiled into OverlayerIcons.ttf at build time)
 - Excludes OV5LogoOutline128.png and ov5_logo.svg (derived from the Google V8
   logo under CC BY-NC 3.0; see README.md)
 - Excludes Olly mascot artwork under Overlayer/Resource/Embedded/Image/Olly/

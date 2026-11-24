@@ -60,14 +60,16 @@ internal sealed class DocSection(string title, string summary, params DocBlock[]
 
 internal sealed class DocChapter(
     string id,
-    UISprite icon,
+    UIIcon? icon,
+    UISprite? spriteIcon,
     string title,
     string subtitle,
     DocSpecialKind special,
     params DocSection[] sections
 ) {
     public readonly string Id = id;
-    public readonly UISprite Icon = icon;
+    public readonly UIIcon? Icon = icon;
+    public readonly UISprite? SpriteIcon = spriteIcon;
     public readonly string Title = title;
     public readonly string Subtitle = subtitle;
     public readonly DocSpecialKind Special = special;
@@ -100,6 +102,7 @@ internal static class DocsContent {
     // ------------------------------------------------------------------
     private static DocChapter BuildOverview() => new(
         "overview",
+        null,
         UISprite.OV5LogoOutline128,
         T("개요", "Overview"),
         T("게임 위에 텍스트, 이미지, 그래프, 스크립트 HUD를 구성할 수 있는 오버레이 모드입니다.",
@@ -148,7 +151,8 @@ internal static class DocsContent {
     // ------------------------------------------------------------------
     private static DocChapter BuildTagsAndText() => new(
         "tags",
-        UISprite.Text128,
+        UIIcon.Text,
+        null,
         T("태그 & 텍스트 엔진", "Text Engine"),
         T("{Tag} 문법, 인자 전달, 숫자 포맷, 인라인 수식, TMP 리치 텍스트, 내장 이펙트 태그를 다룹니다.",
           "Covers {Tag} syntax, arguments, numeric formatting, inline expressions, TMP rich text, and built-in effect tags."),
@@ -262,7 +266,8 @@ internal static class DocsContent {
     // ------------------------------------------------------------------
     private static DocChapter BuildTagExplorer() => new(
         "explorer",
-        UISprite.MagnifyingGlass128,
+        UIIcon.MagnifyingGlass,
+        null,
         T("태그 목록", "Tag List"),
         T("현재 로드된 코어, 게임 모듈, JS 스크립트 태그를 검색하고 복사할 수 있습니다.",
           "Search and copy all loaded Core, Module, and JS tags."),
@@ -276,7 +281,8 @@ internal static class DocsContent {
         string hudKey = HudEdit.HudEditor.Key.ToDisplayString();
         return new(
             "hud",
-            UISprite.Expand128,
+            UIIcon.Expand,
+            null,
             T("HUD 편집기", "HUD Editor"),
             T($"{hudKey} 키로 화면 위의 HUD 요소를 드래그, 크기 조절, 회전, 정렬, 그룹화할 수 있습니다.",
               $"Press {hudKey} to drag, resize, rotate, align, and group HUD elements directly on screen."),
@@ -336,7 +342,8 @@ internal static class DocsContent {
     // ------------------------------------------------------------------
     private static DocChapter BuildComponentsAndFx() => new(
         "components",
-        UISprite.Cube128,
+        UIIcon.Cube,
+        null,
         T("컴포넌트 & Fx 수식", "Component & Fx"),
         T("Overlayer 전용 컴포넌트와 인스펙터 속성에 JavaScript 수식을 연결하는 Fx 기능을 설명합니다.",
           "Overlayer custom components and reactive Fx JavaScript expressions for inspector properties."),
@@ -406,7 +413,8 @@ internal static class DocsContent {
     // ------------------------------------------------------------------
     private static DocChapter BuildEasingAndCurves() => new(
         "easing",
-        UISprite.Ease128,
+        UIIcon.Ease,
+        null,
         T("가감속 & 커브 에디터", "Easing"),
         T("31종 내장 이징 프리셋과 4가지 커스텀 커브 포맷, 저장된 커브 사용법을 다룹니다.",
           "Covers all 31 built-in O5Ease presets, 4 custom curve formats, and saved curves."),
@@ -473,7 +481,8 @@ internal static class DocsContent {
     // ------------------------------------------------------------------
     private static DocChapter BuildJavaScriptApi() => new(
         "js",
-        UISprite.CodeBlock128,
+        UIIcon.CodeBlock,
+        null,
         T("Javascript", "Javascript"),
         T("JS/Script 폴더에 .js 파일을 넣어 커스텀 태그, 설정 탭, 런타임 패치, Unity/CLR 제어를 작성할 수 있습니다.",
           "Author .js scripts in JS/Script for custom tags, settings tabs, runtime patches, and Unity/CLR interop."),
@@ -602,7 +611,8 @@ internal static class DocsContent {
     // ------------------------------------------------------------------
     private static DocChapter BuildPackagesAndModules() => new(
         "packages",
-        UISprite.Box128,
+        UIIcon.Box,
+        null,
         T("패키지 (.o5cp) & 모듈", "Packages & Modules"),
         T("캔버스와 리소스를 하나로 묶는 .o5cp 패키지와 게임별 모듈 확장 구조를 다룹니다.",
           "Covers .o5cp canvas packages with bundled assets and game-specific OverlayerModule extensions."),

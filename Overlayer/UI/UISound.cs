@@ -469,14 +469,14 @@ internal static class UISound {
 
     private static bool IsSliderTarget(GameObject go) =>
         go != null && (go.GetComponent<Slider>() != null
-            || (go.transform.Find("Fill") is RectTransform && go.transform.Find("ValueInput") != null));
+            || (go.transform.Find("FillClip/Fill") is RectTransform && go.transform.Find("ValueInput") != null));
 
     private static O5Slider GetHoveredSlider() =>
         HoveredSliderField?.GetValue(null) as O5Slider;
 
     private static bool TryPlaySliderReset(GameObject current) {
         if (HoveredSliderField == null) {
-            var fill = current.transform.Find("Fill") as RectTransform;
+            var fill = current.transform.Find("FillClip/Fill") as RectTransform;
             PlaySliderTick(fill != null ? Mathf.Clamp01(fill.anchorMax.x) : 0.5f);
             return false;
         }
@@ -598,7 +598,7 @@ internal static class UISound {
             lastUnitySliderVal = unitySlider.normalizedValue;
             return true;
         }
-        var fill = t.Find("Fill") as RectTransform;
+        var fill = t.Find("FillClip/Fill") as RectTransform;
         var valInput = t.Find("ValueInput");
         if (fill != null && valInput != null) {
             activeSlider = t;

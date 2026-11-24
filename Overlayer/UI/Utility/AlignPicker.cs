@@ -139,40 +139,40 @@ internal sealed class AlignPicker {
     internal static void DrawIcon(RectTransform icon, Mark mark) {
         switch (mark) {
             case Mark.Left:
-                SpriteIcon(icon, UISprite.AliLeft128);
+                GlyphIcon(icon, UIIcon.AliLeft);
                 break;
             case Mark.Center:
-                SpriteIcon(icon, UISprite.AliCenter128);
+                GlyphIcon(icon, UIIcon.AliCenter);
                 break;
             case Mark.Right:
-                SpriteIcon(icon, UISprite.AliLeft128, flipX: true);
+                GlyphIcon(icon, UIIcon.AliLeft, flipX: true);
                 break;
             case Mark.Justified:
-                SpriteIcon(icon, UISprite.AliJustified128);
+                GlyphIcon(icon, UIIcon.AliJustified);
                 break;
             case Mark.Flush:
-                SpriteIcon(icon, UISprite.AliFlush128);
+                GlyphIcon(icon, UIIcon.AliFlush);
                 break;
             case Mark.Geometry:
-                SpriteIcon(icon, UISprite.AliGeometry128);
+                GlyphIcon(icon, UIIcon.AliGeometry);
                 break;
             case Mark.Top:
-                SpriteIcon(icon, UISprite.AliTop128);
+                GlyphIcon(icon, UIIcon.AliTop);
                 break;
             case Mark.Middle:
-                SpriteIcon(icon, UISprite.AliMiddle128);
+                GlyphIcon(icon, UIIcon.AliMiddle);
                 break;
             case Mark.Bottom:
-                SpriteIcon(icon, UISprite.AliTop128, flipY: true);
+                GlyphIcon(icon, UIIcon.AliTop, flipY: true);
                 break;
             case Mark.Baseline:
-                SpriteIcon(icon, UISprite.AliBaseline128);
+                GlyphIcon(icon, UIIcon.AliBaseline);
                 break;
             case Mark.Midline:
-                SpriteIcon(icon, UISprite.AliMidline128);
+                GlyphIcon(icon, UIIcon.AliMidline);
                 break;
             case Mark.Capline:
-                SpriteIcon(icon, UISprite.AliCapline128);
+                GlyphIcon(icon, UIIcon.AliCapline);
                 break;
             case Mark.DistributeX:
             case Mark.DistributeY:
@@ -186,12 +186,13 @@ internal sealed class AlignPicker {
         }
     }
 
-    private static void SpriteIcon(RectTransform icon, UISprite sprite, bool flipX = false, bool flipY = false) {
-        var image = icon.gameObject.AddComponent<Image>();
-        image.sprite = MainCore.Spr.Get(sprite);
-        image.preserveAspect = true;
-        image.color = Bar;
-        image.raycastTarget = false;
+    private static void GlyphIcon(RectTransform icon, UIIcon glyph, bool flipX = false, bool flipY = false) {
+        var tmp = MainCore.Icons.Create(icon, "Glyph", glyph, Bar);
+        var r = tmp.rectTransform;
+        r.anchorMin = Vector2.zero;
+        r.anchorMax = Vector2.one;
+        r.offsetMin = Vector2.zero;
+        r.offsetMax = Vector2.zero;
         if (flipX || flipY) {
             icon.localScale = new Vector3(flipX ? -1f : 1f, flipY ? -1f : 1f, 1f);
         }

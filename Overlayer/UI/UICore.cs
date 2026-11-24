@@ -70,6 +70,7 @@ public static class UICore {
         CanvasScaler.matchWidthOrHeight = 0.5f;
 
         CanvasObj.AddComponent<GraphicRaycaster>();
+        MainCore.Spr.Shapes.Track(CanvasObj.transform);
 
         CreatePanel();
         ResizeHandle.CreateResizeHandles(O5KitAdapters.Ctx, Panel, CanvasObj.GetComponent<RectTransform>());
@@ -303,16 +304,12 @@ public static class UICore {
 #else
             });
 #endif
-            GameObject powerIcon = new("PowerIcon");
-            powerIcon.transform.SetParent(powerRect, false);
-            RectTransform powerIconRect = powerIcon.AddComponent<RectTransform>();
+            var powerIcon = MainCore.Icons.Create(powerRect, "PowerIcon", UIIcon.Power, new(1f, 1f, 1f, 0.6f), 26f);
+            RectTransform powerIconRect = powerIcon.rectTransform;
             powerIconRect.anchorMin = new Vector2(0.5f, 0.5f);
             powerIconRect.anchorMax = new Vector2(0.5f, 0.5f);
             powerIconRect.pivot = new Vector2(0.5f, 0.5f);
             powerIconRect.sizeDelta = new Vector2(26f, 26f);
-            Image powerIconImage = powerIcon.AddComponent<Image>();
-            powerIconImage.sprite = MainCore.Spr.Get(UISprite.Power128);
-            powerIconImage.color = new(1f, 1f, 1f, 0.6f);
 
             GameObject version = new("Version");
             version.transform.SetParent(Menu, false);
@@ -417,13 +414,8 @@ public static class UICore {
             bgRect.offsetMax = Vector2.zero;
 
             // X icon (always visible)
-            GameObject xObj = new("X");
-            xObj.transform.SetParent(close.transform, false);
-
-            Image xImage = xObj.AddComponent<Image>();
-            xImage.sprite = MainCore.Spr.Get(UISprite.X128);
-
-            RectTransform xRect = xObj.GetComponent<RectTransform>();
+            var xIcon = MainCore.Icons.Create(close.transform, "X", UIIcon.X, Color.white);
+            RectTransform xRect = xIcon.rectTransform;
             xRect.anchorMin = Vector2.zero;
             xRect.anchorMax = Vector2.one;
             xRect.offsetMin = new(4, 4);

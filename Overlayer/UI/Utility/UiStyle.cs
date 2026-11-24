@@ -58,8 +58,8 @@ internal static class UiStyle {
         return button;
     }
 
-    public static O5Button IconButton(Transform parent, string id, Sprite icon, Action onClick, float padding = 8f, bool primary = false) {
-        var button = O5Factory.Button(O5KitAdapters.Ctx, parent, id, new O5ButtonOptions { Icon = icon, IconPadding = padding, OnClick = onClick });
+    public static O5Button IconButton(Transform parent, string id, UIIcon icon, Action onClick, float padding = 8f, bool primary = false) {
+        var button = O5Factory.Button(O5KitAdapters.Ctx, parent, id, new O5ButtonOptions { Icon = MainCore.Icons.Get(icon), IconPadding = padding, OnClick = onClick });
         if (!primary) {
             button.NormalColor = Ghost;
             button.UpdateVisual(true);

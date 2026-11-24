@@ -149,8 +149,8 @@ internal static partial class HudEditor {
         return button;
     }
 
-    private static O5Button Icon(Transform parent, string id, UISprite icon, Action onClick, string tooltip, bool primary = false, bool flipX = false) {
-        var button = Track(UiStyle.IconButton(Cell(parent, ToolbarHeight - 12f), "plus_hud_" + id, MainCore.Spr.Get(icon), onClick, 9f, primary));
+    private static O5Button Icon(Transform parent, string id, UIIcon icon, Action onClick, string tooltip, bool primary = false, bool flipX = false) {
+        var button = Track(UiStyle.IconButton(Cell(parent, ToolbarHeight - 12f), "plus_hud_" + id, icon, onClick, 9f, primary));
         if (flipX && button.Icon != null) {
             button.Icon.rectTransform.localScale = new Vector3(-1f, 1f, 1f);
         }
@@ -246,12 +246,12 @@ internal static partial class HudEditor {
         var fitter = toolbar.gameObject.AddComponent<ContentSizeFitter>();
         fitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
 
-        layersButton = Icon(toolbar, "layers", UISprite.Canvas128, ToggleLayers, Tr("HUD_CANVAS_LIST", "Canvas list"));
+        layersButton = Icon(toolbar, "layers", UIIcon.Canvas, ToggleLayers, Tr("HUD_CANVAS_LIST", "Canvas list"));
         UiStyle.Separator(toolbar, true);
-        Icon(toolbar, "add_text", UISprite.Text128, () => Create(NewKind.Text, CurrentPlacement, null), Tr("HUD_ADD_TEXT", "Add text"));
-        Icon(toolbar, "add_image", UISprite.Image128, () => Create(NewKind.Image, CurrentPlacement, null), Tr("HUD_ADD_IMAGE", "Add image"));
+        Icon(toolbar, "add_text", UIIcon.Text, () => Create(NewKind.Text, CurrentPlacement, null), Tr("HUD_ADD_TEXT", "Add text"));
+        Icon(toolbar, "add_image", UIIcon.Image, () => Create(NewKind.Image, CurrentPlacement, null), Tr("HUD_ADD_IMAGE", "Add image"));
         O5Button presetsButton = null;
-        presetsButton = Icon(toolbar, "presets", UISprite.Star128, () => {
+        presetsButton = Icon(toolbar, "presets", UIIcon.Star, () => {
             // A second press closes it.
             if (contextMenu != null && contextMenu.name == "PresetMenu") {
                 CloseContextMenu();
@@ -263,18 +263,18 @@ internal static partial class HudEditor {
         }, Tr("HUD_PRESETS", "Presets"));
         placementButton = Button(Cell(toolbar, 170f), "placement", string.Empty, CyclePlacement);
         UiStyle.Tooltip(placementButton, CurrentPlacementTooltip);
-        gridButton = Icon(toolbar, "grid", UISprite.Grid128, ToggleGrid, Tr("HUD_GRID", "Grid"));
-        rulersButton = Icon(toolbar, "rulers", UISprite.Ruler128, ToggleRulers, Tr("HUD_RULERS", "Rulers & guides"));
-        autoAnchorButton = Icon(toolbar, "auto_anchor", UISprite.DotInCircle128, ToggleAutoAnchor, Tr("HUD_AUTO_ANCHOR", "Auto anchor"));
+        gridButton = Icon(toolbar, "grid", UIIcon.Grid, ToggleGrid, Tr("HUD_GRID", "Grid"));
+        rulersButton = Icon(toolbar, "rulers", UIIcon.Ruler, ToggleRulers, Tr("HUD_RULERS", "Rulers & guides"));
+        autoAnchorButton = Icon(toolbar, "auto_anchor", UIIcon.DotInCircle, ToggleAutoAnchor, Tr("HUD_AUTO_ANCHOR", "Auto anchor"));
         UiStyle.Separator(toolbar, true);
-        duplicateButton = Icon(toolbar, "duplicate", UISprite.Clone128, DuplicateSelection, Tr("HUD_DUPLICATE", "Duplicate"));
-        deleteButton = Icon(toolbar, "delete", UISprite.X128, null, Tr("HUD_DELETE_HOLD", "Delete (Hold)"));
+        duplicateButton = Icon(toolbar, "duplicate", UIIcon.Clone, DuplicateSelection, Tr("HUD_DUPLICATE", "Duplicate"));
+        deleteButton = Icon(toolbar, "delete", UIIcon.X, null, Tr("HUD_DELETE_HOLD", "Delete (Hold)"));
         HoldToConfirm.Attach(deleteButton, DeleteSelection, canConfirm: () => selection.Any(e => e.IsAlive && !e.Locked));
         UiStyle.Separator(toolbar, true);
-        undoButton = Icon(toolbar, "undo", UISprite.TurnArrow128, () => AfterHistory(undo.Undo()), Tr("HUD_UNDO", "Undo"));
-        redoButton = Icon(toolbar, "redo", UISprite.TurnArrow128, () => AfterHistory(undo.Redo()), Tr("HUD_REDO", "Redo"), flipX: true);
+        undoButton = Icon(toolbar, "undo", UIIcon.TurnArrow, () => AfterHistory(undo.Undo()), Tr("HUD_UNDO", "Undo"));
+        redoButton = Icon(toolbar, "redo", UIIcon.TurnArrow, () => AfterHistory(undo.Redo()), Tr("HUD_REDO", "Redo"), flipX: true);
         UiStyle.Separator(toolbar, true);
-        Icon(toolbar, "close", UISprite.Check128, Close, Tr("HUD_DONE", "Done"), primary: true);
+        Icon(toolbar, "close", UIIcon.Check, Close, Tr("HUD_DONE", "Done"), primary: true);
         UpdatePlacementLabel();
     }
 

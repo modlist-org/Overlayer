@@ -30,7 +30,7 @@ internal static partial class HudEditor {
     private static AlignPicker textAlign;
     private static GameObject textRows, imageRows, anchorRow, allPropsRow, multiPropsRow;
     private static readonly Image[] anchorHits = new Image[9];
-    private static readonly Image[] anchorMarks = new Image[9];
+    private static readonly Graphic[] anchorMarks = new Graphic[9];
     private static int anchorSelected = -1;
     private static int anchorHovered = -1;
     private static O5Button allPropsButton, multiPropsButton;
@@ -124,14 +124,10 @@ internal static partial class HudEditor {
         }
 
         // Draw corner arrows, edge brackets, and center crosshair above the tiles.
-        var cornerSprite = MainCore.Spr.Get(UISprite.AnchorCorner128);
-        var sideSprite = MainCore.Spr.Get(UISprite.AnchorSide128);
-        var centerSprite = MainCore.Spr.Get(UISprite.Plus128);
         for (int i = 0; i < 9; i++) {
             int col = i % 3, line = i / 3;
-            var sprite = i == 4 ? centerSprite : (col != 1 && line != 1) ? cornerSprite : sideSprite;
-            var mark = NewImage("Mark", frameRect, AnchorIdle, sprite);
-            mark.preserveAspect = true;
+            var iconKind = i == 4 ? UIIcon.Plus : (col != 1 && line != 1) ? UIIcon.AnchorCorner : UIIcon.AnchorSide;
+            var mark = MainCore.Icons.Create(frameRect, "Mark", iconKind, AnchorIdle);
             var mr = mark.rectTransform;
             mr.anchorMin = mr.anchorMax = new Vector2(0f, 1f);
             mr.pivot = new Vector2(0.5f, 0.5f);

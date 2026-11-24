@@ -53,7 +53,7 @@ public static class O5TweenExtensions {
         }
     }
 
-    public static ITweenHandle TColor(this Image img, Color to, float duration, O5Ease ease, Action done = null) {
+    public static ITweenHandle TColor(this Graphic img, Color to, float duration, O5Ease ease, Action done = null) {
         var runner = Runner;
         return runner.TweenColor(
             () => img ? img.color : to,

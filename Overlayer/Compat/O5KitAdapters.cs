@@ -22,26 +22,6 @@ public sealed class OverlayerSpriteProvider : ISpriteProvider {
     public Sprite TopBar => MainCore.Spr.Get(UISliceSprite.CircleHalf128P512);
     public Sprite RoundedOutline => MainCore.Spr.Get(UISliceSprite.CircleOutline128O32P1024);
     public Sprite Circle => MainCore.Spr.Get(UISprite.Circle128);
-
-    public Sprite Icon(string name) {
-        if (name == "toggle-on") {
-            return MainCore.Spr.Get(UISprite.Circle128);
-        }
-
-        if (name == "toggle-off") {
-            return MainCore.Spr.Get(UISprite.ToggleCircle128);
-        }
-
-        if (name == "x") {
-            return MainCore.Spr.Get(UISprite.X128);
-        }
-
-        if (name == "triangle") {
-            return MainCore.Spr.Get(UISprite.Triangle128);
-        }
-
-        return Enum.TryParse<UISprite>(name, out UISprite sprite) ? MainCore.Spr.Get(sprite) : null;
-    }
 }
 
 public sealed class OverlayerFontProvider : IFontProvider {
@@ -63,6 +43,7 @@ public sealed class OverlayerFontProvider : IFontProvider {
         "medium", Asset.SUIT_Medium, EffectiveMediumKey(), EffectiveMediumFallbacks());
     public TMP_FontAsset Monospace => _monospace = ResolveSlot(
         "monospace", Asset.JetBrainsMonoNL_Medium, MainCore.Conf.CodeFontKey.Value, MainCore.Conf.CodeFontFallbacks.Value);
+    public TMP_FontAsset Icons => MainCore.Icons?.O5KitFont;
 
     private static List<string> EffectiveMediumFallbacks() {
         var med = MainCore.Conf.SystemMediumFontFallbacks.Value;
@@ -296,7 +277,8 @@ public static class O5KitAdapters {
             config: new O5Config(),
             theme: UI.UIColors.BuildCurrentTheme(),
             sprites: new OverlayerSpriteProvider(),
-            fonts: _fonts);
+            fonts: _fonts,
+            shapes: MainCore.Spr.Shapes);
         SyncConfig();
 
         O5ShortcutManager.IsSuspended = () => O5Kit.Control.O5InputBlocker.IsEditing || UI.Utility.KeyCapture.SuppressShortcuts;

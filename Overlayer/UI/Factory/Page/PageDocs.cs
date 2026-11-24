@@ -64,7 +64,7 @@ internal static class PageDocs {
         public DocChapter Chapter;
         public Image Bg;
         public Image Bar;
-        public Image Icon;
+        public Graphic Icon;
         public TextMeshProUGUI Label;
         public ITweenHandle Tween;
         public bool Hovered;
@@ -76,7 +76,7 @@ internal static class PageDocs {
         public RectTransform TopRowRect;
         public LayoutElement TagBtnLayout;
         public TextMeshProUGUI TagTmp;
-        public Image TagCheck;
+        public TextMeshProUGUI TagCheck;
         public TextMeshProUGUI MetaTmp;
         public GameObject LiveValCell;
         public TextMeshProUGUI LiveValTmp;
@@ -382,14 +382,26 @@ internal static class PageDocs {
             bar.rectTransform.anchoredPosition = new Vector2(3f, 0f);
             bar.rectTransform.sizeDelta = new Vector2(3f, 0f);
 
-            bool isLogo = chapter.Icon == UISprite.OV5LogoOutline128;
-            var icon = NewImage(
-                isLogo ? "LogoIcon" : "Icon",
-                item.rectTransform,
-                isLogo ? new Color(0.68f, 0.68f, 0.68f, 1f) : TextMuted,
-                MainCore.Spr.Get(chapter.Icon)
-            );
-            icon.preserveAspect = true;
+            bool isLogo = chapter.SpriteIcon == UISprite.OV5LogoOutline128;
+            Graphic icon;
+            if (chapter.SpriteIcon.HasValue) {
+                var sprImg = NewImage(
+                    isLogo ? "LogoIcon" : "Icon",
+                    item.rectTransform,
+                    isLogo ? new Color(0.68f, 0.68f, 0.68f, 1f) : TextMuted,
+                    MainCore.Spr.Get(chapter.SpriteIcon.Value)
+                );
+                sprImg.preserveAspect = true;
+                icon = sprImg;
+            } else {
+                icon = MainCore.Icons.Create(
+                    item.rectTransform,
+                    "Icon",
+                    chapter.Icon ?? UIIcon.Book,
+                    TextMuted,
+                    22f
+                );
+            }
             icon.rectTransform.anchorMin = icon.rectTransform.anchorMax = new Vector2(0f, 0.5f);
             icon.rectTransform.pivot = new Vector2(0f, 0.5f);
             icon.rectTransform.anchoredPosition = new Vector2(12f, 0f);
@@ -438,7 +450,7 @@ internal static class PageDocs {
     }
 
     private static Color NavIconColor(NavEntry entry, bool selected) {
-        if (entry.Chapter.Icon == UISprite.OV5LogoOutline128) {
+        if (entry.Chapter.SpriteIcon == UISprite.OV5LogoOutline128) {
             return selected ? Color.white
                 : entry.Hovered ? new Color(0.90f, 0.90f, 0.90f, 1f)
                 : new Color(0.68f, 0.68f, 0.68f, 1f);
@@ -653,7 +665,7 @@ internal static class PageDocs {
         playgroundExpandBtn = TrackPage(MakeIconButton(
             UiStyle.Cell(headerRow, 44f),
             "docs_sandbox_expand",
-            MainCore.Spr.Get(UISprite.Expand128),
+            UIIcon.Expand,
             () => SetPlaygroundFullscreen(playgroundFullscreenOverlay == null),
             padding: 10f
         ));
@@ -1310,8 +1322,7 @@ internal static class PageDocs {
         tagTmp.raycastTarget = false;
         Stretch(tagTmp.rectTransform);
 
-        var tagCheck = NewImage("Check", tagHit.rectTransform, Color.white, MainCore.Spr.Get(UISprite.Check128));
-        tagCheck.preserveAspect = true;
+        var tagCheck = MainCore.Icons.Create(tagHit.rectTransform, "Check", UIIcon.Check, Color.white, 20f);
         tagCheck.rectTransform.anchorMin = tagCheck.rectTransform.anchorMax = new Vector2(0f, 0.5f);
         tagCheck.rectTransform.pivot = new Vector2(0f, 0.5f);
         tagCheck.rectTransform.anchoredPosition = new Vector2(2f, 0f);
@@ -1358,7 +1369,7 @@ internal static class PageDocs {
         };
 
         slot.TryBtn = MakeIconButton(tryCell, tryButtonId,
-            MainCore.Spr.Get(UISprite.CodeBlock128), () => {
+            UIIcon.CodeBlock, () => {
                 if (!string.IsNullOrEmpty(slot.Snippet)) {
                     OpenInPlayground(slot.Snippet);
                 }
@@ -1682,7 +1693,7 @@ internal static class PageDocs {
 
         if (code.TryInSandbox) {
             TrackPage(MakeIconButton(UiStyle.Cell(bar.rectTransform, 36f), "docs_try_" + id,
-                MainCore.Spr.Get(UISprite.CodeBlock128), () => OpenInPlayground(code.Code), padding: 8f));
+                UIIcon.CodeBlock, () => OpenInPlayground(code.Code), padding: 8f));
         }
         AddCopyIconButton(UiStyle.Cell(bar.rectTransform, 36f), "docs_copy_" + id, () => code.Code);
 
@@ -1853,8 +1864,7 @@ internal static class PageDocs {
                 tmp.raycastTarget = false;
                 tmp.text = DocsHighlight.Escape(item);
 
-                var checkImg = NewImage("Check", pill.rectTransform, Color.white, MainCore.Spr.Get(UISprite.Check128));
-                checkImg.preserveAspect = true;
+                var checkImg = MainCore.Icons.Create(pill.rectTransform, "Check", UIIcon.Check, Color.white, 20f);
                 checkImg.rectTransform.anchorMin = checkImg.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
                 checkImg.rectTransform.pivot = new Vector2(0.5f, 0.5f);
                 checkImg.rectTransform.sizeDelta = new Vector2(20f, 20f);
@@ -2407,12 +2417,12 @@ internal static class PageDocs {
     private static O5Button MakeIconButton(
         Transform parent,
         string id,
-        Sprite icon,
+        UIIcon icon,
         Action onClick,
         float padding = 8f
     ) {
         var button = SharpenControl(O5Factory.Button(Ctx, parent, id, new O5ButtonOptions {
-            Icon = icon,
+            Icon = MainCore.Icons.Get(icon),
             IconPadding = padding,
             OnClick = onClick,
         }));
@@ -2427,20 +2437,18 @@ internal static class PageDocs {
     private static O5Button AddCopyIconButton(RectTransform slot, string id, Func<string> getText, float padding = 8f) {
         O5Button button = null;
         ITweenHandle resetTimer = null;
-        Sprite cloneSprite = MainCore.Spr.Get(UISprite.Clone128);
-        Sprite checkSprite = MainCore.Spr.Get(UISprite.Check128);
-        button = MakeIconButton(slot, id, cloneSprite, () => {
+        button = MakeIconButton(slot, id, UIIcon.Clone, () => {
             GUIUtility.systemCopyBuffer = getText() ?? string.Empty;
             if (button?.Icon == null) {
                 return;
             }
-            button.Icon.sprite = checkSprite;
+            button.SetIcon(MainCore.Icons.Get(UIIcon.Check));
             resetTimer?.Kill();
             resetTimer = Ctx.Tween.TweenFloat(() => 0f, _ => { }, 1f, 0.85f, () => {
                 if (button?.Rect == null || button.Icon == null) {
                     return;
                 }
-                button.Icon.sprite = cloneSprite;
+                button.SetIcon(MainCore.Icons.Get(UIIcon.Clone));
             });
         }, padding: padding);
         TrackPage(button);

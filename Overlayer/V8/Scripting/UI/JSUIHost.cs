@@ -52,7 +52,8 @@ public class JSUIHost(string filePath) {
         public string File;
         public string Name;
         public ScriptObject Build;
-        public UISprite Icon;
+        public UIIcon? VectorIcon;
+        public UISprite? SpriteIcon;
         public RectTransform Page;
         public RectTransform Content;
         public readonly List<O5Object> Controls = [];
@@ -74,15 +75,20 @@ public class JSUIHost(string filePath) {
             return -1;
         }
 
-        UISprite icon = UISprite.CodeBlock128;
-        if (options is ScriptObject opts && opts.GetProperty("icon") is string iconName
-            && Enum.TryParse(iconName, true, out UISprite parsed)) {
-            icon = parsed;
+        UIIcon? vectorIcon = UIIcon.CodeBlock;
+        UISprite? spriteIcon = null;
+        if (options is ScriptObject opts && opts.GetProperty("icon") is string iconName) {
+            if (UIIconGlyphs.TryParseLegacyName(iconName, out UIIcon parsedIcon)) {
+                vectorIcon = parsedIcon;
+            } else if (Enum.TryParse(iconName, true, out UISprite parsedSprite)) {
+                vectorIcon = null;
+                spriteIcon = parsedSprite;
+            }
         }
 
         Tab tab;
         lock (Sync) {
-            tab = new Tab { Id = nextId++, File = FilePath, Name = text, Build = fn, Icon = icon };
+            tab = new Tab { Id = nextId++, File = FilePath, Name = text, Build = fn, VectorIcon = vectorIcon, SpriteIcon = spriteIcon };
             Tabs[tab.Id] = tab;
         }
         MainThread.Enqueue(() => Create(tab));
@@ -171,7 +177,11 @@ public class JSUIHost(string filePath) {
             return;
         }
 
-        MenuFactory.CreateItem(UICore.MenuContent, tab.Name, MainCore.Spr.Get(tab.Icon), tab.Id);
+        if (tab.VectorIcon.HasValue) {
+            MenuFactory.CreateItem(UICore.MenuContent, tab.Name, tab.VectorIcon.Value, tab.Id);
+        } else {
+            MenuFactory.CreateItem(UICore.MenuContent, tab.Name, MainCore.Spr.Get(tab.SpriteIcon ?? UISprite.OV5LogoOutline128), tab.Id);
+        }
         tab.Page = PageFactory.CreatePageBase(tab.Id);
         (_, tab.Content, _) = O5Factory.ScrollView(O5KitAdapters.Ctx, tab.Page, 12f, 18f);
         RunBuild(tab);

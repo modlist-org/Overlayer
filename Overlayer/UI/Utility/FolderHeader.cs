@@ -1,4 +1,6 @@
 using Overlayer.Compat;
+using Overlayer.Core;
+using Overlayer.Resource;
 using O5Kit.Control;
 using O5Kit.Factory;
 using UnityEngine;
@@ -20,18 +22,13 @@ internal static class FolderHeader {
         button.Label.fontSize = 18f;
         button.Label.rectTransform.offsetMin = new Vector2(34f, 0f);
 
-        GameObject foldout = new("Foldout");
-        foldout.transform.SetParent(button.Rect, false);
-        RectTransform foldoutRect = foldout.AddComponent<RectTransform>();
+        var foldout = MainCore.Icons.Create(button.Rect, "Foldout", UIIcon.Triangle, Color.white, 12f);
+        RectTransform foldoutRect = foldout.rectTransform;
         foldoutRect.anchorMin = new Vector2(0f, 0.5f);
         foldoutRect.anchorMax = new Vector2(0f, 0.5f);
         foldoutRect.anchoredPosition = new Vector2(18f, 0f);
         foldoutRect.sizeDelta = new Vector2(12f, 12f);
         foldoutRect.localRotation = Quaternion.Euler(0f, 0f, collapsed ? 0f : 180f);
-        Image foldoutImage = foldout.AddComponent<Image>();
-        foldoutImage.sprite = O5KitAdapters.Ctx.Sprites.Icon("Triangle128");
-        foldoutImage.preserveAspect = true;
-        foldoutImage.raycastTarget = false;
         return button;
     }
 }

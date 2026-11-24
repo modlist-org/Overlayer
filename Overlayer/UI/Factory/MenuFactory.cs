@@ -81,19 +81,19 @@ public static class MenuFactory {
         selectionImg.raycastTarget = false;
         selectionRect.SetAsFirstSibling();
 
-        var overlayer = CreateItem(parent, "Overlayer", MainCore.Spr.Get(UISprite.Monitor128), 0);
-        var settings = CreateItem(parent, "Settings", MainCore.Spr.Get(UISprite.Gear128), 1);
-        var resources = CreateItem(parent, "Resources", MainCore.Spr.Get(UISprite.Box128), 4);
-        var easing = CreateItem(parent, "Easing", MainCore.Spr.Get(UISprite.Ease128), (int)OriginalMenuState.Easing);
-        var js = CreateItem(parent, "JS", MainCore.Spr.Get(UISprite.CodeBlock128), 5);
-        var docs = CreateItem(parent, "Docs", MainCore.Spr.Get(UISprite.Book128), 2);
-        var tutorial = CreateItem(parent, "Tutorial", MainCore.Spr.Get(UISprite.Triangle128), (int)OriginalMenuState.Tutorial);
+        var overlayer = CreateItem(parent, "Overlayer", UIIcon.Monitor, 0);
+        var settings = CreateItem(parent, "Settings", UIIcon.Gear, 1);
+        var resources = CreateItem(parent, "Resources", UIIcon.Box, 4);
+        var easing = CreateItem(parent, "Easing", UIIcon.Ease, (int)OriginalMenuState.Easing);
+        var js = CreateItem(parent, "JS", UIIcon.CodeBlock, 5);
+        var docs = CreateItem(parent, "Docs", UIIcon.Book, 2);
+        var tutorial = CreateItem(parent, "Tutorial", UIIcon.Triangle, (int)OriginalMenuState.Tutorial);
         // The triangle points down; a quarter turn makes it a play button.
         var playIcon = (RectTransform)tutorial.obj.transform.Find("Icon");
         playIcon.pivot = new Vector2(0.5f, 0.5f);
         playIcon.anchoredPosition = new Vector2(9f + 14f, 0f);
         playIcon.localEulerAngles = new Vector3(0f, 0f, 90f);
-        var credits = CreateItem(parent, "Credits", MainCore.Spr.Get(UISprite.Star128), 3);
+        var credits = CreateItem(parent, "Credits", UIIcon.Star, 3);
 
         overlayer.label.gameObject.AddComponent<TextLocalization>()
             .Init("OVERLAYER", "Overlayer");
@@ -124,7 +124,21 @@ public static class MenuFactory {
         ApplyState(UICore.CurrentMenuState, true);
     }
 
-    public static MenuItem CreateItem(Transform parent, string name, Sprite icon, int state) {
+    public static MenuItem CreateItem(Transform parent, string name, Sprite icon, int state)
+        => CreateItemCore(parent, name, state, item => {
+            GameObject iconObj = new("Icon");
+            iconObj.transform.SetParent(item.transform, false);
+            Image iconImg = iconObj.AddComponent<Image>();
+            iconImg.sprite = icon;
+            iconImg.raycastTarget = false;
+            return iconImg.rectTransform;
+        });
+
+    public static MenuItem CreateItem(Transform parent, string name, UIIcon icon, int state)
+        => CreateItemCore(parent, name, state, item =>
+            MainCore.Icons.Create(item.transform, "Icon", icon, Color.white, 28f).rectTransform);
+
+    private static MenuItem CreateItemCore(Transform parent, string name, int state, Func<GameObject, RectTransform> buildIcon) {
         GameObject item = new(name);
         item.transform.SetParent(parent, false);
 
@@ -141,19 +155,12 @@ public static class MenuFactory {
         bg.type = Image.Type.Sliced;
         bg.color = UIColors.MenuNormal;
 
-        GameObject iconObj = new("Icon");
-        iconObj.transform.SetParent(item.transform, false);
-
-        RectTransform iconRect = iconObj.AddComponent<RectTransform>();
+        RectTransform iconRect = buildIcon(item);
         iconRect.anchorMin = new(0, 0.5f);
         iconRect.anchorMax = new(0, 0.5f);
         iconRect.pivot = new(0, 0.5f);
         iconRect.anchoredPosition = new(9, 0);
         iconRect.sizeDelta = new(28, 28);
-
-        Image iconImg = iconObj.AddComponent<Image>();
-        iconImg.sprite = icon;
-        iconImg.raycastTarget = false;
 
         GameObject textObj = new("Text");
         textObj.transform.SetParent(item.transform, false);

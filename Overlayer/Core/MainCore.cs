@@ -28,6 +28,7 @@ public static class MainCore {
     public static Translator Tr => Runtime.Localization.Translator;
     public static ResourceManager Res => Runtime.Resource;
     public static SpriteManager Spr => Runtime.Sprite;
+    public static IconManager Icons => Runtime.Icons;
     public static IOverlayerHost Host => Runtime.Host;
     public static UnityEngine.GameObject Root => Runtime.RootObject;
     public static V8Manager V8 => Runtime.V8Manager;
@@ -111,6 +112,12 @@ public static class MainCore {
                 Runtime?.Logger?.Err($"[MainCore] Tick failed: {e.GetType().Name}: {e.Message}");
             } catch {
             }
+        }
+        try {
+            if (UI.UICore.Canvas != null && UI.UICore.CanvasObj.activeInHierarchy) {
+                Spr.Shapes.Tick(UI.UICore.Canvas.scaleFactor);
+            }
+        } catch {
         }
         try {
             OverlayCore.Tick();

@@ -7,16 +7,16 @@ using Overlayer.Localization;
 using Overlayer.Overlay;
 using Overlayer.Package;
 using Overlayer.Resource;
-using O5Kit.Factory;
-using O5Kit.Control;
-using Overlayer.UI.Overlay;
-using Overlayer.UI.Utility;
 using O5Kit.Behaviour;
+using O5Kit.Control;
+using O5Kit.Core;
+using O5Kit.Factory;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using static UnityEngine.EventSystems.PointerEventData;
-using O5Kit.Core;
+using Overlayer.UI.Overlay;
+using Overlayer.UI.Utility;
 using O5Kit.Input;
 
 #if ML && IL2CPP
@@ -563,8 +563,8 @@ internal static class PageOverlayer {
             }
         };
 
-        O5Button exportBtn = TileButton(bg.transform, TileIcon("Upload128.png", UISprite.Upload128), MainCore.Tr.Get("O5CP_EXPORT", "Export"),
-            $"tile_export_{canvas.GetHashCode()}", () => { });
+        O5Button exportBtn = TileButton(bg.transform, UIIcon.Upload, MainCore.Tr.Get("O5CP_EXPORT", "Export"),
+            $"tile_export_{canvas.GetHashCode()}", () => { }, "Upload128.png");
         exportBtn.OnClick = () => {
             BeginExportCanvas(canvas);
         };
@@ -575,7 +575,7 @@ internal static class PageOverlayer {
         exportRect.anchoredPosition = new Vector2(-10f, 10f);
         exportRect.sizeDelta = new Vector2(110f, 34f);
 
-        var cloneRect = TileButton(bg.transform, BuiltinIcon(UISprite.Clone128), MainCore.Tr.Get("BUTTON_CLONE", "Clone"),
+        var cloneRect = TileButton(bg.transform, UIIcon.Clone, MainCore.Tr.Get("BUTTON_CLONE", "Clone"),
             $"tile_clone_{canvas.GetHashCode()}", () => {
                 if (OverlayCore.CloneCanvas(canvas) != null) {
                     onChanged?.Invoke();
@@ -615,7 +615,7 @@ internal static class PageOverlayer {
         tileControls.Add(cloneRect.gameObject);
         tileControls.Add(toggleGo);
 
-        var delBtn = TileButton(bg.transform, BuiltinIcon(UISprite.X128), "X",
+        var delBtn = TileButton(bg.transform, UIIcon.X, "X",
             $"tile_del_{canvas.GetHashCode()}", () => { });
         HoldToConfirm.Attach(delBtn, () => {
             bool skipAnim = O5Input.GetKey(KeyCode.LeftShift) || O5Input.GetKey(KeyCode.RightShift);
@@ -797,7 +797,7 @@ internal static class PageOverlayer {
 
         var tileControls = new List<GameObject>();
 
-        var copyRect = TileButton(bg.transform, BuiltinIcon(UISprite.Download128), MainCore.Tr.Get("O5CP_IMPORT_ACTION", "Copy"),
+        var copyRect = TileButton(bg.transform, UIIcon.Download, MainCore.Tr.Get("O5CP_IMPORT_ACTION", "Copy"),
             $"tile_promote_{entry.Id}", () => BeginPromote(entry)).Rect;
         copyRect.anchorMin = new Vector2(0f, 0f);
         copyRect.anchorMax = new Vector2(0f, 0f);
@@ -805,7 +805,7 @@ internal static class PageOverlayer {
         copyRect.anchoredPosition = new Vector2(10f, 10f);
         copyRect.sizeDelta = new Vector2(110f, 34f);
 
-        var deleteBtn = TileButton(bg.transform, BuiltinIcon(UISprite.X128), "X",
+        var deleteBtn = TileButton(bg.transform, UIIcon.X, "X",
             $"tile_pkgdel_{entry.Id}", () => { });
         HoldToConfirm.Attach(deleteBtn, () => PackageStore.Remove(entry.Id));
         var deleteRect = deleteBtn.Rect;
@@ -898,7 +898,7 @@ internal static class PageOverlayer {
             settingPage?.OpenObject(obj);
         };
 
-        var delBtn = TileButton(bg.transform, BuiltinIcon(UISprite.X128), "X",
+        var delBtn = TileButton(bg.transform, UIIcon.X, "X",
             $"tile_objdel_{obj.GetHashCode()}", () => { });
         HoldToConfirm.Attach(delBtn, () => {
             OverlayCore.DeleteObject(obj);
@@ -928,7 +928,7 @@ internal static class PageOverlayer {
         background.color = UIColors.PanelBG;
         background.raycastTarget = true;
 
-        CreateTileActionIcon(go.transform, BuiltinIcon(UISprite.Box128), 0.5f);
+        CreateTileActionIcon(go.transform, UIIcon.Box, 0.5f);
         go.transform.AddToolTip(O5KitAdapters.Ctx, () => MainCore.Tr.Get("NEW_3D_OBJECT", "New 3D Object"));
 
         var trigger = go.AddComponent<EventTrigger>();
@@ -1002,7 +1002,7 @@ internal static class PageOverlayer {
 
     private static readonly Dictionary<string, Sprite> tileIconCache = [];
 
-    private static Sprite TileIcon(string fileName, UISprite fallback) {
+    private static Sprite TryLoadCustomTileSprite(string fileName) {
         if (tileIconCache.TryGetValue(fileName, out var cached)) {
             return cached;
         }
@@ -1021,22 +1021,30 @@ internal static class PageOverlayer {
         } catch {
             sprite = null;
         }
-        sprite ??= BuiltinIcon(fallback);
         tileIconCache[fileName] = sprite;
         return sprite;
     }
 
-    private static Sprite BuiltinIcon(UISprite sprite) {
-        try {
-            return MainCore.Spr.Get(sprite);
-        } catch {
-            return null;
+    private static O5Button TileButton(Transform parent, UIIcon? icon, string fallbackText, string id, Action onClick, string customFileName = null) {
+        Sprite custom = customFileName != null ? TryLoadCustomTileSprite(customFileName) : null;
+        if (custom != null) {
+            var btn = O5Factory.Button(O5KitAdapters.Ctx, parent, id, new O5ButtonOptions { Text = string.Empty, OnClick = onClick, Height = 34f });
+            var imgGo = new GameObject("Icon");
+            imgGo.transform.SetParent(btn.Rect, false);
+            var img = imgGo.AddComponent<Image>();
+            img.sprite = custom;
+            img.preserveAspect = true;
+            img.raycastTarget = false;
+            var r = img.rectTransform;
+            r.anchorMin = Vector2.zero;
+            r.anchorMax = Vector2.one;
+            r.offsetMin = new Vector2(5f, 5f);
+            r.offsetMax = new Vector2(-5f, -5f);
+            return btn;
         }
-    }
-
-    private static O5Button TileButton(Transform parent, Sprite icon, string fallbackText, string id, Action onClick) {
-        if (icon != null) {
-            return O5Factory.Button(O5KitAdapters.Ctx, parent, id, new O5ButtonOptions { Icon = icon, OnClick = onClick, IconPadding = 5f, Height = 34f });
+        O5Icon glyph = icon.HasValue ? MainCore.Icons.Get(icon.Value) : default;
+        if (glyph.IsValid) {
+            return O5Factory.Button(O5KitAdapters.Ctx, parent, id, new O5ButtonOptions { Icon = glyph, OnClick = onClick, IconPadding = 5f, Height = 34f });
         }
         return O5Factory.Button(O5KitAdapters.Ctx, parent, id, new O5ButtonOptions { Text = fallbackText, OnClick = onClick, Height = 34f });
     }
@@ -1085,9 +1093,9 @@ internal static class PageOverlayer {
         var left = CreateDiagonalHalf(go.transform, false);
         var presetZone = CreateDiagonalHalf(go.transform, true, 1);
         var importZone = CreateDiagonalHalf(go.transform, true, 2);
-        var createIcon = CreateTileActionIcon(left.transform, BuiltinIcon(UISprite.Plus128), 0.25f);
-        var presetIcon = CreateTileActionIcon(presetZone.transform, BuiltinIcon(UISprite.Star128), 0.75f, 0.73f);
-        var importIcon = CreateTileActionIcon(importZone.transform, TileIcon("Download128.png", UISprite.Download128), 0.75f, 0.27f);
+        var createIcon = CreateTileActionIcon(left.transform, UIIcon.Plus, 0.25f);
+        var presetIcon = CreateTileActionIcon(presetZone.transform, UIIcon.Star, 0.75f, 0.73f);
+        var importIcon = CreateTileActionIcon(importZone.transform, UIIcon.Download, 0.75f, 0.27f, "Download128.png");
 
         var trigger = go.AddComponent<EventTrigger>();
         var handler = go.AddComponent<OventHandler>();
@@ -1281,22 +1289,29 @@ internal static class PageOverlayer {
         return graphic;
     }
 
-    private static GameObject CreateTileActionIcon(Transform parent, Sprite sprite, float anchorX, float anchorY = 0.5f) {
-        var go = new GameObject("ActionIcon");
-        go.transform.SetParent(parent, false);
-        if (sprite == null) {
+    private static GameObject CreateTileActionIcon(Transform parent, UIIcon icon, float anchorX, float anchorY = 0.5f, string customFileName = null) {
+        Sprite custom = customFileName != null ? TryLoadCustomTileSprite(customFileName) : null;
+        if (custom != null) {
+            var go = new GameObject("ActionIcon");
+            go.transform.SetParent(parent, false);
+            var rect = go.AddComponent<RectTransform>();
+            rect.anchorMin = rect.anchorMax = new Vector2(anchorX, anchorY);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = Vector2.zero;
+            rect.sizeDelta = new Vector2(56f, 56f);
+            var image = go.AddComponent<Image>();
+            image.sprite = custom;
+            image.preserveAspect = true;
+            image.raycastTarget = false;
             return go;
         }
-        var rect = go.AddComponent<RectTransform>();
-        rect.anchorMin = rect.anchorMax = new Vector2(anchorX, anchorY);
-        rect.pivot = new Vector2(0.5f, 0.5f);
-        rect.anchoredPosition = Vector2.zero;
-        rect.sizeDelta = new Vector2(56f, 56f);
-        var image = go.AddComponent<Image>();
-        image.sprite = sprite;
-        image.preserveAspect = true;
-        image.raycastTarget = false;
-        return go;
+        var tmp = MainCore.Icons.Create(parent, "ActionIcon", icon, Color.white, 56f);
+        var tmpRect = tmp.rectTransform;
+        tmpRect.anchorMin = tmpRect.anchorMax = new Vector2(anchorX, anchorY);
+        tmpRect.pivot = new Vector2(0.5f, 0.5f);
+        tmpRect.anchoredPosition = Vector2.zero;
+        tmpRect.sizeDelta = new Vector2(56f, 56f);
+        return tmp.gameObject;
     }
 
     private static void BeginExportCanvas(OvCanvas canvas) {

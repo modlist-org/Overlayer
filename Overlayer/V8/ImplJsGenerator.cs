@@ -102,7 +102,7 @@ public static class ImplJsGenerator {
         sb.AppendLine(" * Controls return the O5Kit object (e.g. slider.Set(3), toggle.Value).");
         sb.AppendLine(" * @param {string} name");
         sb.AppendLine(" * @param {Function} build");
-        sb.AppendLine(" * @param {Object} [options] - { icon: \"Gear128\" } (UISprite name).");
+        sb.AppendLine(" * @param {Object} [options] - { icon: \"Gear\" } (UIIcon or legacy UISprite name).");
         sb.AppendLine(" * @returns {number} Tab handle for RemoveTab, or -1. Removed automatically on script reload.");
         sb.AppendLine(" */");
         sb.AppendLine("globalThis.AddTab ??= function(name, build, options) {};");
