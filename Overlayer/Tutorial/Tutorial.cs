@@ -837,7 +837,7 @@ internal static class Tutorial {
         grip.anchorMin = grip.anchorMax = grip.pivot = Vector2.one;
         grip.anchoredPosition = new Vector2(-14f, -14f);
         grip.sizeDelta = new Vector2(11f, 18f);
-        var dotSprite = MainCore.Spr.Get(UISprite.Circle256);
+        var dotSprite = MainCore.Spr.Get(UISprite.Circle128);
         var dotColor = new Color(1f, 1f, 1f, 0.22f);
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 2; col++) {
@@ -922,7 +922,7 @@ internal static class Tutorial {
         pointer.sizeDelta = new Vector2(36f, 36f);
 
         pointerRing = Plain("Ring", pointer, Accent);
-        pointerRing.sprite = MainCore.Spr.Get(Asset.CircleOutline256O32);
+        pointerRing.sprite = MainCore.Spr.Get(Asset.CircleOutline128O16);
         pointerRing.rectTransform.anchorMin = pointerRing.rectTransform.anchorMax = new Vector2(0f, 1f);
         pointerRing.rectTransform.pivot = new Vector2(0.5f, 0.5f);
         pointerRing.rectTransform.anchoredPosition = Vector2.zero;

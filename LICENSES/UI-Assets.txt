@@ -1,0 +1,16 @@
+Overlayer UI Icons & Geometric Assets
+Created directly by the Overlayer team
+
+These assets were created directly by the Overlayer team. Because they are
+simple geometric shapes and UI icons, anyone is completely free to use, copy,
+modify, or redistribute them for any purpose without restriction.
+Attribution is not required, though crediting the Overlayer team would be
+truly appreciated!
+
+Scope:
+- Covers the UI icon and geometric shape assets under
+  Overlayer/Resource/Embedded/Image/
+- Excludes OV5LogoOutline128.png and ov5_logo.svg (derived from the Google V8
+  logo under CC BY-NC 3.0; see README.md)
+- Excludes Olly mascot artwork under Overlayer/Resource/Embedded/Image/Olly/
+  (covered by LICENSES/Olly-CC-BY-4.0.txt)

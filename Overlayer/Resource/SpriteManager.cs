@@ -5,8 +5,8 @@ using O5Kit.Resource;
 namespace Overlayer.Resource;
 
 public enum UISprite {
-    OV5LogoOutline256,
-    Circle256,
+    OV5LogoOutline128,
+    Circle128,
     X128,
     Monitor128,
     Gear128,
@@ -54,12 +54,12 @@ public enum UISprite {
 }
 
 public enum UISliceSprite {
-    Circle256P1024,
-    Circle256P2048,
-    CircleHalf256P1024,
-    CircleOutline256O32P1024,
-    CircleOutline256O64P1024,
-    CircleOutline256O64P2048,
+    Circle128P512,
+    Circle128P1024,
+    CircleHalf128P512,
+    CircleOutline128O16P512,
+    CircleOutline128O32P512,
+    CircleOutline128O32P1024,
 }
 
 public sealed class SpriteManager(ResourceManager resource) : IDisposable {
@@ -241,7 +241,7 @@ public sealed class SpriteManager(ResourceManager resource) : IDisposable {
     }
 
     public Sprite Get(UISprite sprite) {
-        if (sprite == UISprite.Circle256) {
+        if (sprite == UISprite.Circle128) {
             if (cache.TryGetValue(sprite, out Sprite cached)) {
                 return cached;
             }
@@ -258,11 +258,15 @@ public sealed class SpriteManager(ResourceManager resource) : IDisposable {
     }
 
     public Sprite Get(UISliceSprite sprite) {
+        Vector4 border = sprite == UISliceSprite.CircleHalf128P512
+            ? new Vector4(64, 0, 64, 64)
+            : new Vector4(64, 64, 64, 64);
+
         if (o5SliceMap.TryGetValue(sprite, out (O5Asset asset, float ppui) o5Data)) {
             return GetSliced(
                 o5Data.asset,
                 o5Data.ppui,
-                new Vector4(128, 128, 128, 128)
+                border
             );
         }
 
@@ -273,7 +277,7 @@ public sealed class SpriteManager(ResourceManager resource) : IDisposable {
         return GetSliced(
             data.asset,
             data.ppui,
-            new Vector4(128, 128, 128, 128)
+            border
         );
     }
 
@@ -291,7 +295,7 @@ public sealed class SpriteManager(ResourceManager resource) : IDisposable {
     }
 
     private readonly Dictionary<UISprite, Asset> spriteMap = new() {
-        [UISprite.OV5LogoOutline256] = Asset.OV5LogoOutline256,
+        [UISprite.OV5LogoOutline128] = Asset.OV5LogoOutline128,
         [UISprite.Monitor128] = Asset.Monitor128,
         [UISprite.Gear128] = Asset.Gear128,
         [UISprite.Text128] = Asset.Text128,
@@ -342,14 +346,14 @@ public sealed class SpriteManager(ResourceManager resource) : IDisposable {
     };
 
     private readonly Dictionary<UISliceSprite, (Asset asset, float ppui)> sliceMap = new() {
-        [UISliceSprite.CircleOutline256O32P1024] = (Asset.CircleOutline256O32, 1024f),
+        [UISliceSprite.CircleOutline128O16P512] = (Asset.CircleOutline128O16, 512f),
     };
 
     private readonly Dictionary<UISliceSprite, (O5Asset asset, float ppui)> o5SliceMap = new() {
-        [UISliceSprite.Circle256P1024] = (O5Asset.Circle256, 1024f),
-        [UISliceSprite.Circle256P2048] = (O5Asset.Circle256, 2048f),
-        [UISliceSprite.CircleHalf256P1024] = (O5Asset.CircleHalf256, 1024f),
-        [UISliceSprite.CircleOutline256O64P1024] = (O5Asset.CircleOutline256O64, 1024f),
-        [UISliceSprite.CircleOutline256O64P2048] = (O5Asset.CircleOutline256O64, 2048f),
+        [UISliceSprite.Circle128P512] = (O5Asset.Circle128, 512f),
+        [UISliceSprite.Circle128P1024] = (O5Asset.Circle128, 1024f),
+        [UISliceSprite.CircleHalf128P512] = (O5Asset.CircleHalf128, 512f),
+        [UISliceSprite.CircleOutline128O32P512] = (O5Asset.CircleOutline128O32, 512f),
+        [UISliceSprite.CircleOutline128O32P1024] = (O5Asset.CircleOutline128O32, 1024f),
     };
 }

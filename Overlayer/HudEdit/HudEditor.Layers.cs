@@ -617,7 +617,7 @@ internal static partial class HudEditor {
         var hoverTr = field.Rect.Find("Hover");
         var hoverImg = hoverTr != null ? hoverTr.GetComponent<Image>() : null;
         if (hoverImg != null) {
-            hoverImg.sprite = MainCore.Spr.Get(UISliceSprite.CircleOutline256O32P1024);
+            hoverImg.sprite = MainCore.Spr.Get(UISliceSprite.CircleOutline128O16P512);
             hoverImg.pixelsPerUnitMultiplier = 2.5f;
             hoverImg.color = O5KitAdapters.Ctx.Theme.ControlOutlineHover;
         }

@@ -51,7 +51,7 @@ internal static partial class HudEditor {
     }
 
     private static RectTransform BuildAutoAnchorDot(string name, Transform parent) {
-        var circle = MainCore.Spr.Get(UISprite.Circle256);
+        var circle = MainCore.Spr.Get(UISprite.Circle128);
         var host = NewRect(name, parent);
         host.anchorMin = host.anchorMax = Vector2.zero;
         host.pivot = new Vector2(0.5f, 0.5f);

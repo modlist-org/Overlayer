@@ -53,7 +53,7 @@ internal static class O5cpDialogs {
         panelRect.pivot = new Vector2(0.5f, 0.5f);
         panelRect.sizeDelta = size;
         var panelImg = panel.AddComponent<Image>();
-        panelImg.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P1024);
+        panelImg.sprite = MainCore.Spr.Get(UISliceSprite.Circle128P512);
         panelImg.type = Image.Type.Sliced;
         panelImg.color = UIColors.PanelBG;
         panelImg.raycastTarget = true;

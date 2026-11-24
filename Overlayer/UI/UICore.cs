@@ -186,7 +186,7 @@ public static class UICore {
             var image = panel.AddComponent<Image>();
             image.color = UIColors.PanelBG;
             image.type = Image.Type.Sliced;
-            image.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P1024);
+            image.sprite = MainCore.Spr.Get(UISliceSprite.Circle128P512);
             panelBgImage = image;
         }
 
@@ -222,7 +222,7 @@ public static class UICore {
             var maskImage = menuPanel.AddComponent<Image>();
             maskImage.color = Color.white;
             maskImage.type = Image.Type.Sliced;
-            maskImage.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P1024);
+            maskImage.sprite = MainCore.Spr.Get(UISliceSprite.Circle128P512);
             maskImage.raycastTarget = false;
 
             var mask = menuPanel.AddComponent<Mask>();
@@ -344,7 +344,7 @@ public static class UICore {
         var topImage = topBar.AddComponent<Image>();
         topImage.color = UIColors.TopBar;
         topImage.type = Image.Type.Sliced;
-        topImage.sprite = MainCore.Spr.Get(UISliceSprite.CircleHalf256P1024);
+        topImage.sprite = MainCore.Spr.Get(UISliceSprite.CircleHalf128P512);
         topBarImage = topImage;
 
         var topRect = topBar.GetComponent<RectTransform>();
@@ -362,7 +362,7 @@ public static class UICore {
             logo.transform.SetParent(topBar.transform, false);
 
             var logoImage = logo.AddComponent<Image>();
-            logoImage.sprite = MainCore.Spr.Get(UISprite.OV5LogoOutline256);
+            logoImage.sprite = MainCore.Spr.Get(UISprite.OV5LogoOutline128);
 
             var logoRect = logo.GetComponent<RectTransform>();
             logoRect.anchorMin = new(0, 0.5f);
@@ -407,7 +407,7 @@ public static class UICore {
             bg.transform.SetParent(close.transform, false);
 
             CloseImage = bg.AddComponent<Image>();
-            CloseImage.sprite = MainCore.Spr.Get(UISprite.Circle256);
+            CloseImage.sprite = MainCore.Spr.Get(UISprite.Circle128);
             CloseImage.color = new Color(UIColors.SoftRed.r, UIColors.SoftRed.g, UIColors.SoftRed.b, 0f);
 
             RectTransform bgRect = bg.GetComponent<RectTransform>();
@@ -475,7 +475,7 @@ public static class UICore {
 
             var outline = outlineObj.AddComponent<Image>();
             outline.color = UIColors.WindowOutline;
-            outline.sprite = MainCore.Spr.Get(UISliceSprite.CircleOutline256O32P1024);
+            outline.sprite = MainCore.Spr.Get(UISliceSprite.CircleOutline128O16P512);
             outline.type = Image.Type.Sliced;
             outline.raycastTarget = false;
             outlineImage = outline;

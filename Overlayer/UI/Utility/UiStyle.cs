@@ -33,7 +33,7 @@ internal static class UiStyle {
 
     public static Image Rounded(string name, Transform parent, Color color) {
         var img = NewRect(name, parent).gameObject.AddComponent<Image>();
-        img.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P1024);
+        img.sprite = MainCore.Spr.Get(UISliceSprite.Circle128P512);
         img.type = Image.Type.Sliced;
         img.color = color;
         img.raycastTarget = true;

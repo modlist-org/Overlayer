@@ -66,6 +66,10 @@ ps1 twins exist for windows. ts: `impl.d.ts` spawns next to `impl.js`, tsc your 
   - Original project/source: [Google V8](https://v8.dev/)
 - Overlayer is not affiliated with, endorsed by, or associated with Google or the V8 project.
 
+### UI Icons & Assets
+- The UI icons and geometric shape assets bundled with Overlayer (see [`LICENSES/UI-Assets.txt`](LICENSES/UI-Assets.txt) and [`Overlayer/Resource/NOTICE.md`](Overlayer/Resource/NOTICE.md)) were created directly by the Overlayer team. Because they are simple geometric shapes, anyone is free to use, modify, or redistribute them for any purpose without restriction. Attribution is not required, though crediting the Overlayer team is greatly appreciated!
+- Excludes the Overlayer V5 logo (noted above) and the Olly mascot artwork under [`Overlayer/Resource/Embedded/Image/Olly`](Overlayer/Resource/Embedded/Image/Olly) ([CC BY 4.0](LICENSES/Olly-CC-BY-4.0.txt)).
+
 ### Third-Party Code
 - **[O5Kit](https://github.com/modlist-org/O5Kit)**: UI + input toolkit (settings controls, tooltip, unified input). Referenced as a project dependency and shipped to `UserLibs`
   - License: [LGPL-3.0-or-later](https://github.com/modlist-org/O5Kit/blob/main/LICENCE.md)

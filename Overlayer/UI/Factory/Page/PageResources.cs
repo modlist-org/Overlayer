@@ -936,7 +936,7 @@ internal static class PageResources {
         cardElement.minHeight = 112f;
         cardElement.preferredHeight = 112f;
         Image background = cardObject.AddComponent<Image>();
-        background.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P2048);
+        background.sprite = MainCore.Spr.Get(UISliceSprite.Circle128P1024);
         background.type = Image.Type.Sliced;
         background.color = UIColors.ObjectBG;
 
@@ -1041,7 +1041,7 @@ internal static class PageResources {
         cardElement.minHeight = 112f;
         cardElement.preferredHeight = 112f;
         Image background = cardObject.AddComponent<Image>();
-        background.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P2048);
+        background.sprite = MainCore.Spr.Get(UISliceSprite.Circle128P1024);
         background.type = Image.Type.Sliced;
         background.color = UIColors.ObjectBG;
 
@@ -1133,7 +1133,7 @@ internal static class PageResources {
         cardElement.minHeight = 112f;
         cardElement.preferredHeight = 112f;
         Image background = cardObject.AddComponent<Image>();
-        background.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P2048);
+        background.sprite = MainCore.Spr.Get(UISliceSprite.Circle128P1024);
         background.type = Image.Type.Sliced;
         background.color = UIColors.ObjectBG;
 
@@ -1146,7 +1146,7 @@ internal static class PageResources {
         badgeRect.anchoredPosition = new Vector2(12f, 0f);
         badgeRect.sizeDelta = new Vector2(88f, 88f);
         Image badgeBg = badgeObject.AddComponent<Image>();
-        badgeBg.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P2048);
+        badgeBg.sprite = MainCore.Spr.Get(UISliceSprite.Circle128P1024);
         badgeBg.type = Image.Type.Sliced;
         badgeBg.color = new Color(0.18f, 0.14f, 0.16f, 0.9f);
         badgeBg.raycastTarget = false;
@@ -1318,7 +1318,7 @@ internal static class PageResources {
         cardElement.minHeight = 112f;
         cardElement.preferredHeight = 112f;
         Image background = cardObject.AddComponent<Image>();
-        background.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P2048);
+        background.sprite = MainCore.Spr.Get(UISliceSprite.Circle128P1024);
         background.type = Image.Type.Sliced;
         background.color = UIColors.ObjectBG;
 
@@ -1379,7 +1379,7 @@ internal static class PageResources {
         cardElement.minHeight = 112f;
         cardElement.preferredHeight = 112f;
         Image background = cardObject.AddComponent<Image>();
-        background.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P2048);
+        background.sprite = MainCore.Spr.Get(UISliceSprite.Circle128P1024);
         background.type = Image.Type.Sliced;
         background.color = UIColors.ObjectBG;
 

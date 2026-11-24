@@ -51,7 +51,7 @@ internal sealed class OllyView {
         Rect.sizeDelta = new Vector2(Size, Size);
 
         var frameBg = Stretch("FrameBg", Rect).gameObject.AddComponent<Image>();
-        frameBg.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P1024);
+        frameBg.sprite = MainCore.Spr.Get(UISliceSprite.Circle128P512);
         frameBg.type = Image.Type.Sliced;
         frameBg.color = O5Kit.Core.O5Palette.WithAlpha(Overlayer.UI.UIColors.SurfaceOpaque, 0.97f);
         frameBg.raycastTarget = true;
@@ -91,7 +91,7 @@ internal sealed class OllyView {
         hair = Part("Hair", "HAIR");
 
         var border = Stretch("FrameBorder", Rect).gameObject.AddComponent<Image>();
-        border.sprite = MainCore.Spr.Get(UISliceSprite.CircleOutline256O32P1024);
+        border.sprite = MainCore.Spr.Get(UISliceSprite.CircleOutline128O16P512);
         border.type = Image.Type.Sliced;
         border.color = O5Kit.Core.O5Palette.WithAlpha(Overlayer.UI.UIColors.ObjectActive, 0.75f);
         border.raycastTarget = false;

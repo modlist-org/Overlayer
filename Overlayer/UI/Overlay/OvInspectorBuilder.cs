@@ -3217,7 +3217,7 @@ internal sealed class OvInspectorBuilder(
         rect.offsetMin = new Vector2(2f, 2f);
         rect.offsetMax = new Vector2(-2f, -2f);
         Image image = selectionObject.AddComponent<Image>();
-        image.sprite = MainCore.Spr.Get(UISliceSprite.CircleOutline256O64P2048);
+        image.sprite = MainCore.Spr.Get(UISliceSprite.CircleOutline128O32P1024);
         image.type = Image.Type.Sliced;
         image.raycastTarget = false;
         return image;

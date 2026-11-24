@@ -117,7 +117,7 @@ public sealed class OvCanvasPropsPage : IDisposable {
         previewRect.anchoredPosition = new Vector2(0f, 0f);
         previewRect.sizeDelta = new Vector2(220f, 124f);
         previewImage = previewGo.AddComponent<Image>();
-        previewImage.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P1024);
+        previewImage.sprite = MainCore.Spr.Get(UISliceSprite.Circle128P512);
         previewImage.type = Image.Type.Simple;
         previewImage.preserveAspect = true;
         previewImage.color = new Color(1f, 1f, 1f, 0.35f);
@@ -293,7 +293,7 @@ public sealed class OvCanvasPropsPage : IDisposable {
             } catch {
             }
         }
-        previewImage.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P1024);
+        previewImage.sprite = MainCore.Spr.Get(UISliceSprite.Circle128P512);
         previewImage.color = new Color(1f, 1f, 1f, 0.35f);
         if (diskPath == null) {
             draft.ThumbnailPath = string.Empty;

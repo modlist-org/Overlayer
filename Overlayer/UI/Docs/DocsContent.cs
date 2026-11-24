@@ -100,7 +100,7 @@ internal static class DocsContent {
     // ------------------------------------------------------------------
     private static DocChapter BuildOverview() => new(
         "overview",
-        UISprite.OV5LogoOutline256,
+        UISprite.OV5LogoOutline128,
         T("개요", "Overview"),
         T("게임 위에 텍스트, 이미지, 그래프, 스크립트 HUD를 구성할 수 있는 오버레이 모드입니다.",
           "An overlay mod for building text, image, graph, and script HUDs over Unity games."),

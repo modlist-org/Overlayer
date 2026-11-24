@@ -382,7 +382,7 @@ internal static class PageDocs {
             bar.rectTransform.anchoredPosition = new Vector2(3f, 0f);
             bar.rectTransform.sizeDelta = new Vector2(3f, 0f);
 
-            bool isLogo = chapter.Icon == UISprite.OV5LogoOutline256;
+            bool isLogo = chapter.Icon == UISprite.OV5LogoOutline128;
             var icon = NewImage(
                 isLogo ? "LogoIcon" : "Icon",
                 item.rectTransform,
@@ -438,7 +438,7 @@ internal static class PageDocs {
     }
 
     private static Color NavIconColor(NavEntry entry, bool selected) {
-        if (entry.Chapter.Icon == UISprite.OV5LogoOutline256) {
+        if (entry.Chapter.Icon == UISprite.OV5LogoOutline128) {
             return selected ? Color.white
                 : entry.Hovered ? new Color(0.90f, 0.90f, 0.90f, 1f)
                 : new Color(0.68f, 0.68f, 0.68f, 1f);
@@ -710,7 +710,7 @@ internal static class PageDocs {
         diagLe.preferredHeight = 42f;
         diagLe.flexibleHeight = 0f;
 
-        sandboxDiagDot = NewImage("DiagDot", diagBox.rectTransform, StatusErr, MainCore.Spr.Get(UISprite.Circle256));
+        sandboxDiagDot = NewImage("DiagDot", diagBox.rectTransform, StatusErr, MainCore.Spr.Get(UISprite.Circle128));
         sandboxDiagDot.rectTransform.anchorMin = sandboxDiagDot.rectTransform.anchorMax = new Vector2(0f, 0.5f);
         sandboxDiagDot.rectTransform.pivot = new Vector2(0f, 0.5f);
         sandboxDiagDot.rectTransform.anchoredPosition = new Vector2(12f, 0f);
@@ -1717,8 +1717,8 @@ internal static class PageDocs {
         foreach (var img in roInput.Rect.GetComponentsInChildren<Image>(true)) {
             if (img.gameObject == roInput.InputField.gameObject) {
                 img.color = Color.clear;
-            } else if (img.sprite == MainCore.Spr.Get(UISliceSprite.CircleOutline256O64P2048)
-                || img.sprite == MainCore.Spr.Get(UISliceSprite.CircleOutline256O32P1024)) {
+            } else if (img.sprite == MainCore.Spr.Get(UISliceSprite.CircleOutline128O32P1024)
+                || img.sprite == MainCore.Spr.Get(UISliceSprite.CircleOutline128O16P512)) {
                 img.color = Color.clear;
             }
         }
@@ -2043,7 +2043,7 @@ internal static class PageDocs {
                 curveSegImgs.Add(img);
             }
 
-            curveDotImg = NewImage("CurveDot", plotRect, TextPrimary, MainCore.Spr.Get(UISprite.Circle256));
+            curveDotImg = NewImage("CurveDot", plotRect, TextPrimary, MainCore.Spr.Get(UISprite.Circle128));
             curveDot = curveDotImg.rectTransform;
             curveDot.anchorMin = curveDot.anchorMax = Vector2.zero;
             curveDot.sizeDelta = new Vector2(8f, 8f);
@@ -2063,7 +2063,7 @@ internal static class PageDocs {
             rail.rectTransform.offsetMin = new Vector2(12f, -1f);
             rail.rectTransform.offsetMax = new Vector2(-12f, 1f);
 
-            trackDotImg = NewImage("TrackDot", trackRect, TextPrimary, MainCore.Spr.Get(UISprite.Circle256));
+            trackDotImg = NewImage("TrackDot", trackRect, TextPrimary, MainCore.Spr.Get(UISprite.Circle128));
             trackDot = trackDotImg.rectTransform;
             trackDot.anchorMin = trackDot.anchorMax = new Vector2(0f, 0.5f);
             trackDot.sizeDelta = new Vector2(10f, 10f);
@@ -2312,11 +2312,11 @@ internal static class PageDocs {
         if (ctrl?.Rect == null) {
             return ctrl;
         }
-        Sprite p1024 = MainCore.Spr.Get(UISliceSprite.Circle256P1024);
-        Sprite p2048 = MainCore.Spr.Get(UISliceSprite.Circle256P2048);
-        Sprite o64p1024 = MainCore.Spr.Get(UISliceSprite.CircleOutline256O64P1024);
-        Sprite o64p2048 = MainCore.Spr.Get(UISliceSprite.CircleOutline256O64P2048);
-        Sprite o32p1024 = MainCore.Spr.Get(UISliceSprite.CircleOutline256O32P1024);
+        Sprite p512 = MainCore.Spr.Get(UISliceSprite.Circle128P512);
+        Sprite p1024 = MainCore.Spr.Get(UISliceSprite.Circle128P1024);
+        Sprite o32p512 = MainCore.Spr.Get(UISliceSprite.CircleOutline128O32P512);
+        Sprite o32p1024 = MainCore.Spr.Get(UISliceSprite.CircleOutline128O32P1024);
+        Sprite o16p512 = MainCore.Spr.Get(UISliceSprite.CircleOutline128O16P512);
         Sprite sharpFill = GetSharpFillSprite();
         Sprite sharpOutline = GetSharpOutlineSprite();
 
@@ -2324,10 +2324,10 @@ internal static class PageDocs {
             if (img.type != Image.Type.Sliced || img.sprite == null) {
                 continue;
             }
-            if (img.sprite == o64p1024 || img.sprite == o64p2048 || img.sprite == o32p1024) {
+            if (img.sprite == o32p512 || img.sprite == o32p1024 || img.sprite == o16p512) {
                 img.sprite = sharpOutline;
                 img.pixelsPerUnitMultiplier = 1f;
-            } else if (img.sprite == p1024 || img.sprite == p2048) {
+            } else if (img.sprite == p512 || img.sprite == p1024) {
                 img.sprite = sharpFill;
                 img.pixelsPerUnitMultiplier = 1f;
             }

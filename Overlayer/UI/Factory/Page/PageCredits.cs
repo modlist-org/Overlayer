@@ -24,7 +24,7 @@ internal static class PageCredits {
         logoRect.anchoredPosition = new Vector2(0, 150);
 
         var logoImg = logo.AddComponent<Image>();
-        logoImg.sprite = MainCore.Spr.Get(UISprite.OV5LogoOutline256);
+        logoImg.sprite = MainCore.Spr.Get(UISprite.OV5LogoOutline128);
         logoImg.preserveAspect = true;
 
         GameObject title = new("Title");

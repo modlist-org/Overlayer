@@ -299,7 +299,7 @@ internal static class EaseDropdownCurveHelper {
         dotRect.sizeDelta = new Vector2(7f, 7f);
         dotRect.SetAsLastSibling();
         var dotImg = dotRect.gameObject.AddComponent<Image>();
-        dotImg.sprite = MainCore.Spr.Get(UISprite.Circle256);
+        dotImg.sprite = MainCore.Spr.Get(UISprite.Circle128);
         dotImg.color = Color.white;
         dotImg.raycastTarget = false;
         dotRect.gameObject.SetActive(false);

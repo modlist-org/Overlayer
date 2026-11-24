@@ -17,15 +17,15 @@ using TMPro;
 namespace Overlayer.Compat;
 
 public sealed class OverlayerSpriteProvider : ISpriteProvider {
-    public Sprite RoundedPanel => MainCore.Spr.Get(UISliceSprite.Circle256P1024);
-    public Sprite RoundedControl => MainCore.Spr.Get(UISliceSprite.Circle256P2048);
-    public Sprite TopBar => MainCore.Spr.Get(UISliceSprite.CircleHalf256P1024);
-    public Sprite RoundedOutline => MainCore.Spr.Get(UISliceSprite.CircleOutline256O64P2048);
-    public Sprite Circle => MainCore.Spr.Get(UISprite.Circle256);
+    public Sprite RoundedPanel => MainCore.Spr.Get(UISliceSprite.Circle128P512);
+    public Sprite RoundedControl => MainCore.Spr.Get(UISliceSprite.Circle128P1024);
+    public Sprite TopBar => MainCore.Spr.Get(UISliceSprite.CircleHalf128P512);
+    public Sprite RoundedOutline => MainCore.Spr.Get(UISliceSprite.CircleOutline128O32P1024);
+    public Sprite Circle => MainCore.Spr.Get(UISprite.Circle128);
 
     public Sprite Icon(string name) {
         if (name == "toggle-on") {
-            return MainCore.Spr.Get(UISprite.Circle256);
+            return MainCore.Spr.Get(UISprite.Circle128);
         }
 
         if (name == "toggle-off") {

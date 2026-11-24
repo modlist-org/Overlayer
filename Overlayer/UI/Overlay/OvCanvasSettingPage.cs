@@ -224,7 +224,7 @@ public partial class OvCanvasSettingPage : IDisposable {
         hierColLE.flexibleWidth = 0f;
 
         var hierBG = hierarchyCol.AddComponent<Image>();
-        hierBG.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P2048);
+        hierBG.sprite = MainCore.Spr.Get(UISliceSprite.Circle128P1024);
         hierBG.type = Image.Type.Sliced;
         hierBG.color = UIColors.PanelBG;
 
@@ -484,7 +484,7 @@ public partial class OvCanvasSettingPage : IDisposable {
         inspColLE.flexibleWidth = 1f;
 
         var inspBG = inspectorCol.AddComponent<Image>();
-        inspBG.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P2048);
+        inspBG.sprite = MainCore.Spr.Get(UISliceSprite.Circle128P1024);
         inspBG.type = Image.Type.Sliced;
         inspBG.color = UIColors.PanelBG;
 
@@ -741,7 +741,7 @@ public partial class OvCanvasSettingPage : IDisposable {
             tabLE.preferredHeight = 34f;
             tabLE.minHeight = 34f;
             var tabImage = tabObject.AddComponent<Image>();
-            tabImage.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P2048);
+            tabImage.sprite = MainCore.Spr.Get(UISliceSprite.Circle128P1024);
             tabImage.type = Image.Type.Sliced;
             tabImage.color = tab == activeTab ? UIColors.ObjectButton : UIColors.ObjectBG;
 
@@ -1145,7 +1145,7 @@ public partial class OvCanvasSettingPage : IDisposable {
         itemBtnLE.preferredHeight = 50f;
 
         var btnImg = itemBtn.AddComponent<Image>();
-        btnImg.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P2048);
+        btnImg.sprite = MainCore.Spr.Get(UISliceSprite.Circle128P1024);
         btnImg.type = Image.Type.Sliced;
         btnImg.color = (selectedObject == null) ? UIColors.ObjectActive : UIColors.ObjectBG;
 
@@ -1209,7 +1209,7 @@ public partial class OvCanvasSettingPage : IDisposable {
         itemBtnLE.preferredHeight = 36f;
 
         var btnImg = itemBtn.AddComponent<Image>();
-        btnImg.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P2048);
+        btnImg.sprite = MainCore.Spr.Get(UISliceSprite.Circle128P1024);
         btnImg.type = Image.Type.Sliced;
         btnImg.color = selectedObject == obj ? UIColors.ObjectActive
             : multiSelected.Contains(obj) ? O5Palette.WithAlpha(UIColors.ObjectActive, 0.55f)

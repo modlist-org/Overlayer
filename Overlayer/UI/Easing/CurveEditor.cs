@@ -229,7 +229,7 @@ internal static class CurveEditor {
     private static void BuildPreview(Transform parent) {
         var row = O5Factory.Row(Ctx, parent, 62f);
         var bg = row.gameObject.AddComponent<Image>();
-        bg.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P1024);
+        bg.sprite = MainCore.Spr.Get(UISliceSprite.Circle128P512);
         bg.type = Image.Type.Sliced;
         bg.color = new Color(0f, 0f, 0f, 0.22f);
         bg.raycastTarget = false;
@@ -313,7 +313,7 @@ internal static class CurveEditor {
         dot.sizeDelta = new Vector2(size, size);
         dot.anchoredPosition = Vector2.zero;
         var img = dot.gameObject.AddComponent<Image>();
-        img.sprite = MainCore.Spr.Get(UISprite.Circle256);
+        img.sprite = MainCore.Spr.Get(UISprite.Circle128);
         img.color = color;
         img.raycastTarget = false;
         return dot;

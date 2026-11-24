@@ -22,9 +22,21 @@ public static class InternalResources {
     ];
 
     private static readonly Asset[] ExtraImageAssets = [
-        Asset.CircleOutline256O32,
+        Asset.CircleOutline128O16,
         Asset.OllyMouse,
     ];
+
+    private static readonly Dictionary<string, string> LegacyAliases = new(StringComparer.Ordinal) {
+        ["OV5LogoOutline256"] = nameof(UISprite.OV5LogoOutline128),
+        ["Circle256"] = nameof(UISprite.Circle128),
+        ["CircleOutline256O32"] = nameof(Asset.CircleOutline128O16),
+        ["Circle256P1024"] = nameof(UISliceSprite.Circle128P512),
+        ["Circle256P2048"] = nameof(UISliceSprite.Circle128P1024),
+        ["CircleHalf256P1024"] = nameof(UISliceSprite.CircleHalf128P512),
+        ["CircleOutline256O32P1024"] = nameof(UISliceSprite.CircleOutline128O16P512),
+        ["CircleOutline256O64P1024"] = nameof(UISliceSprite.CircleOutline128O32P512),
+        ["CircleOutline256O64P2048"] = nameof(UISliceSprite.CircleOutline128O32P1024),
+    };
 
     public static readonly string[] ImageKeys = BuildImageKeys();
     public static readonly string[] FontKeys = BuildFontKeys();
@@ -64,6 +76,9 @@ public static class InternalResources {
         }
 
         string name = ShortName(key);
+        if (LegacyAliases.TryGetValue(name, out string canonical)) {
+            name = canonical;
+        }
         if (Enum.TryParse(name, out UISprite uiSprite)) {
             sprite = MainCore.Spr.Get(uiSprite);
             return sprite != null;

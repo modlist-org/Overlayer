@@ -516,7 +516,7 @@ internal static class PageOverlayer {
         bg.AddComponent<RectTransform>();
 
         var bgImg = bg.AddComponent<Image>();
-        bgImg.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P2048);
+        bgImg.sprite = MainCore.Spr.Get(UISliceSprite.Circle128P1024);
         bgImg.type = Image.Type.Sliced;
         bgImg.color = UIColors.ObjectBG;
         bgImg.raycastTarget = true;
@@ -705,7 +705,7 @@ internal static class PageOverlayer {
         maskRect.offsetMin = Vector2.zero;
         maskRect.offsetMax = Vector2.zero;
         var maskImg = maskGo.AddComponent<Image>();
-        maskImg.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P1024);
+        maskImg.sprite = MainCore.Spr.Get(UISliceSprite.Circle128P512);
         maskImg.type = Image.Type.Sliced;
         maskGo.AddComponent<Mask>().showMaskGraphic = false;
 
@@ -747,7 +747,7 @@ internal static class PageOverlayer {
         bg.AddComponent<RectTransform>();
 
         var bgImg = bg.AddComponent<Image>();
-        bgImg.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P2048);
+        bgImg.sprite = MainCore.Spr.Get(UISliceSprite.Circle128P1024);
         bgImg.type = Image.Type.Sliced;
         bgImg.color = UIColors.PanelBG;
         bgImg.raycastTarget = true;
@@ -853,7 +853,7 @@ internal static class PageOverlayer {
         bg.AddComponent<RectTransform>();
 
         var bgImg = bg.AddComponent<Image>();
-        bgImg.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P2048);
+        bgImg.sprite = MainCore.Spr.Get(UISliceSprite.Circle128P1024);
         bgImg.type = Image.Type.Sliced;
         bgImg.color = UIColors.ObjectBG;
         bgImg.raycastTarget = true;
@@ -923,7 +923,7 @@ internal static class PageOverlayer {
         go.AddComponent<RectTransform>();
 
         var background = go.AddComponent<Image>();
-        background.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P2048);
+        background.sprite = MainCore.Spr.Get(UISliceSprite.Circle128P1024);
         background.type = Image.Type.Sliced;
         background.color = UIColors.PanelBG;
         background.raycastTarget = true;
@@ -1077,7 +1077,7 @@ internal static class PageOverlayer {
         var root = go.AddComponent<RectTransform>();
 
         var background = go.AddComponent<Image>();
-        background.sprite = MainCore.Spr.Get(UISliceSprite.Circle256P2048);
+        background.sprite = MainCore.Spr.Get(UISliceSprite.Circle128P1024);
         background.type = Image.Type.Sliced;
         background.color = UIColors.PanelBG;
         background.raycastTarget = true;
