@@ -25,16 +25,23 @@ public static class MenuFactory {
     public sealed class MenuItem {
         public int state;
         public GameObject obj;
+        public RectTransform rect;
+        public CanvasGroup canvasGroup;
         public Image bg;
         public ITweenHandle hoverSeq;
         public ITweenHandle labelSeq;
+        public ITweenHandle visibilitySeq;
         public TMP_Text label;
+        public bool visible = true;
+        public float visibilityProgress = 1f;
     }
 
     private const float ItemHeight = 48f;
     private const float ItemSpacing = 6f;
     private const float MenuSidePadding = 10f;
     private const float MenuTopPadding = 10f;
+    private const float ItemShowDuration = 0.3f;
+    private const float ItemHideDuration = 0.2f;
     private static readonly List<MenuItem> items = [];
     private static bool paletteHooked;
     private static bool labelsVisible;
@@ -112,7 +119,7 @@ public static class MenuFactory {
         tutorial.label.gameObject.AddComponent<TextLocalization>()
             .Init("TUTORIAL", "Tutorial");
 
-        SetItemVisible((int)OriginalMenuState.Tutorial, !MainCore.Conf.HideTutorial);
+        SetItemVisible((int)OriginalMenuState.Tutorial, !MainCore.Conf.HideTutorial, instant: true);
         SetLabelsVisible(MainCore.Conf.TabLabelMode.Value == IO.TabLabelMode.Show, true);
         ApplyState(UICore.CurrentMenuState, true);
     }
@@ -124,8 +131,10 @@ public static class MenuFactory {
         RectTransform rect = item.AddComponent<RectTransform>();
         rect.anchorMin = new(0, 1);
         rect.anchorMax = new(1, 1);
-        rect.pivot = new(0.5f, 1);
+        rect.pivot = new(0.5f, 0.5f);
         rect.sizeDelta = new(0, ItemHeight);
+
+        CanvasGroup cg = item.AddComponent<CanvasGroup>();
 
         Image bg = item.AddComponent<Image>();
         bg.sprite = O5KitAdapters.Ctx.Sprites.RoundedControl;
@@ -168,9 +177,13 @@ public static class MenuFactory {
 
         MenuItem menuItem = new() {
             obj = item,
+            rect = rect,
+            canvasGroup = cg,
             bg = bg,
             state = state,
-            label = label
+            label = label,
+            visible = true,
+            visibilityProgress = 1f,
         };
 
         items.Add(menuItem);
@@ -259,7 +272,7 @@ public static class MenuFactory {
     }
 
     /// <summary>Shows or hides the menu item for <paramref name="state"/>; falls back to Overlayer if hidden while active.</summary>
-    public static void SetItemVisible(int state, bool visible) {
+    public static void SetItemVisible(int state, bool visible, bool instant = false) {
         MenuItem item = items.FirstOrDefault(it => it.state == state);
         if (item == null) {
             return;
@@ -269,11 +282,98 @@ public static class MenuFactory {
             SetState((int)OriginalMenuState.Overlayer);
         }
 
-        if (item.obj) {
-            item.obj.SetActive(visible);
+        if (!instant && item.visible == visible && item.visibilitySeq == null) {
+            return;
         }
 
-        ApplyState(UICore.CurrentMenuState, true);
+        item.visible = visible;
+        item.visibilitySeq?.Kill();
+        item.visibilitySeq = null;
+
+        void ApplyProgress(float v) {
+            item.visibilityProgress = v;
+            if (item.rect) {
+                item.rect.localScale = new Vector3(v, v, 1f);
+            }
+            if (item.canvasGroup) {
+                item.canvasGroup.alpha = v;
+            }
+            if (UICore.MenuContent != null) {
+                LayoutRebuilder.MarkLayoutForRebuild(UICore.MenuContent);
+            }
+        }
+
+        if (instant || !item.obj || !item.obj.transform.parent || !item.obj.transform.parent.gameObject.activeInHierarchy) {
+            if (item.obj) {
+                item.obj.SetActive(visible);
+            }
+            if (item.canvasGroup) {
+                item.canvasGroup.blocksRaycasts = visible;
+                item.canvasGroup.interactable = visible;
+            }
+            ApplyProgress(visible ? 1f : 0f);
+            ApplyState(UICore.CurrentMenuState, true);
+            return;
+        }
+
+        float target = visible ? 1f : 0f;
+        float duration = visible ? ItemShowDuration : ItemHideDuration;
+
+        if (visible) {
+            if (!item.obj.activeSelf) {
+                item.visibilityProgress = 0f;
+                if (item.rect) {
+                    item.rect.localScale = new Vector3(0f, 0f, 1f);
+                }
+                if (item.canvasGroup) {
+                    item.canvasGroup.alpha = 0f;
+                }
+                item.obj.SetActive(true);
+            }
+            if (item.canvasGroup) {
+                item.canvasGroup.blocksRaycasts = true;
+                item.canvasGroup.interactable = true;
+            }
+        } else {
+            item.hoverSeq?.Kill();
+            item.hoverSeq = null;
+            if (item.bg) {
+                item.bg.color = UIColors.MenuNormal;
+            }
+            if (item.canvasGroup) {
+                item.canvasGroup.blocksRaycasts = false;
+                item.canvasGroup.interactable = false;
+            }
+        }
+
+        float start = item.visibilityProgress;
+        item.visibilitySeq = O5KitAdapters.Ctx.Tween.TweenFloat(
+            () => 0f,
+            t => {
+                if (!item.obj) {
+                    return;
+                }
+                ApplyProgress(Mathf.LerpUnclamped(start, target, t));
+            },
+            1f,
+            duration,
+            () => {
+                item.visibilitySeq = null;
+                if (!item.obj) {
+                    return;
+                }
+                ApplyProgress(target);
+                if (!item.visible) {
+                    item.obj.SetActive(false);
+                    if (UICore.MenuContent != null) {
+                        LayoutRebuilder.MarkLayoutForRebuild(UICore.MenuContent);
+                    }
+                }
+            },
+            O5Ease.OutExpo
+        );
+
+        ApplyState(UICore.CurrentMenuState, false);
     }
 
     /// <summary>Destroys the menu item for <paramref name="state"/>; falls back to the Overlayer page if it was selected.</summary>
@@ -286,6 +386,7 @@ public static class MenuFactory {
         MenuItem item = items[index];
         item.hoverSeq?.Kill();
         item.labelSeq?.Kill();
+        item.visibilitySeq?.Kill();
         items.RemoveAt(index);
 
         if (UICore.CurrentMenuState == state) {
@@ -327,7 +428,7 @@ public static class MenuFactory {
             it.hoverSeq?.Kill();
             it.bg.color = UIColors.MenuNormal;
 
-            if (it.obj != null && it.obj.activeSelf) {
+            if (it.obj != null && it.visible) {
                 if (it.state == id) {
                     targetVisibleIndex = visibleIndex;
                 }

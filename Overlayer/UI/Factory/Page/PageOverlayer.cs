@@ -29,7 +29,20 @@ using TMPro;
 namespace Overlayer.UI.Factory.Page;
 
 internal static class PageOverlayer {
+    private const float TileCreateDuration = 0.3f;
+    private const float TileDestroyDuration = 0.2f;
+
     static readonly Dictionary<OvCanvas, GameObject> tileMap = [];
+    static readonly Dictionary<PackageEntry, GameObject> packageTileMap = [];
+    static readonly Dictionary<OvObject, GameObject> objectTileMap = [];
+    private static GameObject objectActionTile;
+    private static GameObject canvasActionTile;
+
+    private static readonly HashSet<GameObject> animatingInTiles = [];
+    private static readonly HashSet<GameObject> dyingTiles = [];
+    private static readonly Dictionary<GameObject, ITweenHandle> tileAnimTweens = [];
+    private static readonly Dictionary<GameObject, ITweenHandle> tileHoverTweens = [];
+    private static readonly Dictionary<GameObject, Action> tileHoverSync = [];
 
     private static GameObject rootViewport;
     private static CanvasGroup viewportCanvasGroup;
@@ -156,7 +169,7 @@ internal static class PageOverlayer {
             if (gridRef == null || gridRef.Equals(null) || !MainCore.IsModEnabled) {
                 return;
             }
-            BuildAllTiles(gridRef);
+            SyncTiles(gridRef, animateChanges: true);
         });
     }
 
@@ -187,34 +200,103 @@ internal static class PageOverlayer {
         }
 
         ClearAllTiles(transform);
+        SyncTiles(transform, animateChanges: false);
+    }
 
-        for (int i = 0; i < OverlayCore.Canvases.Count; i++) {
-            var c = OverlayCore.Canvases[i];
-            if (!tileMap.TryGetValue(c, out var tile)) {
-                tile = CreateCanvasTile(transform, c, () => BuildAllTiles(transform));
-                tileMap[c] = tile;
+    private static void SyncTiles(Transform transform, bool animateChanges) {
+        if (transform == null || transform.Equals(null)) {
+            return;
+        }
+
+        bool canAnimate = animateChanges && canvasActionTile != null && transform.gameObject.activeInHierarchy && !IsSubpageOpen;
+
+        foreach (var existing in tileMap.Keys.ToArray()) {
+            if (!OverlayCore.Canvases.Contains(existing)) {
+                var oldTile = tileMap[existing];
+                tileMap.Remove(existing);
+                DropTileThumb(existing);
+                if (oldTile != null) {
+                    if (canAnimate) {
+                        AnimateTileOut(oldTile);
+                    } else {
+                        DestroyTileImmediate(oldTile);
+                    }
+                }
             }
         }
 
-        foreach (var pkg in PackageStore.Packages) {
-            CreatePackageTile(transform, pkg, () => BuildAllTiles(transform));
+        for (int i = 0; i < OverlayCore.Canvases.Count; i++) {
+            var c = OverlayCore.Canvases[i];
+            if (!tileMap.TryGetValue(c, out var tile) || tile == null) {
+                tile = CreateCanvasTile(transform, c, () => SyncTiles(transform, animateChanges: true));
+                tileMap[c] = tile;
+                if (canAnimate) {
+                    AnimateTileIn(tile);
+                }
+            }
         }
 
+        foreach (var pkg in packageTileMap.Keys.ToArray()) {
+            if (!PackageStore.Packages.Contains(pkg)) {
+                var oldPkg = packageTileMap[pkg];
+                packageTileMap.Remove(pkg);
+                DestroyTileImmediate(oldPkg);
+            }
+        }
+        foreach (var pkg in PackageStore.Packages) {
+            if (!packageTileMap.TryGetValue(pkg, out var pkgTile) || pkgTile == null) {
+                packageTileMap[pkg] = CreatePackageTile(transform, pkg, () => SyncTiles(transform, animateChanges: true));
+            }
+        }
+
+        foreach (var obj in objectTileMap.Keys.ToArray()) {
+            if (!OverlayCore.Objects.Contains(obj)) {
+                var oldObj = objectTileMap[obj];
+                objectTileMap.Remove(obj);
+                DestroyTileImmediate(oldObj);
+            }
+        }
         foreach (var obj in OverlayCore.Objects) {
-            CreateObjectTile(transform, obj, () => BuildAllTiles(transform));
+            if (!objectTileMap.TryGetValue(obj, out var objTile) || objTile == null) {
+                objectTileMap[obj] = CreateObjectTile(transform, obj, () => SyncTiles(transform, animateChanges: true));
+            }
         }
 
         if (MainCore.Conf.Enable3DFeatures.Value) {
-            CreateObjectActionTile(transform, () => {
-                OverlayCore.CreateEmptyObject();
-                BuildAllTiles(transform);
-            });
+            if (objectActionTile == null) {
+                objectActionTile = CreateObjectActionTile(transform, () => {
+                    OverlayCore.CreateEmptyObject();
+                    SyncTiles(transform, animateChanges: true);
+                });
+            }
+        } else if (objectActionTile != null) {
+            DestroyTileImmediate(objectActionTile);
+            objectActionTile = null;
         }
 
-        CreateCanvasActionTile(transform, () => {
-            OverlayCore.CreateOvCanvas();
-            BuildAllTiles(transform);
-        }, () => BeginImportCanvas(transform), () => BeginImportPreset(transform));
+        if (canvasActionTile == null) {
+            canvasActionTile = CreateCanvasActionTile(transform, () => {
+                OverlayCore.CreateOvCanvas();
+                SyncTiles(transform, animateChanges: true);
+            }, () => BeginImportCanvas(transform), () => BeginImportPreset(transform));
+        }
+
+        foreach (var pkg in PackageStore.Packages) {
+            if (packageTileMap.TryGetValue(pkg, out var pkgTile) && pkgTile != null) {
+                pkgTile.transform.SetAsLastSibling();
+            }
+        }
+        foreach (var obj in OverlayCore.Objects) {
+            if (objectTileMap.TryGetValue(obj, out var objTile) && objTile != null) {
+                objTile.transform.SetAsLastSibling();
+            }
+        }
+        if (objectActionTile != null) {
+            objectActionTile.transform.SetAsLastSibling();
+        }
+        if (canvasActionTile != null) {
+            canvasActionTile.transform.SetAsLastSibling();
+        }
 
         if (contentRectRef != null) {
             LayoutRebuilder.ForceRebuildLayoutImmediate(contentRectRef);
@@ -222,10 +304,150 @@ internal static class PageOverlayer {
         transform.GetComponent<GridRatioKeeper>()?.RefreshNow();
     }
 
+    private static void DestroyTileImmediate(GameObject tile) {
+        if (tile == null) {
+            return;
+        }
+        if (tileAnimTweens.TryGetValue(tile, out var animTween)) {
+            animTween?.Kill();
+            tileAnimTweens.Remove(tile);
+        }
+        if (tileHoverTweens.TryGetValue(tile, out var hoverTween)) {
+            hoverTween?.Kill();
+            tileHoverTweens.Remove(tile);
+        }
+        tileHoverSync.Remove(tile);
+        animatingInTiles.Remove(tile);
+        dyingTiles.Remove(tile);
+        tile.SetActive(false);
+        tile.transform.SetParent(null, false);
+        UnityEngine.Object.Destroy(tile);
+    }
+
+    private static void AnimateTileIn(GameObject tile) {
+        if (tile == null) {
+            return;
+        }
+        if (tileAnimTweens.TryGetValue(tile, out var prevAnim)) {
+            prevAnim?.Kill();
+            tileAnimTweens.Remove(tile);
+        }
+        if (tileHoverTweens.TryGetValue(tile, out var prevHover)) {
+            prevHover?.Kill();
+            tileHoverTweens.Remove(tile);
+        }
+        dyingTiles.Remove(tile);
+        animatingInTiles.Add(tile);
+
+        var cg = tile.GetComponent<CanvasGroup>() ?? tile.AddComponent<CanvasGroup>();
+        cg.alpha = 0f;
+        cg.blocksRaycasts = true;
+        cg.interactable = true;
+
+        var tr = tile.transform;
+        tr.localScale = Vector3.zero;
+
+        tileAnimTweens[tile] = O5KitAdapters.Ctx.Tween.TweenFloat(
+            () => 0f,
+            t => {
+                if (!tile) {
+                    return;
+                }
+                tr.localScale = new Vector3(t, t, 1f);
+                if (cg) {
+                    cg.alpha = t;
+                }
+            },
+            1f,
+            TileCreateDuration,
+            () => {
+                animatingInTiles.Remove(tile);
+                tileAnimTweens.Remove(tile);
+                if (!tile) {
+                    return;
+                }
+                tr.localScale = Vector3.one;
+                if (cg) {
+                    cg.alpha = 1f;
+                }
+                if (tileHoverSync.TryGetValue(tile, out var sync)) {
+                    sync?.Invoke();
+                }
+            },
+            O5Ease.OutExpo);
+    }
+
+    private static void AnimateTileOut(GameObject tile) {
+        if (tile == null) {
+            return;
+        }
+        if (tileAnimTweens.TryGetValue(tile, out var prevAnim)) {
+            prevAnim?.Kill();
+            tileAnimTweens.Remove(tile);
+        }
+        if (tileHoverTweens.TryGetValue(tile, out var prevHover)) {
+            prevHover?.Kill();
+            tileHoverTweens.Remove(tile);
+        }
+        animatingInTiles.Remove(tile);
+        dyingTiles.Add(tile);
+
+        var cg = tile.GetComponent<CanvasGroup>() ?? tile.AddComponent<CanvasGroup>();
+        cg.blocksRaycasts = false;
+        cg.interactable = false;
+
+        var tr = tile.transform;
+        float startScale = tr.localScale.x;
+        float startAlpha = cg.alpha;
+
+        tileAnimTweens[tile] = O5KitAdapters.Ctx.Tween.TweenFloat(
+            () => 0f,
+            t => {
+                if (!tile) {
+                    return;
+                }
+                float s = Mathf.LerpUnclamped(startScale, 0f, t);
+                tr.localScale = new Vector3(s, s, 1f);
+                if (cg) {
+                    cg.alpha = Mathf.LerpUnclamped(startAlpha, 0f, t);
+                }
+            },
+            1f,
+            TileDestroyDuration,
+            () => {
+                dyingTiles.Remove(tile);
+                tileAnimTweens.Remove(tile);
+                tileHoverTweens.Remove(tile);
+                tileHoverSync.Remove(tile);
+                if (tile) {
+                    tile.SetActive(false);
+                    tile.transform.SetParent(null, false);
+                    UnityEngine.Object.Destroy(tile);
+                }
+                if (contentRectRef != null) {
+                    LayoutRebuilder.ForceRebuildLayoutImmediate(contentRectRef);
+                }
+                gridRef?.GetComponent<GridRatioKeeper>()?.RefreshNow();
+            },
+            O5Ease.OutExpo);
+    }
+
     private static void ClearAllTiles(Transform transform) {
         if (transform == null) {
             return;
         }
+
+        foreach (var h in tileAnimTweens.Values) {
+            h?.Kill();
+        }
+        foreach (var h in tileHoverTweens.Values) {
+            h?.Kill();
+        }
+        tileAnimTweens.Clear();
+        tileHoverTweens.Clear();
+        tileHoverSync.Clear();
+        animatingInTiles.Clear();
+        dyingTiles.Clear();
 
         try {
             O5KitAdapters.Ctx?.Tooltip?.Hide();
@@ -247,6 +469,10 @@ internal static class PageOverlayer {
         }
 
         tileMap.Clear();
+        packageTileMap.Clear();
+        objectTileMap.Clear();
+        objectActionTile = null;
+        canvasActionTile = null;
     }
 
     private static void CreateDisabledPanel(RectTransform parent) {
@@ -392,8 +618,13 @@ internal static class PageOverlayer {
         var delBtn = TileButton(bg.transform, BuiltinIcon(UISprite.X128), "X",
             $"tile_del_{canvas.GetHashCode()}", () => { });
         HoldToConfirm.Attach(delBtn, () => {
+            bool skipAnim = O5Input.GetKey(KeyCode.LeftShift) || O5Input.GetKey(KeyCode.RightShift);
             OverlayCore.DeleteOvCanvas(canvas);
-            onChanged?.Invoke();
+            if (skipAnim) {
+                SyncTiles(parent, animateChanges: false);
+            } else {
+                onChanged?.Invoke();
+            }
         });
         var delRect = delBtn.Rect;
         delRect.anchorMin = new Vector2(0f, 0f);
@@ -902,13 +1133,20 @@ internal static class PageOverlayer {
 
     private static void AddTileHoverScale(GameObject go, EventTrigger trigger) {
         ITweenHandle tween = null;
+        bool hovered = false;
         Transform target = go.transform;
         void ScaleTo(float value) {
+            if (dyingTiles.Contains(go) || animatingInTiles.Contains(go)) {
+                return;
+            }
             tween?.Kill();
+            if (tileHoverTweens.TryGetValue(go, out var prev)) {
+                prev?.Kill();
+            }
             tween = O5KitAdapters.Ctx.Tween.TweenFloat(
                 () => target ? target.localScale.x : value,
                 v => {
-                    if (target) {
+                    if (target && !dyingTiles.Contains(go) && !animatingInTiles.Contains(go)) {
                         target.localScale = Vector3.one * v;
                     }
                 },
@@ -916,10 +1154,22 @@ internal static class PageOverlayer {
                 0.22f,
                 ease: O5Ease.OutExpo
             );
+            tileHoverTweens[go] = tween;
         }
+        tileHoverSync[go] = () => {
+            if (hovered) {
+                ScaleTo(1.02f);
+            }
+        };
         UnityUtils.AddEvents(trigger,
-            (EventTriggerType.PointerEnter, () => ScaleTo(1.02f)),
-            (EventTriggerType.PointerExit, () => ScaleTo(1f))
+            (EventTriggerType.PointerEnter, () => {
+                hovered = true;
+                ScaleTo(1.02f);
+            }),
+            (EventTriggerType.PointerExit, () => {
+                hovered = false;
+                ScaleTo(1f);
+            })
         );
     }
 
@@ -1132,7 +1382,7 @@ internal static class PageOverlayer {
                         OverlayCore.ImportCanvas(path);
                     }
                 }
-                BuildAllTiles(grid);
+                SyncTiles(grid, animateChanges: true);
             });
         });
     }
@@ -1164,7 +1414,7 @@ internal static class PageOverlayer {
                 MainCore.Log.Err($"[CanvasImport] Preset install failed: {e.Message}");
                 ShowInstallResult(null, [e.Message]);
             }
-            BuildAllTiles(grid);
+            SyncTiles(grid, animateChanges: true);
         });
     }
 
@@ -1220,7 +1470,7 @@ internal static class PageOverlayer {
             ShowInstallResult(null, [e.Message]);
             staged.Dispose();
         }
-        BuildAllTiles(grid);
+        SyncTiles(grid, animateChanges: true);
     }
 
     private static ITweenHandle fadeTween;

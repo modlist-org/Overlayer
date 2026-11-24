@@ -258,8 +258,11 @@ public static class UICore {
                 viewportOffsetMax: new Vector2(0f, -60f),
                 contentPadding: new RectOffset(10, 10, 10, 10)
             );
-            // Menu items size themselves via RectTransform.sizeDelta.y (54px) without LayoutElement.
-            MenuContent.GetComponent<VerticalLayoutGroup>().childControlHeight = false;
+            // Menu items size themselves via RectTransform.sizeDelta.y (48px) without LayoutElement.
+            // childScaleHeight lets Tutorial show/hide shrink cleanly in layout.
+            var menuLayout = MenuContent.GetComponent<VerticalLayoutGroup>();
+            menuLayout.childControlHeight = false;
+            menuLayout.childScaleHeight = true;
             menuScroller.enabled = false;
 
             MenuFactory.CreateMenu(MenuContent);
