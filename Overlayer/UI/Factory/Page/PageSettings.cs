@@ -409,14 +409,14 @@ internal static class PageSettings {
         var fadeModeRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
         static string FadeModeDisplay(PanelFadeMode mode) {
             string modeLabel = mode switch {
-                PanelFadeMode.FlyIn => "Fly In",
-                PanelFadeMode.Fade => "Fade",
-                PanelFadeMode.DiagonalSwipe => "Diagonal Swipe",
-                PanelFadeMode.Taskbar => "Taskbar",
-                PanelFadeMode.Clock => "Clock",
+                PanelFadeMode.FlyIn => MainCore.Tr.Get("FADE_MODE_FLY_IN", "Fly In"),
+                PanelFadeMode.Fade => MainCore.Tr.Get("FADE_MODE_FADE", "Fade"),
+                PanelFadeMode.DiagonalSwipe => MainCore.Tr.Get("FADE_MODE_DIAGONAL_SWIPE", "Diagonal Swipe"),
+                PanelFadeMode.Taskbar => MainCore.Tr.Get("FADE_MODE_TASKBAR", "Taskbar"),
+                PanelFadeMode.Clock => MainCore.Tr.Get("FADE_MODE_CLOCK", "Clock"),
                 _ => mode.ToString(),
             };
-            return $"Fade Mode: {modeLabel}";
+            return $"{MainCore.Tr.Get("FADE_MODE", "Fade Mode")}: {modeLabel}";
         }
         fadeModeDropdown = O5Factory.DropDown(O5KitAdapters.Ctx, fadeModeRow, "panel_fade_mode", new O5DropdownOptions<PanelFadeMode> {
             DefaultValue = defSet.PanelFadeMode.Value,
@@ -428,7 +428,7 @@ internal static class PageSettings {
                 MainCore.ConfMgr.RequestSave();
             }
         });
-        fadeModeDropdown.Rect.AddToolTip(O5KitAdapters.Ctx, () => "How the Overlayer panel appears and disappears when toggled.");
+        fadeModeDropdown.Rect.AddToolTip(O5KitAdapters.Ctx, () => MainCore.Tr.Get("DESC_FADE_MODE", "How the Overlayer panel appears and disappears when toggled."));
         var fadeModeTr = fadeModeDropdown.Label.gameObject.AddComponent<TextLocalization>();
         fadeModeTr.Format = _ => FadeModeDisplay(fadeModeDropdown.Value);
         fadeModeTr.Init("FADE_MODE", "Fade Mode");
@@ -491,7 +491,7 @@ internal static class PageSettings {
                 PanelTransition.ApplyOpacity();
                 MainCore.ConfMgr.RequestSave();
             } });
-        windowOpacitySlider.Rect.AddToolTip(O5KitAdapters.Ctx, () => "Opacity of the Overlayer window.");
+        windowOpacitySlider.Rect.AddToolTip(O5KitAdapters.Ctx, () => MainCore.Tr.Get("DESC_WINDOW_OPACITY", "Opacity of the Overlayer window."));
         objects[windowOpacitySlider.Label.gameObject.AddComponent<TextLocalization>().Init("WINDOW_OPACITY", "Window Opacity")] = (overlayerText.gameObject, windowOpacityRow.gameObject);
 
         var tooltipOpacityRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
@@ -504,7 +504,7 @@ internal static class PageSettings {
                 MainCore.ConfMgr.RequestSave();
             } });
         tooltipOpacitySlider.SetBlocked(!MainCore.Conf.Tooltip.Value, true);
-        tooltipOpacitySlider.Rect.AddToolTip(O5KitAdapters.Ctx, () => "Opacity of tooltips.");
+        tooltipOpacitySlider.Rect.AddToolTip(O5KitAdapters.Ctx, () => MainCore.Tr.Get("DESC_TOOLTIP_OPACITY", "Opacity of tooltips."));
         objects[tooltipOpacitySlider.Label.gameObject.AddComponent<TextLocalization>().Init("TOOLTIP_OPACITY", "Tooltip Opacity")] = (overlayerText.gameObject, tooltipOpacityRow.gameObject);
 
 
@@ -717,7 +717,7 @@ internal static class PageSettings {
                 MainCore.Conf.HudWindowOpacity = (float)value;
                 MainCore.ConfMgr.RequestSave();
             } });
-        hudOpacitySlider.Rect.AddToolTip(ctx, () => "Opacity of the HUD editor's toolbar, panels and bottom bar.");
+        hudOpacitySlider.Rect.AddToolTip(ctx, () => MainCore.Tr.Get("DESC_HUD_WINDOW_OPACITY", "Opacity of the HUD editor's toolbar, panels and bottom bar."));
         objects[hudOpacitySlider.Label.gameObject.AddComponent<TextLocalization>().Init("HUD_WINDOW_OPACITY", "HUD Window Opacity")] = (headerRow.gameObject, hudOpacityRow.gameObject);
     }
 

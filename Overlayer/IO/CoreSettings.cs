@@ -43,7 +43,7 @@ public sealed class CoreSettings : ISettingsFile {
     public FxValue<float> HudWindowOpacity = new(1.0f);
     public FxValue<float> TooltipOpacity = new(1.0f);
     public FxValue<bool> ScrollEasing = new(true);
-    public FxValue<float> UISoundVolume = new(0.4f);
+    public FxValue<float> UISoundVolume = new(0.8f);
     public FxValue<bool> EnableJSScriptWatcher = new(true);
     public FxValue<string> SystemFontKey = FxValue<string>.FromValue(null);
     public FxValue<string> SystemMediumFontKey = FxValue<string>.FromValue(null);

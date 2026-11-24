@@ -518,7 +518,13 @@ internal static partial class HudEditor {
         nameInput.Rect.parent.gameObject.SetActive(single);
         multiRows.SetActive(selection.Count > 1);
 
-        if (selection.Count == 0) {
+        if (selection.Count > 0 || (selectedCanvas != null && !Overlayer.Overlay.OverlayCore.Canvases.Contains(selectedCanvas))) {
+            selectedCanvas = null;
+        }
+        if (selection.Count == 0 && selectedCanvas != null) {
+            titleText.text = selectedCanvas.Config.Name.Value;
+            infoText.text = Tr("HUD_CANVAS_SELECTED_DESC", "Canvas. New objects and presets are added here.");
+        } else if (selection.Count == 0) {
             titleText.text = Tr("HUD_NOTHING_SELECTED", "Nothing selected");
             infoText.text = Tr("HUD_NOTHING_SELECTED_DESC", "Click a HUD element to edit it, or right-click to add one.");
         } else if (!single) {
@@ -561,7 +567,8 @@ internal static partial class HudEditor {
         }
         SyncPanelValues();
 
-        object target = single && !el.ReadOnly && allPropsShown ? el.Object : null;
+        object target = single && !el.ReadOnly && allPropsShown ? el.Object
+            : selection.Count == 0 ? selectedCanvas : null;
         if (!ReferenceEquals(target, inspectedObject)) {
             RebuildInspector(target);
         }
@@ -575,7 +582,11 @@ internal static partial class HudEditor {
         inspectedObject = target;
         inspectorHost.SetActive(target != null);
         inspector?.Dispose();
-        inspector = target == null ? null : HudInspector.ForObject(inspectorContent, (Overlayer.Overlay.OvObject)target, OnInspectorEdit, SetUpCards);
+        inspector = target switch {
+            Overlayer.Overlay.OvObject o => HudInspector.ForObject(inspectorContent, o, OnInspectorEdit, SetUpCards),
+            Overlayer.Overlay.OvCanvas c => HudInspector.ForCanvas(inspectorContent, c, OnInspectorEdit, SetUpCards, OnSelectedCanvasRenamed),
+            _ => null,
+        };
     }
 
     // The inspector applied an edit itself: follow it on screen, don't rebuild (keeps field focus).

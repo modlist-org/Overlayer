@@ -67,6 +67,15 @@ internal static partial class HudEditor {
         }));
     }
 
+    // End of a text edit: one undo step (multi-selection only when something was typed).
+    private static void CommitTextInput() {
+        if (textInput == null || !(selection.Count == 1 || textInputEdited)) {
+            return;
+        }
+        textInputEdited = false;
+        QuickEdit("text", TextOf, SetText, textInput.Value, true, e => e.Object.Config.TextConfig != null && e.Object.Config.TextEngineConfig?.Text.UseFx != true);
+    }
+
     private static void BuildQuickSize(O5Kit.Core.O5Context ctx, Transform parent) {
         wSlider = Slider(ctx, parent, "w", Tr("HUD_WIDTH", "Width"), 0, 1500, "F0",
             (ref HudElement.State s, double v) => s.Size = new Vector2(Mathf.Max(0f, (float)v), s.Size.y), e => e.CanResizeX);
@@ -172,20 +181,14 @@ internal static partial class HudEditor {
             e => e.Object.Config.CanvasGroupConfig?.Alpha.UseFx != true);
 
         textRows = VerticalGroup("Text", parent).gameObject;
-        textInput = Track(O5Factory.Input(ctx, O5Factory.Row(ctx, textRows.transform, 96f), "plus_hud_text", new O5InputOptions {
-            Placeholder = Tr("HUD_TEXT_PLACEHOLDER", "Text  (tags like {Combo} work here)"),
-            Multiline = true,
-            OnChanged = v => {
-                textInputEdited = true;
-                QuickEdit("text", TextOf, SetText, v, false, e => e.Object.Config.TextConfig != null && e.Object.Config.TextEngineConfig?.Text.UseFx != true);
-            },
-            OnEndEdit = v => {
-                if (selection.Count == 1 || textInputEdited) {
-                    textInputEdited = false;
-                    QuickEdit("text", TextOf, SetText, v, true, e => e.Object.Config.TextConfig != null && e.Object.Config.TextEngineConfig?.Text.UseFx != true);
-                }
-            },
-        }));
+        // The inspector's tag code editor (highlighting, line numbers, tag completion); it tracks
+        // itself into this panel's controls. Its save callback commits the edit on end edit.
+        var codeBuilder = new UI.Overlay.OvInspectorBuilder(textRows.GetComponent<RectTransform>(), controls,
+            () => { }, CommitTextInput, () => { }, () => { });
+        textInput = codeBuilder.BuildTagCodeEditor(textRows.transform, "Text", "plus_hud_text", string.Empty, v => {
+            textInputEdited = true;
+            QuickEdit("text", TextOf, SetText, v, false, e => e.Object.Config.TextConfig != null && e.Object.Config.TextEngineConfig?.Text.UseFx != true);
+        });
         fontSizeSlider = Track(O5Factory.Slider(ctx, O5Factory.Row(ctx, textRows.transform), "plus_hud_fontsize", new O5SliderOptions {
             Min = 4,
             Max = 200,

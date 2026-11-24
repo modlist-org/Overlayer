@@ -263,7 +263,9 @@ internal static partial class HudEditor {
         row.TextLeft = x;
 
         string name = isCanvas ? canvas.Config.Name.Value : obj.Config.Name.Value;
-        var label = RowText(rect, isCanvas ? $"<b>{name}</b>" : name, x, -56f, isCanvas ? 14f : 15f,
+        string current = isCanvas && IsCurrentCanvas(canvas)
+            ? $"  <size=11><color=#FFFFFF66>{Tr("HUD_CURRENT_CANVAS", "current")}</color></size>" : string.Empty;
+        var label = RowText(rect, isCanvas ? $"<b>{name}</b>{current}" : name, x, -56f, isCanvas ? 14f : 15f,
             hidden ? new Color(1f, 1f, 1f, 0.35f) : isCanvas ? UiStyle.Muted : Color.white);
         label.rectTransform.anchorMax = new Vector2(1f, 1f);
         label.overflowMode = TextOverflowModes.Ellipsis;
@@ -363,7 +365,44 @@ internal static partial class HudEditor {
         }
     }
 
-    private static bool IsRowSelected(LayerRow row) => row.Object != null && selection.Any(e => ReferenceEquals(e.Object, row.Object));
+    private static bool IsRowSelected(LayerRow row) => row.Object != null
+        ? selection.Any(e => ReferenceEquals(e.Object, row.Object))
+        : selection.Count == 0 && ReferenceEquals(row.Canvas, selectedCanvas);
+
+    // A canvas picked in the tree (with no objects selected): the inspector edits it, and it is
+    // the current canvas that new objects and presets go into.
+    private static OvCanvas selectedCanvas;
+    private static string selectedCanvasName;
+
+    private static bool IsCurrentCanvas(OvCanvas canvas) => canvas != null
+        && canvas.Config.Name.Value == (string.IsNullOrWhiteSpace(MainCore.Conf.HudMainCanvas.Value) ? "Canvas" : MainCore.Conf.HudMainCanvas.Value);
+
+    private static void SelectCanvas(OvCanvas canvas) {
+        SetSelection([]);
+        selectedCanvas = canvas;
+        selectedCanvasName = canvas?.Config.Name.Value;
+        if (canvas != null && !IsCurrentCanvas(canvas)) {
+            MainCore.Conf.HudMainCanvas.Value = canvas.Config.Name.Value;
+            MainCore.ConfMgr.RequestSave();
+        }
+        RefreshPanel();
+        layersDirty = true;
+    }
+
+    // Renamed from the inspector: locks and the current-canvas setting follow the name.
+    private static void OnSelectedCanvasRenamed(string name) {
+        if (selectedCanvasName == null || name == selectedCanvasName) {
+            return;
+        }
+        RenameLocks(selectedCanvasName, name);
+        if (MainCore.Conf.HudMainCanvas.Value == selectedCanvasName) {
+            MainCore.Conf.HudMainCanvas.Value = name;
+            MainCore.ConfMgr.RequestSave();
+        }
+        selectedCanvasName = name;
+        titleText.text = name;
+        layersDirty = true;
+    }
 
     private static void HighlightRow(LayerRow row) {
         if (row.Back != null) {
@@ -405,6 +444,7 @@ internal static partial class HudEditor {
         }
         if (row.Object == null) {
             layerAnchorObject = null;
+            SelectCanvas(row.Canvas);
             return;
         }
         // Hidden objects aren't on screen, so they can't be selected (show them first).

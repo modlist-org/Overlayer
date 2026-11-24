@@ -15,14 +15,19 @@ internal sealed class HudInspector : IDisposable {
     private readonly List<O5Object> controls = [];
     private readonly Action changed;
     private readonly OvObject obj;
+    private readonly OvCanvas canvas;
+    private readonly Action<string> renamed;
     private readonly Action<RectTransform> built;
     // The cards made last time: some may have been moved out of content (into windows).
     private readonly List<GameObject> cards = [];
     private bool disposed;
 
-    private HudInspector(RectTransform content, OvObject obj, Action changed, Action<RectTransform> built) {
+    private HudInspector(RectTransform content, OvObject obj, Action changed, Action<RectTransform> built,
+        OvCanvas canvas = null, Action<string> renamed = null) {
         this.content = content;
         this.obj = obj;
+        this.canvas = canvas;
+        this.renamed = renamed;
         this.changed = changed;
         this.built = built;
     }
@@ -34,9 +39,16 @@ internal sealed class HudInspector : IDisposable {
         return inspector;
     }
 
+    /// <summary>A canvas's own settings (name, opacity, rendering, scaling, rect), as in the canvas editor.</summary>
+    public static HudInspector ForCanvas(RectTransform content, OvCanvas canvas, Action changed, Action<RectTransform> built, Action<string> renamed) {
+        var inspector = new HudInspector(content, null, changed, built, canvas, renamed);
+        inspector.Rebuild();
+        return inspector;
+    }
+
     /// <summary>Rebuilds from the current values (after the object changed elsewhere).</summary>
     public void Rebuild() {
-        if (disposed || obj == null) {
+        if (disposed || (obj == null && canvas == null)) {
             return;
         }
         Clear();
@@ -44,7 +56,8 @@ internal sealed class HudInspector : IDisposable {
             content,
             controls,
             () => {
-                obj.ApplyConfig();
+                obj?.ApplyConfig();
+                canvas?.ApplyConfig();
                 Notify();
             },
             () => {
@@ -58,7 +71,14 @@ internal sealed class HudInspector : IDisposable {
             Notify
         );
         try {
-            builder.BuildObject(obj);
+            if (obj != null) {
+                builder.BuildObject(obj);
+            } else {
+                builder.BuildCanvas(canvas, name => {
+                    renamed?.Invoke(name);
+                    Notify();
+                });
+            }
         } catch (Exception e) {
             MainCore.Log.Err($"[{nameof(HudInspector)}] Build failed: {e}");
         }

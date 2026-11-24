@@ -1062,6 +1062,19 @@ internal sealed class OvInspectorBuilder(
         Track(input);
     }
 
+    /// <summary>The tag-expression code editor on its own (HUD editor text box). Returns its input
+    /// field; edits go to <paramref name="changed"/>, and the builder's save runs on end edit.</summary>
+    internal O5InputField BuildTagCodeEditor(Transform parent, string label, string id, string value, Action<string> changed) {
+        int before = controls.Count;
+        CodeEditor(parent, label, id, value, changed, null);
+        for (int i = controls.Count - 1; i >= before; i--) {
+            if (controls[i] is O5InputField field) {
+                return field;
+            }
+        }
+        return null;
+    }
+
     private sealed class CodeEditorLanguage {
         public Func<string, TagSyntaxSpan[]> Highlight;
         public Func<string, (CompileDiagnostic[] Diagnostics, TextEngineState State)?> Diagnose;
@@ -1288,6 +1301,14 @@ internal sealed class OvInspectorBuilder(
 
         codeInput.AfterLabelUpdate = (sourceText, composing) => {
             textComposing = composing;
+            // Text set from outside without a change callback (e.g. the HUD editor swapping
+            // selections): resync the highlight source so colors match what is shown.
+            if (!composing && (codeInput.text ?? string.Empty) != displayedText) {
+                displayedText = codeInput.text ?? string.Empty;
+                syntaxSpans = language.Highlight(displayedText);
+                diagnosticsKey = null;
+                lineNumbersDirty = true;
+            }
             int geometryKey = BuildTextGeometryKey(sourceText, ref meshLayoutKey);
             if (!composing && (lineNumbersDirty || geometryKey != lineNumbersGeometryKey)) {
                 lineNumbersDirty = false;

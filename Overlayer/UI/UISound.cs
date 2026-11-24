@@ -116,7 +116,7 @@ internal static class UISound {
     private static double lastFocusedSliderBaseValue;
     private static EvalState? lastSliderEvalState;
 
-    private static float MasterVolume => MainCore.Conf != null ? Mathf.Clamp01(MainCore.Conf.UISoundVolume) : 0.4f;
+    private static float MasterVolume => MainCore.Conf != null ? Mathf.Clamp01(MainCore.Conf.UISoundVolume) : 0.8f;
 
     public static void Tick() {
         if (disposed) {
