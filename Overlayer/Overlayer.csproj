@@ -224,6 +224,39 @@
 		<EmbeddedResource Include="Resource\Embedded\**\*" />
 	</ItemGroup>
 
+	<PropertyGroup>
+		<_IconFontGenDir>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)/../tool/IconFontGen'))</_IconFontGenDir>
+		<_IconFontGenProj>$(_IconFontGenDir)/IconFontGen.csproj</_IconFontGenProj>
+		<_IconFontGenDll>$(_IconFontGenDir)/bin/Release/net10.0/IconFontGen.dll</_IconFontGenDll>
+		<_IconFontManifest>$(MSBuildProjectDirectory)/Resource/Icons/icons.json</_IconFontManifest>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<_IconFontGenSource Include="$(_IconFontGenProj);$(_IconFontGenDir)/*.cs" />
+		<_IconFontInputs Include="$(_IconFontManifest);Resource/Icons/*.svg;$(_IconFontGenDll)" />
+	</ItemGroup>
+
+	<Target Name="BuildIconFontGen"
+			Inputs="@(_IconFontGenSource)"
+			Outputs="$(_IconFontGenDll)">
+		<Exec Command="dotnet build &quot;$(_IconFontGenProj)&quot; -c Release --nologo -v q" />
+	</Target>
+
+	<Target Name="GenerateIconFont"
+			DependsOnTargets="BuildIconFontGen"
+			Inputs="@(_IconFontInputs)"
+			Outputs="$(IntermediateOutputPath)Icons/OverlayerIcons.ttf">
+		<Exec Command="dotnet &quot;$(_IconFontGenDll)&quot; &quot;$(_IconFontManifest)&quot; &quot;$(IntermediateOutputPath)Icons/OverlayerIcons.ttf&quot;" />
+	</Target>
+
+	<Target Name="IncludeIconFont"
+			DependsOnTargets="GenerateIconFont"
+			BeforeTargets="AssignTargetPaths;PrepareResources;PrepareResourceNames">
+		<ItemGroup>
+			<EmbeddedResource Include="$(IntermediateOutputPath)Icons/OverlayerIcons.ttf" LogicalName="Overlayer.Resource.IconFont.OverlayerIcons.ttf" />
+		</ItemGroup>
+	</Target>
+
 	<Target Name="PrepareEmbeddedResourcesForDirectCompile"
 		BeforeTargets="_GenerateCompileInputs"
 		DependsOnTargets="PrepareResources" />

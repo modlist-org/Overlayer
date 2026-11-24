@@ -2,7 +2,7 @@
 
 ## UI Icons & Geometric Shapes (Free to Use)
 
-All UI icon and geometric shape assets in [`Embedded/Image/`](Embedded/Image/) (`*128.png`, `CircleOutline128O16.png`, `OllyMouse.png`) were created directly by the Overlayer team. Because they are simple geometric shapes, anyone is completely free to use, copy, modify, or redistribute them for any purpose without restriction.
+All UI geometric shape assets in [`Embedded/Image/`](Embedded/Image/) (`CircleOutline128O16.png`, `OllyMouse.png`) and monochrome icon vector SVGs in [`Icons/`](Icons/) (`*.svg`, compiled into `OverlayerIcons.ttf` at build time) were created directly by the Overlayer team. Because they are simple geometric shapes, anyone is completely free to use, copy, modify, or redistribute them for any purpose without restriction.
 
 Attribution is not required, though crediting the Overlayer team would be truly appreciated!
 
