@@ -77,14 +77,20 @@ internal static class PageSettings {
 
     /// <summary>Shows values changed elsewhere (the setup wizard).</summary>
     internal static void SyncValues() {
+        static void SyncToggle(O5Toggle toggle, bool value) {
+            if (toggle != null && toggle.Value != value) {
+                toggle.Set(value, false);
+            }
+        }
+
         languageDropdown?.Set(MainCore.Tr.Language, false);
         uiScaleSlider?.Set(MainCore.Conf.UIScale, false);
-        startupToggle?.Set(MainCore.Conf.ShowOnStartup, false);
-        tooltipToggle?.Set(MainCore.Conf.Tooltip, false);
-        middleClickToggle?.Set(MainCore.Conf.MiddleClickToDefault, false);
-        threeDToggle?.Set(MainCore.Conf.Enable3DFeatures, false);
-        rawInputToggle?.Set(MainCore.Conf.UseRawInput, false);
-        wheelAdjustToggle?.Set(MainCore.Conf.WheelAdjustSlider, false);
+        SyncToggle(startupToggle, MainCore.Conf.ShowOnStartup);
+        SyncToggle(tooltipToggle, MainCore.Conf.Tooltip);
+        SyncToggle(middleClickToggle, MainCore.Conf.MiddleClickToDefault);
+        SyncToggle(threeDToggle, MainCore.Conf.Enable3DFeatures);
+        SyncToggle(rawInputToggle, MainCore.Conf.UseRawInput);
+        SyncToggle(wheelAdjustToggle, MainCore.Conf.WheelAdjustSlider);
         sliderSensitivitySlider?.Set(MainCore.Conf.SliderSensitivity, false);
         scrollSensitivitySlider?.Set(MainCore.Conf.ScrollSensitivity, false);
         animationSpeedSlider?.Set(MainCore.Conf.AnimationSpeed, false);
@@ -93,15 +99,15 @@ internal static class PageSettings {
         tooltipOpacitySlider?.Set(MainCore.Conf.TooltipOpacity, false);
         tooltipOpacitySlider?.SetBlocked(!MainCore.Conf.Tooltip.Value, true);
         soundVolSlider?.Set(MainCore.Conf.UISoundVolume, false);
-        snapToggle?.Set(MainCore.Conf.HudSnap, false);
+        SyncToggle(snapToggle, MainCore.Conf.HudSnap);
         snapDistanceSlider?.Set(MainCore.Conf.HudSnapDistance, false);
         gridSizeSlider?.Set(MainCore.Conf.HudGridSize, false);
-        showInternalImagesToggle?.Set(MainCore.Conf.ShowInternalImages.Value, false);
-        showInternalFontsToggle?.Set(MainCore.Conf.ShowInternalFonts.Value, false);
-        hideTutorialToggle?.Set(MainCore.Conf.HideTutorial.Value, false);
+        SyncToggle(showInternalImagesToggle, MainCore.Conf.ShowInternalImages.Value);
+        SyncToggle(showInternalFontsToggle, MainCore.Conf.ShowInternalFonts.Value);
+        SyncToggle(hideTutorialToggle, MainCore.Conf.HideTutorial.Value);
         tabLabelModeDropdown?.Set(MainCore.Conf.TabLabelMode.Value, false);
         fadeModeDropdown?.Set(MainCore.Conf.PanelFadeMode.Value, false);
-        scrollEasingToggle?.Set(MainCore.Conf.ScrollEasing.Value, false);
+        SyncToggle(scrollEasingToggle, MainCore.Conf.ScrollEasing.Value);
         string configuredColor = MainCore.Conf.UIBaseColor.Value;
         Color baseColor = UIColors.IsStaticToken(configuredColor)
             ? UIColors.StaticDisplayColor
@@ -367,10 +373,6 @@ internal static class PageSettings {
                 PageResources.RefreshList();
                 UserResourceManager.NotifyChanged();
             }, Text = "Show Internal Images" });
-        showInternalImagesToggle.Rect.AddToolTip(O5KitAdapters.Ctx, () => MainCore.Tr.Get(
-            "DESC_SHOW_INTERNAL_IMAGES",
-            "Show Overlayer's built-in images in the Resources tab and image pickers."
-        ));
         var internalImgTr = showInternalImagesToggle.Label.gameObject.AddComponent<TextLocalization>().Init("SHOW_INTERNAL_IMAGES", "Show Internal Images");
         objects[internalImgTr] = (overlayerText.gameObject, internalImgRow.gameObject);
 
@@ -384,10 +386,6 @@ internal static class PageSettings {
                     refresh();
                 }
             }, Text = "Show Internal Fonts" });
-        showInternalFontsToggle.Rect.AddToolTip(O5KitAdapters.Ctx, () => MainCore.Tr.Get(
-            "DESC_SHOW_INTERNAL_FONTS",
-            "Show Overlayer's built-in fonts in the Resources tab and font pickers."
-        ));
         var internalFontTr = showInternalFontsToggle.Label.gameObject.AddComponent<TextLocalization>().Init("SHOW_INTERNAL_FONTS", "Show Internal Fonts");
         objects[internalFontTr] = (overlayerText.gameObject, internalFontRow.gameObject);
 
@@ -397,10 +395,6 @@ internal static class PageSettings {
                 MainCore.ConfMgr.RequestSave();
                 MenuFactory.SetItemVisible((int)OriginalMenuState.Tutorial, !toggle);
             }, Text = "Hide Tutorial" });
-        hideTutorialToggle.Rect.AddToolTip(O5KitAdapters.Ctx, () => MainCore.Tr.Get(
-            "DESC_HIDE_TUTORIAL",
-            "Hide the Tutorial tab from the left menu."
-        ));
         var hideTutorialTr = hideTutorialToggle.Label.gameObject.AddComponent<TextLocalization>().Init("HIDE_TUTORIAL", "Hide Tutorial");
         objects[hideTutorialTr] = (overlayerText.gameObject, hideTutorialRow.gameObject);
 
@@ -425,10 +419,6 @@ internal static class PageSettings {
                 UICore.ApplyTabMode(mode);
             }
         });
-        tabLabelModeDropdown.Rect.AddToolTip(O5KitAdapters.Ctx, () => MainCore.Tr.Get(
-            "DESC_TAB_LABELS",
-            "Controls whether the left menu shows tab labels always, only on hover, or stays icons-only."
-        ));
         var tabLabelTr = tabLabelModeDropdown.Label.gameObject.AddComponent<TextLocalization>();
         // The label shows "Tab Labels: <mode>"; without Format, OnEnable/RefreshAll would reset it to just "Tab Labels".
         tabLabelTr.Format = _ => TabLabelModeDisplay(tabLabelModeDropdown.Value);
@@ -464,7 +454,6 @@ internal static class PageSettings {
                 MainCore.ConfMgr.RequestSave();
             }
         });
-        fadeModeDropdown.Rect.AddToolTip(O5KitAdapters.Ctx, () => MainCore.Tr.Get("DESC_FADE_MODE", "How the Overlayer panel appears and disappears when toggled."));
         var fadeModeTr = fadeModeDropdown.Label.gameObject.AddComponent<TextLocalization>();
         fadeModeTr.Format = _ => FadeModeDisplay(fadeModeDropdown.Value);
         fadeModeTr.Init("FADE_MODE", "Fade Mode");
@@ -540,7 +529,6 @@ internal static class PageSettings {
                 PanelTransition.ApplyOpacity();
                 MainCore.ConfMgr.RequestSave();
             } });
-        windowOpacitySlider.Rect.AddToolTip(O5KitAdapters.Ctx, () => MainCore.Tr.Get("DESC_WINDOW_OPACITY", "Opacity of the Overlayer window."));
         objects[windowOpacitySlider.Label.gameObject.AddComponent<TextLocalization>().Init("WINDOW_OPACITY", "Window Opacity")] = (overlayerText.gameObject, windowOpacityRow.gameObject);
 
         var tooltipOpacityRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
@@ -553,7 +541,6 @@ internal static class PageSettings {
                 MainCore.ConfMgr.RequestSave();
             } });
         tooltipOpacitySlider.SetBlocked(!MainCore.Conf.Tooltip.Value, true);
-        tooltipOpacitySlider.Rect.AddToolTip(O5KitAdapters.Ctx, () => MainCore.Tr.Get("DESC_TOOLTIP_OPACITY", "Opacity of tooltips."));
         objects[tooltipOpacitySlider.Label.gameObject.AddComponent<TextLocalization>().Init("TOOLTIP_OPACITY", "Tooltip Opacity")] = (overlayerText.gameObject, tooltipOpacityRow.gameObject);
 
 
@@ -690,10 +677,6 @@ internal static class PageSettings {
                 MainCore.ConfMgr.RequestSave();
             }
         });
-        paletteColorPicker.Rect.AddToolTip(ctx, () => MainCore.Tr.Get(
-            "DESC_UI_PALETTE_COLOR",
-            "Customize Overlayer with a monochrome palette using your chosen color."
-        ));
         var colorLabel = paletteColorPicker.Rect.Find("Header/Preview/ColorLabel")?.GetComponent<TMP_Text>();
         if (colorLabel != null) {
             var colorLabelTr = colorLabel.gameObject.AddComponent<TextLocalization>().Init("UI_PALETTE_COLOR", "Base Color");
@@ -755,7 +738,6 @@ internal static class PageSettings {
                 MainCore.Conf.HudGridSize = (float)value;
                 MainCore.ConfMgr.RequestSave();
             } });
-        gridSizeSlider.Rect.AddToolTip(ctx, () => MainCore.Tr.Get("DESC_HUD_GRID_SIZE", "Spacing of the HUD editor grid, in HUD units."));
         var gridTr = gridSizeSlider.Label.gameObject.AddComponent<TextLocalization>().Init("HUD_GRID_SIZE", "Grid Size");
         objects[gridTr] = (headerRow.gameObject, gridRow.gameObject);
 
@@ -766,7 +748,6 @@ internal static class PageSettings {
                 MainCore.Conf.HudWindowOpacity = (float)value;
                 MainCore.ConfMgr.RequestSave();
             } });
-        hudOpacitySlider.Rect.AddToolTip(ctx, () => MainCore.Tr.Get("DESC_HUD_WINDOW_OPACITY", "Opacity of the HUD editor's toolbar, panels and bottom bar."));
         objects[hudOpacitySlider.Label.gameObject.AddComponent<TextLocalization>().Init("HUD_WINDOW_OPACITY", "HUD Window Opacity")] = (headerRow.gameObject, hudOpacityRow.gameObject);
     }
 
