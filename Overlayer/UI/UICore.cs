@@ -76,9 +76,9 @@ public static class UICore {
 
         CreatePanel();
         PanelTransition.ApplyOpacity();
-        ResizeHandle.CreateResizeHandles(O5KitAdapters.Ctx, Panel, CanvasObj.GetComponent<RectTransform>());
-        for (int i = 0; i < Panel.childCount; i++) {
-            Transform child = Panel.GetChild(i);
+        var resizeFrame = ResizeHandle.CreateResizeHandles(O5KitAdapters.Ctx, Panel, CanvasObj.GetComponent<RectTransform>());
+        for (int i = 0; i < resizeFrame.childCount; i++) {
+            Transform child = resizeFrame.GetChild(i);
             if (child.GetComponent<ResizeHandle>() == null) {
                 continue;
             }
