@@ -165,7 +165,9 @@ internal static class PageDocs {
     private static int codeCounter;
 
     private static O5Context Ctx => O5KitAdapters.Ctx;
-    private static string T(string ko, string en) => DocsContent.T(ko, en);
+    private static string Tr(string key, string fallback) => DocsContent.Tr(key, fallback);
+    private static string TrFmt(string key, string fallback, params object[] args) => DocsContent.TrFmt(key, fallback, args);
+    private static string TrKeys(string key, string fallback) => DocsContent.TrKeys(key, fallback);
 
     public static void Create(RectTransform parent) {
         DisposePageOnly();
@@ -319,7 +321,7 @@ internal static class PageDocs {
         // Global search input (uses default UI border)
         var searchRow = O5Factory.Row(Ctx, railInner);
         globalSearchInput = TrackFrame(O5Factory.Input(Ctx, searchRow, "docs_global_search", new O5InputOptions {
-            Placeholder = "Find Some..",
+            Placeholder = Tr("DOCS_UI_SEARCH_PLACEHOLDER", "Search docs..."),
             Value = globalQuery,
             OnChanged = val => {
                 globalQuery = val ?? string.Empty;
@@ -582,9 +584,9 @@ internal static class PageDocs {
 
     private static void RenderOverviewDashboard() {
         var statsRow = UiStyle.HRow(bodyContent, 12f, 96f);
-        overviewTagCountText = AddStatCard(statsRow, T("등록된 태그", "TAGS"));
-        overviewCanvasCountText = AddStatCard(statsRow, T("활성 캔버스", "CANVASES"));
-        overviewModuleCountText = AddStatCard(statsRow, T("로드된 모듈", "MODULES"));
+        overviewTagCountText = AddStatCard(statsRow, Tr("DOCS_UI_STAT_TAGS", "TAGS"));
+        overviewCanvasCountText = AddStatCard(statsRow, Tr("DOCS_UI_STAT_CANVASES", "CANVASES"));
+        overviewModuleCountText = AddStatCard(statsRow, Tr("DOCS_UI_STAT_MODULES", "MODULES"));
         UpdateOverviewStats();
     }
 
@@ -761,7 +763,7 @@ internal static class PageDocs {
 
         sandboxInput = TrackPage(O5Factory.Input(Ctx, row, "docs_sandbox_code", new O5InputOptions {
             Value = displayedText,
-            Placeholder = T("{Fps:500,0} 같은 태그 템플릿을 입력하세요...", "Type a tag template such as {Fps:500,0}..."),
+            Placeholder = Tr("DOCS_UI_SANDBOX_PLACEHOLDER", "Enter a tag template (e.g., {Fps:500,0})..."),
             Multiline = true,
             Monospace = true,
             OnChanged = OnTextChanged,
@@ -995,7 +997,7 @@ internal static class PageDocs {
 
         var searchRow = UiStyle.HRow(barCard.rectTransform, 8f, Ctx.Theme.ControlHeight);
         var expInput = TrackPage(O5Factory.Input(Ctx, UiStyle.Cell(searchRow, 0f), "docs_explorer_search", new O5InputOptions {
-            Placeholder = T("태그 이름, 설명, 모듈 검색...", "Filter by tag name, description, or module..."),
+            Placeholder = Tr("DOCS_UI_EXPLORER_PLACEHOLDER", "Filter by tag name, description, or module..."),
             Value = explorerQuery,
             OnChanged = v => {
                 explorerQuery = v ?? string.Empty;
@@ -1004,7 +1006,7 @@ internal static class PageDocs {
         }));
 
         TrackPage(MakeMonoButton(UiStyle.Cell(searchRow, 136f), "docs_explorer_refresh",
-            T("새로고침", "Refresh"), () => RenderActiveView(animate: false), active: false, fontSize: 22f));
+            Tr("DOCS_UI_REFRESH", "Refresh"), () => RenderActiveView(animate: false), active: false, fontSize: 22f));
 
         if (explorerFilter == "Params") {
             explorerFilter = "All";
@@ -1013,9 +1015,9 @@ internal static class PageDocs {
         var filterRow = UiStyle.HRow(barCard.rectTransform, 8f, 46f);
         string[] filters = ["All", "Core", "Module", "JS"];
         string[] filterLabels = [
-            T("전체", "All"),
-            T("코어", "Core"),
-            T("모듈", "Module"),
+            Tr("DOCS_UI_FILTER_ALL", "All"),
+            Tr("DOCS_UI_FILTER_CORE", "Core"),
+            Tr("DOCS_UI_FILTER_MODULE", "Module"),
             "JS",
         ];
         for (int i = 0; i < filters.Length; i++) {
@@ -1046,7 +1048,7 @@ internal static class PageDocs {
                 DefaultValue = string.Empty,
                 Value = explorerModule,
                 Values = moduleValues,
-                Display = m => string.IsNullOrEmpty(m) ? T("전체", "All") : m,
+                Display = m => string.IsNullOrEmpty(m) ? Tr("DOCS_UI_FILTER_ALL", "All") : m,
                 OnChanged = m => {
                     explorerModule = m ?? string.Empty;
                     RebuildTagExplorerList();
@@ -1067,8 +1069,8 @@ internal static class PageDocs {
         emptyLayout.childForceExpandHeight = false;
         RenderCallout(emptyWrap, new DocCallout(
             DocCalloutKind.Info,
-            T("일치하는 태그가 없습니다", "No matching tags"),
-            T("다른 검색어를 입력하거나 필터를 '전체'로 변경해보세요.", "Try another query or switch the filter back to All.")
+            Tr("DOCS_UI_NO_MATCHING_TAGS_TITLE", "No matching tags"),
+            Tr("DOCS_UI_NO_MATCHING_TAGS_DESC", "Enter a different query or set the filter to All")
         ));
         explorerEmptyCallout = emptyWrap.gameObject;
         explorerEmptyCallout.SetActive(false);
@@ -1115,7 +1117,7 @@ internal static class PageDocs {
 
         int count = explorerFilteredTags.Count;
         if (explorerCountText != null) {
-            explorerCountText.text = T($"{count} / {scopedTags.Count}개 태그", $"{count} / {scopedTags.Count} tags");
+            explorerCountText.text = TrFmt("DOCS_UI_TAG_COUNT", "{0} / {1} tags", count, scopedTags.Count);
         }
 
         if (explorerEmptyCallout != null) {
@@ -1541,7 +1543,7 @@ internal static class PageDocs {
         var header = UiStyle.NewRect("SearchHeader", bodyContent);
         var hl = UiStyle.Vertical(header.gameObject, 6f, new RectOffset(2, 2, 2, 8));
         hl.childForceExpandHeight = false;
-        AddWrappedText(header, T("검색 결과", "Search Results"), Ctx.Theme.FontSizeH1, Color.white, medium: true);
+        AddWrappedText(header, Tr("DOCS_UI_SEARCH_RESULTS", "Search Results"), Ctx.Theme.FontSizeH1, Color.white, medium: true);
         AddWrappedText(header, $"\"{DocsHighlight.Escape(query)}\"", 20f, TextMuted);
 
         var matchedSections = new List<(DocChapter Chapter, DocSection Section)>();
@@ -1554,7 +1556,7 @@ internal static class PageDocs {
         }
 
         if (matchedSections.Count > 0) {
-            AddWrappedText(bodyContent, T($"문서 섹션 ({matchedSections.Count})", $"Sections ({matchedSections.Count})"), 20f, TextMuted, medium: true);
+            AddWrappedText(bodyContent, TrFmt("DOCS_UI_SEARCH_SECTIONS", "Sections ({0})", matchedSections.Count), 20f, TextMuted, medium: true);
             int idx = 0;
             foreach (var (ch, sec) in matchedSections) {
                 var capturedCh = ch;
@@ -1572,7 +1574,7 @@ internal static class PageDocs {
                 titleTmp.text = $"<color=#8F93A6>[{DocsHighlight.Escape(ch.Title)}]</color>  {DocsHighlight.Escape(sec.Title)}";
 
                 TrackPage(MakeMonoButton(UiStyle.Cell(row, 104f), "docs_res_open_" + idx,
-                    T("열기", "Open"), () => SelectChapter(capturedCh.Id), active: false, fontSize: 18f));
+                    Tr("DOCS_UI_OPEN", "Open"), () => SelectChapter(capturedCh.Id), active: false, fontSize: 18f));
 
                 if (!string.IsNullOrEmpty(sec.Summary)) {
                     AddWrappedText(card.rectTransform, sec.Summary, 18f, TextMuted, lineSpacing: 4f);
@@ -1589,7 +1591,7 @@ internal static class PageDocs {
             .ToList();
 
         if (matchedTags.Count > 0) {
-            AddWrappedText(bodyContent, T($"태그 ({matchedTags.Count})", $"Tags ({matchedTags.Count})"), 20f, TextMuted, medium: true);
+            AddWrappedText(bodyContent, TrFmt("DOCS_UI_SEARCH_TAGS", "Tags ({0})", matchedTags.Count), 20f, TextMuted, medium: true);
             for (int i = 0; i < matchedTags.Count; i++) {
                 var tag = matchedTags[i];
                 var slot = CreateTagCardSlot(bodyContent, "TagCard_" + tag.Name, $"docs_tag_try_{1000 + i}");
@@ -1601,9 +1603,8 @@ internal static class PageDocs {
         if (matchedSections.Count == 0 && matchedTags.Count == 0) {
             RenderCallout(bodyContent, new DocCallout(
                 DocCalloutKind.Info,
-                T("검색 결과가 없습니다", "No results found"),
-                T($"다른 키워드(예: Fps, Fx, AddTab, EasedValue, {HudEdit.HudEditor.Key.ToDisplayString()}, o5cp)로 검색해보세요.",
-                  $"Try keywords like Fps, Fx, AddTab, EasedValue, {HudEdit.HudEditor.Key.ToDisplayString()}, or o5cp.")
+                Tr("DOCS_UI_NO_RESULTS_TITLE", "No results found"),
+                TrKeys("DOCS_UI_NO_RESULTS_DESC", "Search with keywords such as Fps, Fx, AddTab, EasedValue, {HudKey}, or o5cp")
             ));
         }
     }
