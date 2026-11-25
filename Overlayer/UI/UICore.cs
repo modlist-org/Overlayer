@@ -740,9 +740,13 @@ public static class UICore {
     private static void ApplyShutdownClip(float p) {
         if (p <= 0f) {
             if (shutdownClip != null) {
-                if (Panel.parent == shutdownClip) {
-                    Panel.SetParent(shutdownClip.parent, true);
-                    Panel.SetSiblingIndex(shutdownClip.GetSiblingIndex());
+                // Move out everything, not just the panel: the resize frame follows the panel's
+                // parent into the clip and would be destroyed with it (resizing then dies).
+                int index = shutdownClip.GetSiblingIndex();
+                while (shutdownClip.childCount > 0) {
+                    Transform child = shutdownClip.GetChild(0);
+                    child.SetParent(shutdownClip.parent, true);
+                    child.SetSiblingIndex(index++);
                 }
                 UnityEngine.Object.Destroy(shutdownClip.gameObject);
                 shutdownClip = null;
