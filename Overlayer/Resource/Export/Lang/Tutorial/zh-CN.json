@@ -63,7 +63,7 @@
     "TUTORIAL_BASICS_POWER": "用来开启或关闭整个 Overlayer。关闭后所有 HUD 都会隐藏并停止运行",
     "TUTORIAL_BASICS_SCROLL_TITLE": "右键拖动滚动",
     "TUTORIAL_BASICS_SCROLL": "在这个页面按住<b>鼠标右键上下拖动</b>来滚动试试",
-    "TUTORIAL_BASICS_SCROLL_NOTE": "将光标移向窗口上方或下方，就会像抓住滚动条一样直接跳到对应位置。鼠标滚轮同样可用，窗口右侧边框上的细条会显示当前位置",
+    "TUTORIAL_BASICS_SCROLL_NOTE": "将光标移向窗口上方或下方，就会像抓住滚动条一样直接跳到对应位置。鼠标滚轮同样可用，窗口右侧边框上的细条会显示当前位置。在右侧边缘的空白处按住左键拖动也可以，不过通常还是右键更方便",
     "TUTORIAL_CH_first_SUM": "添加文字、输入标签、移动与基本属性",
     "TUTORIAL_FIRST_OPEN_TITLE": "打开 HUD 编辑器",
     "TUTORIAL_FIRST_OPEN": "按 «{HudKey}» 打开 HUD 编辑器，直接在游戏画面上编辑",

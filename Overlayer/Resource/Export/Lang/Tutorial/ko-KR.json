@@ -63,7 +63,7 @@
     "TUTORIAL_BASICS_POWER": "Overlayer 전체를 켜고 끌 수 있어요. 끄면 모든 HUD가 숨겨지고 동작이 멈춰요.",
     "TUTORIAL_BASICS_SCROLL_TITLE": "우클릭 스크롤",
     "TUTORIAL_BASICS_SCROLL": "이 페이지에서 <b>우클릭을 누른 채 위아래로 끌어</b> 스크롤해 보세요.",
-    "TUTORIAL_BASICS_SCROLL_NOTE": "커서를 창 위아래로 움직이면 스크롤바를 잡은 것처럼 해당 위치로 바로 이동합니다. 마우스 휠도 쓸 수 있고, 창 오른쪽 테두리의 얇은 막대가 지금 위치를 보여 줍니다.",
+    "TUTORIAL_BASICS_SCROLL_NOTE": "커서를 창 위아래로 움직이면 스크롤바를 잡은 것처럼 해당 위치로 바로 이동합니다. 마우스 휠도 쓸 수 있고, 창 오른쪽 테두리의 얇은 막대가 지금 위치를 보여 줍니다. 오른쪽 가장자리의 빈 여백에서는 좌클릭으로 끌어도 되지만, 보통은 우클릭이 더 편합니다.",
     "TUTORIAL_CH_first_SUM": "텍스트 추가, 태그 입력, 이동 및 기본 속성",
     "TUTORIAL_FIRST_OPEN_TITLE": "HUD 편집기 열기",
     "TUTORIAL_FIRST_OPEN": "«{HudKey}» 키를 눌러 게임 화면 위에서 바로 편집하는 HUD 편집기를 여세요.",

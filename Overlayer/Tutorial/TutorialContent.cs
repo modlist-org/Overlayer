@@ -370,7 +370,7 @@ internal static class TutorialContent {
                 .NeedPage(OriginalMenuState.Practice),
             new TutorialStep("BASICS_SCROLL", "Right-click scrolling",
                 "Hold <b>right-click</b> on this page and drag up or down to scroll.",
-                "Moving toward the top or bottom jumps straight there, like grabbing a scrollbar. The mouse wheel works too, and the thin bar on the window's right edge shows where you are.")
+                "Moving toward the top or bottom jumps straight there, like grabbing a scrollbar. The mouse wheel works too, and the thin bar on the window's right edge shows where you are. Left-click dragging in the empty strip along the right edge also works, though right-click is usually easier.")
                 .Looks(Face.Curious)
                 .OnEnter(() => {
                     PagePractice.Scroller?.ScrollTo(0f, false);
@@ -379,7 +379,8 @@ internal static class TutorialContent {
                         UIScrollController.OnRightDragScrolled -= onRightDragScrollHandler;
                     }
                     onRightDragScrollHandler = (sc, delta) => {
-                        if (sc == PagePractice.Scroller) {
+                        // Only a real right-drag counts; left-drag in the right padding doesn't.
+                        if (sc == PagePractice.Scroller && sc.DragButton == 1) {
                             rightDragScrollDistance += delta;
                         }
                     };
