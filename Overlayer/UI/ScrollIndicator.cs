@@ -3,6 +3,7 @@ using O5Kit.Core;
 using O5Kit.Input;
 using Overlayer.Core;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace Overlayer.UI;
@@ -28,6 +29,9 @@ internal static class ScrollIndicator {
     private static readonly List<UIScrollController> scrollers = [];
     private static float rescanAt, alpha;
     private static float targetFrac, targetSize = 1f, shownFrac, shownSize = 1f;
+    private static readonly List<RaycastResult> hits = [];
+    private static PointerEventData pointer;
+    private static EventSystem pointerEs;
 
     public static void Create(RectTransform window, Transform after) {
         panel = window;
@@ -59,12 +63,20 @@ internal static class ScrollIndicator {
 
         UIScrollController hovered = null;
         Vector2 mouse = O5Input.MousePosition;
+        Transform top = TopHit(mouse);
         foreach (var s in scrollers) {
-            if (s == null || !s.isActiveAndEnabled || s.content == null || s.viewport == null || !Reachable(s.transform)) {
+            // Nothing to scroll: no bar at all (an outer view that can scroll may still show).
+            if (s == null || !s.isActiveAndEnabled || s.content == null || s.viewport == null
+                || s.MaxOffset < MinScroll || !Reachable(s.transform)) {
                 continue;
             }
             var rect = s.GetComponent<RectTransform>();
             if (rect == null || !RectTransformUtility.RectangleContainsScreenPoint(rect, mouse, null)) {
+                continue;
+            }
+            // Covered by something drawn over it (the setup wizard over the pages ...): the
+            // pointer is on that, not on this view.
+            if (top != null && !top.IsChildOf(s.transform) && DrawsAfter(top, s.transform)) {
                 continue;
             }
             // Overlapping: the one drawn on top wins (later in draw order; nested ones draw after their parent).
@@ -75,14 +87,8 @@ internal static class ScrollIndicator {
 
         if (hovered != null) {
             float max = hovered.MaxOffset;
-            if (max < MinScroll) {
-                // Everything fits: a full, still bar.
-                targetSize = 1f;
-                targetFrac = 0f;
-            } else {
-                targetSize = Mathf.Clamp01(hovered.viewport.rect.height / Mathf.Max(1f, hovered.content.rect.height));
-                targetFrac = Mathf.Clamp01(hovered.content.anchoredPosition.y / max);
-            }
+            targetSize = Mathf.Clamp01(hovered.viewport.rect.height / Mathf.Max(1f, hovered.content.rect.height));
+            targetFrac = Mathf.Clamp01(hovered.content.anchoredPosition.y / max);
             if (alpha <= 0.001f) {
                 // Appearing: start where it belongs instead of sliding in from the last view.
                 shownSize = targetSize;
@@ -96,6 +102,28 @@ internal static class ScrollIndicator {
         shownFrac = Mathf.Lerp(shownFrac, targetFrac, k);
         alpha = Mathf.MoveTowards(alpha, hovered != null ? 1f : 0f, dt * FadeSpeed);
         Apply();
+    }
+
+    // Topmost UI element under the pointer inside this window, or null.
+    private static Transform TopHit(Vector2 mouse) {
+        var es = EventSystem.current;
+        if (es == null) {
+            return null;
+        }
+        if (!ReferenceEquals(pointerEs, es)) {
+            pointerEs = es;
+            pointer = new PointerEventData(es);
+        }
+        pointer.position = mouse;
+        hits.Clear();
+        es.RaycastAll(pointer, hits);
+        foreach (var hit in hits) {
+            if (hit.gameObject != null) {
+                var t = hit.gameObject.transform;
+                return t.IsChildOf(panel) ? t : null;
+            }
+        }
+        return null;
     }
 
     // Hidden pages stay active but sit under a CanvasGroup at alpha 0 / no raycasts: the pointer
