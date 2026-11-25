@@ -232,11 +232,33 @@ internal static class TutorialContent {
     private static OvObject moved;
     private static OvObject[] demoRow = [];
     private static Vector2 movedFrom;
-    private static float rightDragScrollDistance;
+    private static float dragScrollDistance;
     private static bool scrambled;
-    private static Action<UIScrollController, float> onRightDragScrollHandler;
+    private static Action<UIScrollController, float> onDragScrollHandler;
 
     public static TutorialChapter Hello => Chapters[0];
+
+    // Counts drag scrolling on the practice page, only the kind the step teaches (DragButton:
+    // 1 = right-click anywhere, 0 = left-click in the right padding strip; ShiftRelativeDrag:
+    // touch-style).
+    private static void WatchDragScroll(Func<UIScrollController, bool> counts) {
+        StopWatchingDragScroll();
+        PagePractice.Scroller?.ScrollTo(0f, false);
+        dragScrollDistance = 0f;
+        onDragScrollHandler = (sc, delta) => {
+            if (sc == PagePractice.Scroller && counts(sc)) {
+                dragScrollDistance += delta;
+            }
+        };
+        UIScrollController.OnRightDragScrolled += onDragScrollHandler;
+    }
+
+    private static void StopWatchingDragScroll() {
+        if (onDragScrollHandler != null) {
+            UIScrollController.OnRightDragScrolled -= onDragScrollHandler;
+            onDragScrollHandler = null;
+        }
+    }
 
     /// <summary>After one chapter on its own: where the rest is.</summary>
     public static readonly TutorialChapter ChapterEnd = new("end", "Chapter done", string.Empty,
@@ -370,30 +392,30 @@ internal static class TutorialContent {
                 .NeedPage(OriginalMenuState.Practice),
             new TutorialStep("BASICS_SCROLL", "Right-click scrolling",
                 "Hold <b>right-click</b> on this page and drag up or down to scroll.",
-                "Moving toward the top or bottom jumps straight there, like grabbing a scrollbar. The mouse wheel works too, and the thin bar on the window's right edge shows where you are. Left-click dragging in the empty strip along the right edge also works, though right-click is usually easier.")
+                "Moving toward the top or bottom jumps straight there, like grabbing a scrollbar. The mouse wheel works too.")
                 .Looks(Face.Curious)
-                .OnEnter(() => {
-                    PagePractice.Scroller?.ScrollTo(0f, false);
-                    rightDragScrollDistance = 0f;
-                    if (onRightDragScrollHandler != null) {
-                        UIScrollController.OnRightDragScrolled -= onRightDragScrollHandler;
-                    }
-                    onRightDragScrollHandler = (sc, delta) => {
-                        // Only a real right-drag counts; left-drag in the right padding doesn't.
-                        if (sc == PagePractice.Scroller && sc.DragButton == 1) {
-                            rightDragScrollDistance += delta;
-                        }
-                    };
-                    UIScrollController.OnRightDragScrolled += onRightDragScrollHandler;
-                })
-                .OnExit(() => {
-                    if (onRightDragScrollHandler != null) {
-                        UIScrollController.OnRightDragScrolled -= onRightDragScrollHandler;
-                        onRightDragScrollHandler = null;
-                    }
-                })
+                .OnEnter(() => WatchDragScroll(sc => sc.DragButton == 1 && !sc.ShiftRelativeDrag))
+                .OnExit(StopWatchingDragScroll)
                 .At(() => PagePractice.ScrollArea)
-                .Until(() => rightDragScrollDistance >= 60f)
+                .Until(() => dragScrollDistance >= 60f)
+                .NeedPage(OriginalMenuState.Practice),
+            new TutorialStep("BASICS_SCROLL_SHIFT", "Touch-style scrolling",
+                "Now hold <b>Shift</b> while right-click dragging.",
+                "The page follows the mouse like a touchscreen, and a quick flick keeps it coasting after you let go. You can press or release Shift mid-drag to switch; whichever is showing when you let go stays. How far it moves is <b>Scroll Sensitivity</b> in Settings.")
+                .Looks(new(Eye.Normal, Brow.NormalHigh, Mouth.OpenSmall))
+                .OnEnter(() => WatchDragScroll(sc => sc.ShiftRelativeDrag))
+                .OnExit(StopWatchingDragScroll)
+                .At(() => PagePractice.ScrollArea)
+                .Until(() => dragScrollDistance >= 120f)
+                .NeedPage(OriginalMenuState.Practice),
+            new TutorialStep("BASICS_SCROLL_PADDING", "Scrolling from the edge",
+                "In the empty strip along the right edge, <b>left-click</b> and drag up or down.",
+                "It works just like right-click dragging, Shift included, for when a left click is handier. The thin bar on the window's right border shows where you are, and it only appears when there is something to scroll.")
+                .Looks(Face.Talk)
+                .OnEnter(() => WatchDragScroll(sc => sc.DragButton == 0))
+                .OnExit(StopWatchingDragScroll)
+                .At(() => PagePractice.PaddingStrip)
+                .Until(() => dragScrollDistance >= 60f)
                 .NeedPage(OriginalMenuState.Practice),
             new TutorialStep("PRACTICE_DELETE_HOLD", "Hold to delete",
                 "Buttons that delete things need a hold. Press and hold an <b>X</b> until it fills red.",

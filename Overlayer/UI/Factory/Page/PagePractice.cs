@@ -28,6 +28,8 @@ internal static class PagePractice {
     public static UIScrollController Scroller { get; private set; }
     public static RectTransform DeleteArea { get; private set; }
     public static RectTransform ScrollArea { get; private set; }
+    /// <summary>The scroll view's right padding strip, where a left-click drag scrolls (tutorial target only).</summary>
+    public static RectTransform PaddingStrip { get; private set; }
 
     // What happened since the last Reset.
     public static bool Dragged, Wheeled, TypedMath, DropdownWheeled, HeldDelete, ShiftDelete, MiddleReset;
@@ -44,9 +46,18 @@ internal static class PagePractice {
 
     public static void Create(RectTransform page) {
         var ctx = O5KitAdapters.Ctx;
-        var (_, contentRect, scroller) = O5Factory.ScrollView(ctx, page, 12f, 18f);
+        const float padding = 18f;
+        var (_, contentRect, scroller) = O5Factory.ScrollView(ctx, page, 12f, padding);
         content = contentRect;
         Scroller = scroller;
+
+        // Between the viewport's right edge and the scroll view's: no graphic, so it takes no clicks.
+        PaddingStrip = UiStyle.NewRect("PaddingStrip", scroller.transform);
+        PaddingStrip.anchorMin = new Vector2(1f, 0f);
+        PaddingStrip.anchorMax = Vector2.one;
+        PaddingStrip.pivot = new Vector2(1f, 0.5f);
+        PaddingStrip.offsetMin = new Vector2(-padding, padding);
+        PaddingStrip.offsetMax = new Vector2(0f, -padding);
 
         var title = O5Factory.ControlTextH1(ctx, O5Factory.Row(ctx, content));
         title.text = MainCore.Tr.Get("PRACTICE_TITLE", "Practice room");
