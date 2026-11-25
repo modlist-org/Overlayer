@@ -92,6 +92,8 @@ public sealed class OverlayerRuntime {
         RenderPump.Ensure(Harmony, Logger);
 
         Config.Load();
+        // UI init clears IsFirstRun before modules exist; remember it for the language pick below.
+        bool freshInstall = Config.Data.IsFirstRun.Value;
 
         Localization = new LocalizationService(Paths.LangPath, Config, Logger);
 
@@ -114,6 +116,9 @@ public sealed class OverlayerRuntime {
 
         ModuleService.DiscoverAndRegisterModules();
         ModuleService.InitializeAllModules();
+        if (freshInstall) {
+            ApplyPreferredLanguage(ModuleService.GetPreferredLanguage());
+        }
         Package.PackageStore.RecheckModules();
         // SetModEnabled ran before modules existed; tell them if they start disabled.
         if (!State.IsEnabled) {
@@ -123,6 +128,35 @@ public sealed class OverlayerRuntime {
         SetModEnabledLate(Config.Data.Active, false);
 
         _ = V8Manager.LoadScriptsAsync();
+    }
+
+    // Fresh install only: start in the host app's language when Overlayer has a translation for it.
+    private void ApplyPreferredLanguage(string language) {
+        if (string.IsNullOrWhiteSpace(language)) {
+            return;
+        }
+        var tr = Localization.Translator;
+        void Apply() {
+            if (!tr.GetLanguages().Contains(language) || tr.Language == language) {
+                return;
+            }
+            Logger.Msg($"First run: using the game's language ({language}).");
+            tr.Language = language;
+            Config.Data.Language = language;
+            Config.RequestSave();
+            global::Overlayer.Localization.TextLocalization.RefreshAll();
+            UI.Factory.Page.PageSettings.SyncValues();
+        }
+        if (!tr.IsLoading) {
+            Apply();
+            return;
+        }
+        Action<global::Overlayer.Localization.TranslationFailState> once = null;
+        once = _ => {
+            tr.OnLoadEnd -= once;
+            Apply();
+        };
+        tr.OnLoadEnd += once;
     }
 
     public void Tick() {

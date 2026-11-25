@@ -51,6 +51,21 @@ public sealed class ModuleService(OverlayerLogger logger) : IDisposable {
         }
     }
 
+    /// <summary>The first preferred language a module reports, or null.</summary>
+    public string GetPreferredLanguage() {
+        foreach (var module in _loadedModules) {
+            try {
+                string language = module.GetPreferredLanguage();
+                if (!string.IsNullOrWhiteSpace(language)) {
+                    return language;
+                }
+            } catch (Exception ex) {
+                _logger.Err($"[{nameof(ModuleService)}] Failed to get preferred language from module ({module.Name}): {ex.Message}");
+            }
+        }
+        return null;
+    }
+
     public void NotifyEnabledChanged(bool enabled, bool isDispose) {
         foreach (var module in _loadedModules) {
             try { module.OnModEnabledChanged(enabled, isDispose); } catch (Exception ex) { _logger.Err($"[{nameof(ModuleService)}] Failed to notify status change for module ({module.Name}): {ex.Message}"); }
