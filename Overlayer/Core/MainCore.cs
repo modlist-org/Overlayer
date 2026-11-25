@@ -37,7 +37,7 @@ public static class MainCore {
     public static bool IsModEnabled => Runtime.State.IsEnabled;
 
     public static void Initialize(IOverlayerHost host) {
-        if (Runtime != null) {
+        if (Runtime != null || _shutDown) {
             return;
         }
         if (IsSceneLoaded()) {
@@ -57,7 +57,7 @@ public static class MainCore {
 
     /// <summary>Runs deferred initialization, if any. Called on scene load.</summary>
     public static void EnsureInitialized() {
-        if (Runtime != null || _pendingHost == null) {
+        if (Runtime != null || _pendingHost == null || _shutDown) {
             return;
         }
         var host = _pendingHost;
@@ -95,6 +95,22 @@ public static class MainCore {
     }
 
     public static void Tick() {
+        if (_shutDown) {
+            return;
+        }
+        // Requested from a UI callback; torn down here, at the top of a frame, outside any tween or event.
+        if (_shutdownRequested) {
+            _shutDown = true;
+            try {
+                Dispose();
+            } catch (Exception e) {
+                try {
+                    UnityEngine.Debug.LogError($"[Overlayer] Shutdown failed: {e}");
+                } catch {
+                }
+            }
+            return;
+        }
         // Driven from two sources (MelonLoader OnUpdate + our own UpdatePump).
         // Run once per frame: Time.frameCount exists on every Unity version.
         try {
@@ -142,6 +158,10 @@ public static class MainCore {
     }
 
     private static int _lastTickFrame = -1;
+    private static bool _shutdownRequested, _shutDown;
+
+    /// <summary>Disposes Overlayer at the next frame for the rest of the session (it can't be started again).</summary>
+    public static void RequestShutdown() => _shutdownRequested = true;
 
     public static void Dispose() {
         if (Runtime == null) {

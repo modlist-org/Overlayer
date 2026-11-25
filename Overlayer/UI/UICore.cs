@@ -15,6 +15,7 @@ using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using Random = UnityEngine.Random;
 using O5Kit.Input;
+using Overlayer.UI.Utility;
 
 #if ML && IL2CPP
 using Il2CppInterop.Runtime;
@@ -289,12 +290,30 @@ public static class UICore {
             var btn = power.AddComponent<Button>();
             btn.transition = Selectable.Transition.None;
             ITweenHandle powerSeq = null;
+            // Shift + hold wipes the whole window away to the right over ShutdownHoldSeconds,
+            // then shuts Overlayer down for good.
+            powerProgress = 0f;
+            powerHolding = powerShiftPress = shuttingDown = false;
+            UnityUtils.AddEvents(power.AddComponent<EventTrigger>(),
+                (EventTriggerType.PointerDown, e => {
+                    powerShiftPress = !shuttingDown
+                        && UnityUtils.AsPointerEventData(e) is { button: PointerEventData.InputButton.Left }
+                        && (O5Input.GetKey(KeyCode.LeftShift) || O5Input.GetKey(KeyCode.RightShift));
+                    powerHolding = powerShiftPress;
+                }),
+                // No PointerExit cancel: the wipe clips the button itself away mid-hold.
+                (EventTriggerType.PointerUp, _ => powerHolding = false));
             btn.onClick.AddListener(
 #if ML && IL2CPP
             new Action(() => {
 #else
             () => {
 #endif
+                // A Shift press is the shutdown hold, never a HUD toggle.
+                if (powerShiftPress || shuttingDown) {
+                    powerShiftPress = false;
+                    return;
+                }
                 bool enable = MainCore.Conf.Active.Value = !MainCore.Conf.Active.Value;
                 MainCore.SetModEnabled(enable);
 
@@ -665,11 +684,86 @@ public static class UICore {
         if (active || wasCanvasActive) {
             O5Object.TickAll();
         }
+        TickPowerHold(Time.unscaledDeltaTime);
         wasCanvasActive = active;
         O5KitAdapters.Ctx.Tooltip.Tick();
     }
 
     private static bool wasCanvasActive;
+
+    private const float ShutdownHoldSeconds = 2f;
+    private static RectTransform shutdownClip;
+    private static float powerProgress;
+    private static bool powerHolding, powerShiftPress, shuttingDown;
+    private static float shutdownAt;
+    // Fully hidden for a beat before the teardown hitch, so its frame never shows a sliver.
+    private const float ShutdownDelay = 0.02f;
+
+    // Held: the window is clipped away from its left edge toward the right (Shift does not skip
+    // it). Released early: it drains back. Fully gone: Overlayer is disposed.
+    private static void TickPowerHold(float dt) {
+        if (Panel == null) {
+            return;
+        }
+        if (shuttingDown) {
+            if (shutdownAt >= 0f && Time.unscaledTime >= shutdownAt) {
+                shutdownAt = -1f;
+                // Hidden before unparenting: no full-window flash, and Close won't save clip-relative bounds.
+                Panel.gameObject.SetActive(false);
+                ApplyShutdownClip(0f);
+                Close(true);
+                MainCore.RequestShutdown();
+            }
+            return;
+        }
+        if (powerHolding && O5Input.GetMouseButton(0)) {
+            powerProgress = Mathf.Min(1f, powerProgress + dt / ShutdownHoldSeconds);
+        } else {
+            powerHolding = false;
+            if (powerProgress <= 0f) {
+                return;
+            }
+            powerProgress = Mathf.Max(0f, powerProgress - dt / 0.18f);
+        }
+        UISound.SetHoldCharge(powerHolding ? powerProgress : null);
+        ApplyShutdownClip(UI.Easing.EaseMath.Evaluate("InOutSine", powerProgress));
+        if (powerProgress >= 1f) {
+            shuttingDown = true;
+            powerHolding = false;
+            shutdownAt = Time.unscaledTime + ShutdownDelay;
+            UISound.SetHoldCharge(null);
+            UISound.PlayConfirm();
+        }
+    }
+
+    // A RectMask2D parent over the panel whose left edge moves right; the panel stays put.
+    private static void ApplyShutdownClip(float p) {
+        if (p <= 0f) {
+            if (shutdownClip != null) {
+                if (Panel.parent == shutdownClip) {
+                    Panel.SetParent(shutdownClip.parent, true);
+                    Panel.SetSiblingIndex(shutdownClip.GetSiblingIndex());
+                }
+                UnityEngine.Object.Destroy(shutdownClip.gameObject);
+                shutdownClip = null;
+            }
+            return;
+        }
+        if (shutdownClip == null) {
+            shutdownClip = UiStyle.NewRect("ShutdownClip", Panel.parent);
+            shutdownClip.SetSiblingIndex(Panel.GetSiblingIndex());
+            shutdownClip.anchorMin = shutdownClip.anchorMax = new Vector2(0.5f, 0.5f);
+            shutdownClip.pivot = new Vector2(1f, 0.5f);
+            shutdownClip.gameObject.AddComponent<RectMask2D>();
+            Panel.SetParent(shutdownClip, true);
+        }
+        Rect r = Panel.rect;
+        Vector3 rightMid = Panel.TransformPoint(new Vector3(r.xMax, r.center.y, 0f));
+        Vector3 pos = Panel.position;
+        shutdownClip.sizeDelta = new Vector2(r.width * (1f - p), r.height);
+        shutdownClip.position = rightMid;
+        Panel.position = pos;
+    }
 
     /// <summary>
     /// Keeps the panel at least partially visible: clamps the center offset so a
