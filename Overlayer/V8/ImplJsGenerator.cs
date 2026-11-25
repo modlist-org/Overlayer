@@ -231,6 +231,11 @@ public static class ImplJsGenerator {
         sb.AppendLine("    NextTick(fn: (...args: any[]) => any): boolean;");
         sb.AppendLine("    Repeat(seconds: number, fn: (...args: any[]) => any): number;");
         sb.AppendLine("    CancelTick(handle: number): boolean;");
+        sb.AppendLine("    /** Vector2 from plain numbers (Unity wants float; use these rather than new Vector2(0.2, 1)). */");
+        sb.AppendLine("    Vec2(x: number, y: number): any;");
+        sb.AppendLine("    Vec3(x: number, y: number, z: number): any;");
+        sb.AppendLine("    Vec4(x: number, y: number, z: number, w: number): any;");
+        sb.AppendLine("    Rgba(r: number, g: number, b: number, a?: number): any;");
         sb.AppendLine("}");
         sb.AppendLine("declare const Unity: UnityAccess;");
         sb.AppendLine("declare const GameObject: any;");

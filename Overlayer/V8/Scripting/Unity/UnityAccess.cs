@@ -349,6 +349,15 @@ public sealed class UnityAccess {
         }
     }
 
+    // Unity's vector and color types take float, which the script engine won't reliably make from
+    // a JS number on every runtime (Mono): these build them from plain numbers here instead.
+    public Vector2 Vec2(object x, object y) => new(F(x), F(y));
+    public Vector3 Vec3(object x, object y, object z) => new(F(x), F(y), F(z));
+    public Vector4 Vec4(object x, object y, object z, object w) => new(F(x), F(y), F(z), F(w));
+    public Color Rgba(object r, object g, object b, object a = null) => new(F(r), F(g), F(b), Norm(a) == null ? 1f : F(a));
+
+    private static float F(object value) => ToFloat(value, out float result) ? result : 0f;
+
     public void Clear() {
         lock (repeatGate) {
             repeats.Clear();

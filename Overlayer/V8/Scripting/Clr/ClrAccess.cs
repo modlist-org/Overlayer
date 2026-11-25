@@ -153,13 +153,43 @@ public sealed class ClrAccess {
 
     public void Set(object targetOrTypeName, string member, object value) {
         if (targetOrTypeName is string typeName) {
-            StaticSetter(typeName, member)(null, value);
+            StaticSetter(typeName, member)(null, Coerce(MemberType(Utility.Access.Access.RequireType(typeName), member), value));
             return;
         }
         if (targetOrTypeName == null) {
             return;
         }
-        Utility.Access.SafeAccess.TryWrite(targetOrTypeName, member, value);
+        Utility.Access.SafeAccess.TryWrite(targetOrTypeName, member, Coerce(MemberType(targetOrTypeName.GetType(), member), value));
+    }
+
+    private static Type MemberType(Type type, string member) {
+        const BindingFlags flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;
+        for (Type t = type; t != null; t = t.BaseType) {
+            var field = t.GetField(member, flags);
+            if (field != null) {
+                return field.FieldType;
+            }
+            var property = t.GetProperty(member, flags);
+            if (property != null) {
+                return property.PropertyType;
+            }
+        }
+        return null;
+    }
+
+    // A JS number arrives as int or double; a float/int/enum member needs exactly its own type.
+    private static object Coerce(Type target, object value) {
+        if (target == null || value == null || target.IsInstanceOfType(value) || value is not IConvertible) {
+            return value;
+        }
+        try {
+            if (target.IsEnum) {
+                return Enum.ToObject(target, Convert.ToInt64(value, System.Globalization.CultureInfo.InvariantCulture));
+            }
+            return IsNumeric(target) ? Convert.ChangeType(value, target, System.Globalization.CultureInfo.InvariantCulture) : value;
+        } catch {
+            return value;
+        }
     }
 
     public object Call(object targetOrTypeName, string method, params object[] args) {
