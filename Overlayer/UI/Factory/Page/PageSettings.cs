@@ -488,7 +488,7 @@ internal static class PageSettings {
         objects[sliderSensitivityTr] = (overlayerText.gameObject, sliderSensitivityRow.gameObject);
 
         var scrollSensitivityRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
-        scrollSensitivitySlider = O5Factory.Slider(O5KitAdapters.Ctx, scrollSensitivityRow, "scroll_sensitivity", new O5SliderOptions { DefaultValue = defSet.ScrollSensitivity, Min = 0.1f, Max = 3.0f, Value = MainCore.Conf.ScrollSensitivity, Format = "0.00x", Label = "Scroll Sensitivity", ClampDrag = true, ClampInput = false, DragFilter = value => Math.Round(value, 2), InputFilter = value => Math.Round(value, 2), OnChanged = value => {
+        scrollSensitivitySlider = O5Factory.Slider(O5KitAdapters.Ctx, scrollSensitivityRow, "scroll_sensitivity", new O5SliderOptions { DefaultValue = defSet.ScrollSensitivity, Min = 0.1f, Max = 3.0f, Value = MainCore.Conf.ScrollSensitivity, Format = "0.00x", Label = "Scroll Sensitivity", ClampDrag = true, ClampInput = true, DragFilter = value => Math.Round(value, 2), InputFilter = value => Math.Round(value, 2), OnChanged = value => {
                 MainCore.Conf.ScrollSensitivity = (float)value;
                 O5KitAdapters.SyncConfig();
             }, OnComplete = value => {
