@@ -27,6 +27,7 @@ internal static class ScrollIndicator {
     private static RectTransform panel, thumb;
     private static Image thumbImg;
     private static readonly List<UIScrollController> scrollers = [];
+    private static UIScrollController lastHovered;
     private static float rescanAt, alpha;
     private static float targetFrac, targetSize = 1f, shownFrac, shownSize = 1f;
     private static readonly List<RaycastResult> hits = [];
@@ -62,44 +63,54 @@ internal static class ScrollIndicator {
         }
 
         UIScrollController hovered = null;
-        Vector2 mouse = O5Input.MousePosition;
-        // The UI raycast is only needed once a view is actually under the pointer.
-        Transform top = null;
-        bool topKnown = false;
-        // A view being drag-scrolled keeps the bar until release, wherever the pointer wanders.
-        foreach (var s in scrollers) {
-            if (s != null && s.isActiveAndEnabled && s.DragScrolling && s.content != null && s.viewport != null
-                && s.MaxOffset >= MinScroll) {
-                hovered = s;
-                break;
+        if (Compat.O5KitAdapters.Ctx.IsDragBlocking) {
+            // Hidden-cursor drags (e.g. infinite slider) warp the pointer across/outside the window:
+            // freeze the previously hovered scroll view so the indicator stays steady instead of flickering.
+            if (lastHovered != null && lastHovered.isActiveAndEnabled && lastHovered.content != null
+                && lastHovered.viewport != null && lastHovered.MaxOffset >= MinScroll) {
+                hovered = lastHovered;
             }
-        }
-        foreach (var s in scrollers) {
-            if (hovered != null && hovered.DragScrolling) {
-                break;
+        } else {
+            Vector2 mouse = O5Input.MousePosition;
+            // The UI raycast is only needed once a view is actually under the pointer.
+            Transform top = null;
+            bool topKnown = false;
+            // A view being drag-scrolled keeps the bar until release, wherever the pointer wanders.
+            foreach (var s in scrollers) {
+                if (s != null && s.isActiveAndEnabled && s.DragScrolling && s.content != null && s.viewport != null
+                    && s.MaxOffset >= MinScroll) {
+                    hovered = s;
+                    break;
+                }
             }
-            // Nothing to scroll: no bar at all (an outer view that can scroll may still show).
-            if (s == null || !s.isActiveAndEnabled || s.content == null || s.viewport == null
-                || s.MaxOffset < MinScroll || !Reachable(s.transform)) {
-                continue;
+            foreach (var s in scrollers) {
+                if (hovered != null && hovered.DragScrolling) {
+                    break;
+                }
+                // Nothing to scroll: no bar at all (an outer view that can scroll may still show).
+                if (s == null || !s.isActiveAndEnabled || s.content == null || s.viewport == null
+                    || s.MaxOffset < MinScroll || !Reachable(s.transform)) {
+                    continue;
+                }
+                var rect = s.GetComponent<RectTransform>();
+                if (rect == null || !RectTransformUtility.RectangleContainsScreenPoint(rect, mouse, null)) {
+                    continue;
+                }
+                // Covered by something drawn over it (the setup wizard over the pages ...): the
+                // pointer is on that, not on this view.
+                if (!topKnown) {
+                    top = TopHit(mouse);
+                    topKnown = true;
+                }
+                if (top != null && !top.IsChildOf(s.transform) && DrawsAfter(top, s.transform)) {
+                    continue;
+                }
+                // Overlapping: the one drawn on top wins (later in draw order; nested ones draw after their parent).
+                if (hovered == null || DrawsAfter(s.transform, hovered.transform)) {
+                    hovered = s;
+                }
             }
-            var rect = s.GetComponent<RectTransform>();
-            if (rect == null || !RectTransformUtility.RectangleContainsScreenPoint(rect, mouse, null)) {
-                continue;
-            }
-            // Covered by something drawn over it (the setup wizard over the pages ...): the
-            // pointer is on that, not on this view.
-            if (!topKnown) {
-                top = TopHit(mouse);
-                topKnown = true;
-            }
-            if (top != null && !top.IsChildOf(s.transform) && DrawsAfter(top, s.transform)) {
-                continue;
-            }
-            // Overlapping: the one drawn on top wins (later in draw order; nested ones draw after their parent).
-            if (hovered == null || DrawsAfter(s.transform, hovered.transform)) {
-                hovered = s;
-            }
+            lastHovered = hovered;
         }
 
         if (hovered != null) {

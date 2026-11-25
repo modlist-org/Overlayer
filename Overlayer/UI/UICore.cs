@@ -257,16 +257,16 @@ public static class UICore {
             menuCanvasGroup = Menu.gameObject.AddComponent<CanvasGroup>();
 
             // Menu Scroll (scrollbar-less wheel + right-drag scroll region when tabs overflow)
+            // Keep layout spacing at 0 and bake the 6px gap into each item's slot so scaling a
+            // hidden item to 0 leaves no residual spacing snap when it deactivates.
             (_, MenuContent, menuScroller) = O5Factory.ScrollView(
                 O5KitAdapters.Ctx,
                 Menu,
-                spacing: 6f,
+                spacing: 0f,
                 viewportOffsetMin: new Vector2(0f, 60f),
                 viewportOffsetMax: new Vector2(0f, -60f),
-                contentPadding: new RectOffset(10, 10, 10, 10)
+                contentPadding: new RectOffset(10, 10, 10, 4)
             );
-            // Menu items size themselves via RectTransform.sizeDelta.y (48px) without LayoutElement.
-            // childScaleHeight lets Tutorial show/hide shrink cleanly in layout.
             var menuLayout = MenuContent.GetComponent<VerticalLayoutGroup>();
             menuLayout.childControlHeight = false;
             menuLayout.childScaleHeight = true;

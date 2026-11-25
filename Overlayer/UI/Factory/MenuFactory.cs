@@ -24,6 +24,8 @@ public static class MenuFactory {
 
     public sealed class MenuItem {
         public int state;
+        public GameObject slotObj;
+        public RectTransform slotRect;
         public GameObject obj;
         public RectTransform rect;
         public CanvasGroup canvasGroup;
@@ -139,16 +141,26 @@ public static class MenuFactory {
             MainCore.Icons.Create(item.transform, "Icon", icon, Color.white, 28f).rectTransform);
 
     private static MenuItem CreateItemCore(Transform parent, string name, int state, Func<GameObject, RectTransform> buildIcon) {
+        GameObject slot = new(name + "_Slot");
+        slot.transform.SetParent(parent, false);
+
+        RectTransform slotRect = slot.AddComponent<RectTransform>();
+        slotRect.anchorMin = new(0, 1);
+        slotRect.anchorMax = new(1, 1);
+        slotRect.pivot = new(0.5f, 0.5f);
+        slotRect.sizeDelta = new(0, ItemHeight + ItemSpacing);
+
+        CanvasGroup cg = slot.AddComponent<CanvasGroup>();
+
         GameObject item = new(name);
-        item.transform.SetParent(parent, false);
+        item.transform.SetParent(slot.transform, false);
 
         RectTransform rect = item.AddComponent<RectTransform>();
         rect.anchorMin = new(0, 1);
         rect.anchorMax = new(1, 1);
-        rect.pivot = new(0.5f, 0.5f);
+        rect.pivot = new(0.5f, 1f);
+        rect.anchoredPosition = Vector2.zero;
         rect.sizeDelta = new(0, ItemHeight);
-
-        CanvasGroup cg = item.AddComponent<CanvasGroup>();
 
         Image bg = item.AddComponent<Image>();
         bg.sprite = O5KitAdapters.Ctx.Sprites.RoundedControl;
@@ -183,6 +195,8 @@ public static class MenuFactory {
         label.alpha = labelsVisible ? 1f : 0f;
 
         MenuItem menuItem = new() {
+            slotObj = slot,
+            slotRect = slotRect,
             obj = item,
             rect = rect,
             canvasGroup = cg,
@@ -359,8 +373,8 @@ public static class MenuFactory {
 
         void ApplyProgress(float v) {
             item.visibilityProgress = v;
-            if (item.rect) {
-                item.rect.localScale = new Vector3(v, v, 1f);
+            if (item.slotRect) {
+                item.slotRect.localScale = new Vector3(v, v, 1f);
             }
             if (item.canvasGroup) {
                 item.canvasGroup.alpha = v;
@@ -370,9 +384,9 @@ public static class MenuFactory {
             }
         }
 
-        if (instant || !item.obj || !item.obj.transform.parent || !item.obj.transform.parent.gameObject.activeInHierarchy) {
-            if (item.obj) {
-                item.obj.SetActive(visible);
+        if (instant || !item.slotObj || !item.slotObj.transform.parent || !item.slotObj.transform.parent.gameObject.activeInHierarchy) {
+            if (item.slotObj) {
+                item.slotObj.SetActive(visible);
             }
             if (item.canvasGroup) {
                 item.canvasGroup.blocksRaycasts = visible;
@@ -387,15 +401,15 @@ public static class MenuFactory {
         float duration = visible ? ItemShowDuration : ItemHideDuration;
 
         if (visible) {
-            if (!item.obj.activeSelf) {
+            if (!item.slotObj.activeSelf) {
                 item.visibilityProgress = 0f;
-                if (item.rect) {
-                    item.rect.localScale = new Vector3(0f, 0f, 1f);
+                if (item.slotRect) {
+                    item.slotRect.localScale = new Vector3(0f, 0f, 1f);
                 }
                 if (item.canvasGroup) {
                     item.canvasGroup.alpha = 0f;
                 }
-                item.obj.SetActive(true);
+                item.slotObj.SetActive(true);
             }
             if (item.canvasGroup) {
                 item.canvasGroup.blocksRaycasts = true;
@@ -417,7 +431,7 @@ public static class MenuFactory {
         item.visibilitySeq = O5KitAdapters.Ctx.Tween.TweenFloat(
             () => 0f,
             t => {
-                if (!item.obj) {
+                if (!item.slotObj) {
                     return;
                 }
                 ApplyProgress(Mathf.LerpUnclamped(start, target, t));
@@ -426,12 +440,12 @@ public static class MenuFactory {
             duration,
             () => {
                 item.visibilitySeq = null;
-                if (!item.obj) {
+                if (!item.slotObj) {
                     return;
                 }
                 ApplyProgress(target);
                 if (!item.visible) {
-                    item.obj.SetActive(false);
+                    item.slotObj.SetActive(false);
                     if (UICore.MenuContent != null) {
                         LayoutRebuilder.MarkLayoutForRebuild(UICore.MenuContent);
                     }
@@ -460,7 +474,9 @@ public static class MenuFactory {
             SetState((int)OriginalMenuState.Overlayer);
         }
 
-        if (item.obj) {
+        if (item.slotObj) {
+            UnityEngine.Object.Destroy(item.slotObj);
+        } else if (item.obj) {
             UnityEngine.Object.Destroy(item.obj);
         }
     }
