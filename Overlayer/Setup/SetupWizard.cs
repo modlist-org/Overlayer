@@ -456,7 +456,7 @@ internal static class SetupWizard {
     }
 
     private static void ShowWelcome() {
-        Header("WELCOME", "Welcome to Overlayer", "Let's start by choosing a language.");
+        Header("WELCOME", "Welcome to Overlayer", "Select a language.");
         var ctx = O5KitAdapters.Ctx;
         foreach (string language in MainCore.Tr.GetLanguages().Where(l => l != Translator.FALLBACK_LANGUAGE).OrderBy(l => l, StringComparer.OrdinalIgnoreCase)) {
             string captured = language;
@@ -477,7 +477,7 @@ internal static class SetupWizard {
 
     private static void ShowScale() {
         // Named like the setting itself.
-        Header("SCALE", T("UI_SCALE", "UI Scale"), "Let's adjust to a comfortable scale.");
+        Header("SCALE", T("UI_SCALE", "UI Scale"), "Adjust the UI to a comfortable scale.");
         var ctx = O5KitAdapters.Ctx;
         var slider = Track(O5Factory.Slider(ctx, O5Factory.Row(ctx, stepHost), "setup_scale", new O5SliderOptions {
             DefaultValue = 1f,
@@ -501,7 +501,7 @@ internal static class SetupWizard {
     }
 
     private static void ShowKeys() {
-        Header("KEYS", "Keys to remember", "Press the highlighted keys together.");
+        Header("KEYS", "Essential shortcuts", "Press the highlighted keys together.");
         var ctx = O5KitAdapters.Ctx;
         var tabs = UiStyle.HRow(stepHost, 8f, 44f);
         Track(UiStyle.Button(UiStyle.Cell(tabs, 0f), "setup_key_window", $"{T("SETUP_KEY_WINDOW", "Overlayer window")}:  <b>{UICore.WindowKey.ToDisplayString()}</b>",
@@ -625,7 +625,7 @@ internal static class SetupWizard {
     // ---- the rest ----
 
     private static void ShowFinish() {
-        Header("FINISH", "All set", "You can always change these settings later.");
+        Header("FINISH", "Setup complete", "All settings can be changed later.");
         var ctx = O5KitAdapters.Ctx;
         var box = UiStyle.Rounded("Suggestion", O5Factory.Row(ctx, stepHost, 124f), new Color(Accent.r, Accent.g, Accent.b, 0.12f)).rectTransform;
         box.anchorMin = Vector2.zero;
@@ -642,11 +642,11 @@ internal static class SetupWizard {
         text.raycastTarget = false;
         text.lineSpacing = 6f;
         text.text = T("SETUP_FINISH_TUTORIAL",
-            "<b>New to Overlayer?</b> We recommend trying the tutorial. It shows each feature and lets you try it yourself.\n"
-            + "You can also start it later from the <b>Tutorial</b> page in the menu.");
+            "<b>New to Overlayer?</b> The tutorial is recommended. It demonstrates each feature with hands-on steps.\n"
+            + "It is also available later from the <b>Tutorial</b> page in the menu");
 
         var buttons = UiStyle.HRow(stepHost, 8f, 50f);
         Track(UiStyle.Button(UiStyle.Cell(buttons, 0f), "setup_finish_tutorial", T("SETUP_FINISH_YES", "Start tutorial"), () => Close(true), primary: true));
-        Track(UiStyle.Button(UiStyle.Cell(buttons, 0f), "setup_finish_done", T("SETUP_FINISH_NO", "Start right away"), () => Close(false)));
+        Track(UiStyle.Button(UiStyle.Cell(buttons, 0f), "setup_finish_done", T("SETUP_FINISH_NO", "Start now"), () => Close(false)));
     }
 }
