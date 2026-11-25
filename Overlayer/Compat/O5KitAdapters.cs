@@ -343,6 +343,7 @@ public static class O5KitAdapters {
         Ctx.Config.TooltipOpacity = Mathf.Clamp(MainCore.Conf.TooltipOpacity.Value, 0.2f, 1f);
         Ctx.Config.MiddleClickToDefault = MainCore.Conf.MiddleClickToDefault.Value || OnPracticePage;
         Ctx.Config.SliderSensitivity = MainCore.Conf.SliderSensitivity.Value;
+        Ctx.Config.ScrollSensitivity = MainCore.Conf.ScrollSensitivity.Value;
         Ctx.Config.AnimationSpeed = MainCore.Conf.AnimationSpeed.Value;
         Ctx.Config.ScrollEasing = MainCore.Conf.ScrollEasing.Value;
     }

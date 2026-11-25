@@ -37,6 +37,7 @@ public sealed class CoreSettings : ISettingsFile {
     public FxValue<float> UIScale = new(1.0f);
     public FxValue<string> UIBaseColor = FxValue<string>.FromValue(O5Kit.Core.O5Palette.DefaultBaseHex);
     public FxValue<float> SliderSensitivity = new(1.0f);
+    public FxValue<float> ScrollSensitivity = new(1.0f);
     public FxValue<bool> WheelAdjustSlider = new(true);
     public FxValue<float> AnimationSpeed = new(1.0f);
     public FxValue<float> WindowOpacity = new(1.0f);
@@ -92,6 +93,7 @@ public sealed class CoreSettings : ISettingsFile {
             [nameof(UIScale)] = IOUtils.WriteFx(UIScale),
             [nameof(UIBaseColor)] = IOUtils.WriteFx(UIBaseColor),
             [nameof(SliderSensitivity)] = IOUtils.WriteFx(SliderSensitivity),
+            [nameof(ScrollSensitivity)] = IOUtils.WriteFx(ScrollSensitivity),
             [nameof(WheelAdjustSlider)] = IOUtils.WriteFx(WheelAdjustSlider),
             [nameof(AnimationSpeed)] = IOUtils.WriteFx(AnimationSpeed),
             [nameof(WindowOpacity)] = IOUtils.WriteFx(WindowOpacity),
@@ -154,6 +156,7 @@ public sealed class CoreSettings : ISettingsFile {
         UIScale = IOUtils.ReadFx(token, nameof(UIScale), UIScale);
         UIBaseColor = IOUtils.ReadFx(token, nameof(UIBaseColor), UIBaseColor);
         SliderSensitivity = IOUtils.ReadFx(token, nameof(SliderSensitivity), SliderSensitivity);
+        ScrollSensitivity = IOUtils.ReadFx(token, nameof(ScrollSensitivity), ScrollSensitivity);
         WheelAdjustSlider = IOUtils.ReadFx(token, nameof(WheelAdjustSlider), WheelAdjustSlider);
         AnimationSpeed = IOUtils.ReadFx(token, nameof(AnimationSpeed), AnimationSpeed);
         WindowOpacity = IOUtils.ReadFx(token, nameof(WindowOpacity), WindowOpacity);

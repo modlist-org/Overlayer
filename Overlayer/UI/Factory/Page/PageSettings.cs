@@ -39,6 +39,7 @@ internal static class PageSettings {
     private static O5Dropdown<string> languageDropdown;
     private static O5Slider uiScaleSlider;
     private static O5Slider sliderSensitivitySlider;
+    private static O5Slider scrollSensitivitySlider;
     private static O5Slider animationSpeedSlider;
     private static O5Slider windowOpacitySlider;
     private static O5Slider hudOpacitySlider;
@@ -84,6 +85,7 @@ internal static class PageSettings {
         rawInputToggle?.Set(MainCore.Conf.UseRawInput, false);
         wheelAdjustToggle?.Set(MainCore.Conf.WheelAdjustSlider, false);
         sliderSensitivitySlider?.Set(MainCore.Conf.SliderSensitivity, false);
+        scrollSensitivitySlider?.Set(MainCore.Conf.ScrollSensitivity, false);
         animationSpeedSlider?.Set(MainCore.Conf.AnimationSpeed, false);
         windowOpacitySlider?.Set(MainCore.Conf.WindowOpacity, false);
         hudOpacitySlider?.Set(MainCore.Conf.HudWindowOpacity, false);
@@ -461,6 +463,19 @@ internal static class PageSettings {
             } });
         var sliderSensitivityTr = sliderSensitivitySlider.Label.gameObject.AddComponent<TextLocalization>().Init("SLIDER_SENSITIVITY", "Slider Sensitivity");
         objects[sliderSensitivityTr] = (overlayerText.gameObject, sliderSensitivityRow.gameObject);
+
+        var scrollSensitivityRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
+        scrollSensitivitySlider = O5Factory.Slider(O5KitAdapters.Ctx, scrollSensitivityRow, "scroll_sensitivity", new O5SliderOptions { DefaultValue = defSet.ScrollSensitivity, Min = 0.1f, Max = 3.0f, Value = MainCore.Conf.ScrollSensitivity, Format = "0.00x", Label = "Scroll Sensitivity", ClampDrag = true, ClampInput = false, DragFilter = value => Math.Round(value, 2), InputFilter = value => Math.Round(value, 2), OnChanged = value => {
+                MainCore.Conf.ScrollSensitivity = (float)value;
+                O5KitAdapters.SyncConfig();
+            }, OnComplete = value => {
+                MainCore.Conf.ScrollSensitivity = (float)value;
+                O5KitAdapters.SyncConfig();
+                MainCore.ConfMgr.RequestSave();
+            } });
+        scrollSensitivitySlider.Rect.AddToolTip(O5KitAdapters.Ctx, () => MainCore.Tr.Get("DESC_SCROLL_SENSITIVITY", "How far content follows the mouse when dragging to scroll with Shift held."));
+        var scrollSensitivityTr = scrollSensitivitySlider.Label.gameObject.AddComponent<TextLocalization>().Init("SCROLL_SENSITIVITY", "Scroll Sensitivity");
+        objects[scrollSensitivityTr] = (overlayerText.gameObject, scrollSensitivityRow.gameObject);
 
         var wheelAdjustRow = O5Factory.Row(O5KitAdapters.Ctx, content.transform);
         wheelAdjustToggle = O5Factory.Toggle(O5KitAdapters.Ctx, wheelAdjustRow, "wheel_adjust_slider", new O5ToggleOptions { DefaultValue = defSet.WheelAdjustSlider, Value = MainCore.Conf.WheelAdjustSlider, OnChanged = toggle => {

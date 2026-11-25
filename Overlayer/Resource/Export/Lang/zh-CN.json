@@ -364,6 +364,8 @@
     "SCROLL_EASING": "滚动缓动",
     "DESC_SCROLL_EASING": "为滚轮和右键拖动滚动启用平滑缓动效果。受动画速度影响。",
     "SLIDER_SENSITIVITY": "滑块灵敏度",
+    "SCROLL_SENSITIVITY": "滚动灵敏度",
+    "DESC_SCROLL_SENSITIVITY": "按住 Shift 拖动滚动时，内容跟随鼠标移动的幅度。",
     "SPRITE_BORDER_BOTTOM": "下",
     "SPRITE_BORDER_LEFT": "左",
     "SPRITE_BORDER_RIGHT": "右",

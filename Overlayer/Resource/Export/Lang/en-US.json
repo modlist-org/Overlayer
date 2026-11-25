@@ -364,6 +364,8 @@
     "SCROLL_EASING": "Scroll Easing",
     "DESC_SCROLL_EASING": "Smoothly eases wheel and right-click drag scrolling. Affected by Animation Speed.",
     "SLIDER_SENSITIVITY": "Slider Sensitivity",
+    "SCROLL_SENSITIVITY": "Scroll Sensitivity",
+    "DESC_SCROLL_SENSITIVITY": "How far content follows the mouse when dragging to scroll with Shift held.",
     "SPRITE_BORDER_BOTTOM": "Bottom",
     "SPRITE_BORDER_LEFT": "Left",
     "SPRITE_BORDER_RIGHT": "Right",
