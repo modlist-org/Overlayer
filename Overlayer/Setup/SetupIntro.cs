@@ -49,6 +49,7 @@ internal static class SetupIntro {
     private static float time;
     private static bool handedOff;
     private static Vector3 flyFrom, logoFrom;
+    private static Vector2 welcomeSize, swipedSize;
     // Visible share of the padded intro art's width (512 of 576 px); the top-bar icon fills its rect.
     private const float LogoArtWidth = 512f / 576f;
     private static Color backdropColor;
@@ -87,11 +88,13 @@ internal static class SetupIntro {
         if (overlay.GetSiblingIndex() != overlay.parent.childCount - 1) {
             overlay.SetAsLastSibling();
         }
-        if (backdrop.raycastTarget) {
+        if (backdrop.raycastTarget && overlay.rect.size != swipedSize) {
             Swipe(0f); // before the reveal: keeps the backdrop fitted if the window resizes
         }
-        // Clamped so a loading hitch doesn't skip the show.
-        time += Mathf.Min(Time.unscaledDeltaTime, 1f / 30f);
+        // A loading hitch counts as one frame so it doesn't skip the show; ordinary low frame
+        // rates still run in real time instead of slow motion.
+        float dt = Time.unscaledDeltaTime;
+        time += dt > 0.1f ? 1f / 60f : dt;
         // A blank beat before anything moves.
         float t = time - LeadIn;
         Color accent = UIColors.BaseColor;
@@ -125,12 +128,15 @@ internal static class SetupIntro {
 
         // 4. Welcome line: centered under the logo, rising out of a clip at its own baseline.
         float txt = E("OutExpo", Step01(t, TextAt, 0.9f));
-        if (!handedOff) {
-            Vector2 size = new(welcome.preferredWidth, welcome.preferredHeight);
-            welcomeClip.sizeDelta = size;
-            welcomeClip.anchoredPosition = new Vector2(-size.x * 0.5f, TextTop);
-            welcomeRect.sizeDelta = size;
-            welcomeRect.anchoredPosition = new Vector2(0f, -size.y * (1f - txt));
+        if (!handedOff && t >= TextAt - 0.1f) {
+            if (welcomeSize == Vector2.zero) {
+                // Measured once: the text never changes, and re-measuring re-lays it out every frame.
+                welcomeSize = new(welcome.preferredWidth, welcome.preferredHeight);
+                welcomeClip.sizeDelta = welcomeSize;
+                welcomeClip.anchoredPosition = new Vector2(-welcomeSize.x * 0.5f, TextTop);
+                welcomeRect.sizeDelta = welcomeSize;
+            }
+            welcomeRect.anchoredPosition = new Vector2(0f, -welcomeSize.y * (1f - txt));
             welcome.alpha = txt;
         }
 
@@ -182,6 +188,7 @@ internal static class SetupIntro {
     // keeping what lies ahead of it; the backdrop is pinned to the window each frame.
     private static void Swipe(float p) {
         Vector2 size = overlay.rect.size;
+        swipedSize = size;
         float side = (size.x + size.y) * 2f;
         float half = (size.x + size.y) * 0.35355339f;
         wipe.sizeDelta = new Vector2(side, side);
@@ -228,6 +235,10 @@ internal static class SetupIntro {
         overlay.anchorMin = Vector2.zero;
         overlay.anchorMax = Vector2.one;
         overlay.offsetMin = overlay.offsetMax = Vector2.zero;
+        // Own canvas: the per-frame spin, fills and fades rebatch only the intro, not the whole window.
+        overlay.gameObject.AddComponent<Canvas>();
+        overlay.gameObject.AddComponent<GraphicRaycaster>();
+        welcomeSize = Vector2.zero;
         // Backdrop sits under a 45-degree stencil mask that swipes it away at the end.
         wipe = NewRect("Wipe", overlay);
         wipe.pivot = new Vector2(0f, 0.5f);

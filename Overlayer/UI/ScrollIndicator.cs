@@ -63,7 +63,9 @@ internal static class ScrollIndicator {
 
         UIScrollController hovered = null;
         Vector2 mouse = O5Input.MousePosition;
-        Transform top = TopHit(mouse);
+        // The UI raycast is only needed once a view is actually under the pointer.
+        Transform top = null;
+        bool topKnown = false;
         // A view being drag-scrolled keeps the bar until release, wherever the pointer wanders.
         foreach (var s in scrollers) {
             if (s != null && s.isActiveAndEnabled && s.DragScrolling && s.content != null && s.viewport != null
@@ -87,6 +89,10 @@ internal static class ScrollIndicator {
             }
             // Covered by something drawn over it (the setup wizard over the pages ...): the
             // pointer is on that, not on this view.
+            if (!topKnown) {
+                top = TopHit(mouse);
+                topKnown = true;
+            }
             if (top != null && !top.IsChildOf(s.transform) && DrawsAfter(top, s.transform)) {
                 continue;
             }
@@ -164,8 +170,8 @@ internal static class ScrollIndicator {
         if (orderA != orderB) {
             return orderA > orderB;
         }
-        var pathA = Path(a);
-        var pathB = Path(b);
+        var pathA = Path(a, pathBufA);
+        var pathB = Path(b, pathBufB);
         for (int i = 0; i < Mathf.Min(pathA.Count, pathB.Count); i++) {
             if (pathA[i] != pathB[i]) {
                 return pathA[i] > pathB[i];
@@ -176,11 +182,17 @@ internal static class ScrollIndicator {
 
     private static int SortOrder(Transform t) {
         var canvas = t.GetComponentInParent<Canvas>();
-        return canvas != null ? canvas.sortingOrder : 0;
+        if (canvas == null) {
+            return 0;
+        }
+        // A nested canvas without its own sorting draws in its root canvas's order.
+        return canvas.overrideSorting || canvas.isRootCanvas ? canvas.sortingOrder : canvas.rootCanvas.sortingOrder;
     }
 
-    private static List<int> Path(Transform t) {
-        var path = new List<int>();
+    private static readonly List<int> pathBufA = [], pathBufB = [];
+
+    private static List<int> Path(Transform t, List<int> path) {
+        path.Clear();
         for (; t != null && t != panel; t = t.parent) {
             path.Add(t.GetSiblingIndex());
         }

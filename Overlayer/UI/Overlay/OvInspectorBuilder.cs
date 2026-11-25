@@ -1394,9 +1394,25 @@ internal sealed class OvInspectorBuilder(
             gutterRect.offsetMin = new Vector2(viewportMin.x, viewportMin.y);
         }
 
+        // What the diagnostics were last built from: unchanged means nothing to redo (this runs
+        // every frame per code field, and rebuilding allocates and may re-parse the source).
+        object stampEngine = null;
+        string stampText = null;
+        long stampGeneration = -1;
+        TextEngineState stampState = TextEngineState.Idle;
+
         void RefreshDiagnostics() {
             var engine = getEngine?.Invoke();
             var baseState = engine?.State ?? TextEngineState.Idle;
+            long generation = engine?.Generation ?? -1;
+            if (diagnosticsKey != null && ReferenceEquals(engine, stampEngine) && ReferenceEquals(displayedText, stampText)
+                && generation == stampGeneration && baseState == stampState) {
+                return;
+            }
+            stampEngine = engine;
+            stampText = displayedText;
+            stampGeneration = generation;
+            stampState = baseState;
             var custom = language.Diagnose?.Invoke(displayedText);
             TextEngineState state;
             CompileDiagnostic[] diagnostics;
@@ -3874,6 +3890,10 @@ internal sealed class OvInspectorBuilder(
     }
 
     private void RunLive() {
+        // Hidden (another page, closed window): nothing to show; it catches up once visible.
+        if (content == null || !content.gameObject.activeInHierarchy) {
+            return;
+        }
         for (int i = 0; i < liveSyncs.Count; i++) {
             try {
                 liveSyncs[i]();

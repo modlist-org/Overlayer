@@ -487,7 +487,7 @@ public static class MenuFactory {
             O5KitAdapters.SyncConfig();
         }
 
-        O5PageSwitcher.SwitchPage(O5KitAdapters.Ctx, UICore.Pages, from, to);
+        O5PageSwitcher.SwitchPage(O5KitAdapters.Ctx, UICore.Pages, from, to, deactivateHidden: true);
         ApplyState(to);
 
         OnStateChanged?.Invoke(to);

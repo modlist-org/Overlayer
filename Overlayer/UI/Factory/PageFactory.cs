@@ -36,6 +36,14 @@ public static class PageFactory {
         Overlayer.Tutorial.TutorialPage.Create(UICore.Pages[(int)OriginalMenuState.Tutorial]);
         PagePractice.Create(UICore.Pages[(int)OriginalMenuState.Practice]);
 
+        // Hidden pages stay inactive (the page switcher toggles them): otherwise every window
+        // resize relayouts and rebatches all of them each frame.
+        foreach (var pair in UICore.Pages) {
+            if (pair.Key != UICore.CurrentMenuState) {
+                pair.Value.gameObject.SetActive(false);
+            }
+        }
+
         return PagesContaner;
     }
 

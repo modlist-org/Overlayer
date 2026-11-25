@@ -1,3 +1,4 @@
+using System.Threading;
 using System.Buffers;
 using Overlayer.Core;
 using Overlayer.Tag.Core;
@@ -54,6 +55,8 @@ public sealed class TextEngineCore : IDisposable {
     }
 
     public TextEngineState State => state;
+    /// <summary>Bumps on every compile start; with <see cref="State"/> it identifies the current result.</summary>
+    public long Generation => Interlocked.Read(ref compileGeneration);
     internal bool? NativeRendering { get; set; }
 
     public CompileDiagnostic[] GetDiagnostics() {
