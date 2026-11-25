@@ -5,6 +5,7 @@ using Overlayer.IO;
 using Overlayer.Localization;
 using Overlayer.Package;
 using Overlayer.UI.Utility;
+using Overlayer.V8.Scripting.Diagnostic;
 using Overlayer.V8.Scripting.Patch;
 using Overlayer.V8.Scripting.Tag;
 using O5Kit.Control;
@@ -168,13 +169,60 @@ internal static class PageJS {
             Refresh();
             return;
         }
-        if (!MainCore.V8.IsScriptEnabled(file)) {
+        // Errors restyle the whole row (name colour, tooltip): rebuild instead of patching it.
+        bool showsError = status.color == UIColors.SoftRed;
+        bool enabled = MainCore.V8.IsScriptEnabled(file);
+        if (showsError || (enabled && LoadError(file) != null)) {
+            Refresh();
+            return;
+        }
+        if (!enabled) {
             status.text = T("JS_DISABLED", "Disabled");
             return;
         }
         int tags = MainCore.V8.ScriptFileTags(file).Count;
         int patches = JSPatchManager.GetFilePatches(file).Count;
         status.text = T("JS_COUNTS", "{0} tags · {1} patches", tags, patches);
+    }
+
+    /// <summary>The script's load error (first lines of it), or null when it loaded fine.</summary>
+    private static string LoadError(string file) {
+        JSDiagnostic[] diagnostics;
+        try {
+            // Filled off the main thread while scripts load.
+            diagnostics = [.. MainCore.V8.LoaderDiagnostics];
+        } catch {
+            return null;
+        }
+        foreach (var diagnostic in diagnostics) {
+            if (diagnostic.Severity != JSSeverity.Error
+                || !string.Equals(diagnostic.FilePath, file, StringComparison.OrdinalIgnoreCase)) {
+                continue;
+            }
+            return Summary(diagnostic);
+        }
+        return null;
+    }
+
+    private static string Summary(JSDiagnostic diagnostic) {
+        string text = null;
+        foreach (object data in diagnostic.Data ?? []) {
+            if (data is not Exception e) {
+                continue;
+            }
+            // The script engine's own report names the line; the .NET wrapper only says "Error".
+            for (Exception inner = e; inner != null && text == null; inner = inner.InnerException) {
+                if (inner is Microsoft.ClearScript.IScriptEngineException script && !string.IsNullOrWhiteSpace(script.ErrorDetails)) {
+                    text = script.ErrorDetails;
+                }
+            }
+            text ??= e.Message;
+            break;
+        }
+        text ??= string.Join(", ", diagnostic.Data ?? []);
+        string[] lines = text.Replace("\r", string.Empty).Split('\n');
+        string summary = string.Join("\n", lines.Take(3)).Trim();
+        return summary.Length > 400 ? summary[..400] + "..." : summary;
     }
 
     private static void QueueRefresh() {
@@ -286,16 +334,28 @@ internal static class PageJS {
             $"js_script_enabled_{JSScriptLoader.RelativeName(MainCore.V8.ScriptFolderPath, file)}",
             T("JS_TOGGLE_SCRIPT", "Enable/disable script"));
 
+        string error = enabled ? LoadError(file) : null;
         var name = O5Factory.ControlText(O5KitAdapters.Ctx, row, 22f, true);
         name.text = Path.GetFileName(file);
         name.alignment = TextAlignmentOptions.Left;
         var nameLe = name.gameObject.AddComponent<LayoutElement>();
         nameLe.flexibleWidth = 1f;
+        if (error != null) {
+            // Failed to load (after an edit, usually): red name, the error on hover.
+            name.color = UIColors.SoftRed;
+            name.raycastTarget = true;
+            name.transform.AddToolTip(O5KitAdapters.Ctx, () => error);
+        }
 
         var counts = O5Factory.ControlText(O5KitAdapters.Ctx, row, 22f, true);
-        counts.text = enabled
-            ? T("JS_COUNTS", "{0} tags · {1} patches", tags, patches)
-            : T("JS_DISABLED", "Disabled");
+        counts.text = !enabled
+            ? T("JS_DISABLED", "Disabled")
+            : error != null
+                ? T("JS_LOAD_FAILED", "Error")
+                : T("JS_COUNTS", "{0} tags · {1} patches", tags, patches);
+        if (error != null) {
+            counts.color = UIColors.SoftRed;
+        }
         counts.alignment = TextAlignmentOptions.Right;
         var countsLe = counts.gameObject.AddComponent<LayoutElement>();
         countsLe.minWidth = 190f;
