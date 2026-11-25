@@ -124,11 +124,18 @@ internal static class ScrollIndicator {
             }
         }
         float dt = Time.unscaledDeltaTime;
-        // Scroll easing off: the bar jumps with the content instead of gliding.
-        float k = MainCore.Conf.ScrollEasing.Value ? 1f - Mathf.Exp(-Follow * dt) : 1f;
-        shownSize = Mathf.Lerp(shownSize, targetSize, k);
-        shownFrac = Mathf.Lerp(shownFrac, targetFrac, k);
-        alpha = Mathf.MoveTowards(alpha, hovered != null ? 1f : 0f, dt * FadeSpeed);
+        float animSpeed = MainCore.Conf.AnimationSpeed.Value;
+        if (animSpeed <= 0f) {
+            shownSize = targetSize;
+            shownFrac = targetFrac;
+            alpha = hovered != null ? 1f : 0f;
+        } else {
+            // Scroll easing off: the bar jumps with the content instead of gliding.
+            float k = MainCore.Conf.ScrollEasing.Value ? 1f - Mathf.Exp(-Follow * animSpeed * dt) : 1f;
+            shownSize = Mathf.Lerp(shownSize, targetSize, k);
+            shownFrac = Mathf.Lerp(shownFrac, targetFrac, k);
+            alpha = Mathf.MoveTowards(alpha, hovered != null ? 1f : 0f, dt * FadeSpeed * animSpeed);
+        }
         Apply();
     }
 
