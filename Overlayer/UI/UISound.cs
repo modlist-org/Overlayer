@@ -58,6 +58,7 @@ internal static class UISound {
         ToggleOff,
         EvalOk,
         EvalSame,
+        EvalWarn,
         EvalErr,
         Count,
     }
@@ -389,6 +390,10 @@ internal static class UISound {
                         case EvalState.Error:
                             PlayOneShot(ClipId.EvalErr, 0.90f, 1f);
                             break;
+                        case EvalState.OverRange:
+                        case EvalState.UnderRange:
+                            PlayOneShot(ClipId.EvalWarn, 0.90f, 1f);
+                            break;
                         case EvalState.Ok:
                             PlayOneShot(ClipId.EvalOk, 0.90f, 1f);
                             break;
@@ -434,6 +439,9 @@ internal static class UISound {
 
     private static EvalState ComputeSliderEvalState(O5Slider slider, string val) {
         var (rawResult, rawState) = Evaluator<double>.Evaluate(val, slider.Value);
+        if (double.IsNaN(rawResult) || double.IsInfinity(rawResult)) {
+            rawState = EvalState.Error;
+        }
         EvalState previewState = rawState;
         if (rawState != EvalState.Error && slider.ClampInput) {
             double previewMin = Math.Max(slider.Min, slider.EffectiveInputMin);
@@ -691,6 +699,7 @@ internal static class UISound {
         Clips[(int)ClipId.ToggleOff] = BuildToggleClip(on: false);
         Clips[(int)ClipId.EvalOk] = BuildEvalClip("UI_EvalOk", 261.63f, doubleTap: false);
         Clips[(int)ClipId.EvalSame] = BuildEvalClip("UI_EvalSame", 261.63f, doubleTap: true);
+        Clips[(int)ClipId.EvalWarn] = BuildEvalClip("UI_EvalWarn", 392.00f, doubleTap: false);
         Clips[(int)ClipId.EvalErr] = BuildEvalClip("UI_EvalErr", 392.00f, doubleTap: true);
     }
 
