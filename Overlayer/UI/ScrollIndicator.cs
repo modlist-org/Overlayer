@@ -20,6 +20,8 @@ internal static class ScrollIndicator {
     // Overflow below this (layout padding/rounding) counts as nothing to scroll.
     private const float MinScroll = 8f;
     private const float Follow = 18f;
+    // Title bar height (UICore TopBar): the track starts below it, not at the window's top edge.
+    private const float TopInset = 60f;
 
     private static RectTransform panel, thumb;
     private static Image thumbImg;
@@ -88,7 +90,8 @@ internal static class ScrollIndicator {
             }
         }
         float dt = Time.unscaledDeltaTime;
-        float k = 1f - Mathf.Exp(-Follow * dt);
+        // Scroll easing off: the bar jumps with the content instead of gliding.
+        float k = MainCore.Conf.ScrollEasing.Value ? 1f - Mathf.Exp(-Follow * dt) : 1f;
         shownSize = Mathf.Lerp(shownSize, targetSize, k);
         shownFrac = Mathf.Lerp(shownFrac, targetFrac, k);
         alpha = Mathf.MoveTowards(alpha, hovered != null ? 1f : 0f, dt * FadeSpeed);
@@ -146,12 +149,12 @@ internal static class ScrollIndicator {
         return path;
     }
 
-    // Keeps to the border's straight run between the rounded corners.
+    // Runs from below the title bar down to the bottom rounded corner.
     private static void Apply() {
-        float track = Mathf.Max(0f, panel.rect.height - Corner * 2f);
+        float track = Mathf.Max(0f, panel.rect.height - TopInset - Corner);
         float size = Mathf.Min(track, Mathf.Max(MinThumb, track * shownSize));
         thumb.sizeDelta = new Vector2(Stroke, size);
-        thumb.anchoredPosition = new Vector2(0f, -Corner - (track - size) * shownFrac);
+        thumb.anchoredPosition = new Vector2(0f, -TopInset - (track - size) * shownFrac);
         Color c = UIColors.ObjectActive;
         thumbImg.color = new Color(c.r, c.g, c.b, alpha);
         bool visible = alpha > 0.001f;
