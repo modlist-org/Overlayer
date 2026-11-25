@@ -64,7 +64,18 @@ internal static class ScrollIndicator {
         UIScrollController hovered = null;
         Vector2 mouse = O5Input.MousePosition;
         Transform top = TopHit(mouse);
+        // A view being drag-scrolled keeps the bar until release, wherever the pointer wanders.
         foreach (var s in scrollers) {
+            if (s != null && s.isActiveAndEnabled && s.DragScrolling && s.content != null && s.viewport != null
+                && s.MaxOffset >= MinScroll) {
+                hovered = s;
+                break;
+            }
+        }
+        foreach (var s in scrollers) {
+            if (hovered != null && hovered.DragScrolling) {
+                break;
+            }
             // Nothing to scroll: no bar at all (an outer view that can scroll may still show).
             if (s == null || !s.isActiveAndEnabled || s.content == null || s.viewport == null
                 || s.MaxOffset < MinScroll || !Reachable(s.transform)) {
