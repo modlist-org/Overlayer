@@ -3,7 +3,9 @@ using Overlayer.Async;
 using Overlayer.Core;
 using Overlayer.Overlay;
 using Overlayer.UI.Overlay;
+using Overlayer.UI.Utility;
 using UnityEngine;
+using UnityEngine.UI;
 using Object = UnityEngine.Object;
 
 namespace Overlayer.HudEdit;
@@ -51,6 +53,7 @@ internal sealed class HudInspector : IDisposable {
         if (disposed || (obj == null && canvas == null)) {
             return;
         }
+        var flashes = ChangeFlashCarry.Take(controls);
         Clear();
         var builder = new OvInspectorBuilder(
             content,
@@ -85,6 +88,9 @@ internal sealed class HudInspector : IDisposable {
         for (int i = 0; i < content.childCount; i++) {
             cards.Add(content.GetChild(i).gameObject);
         }
+        // Bars sit beside controls whose final position comes from the layout pass.
+        LayoutRebuilder.ForceRebuildLayoutImmediate(content);
+        ChangeFlashCarry.Restore(flashes, controls);
         try {
             built?.Invoke(content);
         } catch (Exception e) {

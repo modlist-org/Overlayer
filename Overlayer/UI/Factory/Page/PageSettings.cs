@@ -1,3 +1,4 @@
+using O5Kit.Input;
 using Overlayer.Tween;
 using Overlayer.Compat;
 using Overlayer.Async;
@@ -111,6 +112,39 @@ internal static class PageSettings {
         refreshHudKey?.Invoke();
         refreshPaletteLabels?.Invoke();
         refreshTabLabelDropdown?.Invoke();
+        syncedSignature = Signature();
+    }
+
+    // ---- outside changes ----
+    // Settings can change from anywhere (a script, the setup wizard, a hotkey ...): when any shown
+    // value differs from what the page last showed, it syncs, and the changed controls light up.
+
+    private static int syncedSignature;
+
+    private static int Signature() {
+        var c = MainCore.Conf;
+        int h = HashCode.Combine(MainCore.Tr.Language, c.UIScale.Value, c.ShowOnStartup.Value, c.Tooltip.Value,
+            c.MiddleClickToDefault.Value, c.Enable3DFeatures.Value, c.UseRawInput.Value, c.WheelAdjustSlider.Value);
+        h = HashCode.Combine(h, c.SliderSensitivity.Value, c.ScrollSensitivity.Value, c.AnimationSpeed.Value,
+            c.WindowOpacity.Value, c.HudWindowOpacity.Value, c.TooltipOpacity.Value, c.UISoundVolume.Value);
+        h = HashCode.Combine(h, c.HudSnap.Value, c.HudSnapDistance.Value, c.HudGridSize.Value, c.ShowInternalImages.Value,
+            c.ShowInternalFonts.Value, c.HideTutorial.Value, c.TabLabelMode.Value);
+        return HashCode.Combine(h, c.PanelFadeMode.Value, c.ScrollEasing.Value, c.UIBaseColor.Value,
+            c.WindowKey.Value, c.HudEditorKey.Value);
+    }
+
+    /// <summary>Per frame: picks up settings changed outside this page.</summary>
+    internal static void Tick() {
+        if (languageDropdown == null || languageDropdown.IsDisposed) {
+            return;
+        }
+        int signature = Signature();
+        // Not mid-drag: the control being dragged is the one changing it.
+        if (signature == syncedSignature
+            || O5Input.GetMouseButton(0) || O5Input.GetMouseButton(1) || O5Input.GetMouseButton(2)) {
+            return;
+        }
+        SyncValues();
     }
 
     public static void Create(RectTransform parent) {

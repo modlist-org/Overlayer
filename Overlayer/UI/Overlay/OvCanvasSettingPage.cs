@@ -1,3 +1,4 @@
+using Overlayer.UI.Utility;
 using Overlayer.Compat;
 using Overlayer.Core;
 using Overlayer.Async;
@@ -1532,7 +1533,13 @@ public partial class OvCanvasSettingPage : IDisposable {
         }
     }
 
+    // What the inspector showed last: a rebuild of the same target carries its change bars over.
+    private object inspectedTarget;
+
     private void RebuildInspector() {
+        object target = (object)selectedObject ?? (object)currentCanvas ?? rootObject;
+        var flashes = ReferenceEquals(target, inspectedTarget) ? ChangeFlashCarry.Take(inspectorUiObjects) : default;
+        inspectedTarget = target;
         foreach (var uiObj in inspectorUiObjects) {
             uiObj.Dispose();
         }
@@ -1587,6 +1594,7 @@ public partial class OvCanvasSettingPage : IDisposable {
         }
 
         LayoutRebuilder.ForceRebuildLayoutImmediate(inspectorContent);
+        ChangeFlashCarry.Restore(flashes, inspectorUiObjects);
     }
 
     public void Close(bool noAnimate = false) {

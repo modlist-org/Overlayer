@@ -132,6 +132,7 @@ public static class MainCore {
             UI.Factory.Page.KkitutRoom.Tick();
             UI.ScrollIndicator.Tick();
             UI.Factory.Page.PagePractice.Tick();
+            UI.Factory.Page.PageSettings.Tick();
         } catch (Exception e) {
             try {
                 Runtime?.Logger?.Err($"[MainCore] Page tick failed: {e.Message}");

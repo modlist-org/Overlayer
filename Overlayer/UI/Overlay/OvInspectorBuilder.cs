@@ -58,7 +58,7 @@ internal sealed class OvInspectorBuilder(
             canvas.Config.Name.Value = value;
             canvas.ApplyConfig();
             nameChanged(value);
-        }, "canvas_name", hierarchyChanged);
+        }, "canvas_name", hierarchyChanged, () => canvas.Config.Name.Value);
 
         var group = canvas.Config.CanvasGroupConfig;
         FxSlider(identity, "Opacity", group.Alpha, 1f, 0f, 1f, "canvas_alpha");
@@ -89,7 +89,7 @@ internal sealed class OvInspectorBuilder(
         Input(identity, "Object Name", null, obj.Config.Name.Value, value => {
             obj.Config.Name.Value = value;
             apply();
-        }, "obj_name", hierarchyChanged);
+        }, "obj_name", hierarchyChanged, () => obj.Config.Name.Value);
         FxToggle(identity, "Visible", obj.Config.Enabled, true, "obj_visible");
 
         var group = obj.Config.CanvasGroupConfig;
@@ -221,21 +221,44 @@ internal sealed class OvInspectorBuilder(
         refreshPositionFields = () => { };
         FxBlock(rectLayout, "Position", cfg.AnchoredPosition,
             group => refreshPositionFields = BuildRectPositionFields(group, obj), "rect_position_xy");
+        // Fields show the RectTransform as it is, so a change from anywhere (MovingMan, a script,
+        // a layout) shows up and lights the change bar. Locked while a known driver owns them.
+        bool FitX() => obj.Config.ContentSizeFitterConfig?.ComponentEnabled.Value == true
+            && obj.Config.ContentSizeFitterConfig.HorizontalFit.Value != ContentSizeFitter.FitMode.Unconstrained;
+        bool FitY() => obj.Config.ContentSizeFitterConfig?.ComponentEnabled.Value == true
+            && obj.Config.ContentSizeFitterConfig.VerticalFit.Value != ContentSizeFitter.FitMode.Unconstrained;
+        bool SizeDriven() => FitX() || FitY() || ParentLayoutSizes(obj, 0) || ParentLayoutSizes(obj, 1)
+            || MovingManDrives(obj, MovingManTarget.SizeDeltaX | MovingManTarget.SizeDeltaY);
+        bool RotationXYDriven() => MovingManDrives(obj, MovingManTarget.RotationX | MovingManTarget.RotationY);
+        bool RotationZDriven() => MovingManDrives(obj, MovingManTarget.RotationZ);
+        bool ScaleDriven() => MovingManDrives(obj, MovingManTarget.ScaleX | MovingManTarget.ScaleY | MovingManTarget.ScaleZ);
+        bool PositionZDriven() => MovingManDrives(obj, MovingManTarget.PositionZ);
+        float Shown(Func<RectTransform, float> actual, float setting) => Alive(obj) ? actual(obj.RectTransform) : setting;
+        // Euler angles don't read back uniquely: keep the set angles while the rotation is the same.
+        Vector3 ShownEuler() {
+            var set = new Vector3(cfg.RotationXY.Value.x, cfg.RotationXY.Value.y, cfg.Rotation.Value);
+            if (!Alive(obj) || Quaternion.Angle(Quaternion.Euler(set), obj.RectTransform.localRotation) < 0.01f) {
+                return set;
+            }
+            var e = obj.RectTransform.localEulerAngles;
+            return new Vector3(SignedAngle(e.x), SignedAngle(e.y), SignedAngle(e.z));
+        }
         FxNumericRow(basic, "Size", cfg.SizeDelta, [
-            ("X", 200f, () => cfg.SizeDelta.Value.x, value => { var v = cfg.SizeDelta.Value; v.x = value; cfg.SizeDelta.Value = v; refreshPositionFields(); }, "rect_size_x"),
-            ("Y", 200f, () => cfg.SizeDelta.Value.y, value => { var v = cfg.SizeDelta.Value; v.y = value; cfg.SizeDelta.Value = v; refreshPositionFields(); }, "rect_size_y")
-        ], "F1", "rect_size");
-        FxFloatRow(basic, "Position", cfg.AnchoredPositionZ, 0f, "Z", "rect_position_z", "F1");
+            ("X", 200f, () => Shown(r => r.sizeDelta.x, cfg.SizeDelta.Value.x), value => { var v = cfg.SizeDelta.Value; v.x = value; cfg.SizeDelta.Value = v; refreshPositionFields(); }, "rect_size_x"),
+            ("Y", 200f, () => Shown(r => r.sizeDelta.y, cfg.SizeDelta.Value.y), value => { var v = cfg.SizeDelta.Value; v.y = value; cfg.SizeDelta.Value = v; refreshPositionFields(); }, "rect_size_y")
+        ], "F1", "rect_size", SizeDriven);
+        FxFloatRow(basic, "Position", cfg.AnchoredPositionZ, 0f, "Z", "rect_position_z", "F1",
+            () => Shown(r => r.anchoredPosition3D.z, cfg.AnchoredPositionZ.Value), PositionZDriven);
         FxNumericRow(basic, "Rotation XY", cfg.RotationXY, [
-            ("X", 0f, () => cfg.RotationXY.Value.x, value => { var v = cfg.RotationXY.Value; v.x = value; cfg.RotationXY.Value = v; }, "rect_rotation_x"),
-            ("Y", 0f, () => cfg.RotationXY.Value.y, value => { var v = cfg.RotationXY.Value; v.y = value; cfg.RotationXY.Value = v; }, "rect_rotation_y")
-        ], "F1", "rect_rotation_xy");
-        FxFloatRow(basic, "Rotation Z", cfg.Rotation, 0f, "Z", "rect_rotation_z", "F1");
+            ("X", 0f, () => ShownEuler().x, value => { var v = cfg.RotationXY.Value; v.x = value; cfg.RotationXY.Value = v; }, "rect_rotation_x"),
+            ("Y", 0f, () => ShownEuler().y, value => { var v = cfg.RotationXY.Value; v.y = value; cfg.RotationXY.Value = v; }, "rect_rotation_y")
+        ], "F1", "rect_rotation_xy", RotationXYDriven);
+        FxFloatRow(basic, "Rotation Z", cfg.Rotation, 0f, "Z", "rect_rotation_z", "F1", () => ShownEuler().z, RotationZDriven);
         FxNumericRow3(basic, "Scale", cfg.Scale, [
-            ("X", 1f, () => cfg.Scale.Value.x, value => { var v = cfg.Scale.Value; v.x = value; cfg.Scale.Value = v; }, "rect_scale_x"),
-            ("Y", 1f, () => cfg.Scale.Value.y, value => { var v = cfg.Scale.Value; v.y = value; cfg.Scale.Value = v; }, "rect_scale_y"),
-            ("Z", 1f, () => cfg.Scale.Value.z, value => { var v = cfg.Scale.Value; v.z = value; cfg.Scale.Value = v; }, "rect_scale_z")
-        ], "F2", "rect_scale");
+            ("X", 1f, () => Shown(r => r.localScale.x, cfg.Scale.Value.x), value => { var v = cfg.Scale.Value; v.x = value; cfg.Scale.Value = v; }, "rect_scale_x"),
+            ("Y", 1f, () => Shown(r => r.localScale.y, cfg.Scale.Value.y), value => { var v = cfg.Scale.Value; v.y = value; cfg.Scale.Value = v; }, "rect_scale_y"),
+            ("Z", 1f, () => Shown(r => r.localScale.z, cfg.Scale.Value.z), value => { var v = cfg.Scale.Value; v.z = value; cfg.Scale.Value = v; }, "rect_scale_z")
+        ], "F2", "rect_scale", ScaleDriven);
         refreshPivotFields = FxNumericRow(basic, "Pivot", cfg.Pivot, [
             ("X", 0.5f, () => cfg.Pivot.Value.x, value => { var v = cfg.Pivot.Value; v.x = value; cfg.Pivot.Value = v; }, "rect_pivot_x"),
             ("Y", 0.5f, () => cfg.Pivot.Value.y, value => { var v = cfg.Pivot.Value; v.y = value; cfg.Pivot.Value = v; }, "rect_pivot_y")
@@ -314,7 +337,13 @@ internal sealed class OvInspectorBuilder(
         }, () => obj.TextUpdater?.Engine);
         FontDropDown(card, cfg);
         SpriteAssetDropDown(card, cfg);
-        FxSlider(card, "Font Size", cfg.FontSize, 48f, 1f, 512f, "text_size", "F1");
+        bool SizeDriven() => MovingManDrives(obj, MovingManTarget.TextSize);
+        // The text's real size (MovingMan, a script ...), except with Auto Size, where TMP reports
+        // the fitted size rather than the one set here.
+        TMP_Text tmpText = obj.GameObject != null ? obj.GameObject.GetComponent<TMP_Text>() : null;
+        FxSlider(card, "Font Size", cfg.FontSize, 48f, 1f, 512f, "text_size", "F1",
+            () => tmpText != null && !cfg.AutoSize.Value ? tmpText.fontSize : cfg.FontSize.Value,
+            SizeDriven);
         FxToggle(card, "Rich Text", cfg.RichText, true, "text_rich");
         FxToggle(card, "Auto Size", cfg.AutoSize, false, "text_auto_size");
         FxVector2(card, "Font Range", cfg.FontSizeRange, new Vector2(16, 64), 1f, 512f, "text_font_range", "F1");
@@ -1052,7 +1081,7 @@ internal sealed class OvInspectorBuilder(
         return built;
     }
 
-    private void Input(Transform parent, string label, string defaultValue, string value, Action<string> changed, string id, Action finished = null) {
+    private void Input(Transform parent, string label, string defaultValue, string value, Action<string> changed, string id, Action finished = null, Func<string> live = null) {
         label = InspectorLabel(label);
         var row = O5Factory.Row(O5KitAdapters.Ctx, parent, 50f);
         var input = O5Factory.Input(O5KitAdapters.Ctx, row, id, new O5InputOptions { DefaultValue = defaultValue, Value = value, OnChanged = changed, Placeholder = label, OnEndEdit = _ => {
@@ -1060,6 +1089,9 @@ internal sealed class OvInspectorBuilder(
             save();
         } });
         Track(input);
+        if (live != null) {
+            LiveInput(input, live);
+        }
     }
 
     /// <summary>The tag-expression code editor on its own (HUD editor text box). Returns its input
@@ -1901,7 +1933,7 @@ internal sealed class OvInspectorBuilder(
 
     private RectTransform Slider(Transform parent, string label, double defaultValue, double min, double max, double value, Action<double> changed, string id, string format = "F2") => Slider(parent, label, defaultValue, min, max, value, changed, id, format, true, false, null);
 
-    private RectTransform Slider(Transform parent, string label, double defaultValue, double min, double max, double value, Action<double> changed, string id, string format, bool clampDrag, bool clampInput, Func<double, double> filter = null) {
+    private RectTransform Slider(Transform parent, string label, double defaultValue, double min, double max, double value, Action<double> changed, string id, string format, bool clampDrag, bool clampInput, Func<double, double> filter = null, Func<double> live = null, Func<bool> driven = null) {
         label = InspectorLabel(label);
         var row = O5Factory.Row(O5KitAdapters.Ctx, parent, 50f);
         var slider = O5Factory.Slider(O5KitAdapters.Ctx, row, id, new O5SliderOptions { DefaultValue = defaultValue, Min = min, Max = max, Value = value, Format = format, Label = label, ClampDrag = clampDrag, ClampInput = clampInput, DragFilter = filter, InputFilter = filter, OnChanged = newValue => {
@@ -1909,10 +1941,16 @@ internal sealed class OvInspectorBuilder(
             apply();
         }, OnComplete = _ => save() });
         Track(slider);
+        if (live != null) {
+            LiveSlider(slider, live);
+        }
+        if (driven != null) {
+            LiveLock([slider], driven);
+        }
         return row;
     }
 
-    private RectTransform Toggle(Transform parent, string label, bool defaultValue, bool value, Action<bool> changed, string id) {
+    private RectTransform Toggle(Transform parent, string label, bool defaultValue, bool value, Action<bool> changed, string id, Func<bool> live = null) {
         label = InspectorLabel(label);
         var row = O5Factory.Row(O5KitAdapters.Ctx, parent, 50f);
         var toggle = O5Factory.Toggle(O5KitAdapters.Ctx, row, id, new O5ToggleOptions { DefaultValue = defaultValue, Value = value, OnChanged = newValue => {
@@ -1920,10 +1958,13 @@ internal sealed class OvInspectorBuilder(
             ApplyAndSave();
         }, Text = label });
         Track(toggle);
+        if (live != null) {
+            LiveToggle(toggle, live);
+        }
         return row;
     }
 
-    private RectTransform EnumDropDown<T>(Transform parent, string label, T defaultValue, T value, Action<T> changed, string id, Action completed = null) where T : struct, Enum {
+    private RectTransform EnumDropDown<T>(Transform parent, string label, T defaultValue, T value, Action<T> changed, string id, Action completed = null, Func<T> live = null) where T : struct, Enum {
         label = InspectorLabel(label);
         T[] values = [.. Enum.GetValues(typeof(T)).Cast<T>()];
         var row = O5Factory.Row(O5KitAdapters.Ctx, parent, 50f);
@@ -1936,6 +1977,9 @@ internal sealed class OvInspectorBuilder(
             }
         } });
         Track(dropdown);
+        if (live != null) {
+            LiveDropdown(dropdown, live);
+        }
         return row;
     }
 
@@ -2056,39 +2100,40 @@ internal sealed class OvInspectorBuilder(
         return group;
     }
 
-    private RectTransform FxSlider(Transform parent, string label, FxValue<float> fx, float defaultValue, float min, float max, string id, string format = "F2") {
-        return FxBlock(parent, label, fx, g => Slider(g, label, defaultValue, min, max, fx.Value, value => fx.Value = (float)value, id, format), id);
+    private RectTransform FxSlider(Transform parent, string label, FxValue<float> fx, float defaultValue, float min, float max, string id, string format = "F2", Func<float> shown = null, Func<bool> driven = null) {
+        Func<double> live = shown == null ? () => fx.Value : () => shown();
+        return FxBlock(parent, label, fx, g => Slider(g, label, defaultValue, min, max, live(), value => fx.Value = (float)value, id, format, true, false, null, live, driven), id);
     }
 
     private RectTransform FxSlider(Transform parent, string label, FxValue<float> fx, float defaultValue, float min, float max, string id, string format, bool clampDrag, bool clampInput, Func<double, double> filter = null) {
-        return FxBlock(parent, label, fx, g => Slider(g, label, defaultValue, min, max, fx.Value, value => fx.Value = (float)value, id, format, clampDrag, clampInput, filter), id);
+        return FxBlock(parent, label, fx, g => Slider(g, label, defaultValue, min, max, fx.Value, value => fx.Value = (float)value, id, format, clampDrag, clampInput, filter, () => fx.Value), id);
     }
 
     private RectTransform FxIntSlider(Transform parent, string label, FxValue<int> fx, int defaultValue, float min, float max, string id, string format = "F0") {
-        return FxBlock(parent, label, fx, g => Slider(g, label, defaultValue, min, max, fx.Value, value => fx.Value = Mathf.RoundToInt((float)value), id, format), id);
+        return FxBlock(parent, label, fx, g => Slider(g, label, defaultValue, min, max, fx.Value, value => fx.Value = Mathf.RoundToInt((float)value), id, format, true, false, null, () => fx.Value), id);
     }
 
     private RectTransform FxDoubleSlider(Transform parent, string label, FxValue<double> fx, double defaultValue, float min, float max, string id, string format = "F1") {
-        return FxBlock(parent, label, fx, g => Slider(g, label, defaultValue, min, max, fx.Value, value => fx.Value = value, id, format, true, false), id);
+        return FxBlock(parent, label, fx, g => Slider(g, label, defaultValue, min, max, fx.Value, value => fx.Value = value, id, format, true, false, null, () => fx.Value), id);
     }
 
     private RectTransform FxToggle(Transform parent, string label, FxValue<bool> fx, bool defaultValue, string id) {
-        return FxBlock(parent, label, fx, g => Toggle(g, label, defaultValue, fx.Value, value => fx.Value = value, id), id);
+        return FxBlock(parent, label, fx, g => Toggle(g, label, defaultValue, fx.Value, value => fx.Value = value, id, () => fx.Value), id);
     }
 
     private RectTransform FxInput(Transform parent, string label, FxValue<string> fx, string defaultValue, string id, Action<string> onChanged = null, Action finished = null) {
         return FxBlock(parent, label, fx, g => Input(g, label, defaultValue, fx.Value, value => {
             fx.Value = value;
             onChanged?.Invoke(value);
-        }, id, finished), id);
+        }, id, finished, () => fx.Value), id);
     }
 
     private RectTransform FxEnum<T>(Transform parent, string label, FxValue<T> fx, T defaultValue, string id, Action completed = null) where T : struct, Enum {
-        return FxBlock(parent, label, fx, g => EnumDropDown(g, label, defaultValue, fx.Value, value => fx.Value = value, id, completed), id, dropdown: true);
+        return FxBlock(parent, label, fx, g => EnumDropDown(g, label, defaultValue, fx.Value, value => fx.Value = value, id, completed, () => fx.Value), id, dropdown: true);
     }
 
     private RectTransform FxEnumMapped<TEnum>(Transform parent, string label, FxValue<int> fx, int defaultValue, string id, Func<int, TEnum> toEnum, Func<TEnum, int> fromEnum, Action completed = null) where TEnum : struct, Enum {
-        return FxBlock(parent, label, fx, g => EnumDropDown(g, label, toEnum(defaultValue), toEnum(fx.Value), value => fx.Value = fromEnum(value), id, completed), id, dropdown: true);
+        return FxBlock(parent, label, fx, g => EnumDropDown(g, label, toEnum(defaultValue), toEnum(fx.Value), value => fx.Value = fromEnum(value), id, completed, () => toEnum(fx.Value)), id, dropdown: true);
     }
 
     private RectTransform FxEase(Transform parent, FxValue<string> fx, O5Ease defaultValue, string id) {
@@ -2231,6 +2276,7 @@ internal sealed class OvInspectorBuilder(
                     ApplyAndSave();
                 } });
             Track(dropdown);
+            LiveDropdown(dropdown, () => TmpCompat.ToName(Math.Min(Math.Max(cfg.TextWrappingMode.Value, TmpCompat.NoWrap), TmpCompat.PreserveWhitespaceNoWrap)));
         }, "text_wrapping", dropdown: true);
     }
 
@@ -2252,6 +2298,8 @@ internal sealed class OvInspectorBuilder(
                     ApplyAndSave();
                 } });
             Track(dropdown);
+            LiveDropdown(dropdown, () => ColliderCompat.CompositeToName(Math.Min(Math.Max(cfg.CompositeOperation.Value,
+                ColliderCompat.CompositeNone), ColliderCompat.CompositeFlip)));
         }, "box_collider_composite", dropdown: true);
     }
 #endif
@@ -2413,10 +2461,11 @@ internal sealed class OvInspectorBuilder(
         FxValue<Vector2> fx,
         (string Label, float Default, Func<float> Get, Action<float> Set, string Id)[] fields,
         string format,
-        string id
+        string id,
+        Func<bool> driven = null
     ) {
         Action refresh = () => { };
-        FxBlock(parent, label, fx, group => refresh = NumericPropertyRow(group, label, fields, format), id);
+        FxBlock(parent, label, fx, group => refresh = NumericPropertyRow(group, label, fields, format, driven), id);
         return refresh;
     }
 
@@ -2426,37 +2475,42 @@ internal sealed class OvInspectorBuilder(
         FxValue<Vector3> fx,
         (string Label, float Default, Func<float> Get, Action<float> Set, string Id)[] fields,
         string format,
-        string id
+        string id,
+        Func<bool> driven = null
     ) {
         Action refresh = () => { };
-        FxBlock(parent, label, fx, group => refresh = NumericPropertyRow(group, label, fields, format), id);
+        FxBlock(parent, label, fx, group => refresh = NumericPropertyRow(group, label, fields, format, driven), id);
         return refresh;
     }
 
-    private void FxFloatRow(Transform parent, string label, FxValue<float> fx, float defaultValue, string fieldLabel, string id, string format) {
+    private void FxFloatRow(Transform parent, string label, FxValue<float> fx, float defaultValue, string fieldLabel, string id, string format, Func<float> shown = null, Func<bool> driven = null) {
         FxBlock(parent, label, fx, group => {
             NumericPropertyRow(group, label, [
-                (fieldLabel, defaultValue, () => fx.Value, value => fx.Value = value, id)
-            ], format);
+                (fieldLabel, defaultValue, shown ?? (() => fx.Value), value => fx.Value = value, id)
+            ], format, driven);
         }, id);
     }
 
     private void Vector2Sliders(Transform parent, string label, Vector2 defaults, float min, float max, Func<Vector2> get, Action<Vector2> set, string id, string format = "F2") {
-        Slider(parent, $"{label} X", defaults.x, min, max, get().x, value => set(new Vector2((float)value, get().y)), id + "_x", format);
-        Slider(parent, $"{label} Y", defaults.y, min, max, get().y, value => set(new Vector2(get().x, (float)value)), id + "_y", format);
+        Slider(parent, $"{label} X", defaults.x, min, max, get().x, value => set(new Vector2((float)value, get().y)), id + "_x", format, true, false, null, () => get().x);
+        Slider(parent, $"{label} Y", defaults.y, min, max, get().y, value => set(new Vector2(get().x, (float)value)), id + "_y", format, true, false, null, () => get().y);
     }
 
     private Action NumericPropertyRow(
         Transform parent,
         string label,
         (string Label, float Default, Func<float> Get, Action<float> Set, string Id)[] fields,
-        string format
+        string format,
+        Func<bool> driven = null
     ) {
         RectTransform row = CompactRow(parent, 44f, 6f);
         FixedLabel(row, InspectorLabel(label), 66f);
         var numericFields = new List<(O5Slider Field, Func<float> Get)>();
         foreach (var field in fields) {
             numericFields.Add(NumericField(row, field.Label, field.Default, field.Get, field.Set, field.Id, format));
+        }
+        if (driven != null) {
+            LiveLock([.. numericFields.Select(f => (O5Object)f.Field)], driven);
         }
 
         void RefreshValues() {
@@ -2492,6 +2546,7 @@ internal sealed class OvInspectorBuilder(
         element.minWidth = 100f;
         element.flexibleWidth = 1f;
         Track(field);
+        LiveSlider(field, () => get());
         return (field, get);
     }
 
@@ -2543,14 +2598,21 @@ internal sealed class OvInspectorBuilder(
             && obj.Config.ContentSizeFitterConfig.HorizontalFit.Value != ContentSizeFitter.FitMode.Unconstrained;
         bool DrivenY() => obj.Config.ContentSizeFitterConfig?.ComponentEnabled.Value == true
             && obj.Config.ContentSizeFitterConfig.VerticalFit.Value != ContentSizeFitter.FitMode.Unconstrained;
-        float PositionX() => DrivenX() && Alive() ? obj.RectTransform.anchoredPosition.x : cfg.AnchoredPosition.Value.x;
-        float PositionY() => DrivenY() && Alive() ? obj.RectTransform.anchoredPosition.y : cfg.AnchoredPosition.Value.y;
-        float SizeX() => DrivenX() && Alive() ? obj.RectTransform.sizeDelta.x : cfg.SizeDelta.Value.x;
-        float SizeY() => DrivenY() && Alive() ? obj.RectTransform.sizeDelta.y : cfg.SizeDelta.Value.y;
-        float Left() => DrivenX() && Alive() ? obj.RectTransform.offsetMin.x : cfg.GetOffsetMin(0);
-        float Right() => DrivenX() && Alive() ? -obj.RectTransform.offsetMax.x : -cfg.GetOffsetMax(0);
-        float Top() => DrivenY() && Alive() ? -obj.RectTransform.offsetMax.y : -cfg.GetOffsetMax(1);
-        float Bottom() => DrivenY() && Alive() ? obj.RectTransform.offsetMin.y : cfg.GetOffsetMin(1);
+        // MovingMan moves / resizes the RectTransform itself, like the fitter resizes it.
+        // Shown as the RectTransform is (any outside change appears); locked while a known driver
+        // (MovingMan, the fitter, a parent layout group) owns the axis.
+        bool MovedX() => MovingManDrives(obj, MovingManTarget.PositionX) || ParentLayoutPlaces(obj);
+        bool MovedY() => MovingManDrives(obj, MovingManTarget.PositionY) || ParentLayoutPlaces(obj);
+        bool SizedX() => DrivenX() || MovingManDrives(obj, MovingManTarget.SizeDeltaX) || ParentLayoutSizes(obj, 0);
+        bool SizedY() => DrivenY() || MovingManDrives(obj, MovingManTarget.SizeDeltaY) || ParentLayoutSizes(obj, 1);
+        float PositionX() => Alive() ? obj.RectTransform.anchoredPosition.x : cfg.AnchoredPosition.Value.x;
+        float PositionY() => Alive() ? obj.RectTransform.anchoredPosition.y : cfg.AnchoredPosition.Value.y;
+        float SizeX() => Alive() ? obj.RectTransform.sizeDelta.x : cfg.SizeDelta.Value.x;
+        float SizeY() => Alive() ? obj.RectTransform.sizeDelta.y : cfg.SizeDelta.Value.y;
+        float Left() => Alive() ? obj.RectTransform.offsetMin.x : cfg.GetOffsetMin(0);
+        float Right() => Alive() ? -obj.RectTransform.offsetMax.x : -cfg.GetOffsetMax(0);
+        float Top() => Alive() ? -obj.RectTransform.offsetMax.y : -cfg.GetOffsetMax(1);
+        float Bottom() => Alive() ? obj.RectTransform.offsetMin.y : cfg.GetOffsetMin(1);
 
         RectTransform fields = VerticalGroup(parent, 8f);
         var firstRow = CompactRow(fields, 44f, 6f);
@@ -2611,13 +2673,24 @@ internal sealed class OvInspectorBuilder(
         bool drivenY = DrivenY();
         bool posFx = cfg.AnchoredPosition.UseFx;
         bool sizeFx = cfg.SizeDelta.UseFx;
-        Field.SetBlocked((drivenX && StretchX()) || posFx || (StretchX() && sizeFx), true);
-        secondX.Field.SetBlocked(drivenX || sizeFx || (StretchX() && posFx), true);
-        firstY.Field.SetBlocked((drivenY && StretchY()) || posFx || (StretchY() && sizeFx), true);
-        secondY.Field.SetBlocked(drivenY || sizeFx || (StretchY() && posFx), true);
+        // Which fields something else is setting right now (re-checked live: MovingMan can be
+        // switched on, retargeted or the anchors stretched while the panel is open).
+        (bool, bool, bool, bool) Locks() => (
+            (StretchX() ? SizedX() || MovedX() : MovedX()) || posFx || (StretchX() && sizeFx),
+            (StretchX() ? SizedX() || MovedX() : SizedX()) || sizeFx || (StretchX() && posFx),
+            (StretchY() ? SizedY() || MovedY() : MovedY()) || posFx || (StretchY() && sizeFx),
+            (StretchY() ? SizedY() || MovedY() : SizedY()) || sizeFx || (StretchY() && posFx));
+        void ApplyLocks((bool, bool, bool, bool) locks) {
+            Field.SetBlocked(locks.Item1, true);
+            secondX.Field.SetBlocked(locks.Item2, true);
+            firstY.Field.SetBlocked(locks.Item3, true);
+            secondY.Field.SetBlocked(locks.Item4, true);
+        }
+        ApplyLocks(Locks());
+        Live(Locks, ApplyLocks);
         RefreshValues();
 
-        if (drivenX || drivenY || posFx || sizeFx) {
+        if (Alive()) {
             controls.Add(new O5Watcher(O5KitAdapters.Ctx, "rect_transform_driven", fields, RefreshValues));
         }
         return RefreshValues;
@@ -2700,7 +2773,7 @@ internal sealed class OvInspectorBuilder(
     }
 
     private static void SetDisplayedValue(O5Slider field, double value) {
-        if (Math.Abs(field.Value - value) > 0.0001) {
+        if ((float)field.Value != (float)value) {
             field.Set(value, false);
         }
     }
@@ -2728,6 +2801,7 @@ internal sealed class OvInspectorBuilder(
         TextMeshProUGUI horizontalLabel = AddAnchorHeader(summary.Rect, true, ModeAbbrev(ModeForAxis(cfg, 0), false));
         TextMeshProUGUI verticalLabel = AddAnchorHeader(summary.Rect, false, ModeAbbrev(ModeForAxis(cfg, 1), true));
         summary.Rect.AddToolTip(O5KitAdapters.Ctx, () => AnchorCellName(ModeForAxis(cfg, 0), ModeForAxis(cfg, 1)));
+        summary.ValueProbe = () => $"{ModeForAxis(cfg, 0)}|{ModeForAxis(cfg, 1)}";
 
         RectTransform popup = CreateAnchorPopup(UICore.Canvas.transform);
         RectTransform blocker = CreatePopupBlocker(UICore.Canvas.transform);
@@ -2816,7 +2890,9 @@ internal sealed class OvInspectorBuilder(
         bool lastShift = false;
         bool lastAlt = false;
 
+        var shownModes = (H: ModeForAxis(cfg, 0), V: ModeForAxis(cfg, 1));
         void RefreshSummary() {
+            shownModes = (ModeForAxis(cfg, 0), ModeForAxis(cfg, 1));
             UnityEngine.Object.Destroy(summaryGraphic);
             summaryGraphic = AddAnchorGraphic(summary.Rect, ModeForAxis(cfg, 0), ModeForAxis(cfg, 1), false, false, 42f);
             horizontalLabel.text = ModeAbbrev(ModeForAxis(cfg, 0), false);
@@ -2922,6 +2998,15 @@ internal sealed class OvInspectorBuilder(
         };
         popup.gameObject.GetComponent<OventHandler>().OnHoverUpdate = () => RefreshModifierGraphics();
         RefreshSummary();
+        // Anchors changed elsewhere (not through this popup): redraw and light the change bar.
+        liveSyncs.Add(() => {
+            if (summary.IsDisposed || shownModes == (ModeForAxis(cfg, 0), ModeForAxis(cfg, 1))) {
+                return;
+            }
+            RefreshSummary();
+            summary.FlashExternalChange();
+        });
+        EnsureLiveWatcher();
         return RefreshSummary;
     }
 
@@ -2947,6 +3032,7 @@ internal sealed class OvInspectorBuilder(
         TextMeshProUGUI horizontalLabel = AddAnchorHeader(summary.Rect, true, ModeAbbrev(ModeForAxis(cfg, 0), false));
         TextMeshProUGUI verticalLabel = AddAnchorHeader(summary.Rect, false, ModeAbbrev(ModeForAxis(cfg, 1), true));
         summary.Rect.AddToolTip(O5KitAdapters.Ctx, () => AnchorCellName(ModeForAxis(cfg, 0), ModeForAxis(cfg, 1)));
+        summary.ValueProbe = () => $"{ModeForAxis(cfg, 0)}|{ModeForAxis(cfg, 1)}";
 
         RectTransform popup = CreateAnchorPopup(UICore.Canvas.transform);
         RectTransform blocker = CreatePopupBlocker(UICore.Canvas.transform);
@@ -3035,7 +3121,9 @@ internal sealed class OvInspectorBuilder(
         bool lastShift = false;
         bool lastAlt = false;
 
+        var shownModes = (H: ModeForAxis(cfg, 0), V: ModeForAxis(cfg, 1));
         void RefreshSummary() {
+            shownModes = (ModeForAxis(cfg, 0), ModeForAxis(cfg, 1));
             UnityEngine.Object.Destroy(summaryGraphic);
             summaryGraphic = AddAnchorGraphic(summary.Rect, ModeForAxis(cfg, 0), ModeForAxis(cfg, 1), false, false, 42f);
             horizontalLabel.text = ModeAbbrev(ModeForAxis(cfg, 0), false);
@@ -3137,6 +3225,15 @@ internal sealed class OvInspectorBuilder(
         };
         popup.gameObject.GetComponent<OventHandler>().OnHoverUpdate = () => RefreshModifierGraphics();
         RefreshSummary();
+        // Anchors changed elsewhere (not through this popup): redraw and light the change bar.
+        liveSyncs.Add(() => {
+            if (summary.IsDisposed || shownModes == (ModeForAxis(cfg, 0), ModeForAxis(cfg, 1))) {
+                return;
+            }
+            RefreshSummary();
+            summary.FlashExternalChange();
+        });
+        EnsureLiveWatcher();
         return RefreshSummary;
     }
 
@@ -3663,6 +3760,7 @@ internal sealed class OvInspectorBuilder(
             apply();
         }, OnComplete = _ => save(), Label = InspectorLabel(label) });
         Track(picker);
+        LiveColor(picker, get);
     }
 
     private GameObject GradientColorSliders(
@@ -3740,6 +3838,157 @@ internal sealed class OvInspectorBuilder(
     private void Track(O5Object control) {
         control.Rect.offsetMax = Vector2.zero;
         controls.Add(control);
+    }
+
+    // ---- live values ----
+    // Fields follow their setting while shown: a change made elsewhere (dragging in the HUD
+    // editor, undo, a script ...) shows at once, and the control lights its change bar.
+
+    private readonly List<Action> liveSyncs = [];
+    private O5Watcher liveWatcher;
+
+    /// <summary>Calls <paramref name="show"/> whenever <paramref name="get"/> returns something new.</summary>
+    private void Live<T>(Func<T> get, Action<T> show) {
+        T last;
+        try {
+            last = get();
+        } catch {
+            return;
+        }
+        liveSyncs.Add(() => {
+            T now = get();
+            if (EqualityComparer<T>.Default.Equals(now, last)) {
+                return;
+            }
+            last = now;
+            show(now);
+        });
+        EnsureLiveWatcher();
+    }
+
+    private void EnsureLiveWatcher() {
+        if (liveWatcher == null) {
+            liveWatcher = new O5Watcher(O5KitAdapters.Ctx, "inspector_live", content, RunLive);
+            controls.Add(liveWatcher);
+        }
+    }
+
+    private void RunLive() {
+        for (int i = 0; i < liveSyncs.Count; i++) {
+            try {
+                liveSyncs[i]();
+            } catch {
+            }
+        }
+    }
+
+    // ---- driven values ----
+    // Something other than the settings sets these at runtime (MovingMan, a content size fitter):
+    // the field shows the component's real value, follows it, and stays locked meanwhile.
+
+    private static bool MovingManDrives(OvObject obj, MovingManTarget targets) {
+        var mm = obj?.Config.MovingManConfig;
+        return mm != null && mm.ComponentEnabled.Value && (mm.Target.Value & targets) != 0;
+    }
+
+    private static bool Alive(OvObject obj) => obj != null && obj.GameObject != null && obj.RectTransform != null;
+
+    // A parent layout group places its children (and sizes them when it controls that axis).
+    private static bool ParentLayoutPlaces(OvObject obj) {
+        var parent = obj?.Parent?.Config;
+        return parent != null && (parent.HorizontalLayoutGroupConfig?.ComponentEnabled.Value == true
+            || parent.VerticalLayoutGroupConfig?.ComponentEnabled.Value == true
+            || parent.GridLayoutGroupConfig?.ComponentEnabled.Value == true);
+    }
+
+    private static bool ParentLayoutSizes(OvObject obj, int axis) {
+        var parent = obj?.Parent?.Config;
+        if (parent == null) {
+            return false;
+        }
+        if (parent.GridLayoutGroupConfig?.ComponentEnabled.Value == true) {
+            return true;
+        }
+        var h = parent.HorizontalLayoutGroupConfig;
+        if (h?.ComponentEnabled.Value == true && (axis == 0 ? h.ChildControlWidth.Value : h.ChildControlHeight.Value)) {
+            return true;
+        }
+        var v = parent.VerticalLayoutGroupConfig;
+        return v?.ComponentEnabled.Value == true && (axis == 0 ? v.ChildControlWidth.Value : v.ChildControlHeight.Value);
+    }
+
+    // Euler angles read back as 0..360; settings usually hold -180..180.
+    private static float SignedAngle(float angle) {
+        angle %= 360f;
+        if (angle > 180f) {
+            angle -= 360f;
+        } else if (angle <= -180f) {
+            angle += 360f;
+        }
+        return angle;
+    }
+
+    /// <summary>Locks <paramref name="fields"/> while <paramref name="driven"/> holds (re-checked live).</summary>
+    private void LiveLock(IReadOnlyList<O5Object> fields, Func<bool> driven) {
+        void Apply(bool locked) {
+            foreach (var field in fields) {
+                if (!field.IsDisposed) {
+                    field.SetBlocked(locked, true);
+                }
+            }
+        }
+        bool now = false;
+        try {
+            now = driven();
+        } catch {
+        }
+        if (now) {
+            Apply(true);
+        }
+        Live(driven, Apply);
+    }
+
+    private void LiveSlider(O5Slider slider, Func<double> get) {
+        // Any change, even below the shown decimals; the slider itself tells real changes from
+        // its own value coming back.
+        Live(get, value => {
+            if (!slider.IsDisposed && (float)slider.Value != (float)value) {
+                slider.Set(value, false);
+            }
+        });
+    }
+
+    private void LiveToggle(O5Toggle toggle, Func<bool> get) {
+        Live(get, value => {
+            if (!toggle.IsDisposed && toggle.Value != value) {
+                toggle.Set(value, false);
+            }
+        });
+    }
+
+    private void LiveDropdown<T>(O5Dropdown<T> dropdown, Func<T> get) {
+        Live(get, value => {
+            if (!dropdown.IsDisposed && !EqualityComparer<T>.Default.Equals(dropdown.Value, value)) {
+                dropdown.Set(value, false);
+            }
+        });
+    }
+
+    private void LiveInput(O5InputField input, Func<string> get) {
+        Live(get, value => {
+            // Never under the caret.
+            if (!input.IsDisposed && !input.InputField.isFocused && input.Value != (value ?? string.Empty)) {
+                input.Set(value ?? string.Empty, false);
+            }
+        });
+    }
+
+    private void LiveColor(O5ColorPicker picker, Func<Color> get) {
+        Live(get, value => {
+            if (!picker.IsDisposed && !((Color32)picker.Value).Equals((Color32)value)) {
+                picker.Set(value, false);
+            }
+        });
     }
 
     private void ApplyAndSave() {
