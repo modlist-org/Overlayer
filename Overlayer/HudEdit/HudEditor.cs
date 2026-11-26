@@ -112,6 +112,7 @@ internal static partial class HudEditor {
         EndDrag();
         CloseContextMenu();
         CloseKeysBubble();
+        CommitAndCloseInlineEdit(immediate: true);
         CommitPanelEdit();
         FlushSave();
         selection.Clear();
@@ -200,6 +201,7 @@ internal static partial class HudEditor {
     // ---- selection ----
 
     private static void SetSelection(IEnumerable<HudElement> items) {
+        CommitAndCloseInlineEdit(immediate: true);
         CommitPanelEdit();
         selection.Clear();
         selection.AddRange(items.Where(e => e != null).Distinct());
@@ -213,6 +215,7 @@ internal static partial class HudEditor {
         if (element == null) {
             return;
         }
+        CommitAndCloseInlineEdit(immediate: true);
         CommitPanelEdit();
         if (!selection.Remove(element)) {
             selection.Add(element);
@@ -397,6 +400,14 @@ internal static partial class HudEditor {
         }
 
         bool overUi = PointerOverEditorUi(mouse);
+        if (InlineEditOpen && Time.frameCount != inlineOpenedFrame
+            && (Input.GetMouseButtonDown(0) || Input.GetMouseButtonDown(1))
+            && !PointerOverInlineEditor(mouse)) {
+            CommitAndCloseInlineEdit();
+            if (!overUi && Input.GetMouseButtonDown(0)) {
+                return;
+            }
+        }
         if (ContextMenuOpen && Time.frameCount != contextMenuOpenedFrame
             && (Input.GetMouseButtonDown(0) || Input.GetMouseButtonDown(1))
             && !RectTransformUtility.RectangleContainsScreenPoint(contextMenu, mouse, null)) {

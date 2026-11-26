@@ -123,6 +123,16 @@ public sealed class UICodeInputField
         if (swallowValidateFrame == Time.frameCount && (addedChar == swallowValidateChar || (swallowValidateChar == '\n' && addedChar == '\r'))) {
             return '\0';
         }
+        // EventSystem.Update can invoke OnUpdateSelected before this MonoBehaviour's Update.
+        if (addedChar is '\n' or '\r' && isFocused && string.IsNullOrEmpty(O5Input.CompositionString)
+            && (O5Input.GetKeyDown(KeyCode.Return) || O5Input.GetKeyDown(KeyCode.KeypadEnter))) {
+            KeyCode key = O5Input.GetKeyDown(KeyCode.KeypadEnter) ? KeyCode.KeypadEnter : KeyCode.Return;
+            if (HandleKey?.Invoke(key) == true) {
+                swallowValidateFrame = Time.frameCount;
+                swallowValidateChar = '\n';
+                return '\0';
+            }
+        }
         return addedChar;
     }
 
@@ -183,7 +193,8 @@ public sealed class UICodeInputField
     }
 
     private void Update() {
-        if (Field != null && isFocused && string.IsNullOrEmpty(O5Input.CompositionString)) {
+        if (Field != null && isFocused && string.IsNullOrEmpty(O5Input.CompositionString)
+            && swallowValidateFrame != Time.frameCount) {
             KeyCode key = O5Input.GetKeyDown(KeyCode.Tab) ? KeyCode.Tab
                 : O5Input.GetKeyDown(KeyCode.Return) ? KeyCode.Return
                 : O5Input.GetKeyDown(KeyCode.KeypadEnter) ? KeyCode.KeypadEnter

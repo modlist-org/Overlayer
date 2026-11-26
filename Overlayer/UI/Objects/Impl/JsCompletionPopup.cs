@@ -89,8 +89,8 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
         canvasRect = sourceText.canvas?.rootCanvas?.GetComponent<RectTransform>()
             ?? UICore.CanvasObj?.GetComponent<RectTransform>();
 
-        input.OnFieldDisabled = Deactivate;
-        input.OnFieldDestroyed = Dispose;
+        input.OnFieldDisabled += Deactivate;
+        input.OnFieldDestroyed += Dispose;
 
         GameObject popup = new("JsCompletion");
         popup.transform.SetParent(canvasRect, false);
@@ -505,14 +505,20 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
         windowStart = 0;
         visibleRowCount = 0;
         hoveredIndex = -1;
-        popupRect?.gameObject.SetActive(false);
+        if (popupRect != null) {
+            popupRect.gameObject.SetActive(false);
+        }
     }
 
     private void Deactivate() {
         Hide();
     }
 
-    private void Dispose() {
+    public void Dispose() {
+        if (input != null) {
+            input.OnFieldDisabled -= Deactivate;
+            input.OnFieldDestroyed -= Dispose;
+        }
         Hide();
         if (popupRect != null) {
             UnityEngine.Object.Destroy(popupRect.gameObject);

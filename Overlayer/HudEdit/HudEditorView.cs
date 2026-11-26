@@ -927,6 +927,7 @@ internal static partial class HudEditor {
             h.SetAsLastSibling();
         }
         RenderAutoAnchor();
+        UpdateInlineTether();
     }
 
     private static void EnsureFrameSprites() {

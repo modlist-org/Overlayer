@@ -492,8 +492,8 @@ internal static class TutorialContent {
                 .Until(() => CountTexts() > textsAtStart)
                 .NeedEditor(),
             new TutorialStep("FIRST_TYPE", "Enter a live tag",
-                "<b>Double-click</b> the text, type «FPS {Fps:0}», then click outside to finish.",
-                "You can also enter the same text in the inspector panel's Text box, which is handy for longer expressions. Typing «{» opens the tag list, and tag names are case-sensitive.")
+                "<b>Double-click</b> the text, type «FPS {Fps:0}», then click outside or the check button to finish.",
+                "A compact code editor opens connected to the text—drag its top bar to move it, and type «{» for tag autocomplete (case-sensitive). Pressing Esc also saves and closes, and you can edit in the inspector panel's Text box too.")
                 .Looks(Face.Talk)
                 .Until(() => !O5InputBlocker.IsEditing
                     && UserObjects().Any(o => o.Config?.TextEngineConfig?.Text.StaticValue?.Contains("{Fps") == true))

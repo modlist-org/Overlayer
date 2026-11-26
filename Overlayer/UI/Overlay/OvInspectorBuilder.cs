@@ -1638,7 +1638,7 @@ internal sealed class OvInspectorBuilder(
         return hex.Any(char.IsLetter) && (hex.Any(char.IsDigit) || hex == hex.ToUpperInvariant());
     }
 
-    private static void UpdateLineNumbers(
+    internal static void UpdateLineNumbers(
         TextMeshProUGUI lineNumbers,
         string value,
         CompileDiagnostic[] diagnostics = null,
@@ -1793,7 +1793,7 @@ internal sealed class OvInspectorBuilder(
     // layoutKey = (width, height, canvas scale) of the last forced rebuild.
     // ponytail: other TMP dirtying (reparenting, animated properties) isn't tracked; HighlightProbe
     // repaints on the next frame if that wipes the colors.
-    private static int BuildTextGeometryKey(TMP_Text text, ref Vector3 layoutKey) {
+    internal static int BuildTextGeometryKey(TMP_Text text, ref Vector3 layoutKey) {
         Rect layoutRect = text.rectTransform.rect;
         Vector3 currentLayout = new(layoutRect.width, layoutRect.height, text.canvas ? text.canvas.scaleFactor : 1f);
         if (text.havePropertiesChanged || currentLayout != layoutKey) {
@@ -1822,7 +1822,7 @@ internal sealed class OvInspectorBuilder(
     private static TagSyntaxKind?[] BuildSyntaxKinds(string source, TagSyntaxSpan[] spans)
         => TagSyntaxHighlighter.BuildSyntaxKinds(source, spans);
 
-    private static HighlightProbe ApplySyntaxHighlighting(TMP_Text text, TagSyntaxKind?[] kinds) {
+    internal static HighlightProbe ApplySyntaxHighlighting(TMP_Text text, TagSyntaxKind?[] kinds) {
         HighlightProbe probe = HighlightProbe.None;
         Color32 plain = text.color;
         var textInfo = text.textInfo;
@@ -1850,13 +1850,13 @@ internal sealed class OvInspectorBuilder(
         return probe;
     }
 
-    private static bool SameColor(Color32 a, Color32 b)
+    internal static bool SameColor(Color32 a, Color32 b)
         => a.r == b.r && a.g == b.g && a.b == b.b && a.a == b.a;
 
     // One highlighted vertex remembered after recoloring. A mesh rebuild resets every vertex to the
     // plain color, so if this one lost its color the highlight has to be reapplied.
     // With nothing highlighted a rebuild produces the same colors, so there is nothing to check.
-    private readonly struct HighlightProbe(int material, int vertex, Color32 color) {
+    internal readonly struct HighlightProbe(int material, int vertex, Color32 color) {
         public static readonly HighlightProbe None = new(-1, 0, default);
         public readonly int Material = material;
         private readonly int vertex = vertex;
