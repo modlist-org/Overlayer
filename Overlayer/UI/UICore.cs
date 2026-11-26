@@ -64,6 +64,7 @@ public static class UICore {
         Canvas = CanvasObj.AddComponent<Canvas>();
         Canvas.renderMode = RenderMode.ScreenSpaceOverlay;
         Canvas.sortingOrder = 32765;
+        O5ColorSpace.Track(Canvas);
 
         CanvasScaler = CanvasObj.AddComponent<CanvasScaler>();
         CanvasScaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
@@ -95,6 +96,7 @@ public static class UICore {
             var tooltipCanvas = tooltipTr.gameObject.AddComponent<Canvas>();
             tooltipCanvas.overrideSorting = true;
             tooltipCanvas.sortingOrder = 32767;
+            O5ColorSpace.Track(tooltipCanvas);
         }
         RegisterToggleShortcut();
         HudEdit.HudEditor.RegisterShortcut();

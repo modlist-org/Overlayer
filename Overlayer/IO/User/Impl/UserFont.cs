@@ -75,10 +75,14 @@ public class UserFont : UserResourceBase<TMP_FontAsset>, ISettingsFile {
                 return Result.InvalidArgument;
             }
 
+            var font = O5Kit.Resource.O5Resources.TryCreateFontAssetFromPath(path, 48, 8, 2048, 2048, true);
+            if (font != null) {
+                Cache[key] = (path, font);
+                return Result.Success;
+            }
 #if ML && IL2CPP
-            // Stripped runtimes expose no Font(path) ctor: fall back to a
-            // game font so text stays readable. Stolen assets are tracked and
-            // never destroyed (see Remove/Dispose).
+            // Stripped runtimes that cannot load TTF bytes fall back to a game font
+            // so text stays readable. Stolen assets are tracked and never destroyed.
             var stolen = Overlayer.Resource.ResourceManager.StealGameFont();
             if (stolen == null) {
                 return Result.Failed;
@@ -91,11 +95,7 @@ public class UserFont : UserResourceBase<TMP_FontAsset>, ISettingsFile {
 
             return Result.Success;
 #else
-            var font = Overlayer.Resource.ResourceManager.CreateRuntimeFontAsset(new Font(path));
-
-            Cache[key] = (path, font);
-
-            return Result.Success;
+            return Result.Failed;
 #endif
         } catch (Exception e) {
             MainCore.Log.Err($"{nameof(UserResourceManager)} Font load failed: {e}");

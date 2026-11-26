@@ -78,9 +78,6 @@ public sealed class IconManager : IDisposable {
         => O5FactoryIcons.ApplyGlyph(tmp, GetFont(icon), UIIconGlyphs.GetGlyph(icon));
 
     private TMP_FontAsset LoadOverlayerFont() {
-#if ML && IL2CPP
-        return null;
-#else
         try {
             using Stream stream = _assembly.GetManifestResourceStream(OverlayerFontResource);
             if (stream == null) {
@@ -104,21 +101,10 @@ public sealed class IconManager : IDisposable {
                 File.WriteAllBytes(tempPath, data);
             }
 
-            Font font = new(tempPath);
-            return TMP_FontAsset.CreateFontAsset(
-                font,
-                90,
-                6,
-                GlyphRenderMode.SDFAA,
-                1024,
-                1024,
-                AtlasPopulationMode.Dynamic,
-                true
-            );
+            return O5Resources.TryCreateFontAssetFromPath(tempPath, 90, 6, 1024, 1024, true);
         } catch {
             return null;
         }
-#endif
     }
 
     private static string ComputeShortHash(byte[] data) {

@@ -232,13 +232,6 @@ public sealed class ResourceManager(Assembly assembly, string resourcePath) : ID
             return null;
         }
 
-#if ML && IL2CPP
-        // Stripped runtimes expose no Font(path) ctor, so custom TTF bytes
-        // cannot become fonts. Fall back to a game-shipped font asset so text
-        // stays readable (wrong typeface beats invisible text). Not cached on
-        // miss: game fonts may stream in later and the next call retries.
-        return StealGameFont();
-#else
         string directory = Path.GetDirectoryName(tempPath);
         if (!string.IsNullOrEmpty(directory)) {
             Directory.CreateDirectory(directory);
@@ -246,12 +239,9 @@ public sealed class ResourceManager(Assembly assembly, string resourcePath) : ID
 
         File.WriteAllBytes(tempPath, data);
 
-        Font font = new(tempPath);
-        TMP_FontAsset asset;
-        try {
-            asset = CreateRuntimeFontAsset(font);
-        } catch {
-            // Old/stripped games may lack the TMP shader CreateFontAsset needs.
+        TMP_FontAsset asset = O5Kit.Resource.O5Resources.TryCreateFontAssetFromPath(tempPath, 48, 8, 2048, 2048, true);
+        if (asset == null) {
+            // Stripped games without Font(path)/FreeType/TMP shader fall back to a game font.
             asset = StealGameFont();
             if (asset != null) cache[path] = asset;
             return asset;
@@ -309,7 +299,6 @@ public sealed class ResourceManager(Assembly assembly, string resourcePath) : ID
 
         cache[path] = asset;
         return asset;
-#endif
     }
 
     public T Get<T>(Asset asset) where T : class {

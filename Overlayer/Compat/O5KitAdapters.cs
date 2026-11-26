@@ -315,12 +315,7 @@ public static class O5KitAdapters {
         }
         _behavioursRegistered = true;
         try {
-            Il2CppInterop.Runtime.Injection.ClassInjector.RegisterTypeInIl2Cpp<O5Kit.Behaviour.EmptyGraphic>();
-            Il2CppInterop.Runtime.Injection.ClassInjector.RegisterTypeInIl2Cpp<O5Kit.Behaviour.DragHandler>();
-            Il2CppInterop.Runtime.Injection.ClassInjector.RegisterTypeInIl2Cpp<O5Kit.Behaviour.NonRaycastButton>();
-            Il2CppInterop.Runtime.Injection.ClassInjector.RegisterTypeInIl2Cpp<O5Kit.Behaviour.OventHandler>();
-            Il2CppInterop.Runtime.Injection.ClassInjector.RegisterTypeInIl2Cpp<O5Kit.Behaviour.ResizeHandle>();
-            Il2CppInterop.Runtime.Injection.ClassInjector.RegisterTypeInIl2Cpp<O5Kit.Behaviour.UIScrollController>();
+            O5Kit.Core.O5Context.RegisterIl2CppTypes();
         } catch {
         }
     }

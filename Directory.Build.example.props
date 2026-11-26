@@ -1,22 +1,27 @@
-<!-- Local dev only: copy to Directory.Build.props (git-ignored) with your game path. -->
+<!-- Local dev only: copy to Directory.Build.props (git-ignored) with your game or O5Dev paths. -->
 <Project>
     <PropertyGroup>
         <!--
-            Windows (Steam)
-            C:/Program Files (x86)/Steam/steamapps/common/A Dance of Fire and Ice
-            Linux (Steam)
-            ~/.local/share/Steam/steamapps/common/A Dance of Fire and Ice
+            Sibling O5Dev test host (recommended for local dev):
+            <GamePath Condition="'$(GamePath)' == ''">$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../O5Dev/Builds/Mono'))</GamePath>
+            <GameData Condition="'$(GameData)' == ''">O5Dev_Data</GameData>
+
+            Or a real game install:
+            Windows (Steam): C:/Program Files (x86)/Steam/steamapps/common/A Dance of Fire and Ice
+            Linux (Steam): ~/.local/share/Steam/steamapps/common/A Dance of Fire and Ice
         -->
-        <GamePath>/path/to/game</GamePath>
-        <GameData>game_Data</GameData>
+        <GamePath Condition="'$(GamePath)' == ''">/path/to/game</GamePath>
+        <GameData Condition="'$(GameData)' == ''">game_Data</GameData>
 
         <!--
             IL2CPP Configurations (Optional)
-            Uncomment and specify paths below when building with IL2CPP configurations:
+            For sibling O5Dev IL2CPP:
+            <Il2CppPath Condition="'$(Il2CppPath)' == ''">$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../O5Dev/Builds/IL2CPP'))</Il2CppPath>
+            <Il2CppData Condition="'$(Il2CppData)' == ''">$(Il2CppPath)/MelonLoader/Il2CppAssemblies</Il2CppData>
         -->
         <!--
-            <Il2CppPath>/path/to/il2cpp/game</Il2CppPath>
-            <Il2CppData>/path/to/il2cppAssemblies</Il2CppData>
+            <Il2CppPath Condition="'$(Il2CppPath)' == ''">/path/to/il2cpp/game</Il2CppPath>
+            <Il2CppData Condition="'$(Il2CppData)' == ''">$(Il2CppPath)/MelonLoader/Il2CppAssemblies</Il2CppData>
         -->
     </PropertyGroup>
 </Project>

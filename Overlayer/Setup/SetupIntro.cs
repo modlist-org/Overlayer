@@ -236,7 +236,8 @@ internal static class SetupIntro {
         overlay.anchorMax = Vector2.one;
         overlay.offsetMin = overlay.offsetMax = Vector2.zero;
         // Own canvas: the per-frame spin, fills and fades rebatch only the intro, not the whole window.
-        overlay.gameObject.AddComponent<Canvas>();
+        var introCanvas = overlay.gameObject.AddComponent<Canvas>();
+        O5Kit.Core.O5ColorSpace.Track(introCanvas);
         overlay.gameObject.AddComponent<GraphicRaycaster>();
         welcomeSize = Vector2.zero;
         // Backdrop sits under a 45-degree stencil mask that swipes it away at the end.

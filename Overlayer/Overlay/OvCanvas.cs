@@ -40,6 +40,7 @@ public class OvCanvas : ISettingsFile {
         GameObject.transform.SetParent(OverlayCore.Transform, false);
         RectTransform = GameObject.AddComponent<RectTransform>();
         Canvas = GameObject.AddComponent<Canvas>();
+        O5Kit.Core.O5ColorSpace.Track(Canvas, fallbackBgLuma: 0.30f);
         CanvasGroup = GameObject.AddComponent<CanvasGroup>();
         CanvasScaler = GameObject.AddComponent<CanvasScaler>();
         GraphicRaycaster = GameObject.AddComponent<GraphicRaycaster>();
@@ -236,6 +237,7 @@ public class OvCanvas : ISettingsFile {
         }
 
         if (Canvas != null) {
+            O5Kit.Core.O5ColorSpace.Untrack(Canvas);
             Object.Destroy(Canvas.gameObject);
         }
     }
