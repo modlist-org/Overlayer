@@ -35,7 +35,7 @@ internal static class UISound {
     private const float ReverbWetMix = 0.05f;
     private const float GlobalPitchScale = 1.4f;
     private const float ClipMasterGain = 3.6f;
-    private const float ListenerScanInterval = 0.5f;
+    private const float ListenerScanInterval = 2.0f;
 
     private enum ClipId {
         Click,
@@ -70,9 +70,9 @@ internal static class UISound {
     private static AudioListener cachedExternalListener;
     private static float nextListenerScanAt;
     private static UnityEngine.Events.UnityAction<Scene, LoadSceneMode> sceneLoadedHandler;
-    private static readonly AudioSource[] Sources = new AudioSource[4];
+    private static readonly AudioSource[] Sources = new AudioSource[16];
+    private static readonly float[] SourceBusyUntil = new float[16];
     private static readonly AudioClip[] Clips = new AudioClip[(int)ClipId.Count];
-    private static int sourceCursor;
 
     private static bool ready;
     private static bool disposed;
@@ -153,6 +153,10 @@ internal static class UISound {
             ClearFocusedInputState();
             ClearActiveSlider();
             return;
+        }
+
+        if (!ready) {
+            EnsureReady();
         }
 
         TickActiveSlider();
@@ -326,6 +330,7 @@ internal static class UISound {
             host = null;
         }
         Array.Clear(Sources, 0, Sources.Length);
+        Array.Clear(SourceBusyUntil, 0, SourceBusyUntil.Length);
         ClearFocusedInputState();
         ready = false;
     }
@@ -747,17 +752,40 @@ internal static class UISound {
         if (clip == null) {
             return;
         }
-        var s = Sources[sourceCursor++ & (Sources.Length - 1)];
-        if (s == null || !s.isActiveAndEnabled) {
-            return;
-        }
         float pitchScale = id switch {
             ClipId.DdOpen or ClipId.DdClose or ClipId.DdPick or ClipId.OllyVoice => 1f,
             ClipId.Click => GlobalPitchScale * 1.4f,
             _ => GlobalPitchScale,
         };
-        s.pitch = pitch * pitchScale;
+        float actualPitch = pitch * pitchScale;
+        float now = Time.unscaledTime;
+        int chosen = PickSource(now);
+        if (chosen < 0) {
+            return;
+        }
+        var s = Sources[chosen];
+        s.pitch = actualPitch;
         s.PlayOneShot(clip, volumeScale * master);
+        SourceBusyUntil[chosen] = now + clip.length / Mathf.Max(0.25f, actualPitch);
+    }
+
+    private static int PickSource(float now) {
+        int best = -1;
+        float earliest = float.PositiveInfinity;
+        for (int i = 0; i < Sources.Length; i++) {
+            var s = Sources[i];
+            if (s == null || !s.isActiveAndEnabled) {
+                continue;
+            }
+            if (now >= SourceBusyUntil[i]) {
+                return i;
+            }
+            if (SourceBusyUntil[i] < earliest) {
+                earliest = SourceBusyUntil[i];
+                best = i;
+            }
+        }
+        return best;
     }
 
     private static void EnsureReady() {
@@ -828,6 +856,7 @@ internal static class UISound {
                     host = null;
                 }
                 Array.Clear(Sources, 0, Sources.Length);
+                Array.Clear(SourceBusyUntil, 0, SourceBusyUntil.Length);
 
                 var parent = MainCore.Runtime != null && MainCore.Root != null && MainCore.Root.activeInHierarchy
                     ? MainCore.Root.transform
@@ -843,6 +872,7 @@ internal static class UISound {
                 for (int i = 0; i < Sources.Length; i++) {
                     Sources[i] = CreateSource(host, loop: false, volume: 1.0f);
                 }
+                SyncFallbackListener(allowCreate: true, forceScan: true);
             }
 
             if (!clipsAlive) {
@@ -887,6 +917,10 @@ internal static class UISound {
         var s = go.AddComponent<AudioSource>();
         s.playOnAwake = false;
         s.spatialBlend = 0f;
+        s.priority = 32;
+        s.bypassEffects = true;
+        s.bypassListenerEffects = true;
+        s.bypassReverbZones = true;
         s.ignoreListenerPause = true;
         s.loop = loop;
         s.volume = volume;
