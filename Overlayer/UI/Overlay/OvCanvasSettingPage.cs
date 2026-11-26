@@ -416,12 +416,22 @@ public partial class OvCanvasSettingPage : IDisposable {
         var btnDel = O5Factory.Button(O5KitAdapters.Ctx, hierCtrlToolbar.transform, "btn_hier_del", new O5ButtonOptions { Icon = MainCore.Icons.Get(UIIcon.X), OnClick = () => { }, Height = 36f });
         Utility.HoldToConfirm.Attach(btnDel, () => {
             if (selectedObject == null) {
-                if (currentCanvas == null) {
+                if (currentCanvas != null) {
+                    var canvasToDelete = currentCanvas;
+                    if (OverlayCore.DeleteOvCanvas(canvasToDelete)) {
+                        CloseCanvasTab(activeTab);
+                    }
                     return;
                 }
-                var canvasToDelete = currentCanvas;
-                if (OverlayCore.DeleteOvCanvas(canvasToDelete)) {
-                    CloseCanvasTab(activeTab);
+                if (rootObject != null) {
+                    var rootToDelete = rootObject;
+                    if (OverlayCore.DeleteObject(rootToDelete)) {
+                        rootObject = null;
+                        selectedObject = null;
+                        Close(true);
+                        onBackAction?.Invoke();
+                    }
+                    return;
                 }
                 return;
             }
@@ -472,7 +482,7 @@ public partial class OvCanvasSettingPage : IDisposable {
             RebuildHierarchy();
             RebuildInspector();
             SaveConfig();
-        }, canConfirm: () => selectedObject != null || currentCanvas != null);
+        }, canConfirm: () => selectedObject != null || currentCanvas != null || rootObject != null);
 
         btnDel.Rect.offsetMax = Vector2.zero;
         permanentUiObjects.Add(btnDel);
@@ -594,6 +604,15 @@ public partial class OvCanvasSettingPage : IDisposable {
         } else if (!wasActive) {
             canvasFadeTween?.Kill();
             canvasFadeTween = CanvasGroup.TFade(1f, 0.25f, O5Ease.OutCubic, () => CanvasGroup.blocksRaycasts = true);
+        }
+    }
+
+    public void Refresh3DFeatures() {
+        if (add3DButton != null && add3DButton.Rect != null) {
+            add3DButton.Rect.gameObject.SetActive(MainCore.Conf.Enable3DFeatures.Value);
+        }
+        if (GameObject != null && GameObject.activeSelf && (currentCanvas != null || rootObject != null)) {
+            RebuildInspector();
         }
     }
 

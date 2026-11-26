@@ -161,6 +161,13 @@ internal static class PageOverlayer {
         }
     }
 
+    internal static void Refresh3DFeatures() {
+        if (gridRef != null && !gridRef.Equals(null) && MainCore.IsModEnabled) {
+            SyncTiles(gridRef, animateChanges: false);
+        }
+        settingPage?.Refresh3DFeatures();
+    }
+
     private static void RefreshTilesExternal() {
         // Canvas mutations can come from any thread (e.g. module importers
         // running file dialogs); tile construction must run on the main

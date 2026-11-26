@@ -343,6 +343,7 @@ internal static class PageSettings {
         threeDToggle = O5Factory.Toggle(O5KitAdapters.Ctx, threeDRow, "enable_3d_features", new O5ToggleOptions { DefaultValue = defSet.Enable3DFeatures, Value = MainCore.Conf.Enable3DFeatures, OnChanged = toggle => {
                 MainCore.Conf.Enable3DFeatures = toggle;
                 MainCore.ConfMgr.RequestSave();
+                PageOverlayer.Refresh3DFeatures();
             }, Text = "Enable 3D Features" });
         threeDToggle.Rect.AddToolTip(O5KitAdapters.Ctx, () => MainCore.Tr.Get(
             "DESC_ENABLE_3D_FEATURES",
@@ -671,13 +672,19 @@ internal static class PageSettings {
             OnChanged = color => {
                 Color opaque = new(color.r, color.g, color.b, 1f);
                 UIColors.ApplyBaseColor(opaque, true);
-                palettePresetDropdown?.Set(UIColors.MatchPresetId(opaque), false);
+                string matched = UIColors.MatchPresetId(opaque);
+                if (palettePresetDropdown != null && palettePresetDropdown.Value != matched) {
+                    palettePresetDropdown.Set(matched, false);
+                }
             },
             OnComplete = color => {
                 Color opaque = new(color.r, color.g, color.b, 1f);
                 MainCore.Conf.UIBaseColor.Value = UIColors.ToHexRgb(opaque);
                 UIColors.ApplyBaseColor(opaque, true);
-                palettePresetDropdown?.Set(UIColors.MatchPresetId(opaque), false);
+                string matched = UIColors.MatchPresetId(opaque);
+                if (palettePresetDropdown != null && palettePresetDropdown.Value != matched) {
+                    palettePresetDropdown.Set(matched, false);
+                }
                 MainCore.ConfMgr.RequestSave();
             }
         });
@@ -805,9 +812,12 @@ internal static class PageSettings {
     private static void ResetAllSettings() {
         var def = new CoreSettings();
         MainCore.Conf.Deserialize(def.Serialize());
-        // shortcut: state flags, not settings; keeps the setup wizard from popping on the next scene load.
+        // Enter the exact first-run state and launch the intro + setup wizard immediately.
         MainCore.Conf.IsFirstRun = false;
-        MainCore.ConfMgr.RequestSave();
+        MainCore.Conf.TutorialOffered.Value = true;
+        MainCore.Conf.SetupPending.Value = true;
+        MainCore.ConfMgr.Save();
+        Tutorial.Tutorial.Stop();
         MainCore.Tr.Language = MainCore.Conf.Language.Value;
         O5KitAdapters.SyncConfig();
         UIColors.ApplyConfigured(MainCore.Conf.UIBaseColor.Value, true);
@@ -820,7 +830,13 @@ internal static class PageSettings {
             OvRawInput.Stop();
         }
         Patch.LinuxTextInputFix.ApplyFromConfig();
-        UICore.AnimateUiScale(MainCore.Conf.UIScale.Value);
+        UICore.ApplyTabMode(MainCore.Conf.TabLabelMode.Value, animate: false);
+        PanelTransition.ApplyOpacity();
+        UICore.PanelScale = MainCore.Conf.UIScale.Value;
+        UICore.ResetScalePosition(noAnimate: true);
+        MenuFactory.SetItemVisible((int)OriginalMenuState.Tutorial, !MainCore.Conf.HideTutorial.Value, instant: true);
+        PageOverlayer.Refresh3DFeatures();
+        MenuFactory.GoTo((int)OriginalMenuState.Overlayer);
         TextLocalization.RefreshAll();
         SyncValues();
         foreach (var refresh in fontOptionRefreshers.ToArray()) {
@@ -828,6 +844,7 @@ internal static class PageSettings {
         }
         PageDocs.RefreshHotkeys();
         Tutorial.Tutorial.RefreshTexts();
+        Setup.SetupIntro.Play();
     }
 
     private static void BuildFontPickers(GameObject content, Dictionary<TextLocalization, (GameObject, GameObject)> objects, TextMeshProUGUI overlayerText) {
