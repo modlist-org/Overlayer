@@ -7,7 +7,7 @@ namespace Overlayer.HudEdit;
 internal static partial class HudEditor {
     /// <summary>A piece of the editor by its path under the editor's root ("Panel", "Layers", ...).</summary>
     internal static RectTransform Part(string path) {
-        var r = root != null ? root.Find(path) as RectTransform : null;
+        var r = root != null ? O5Kit.Behaviour.UnityUtils.AsRectTransform(root.Find(path)) : null;
         return r != null && r.gameObject.activeInHierarchy ? r : null;
     }
 

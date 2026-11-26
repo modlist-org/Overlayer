@@ -160,7 +160,7 @@ internal sealed class TutorialDemo {
         }
         var canvas = rt.GetComponentInParent<Canvas>()?.rootCanvas;
         var cam = canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay ? canvas.worldCamera : null;
-        rt.GetWorldCorners(Corners);
+        O5Kit.Behaviour.UnityUtils.GetWorldCornersSafe(rt, Corners);
         float minX = float.PositiveInfinity, maxX = float.NegativeInfinity;
         float minY = float.PositiveInfinity, maxY = float.NegativeInfinity;
         for (int i = 0; i < 4; i++) {

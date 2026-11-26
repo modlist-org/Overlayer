@@ -181,7 +181,7 @@ internal static partial class HudEditor {
         }
         LayoutRebuilder.ForceRebuildLayoutImmediate(keysBubble);
         var corners4 = new Vector3[4];
-        keysButton.Rect.GetWorldCorners(corners4);
+        O5Kit.Behaviour.UnityUtils.GetWorldCornersSafe(keysButton.Rect, corners4);
         Vector2 btnLocal = ToLocal((corners4[1] + corners4[2]) * 0.5f);
         Vector2 size = keysBubble.rect.size;
         float halfW = size.x * 0.5f;

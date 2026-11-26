@@ -26,10 +26,10 @@ internal static class TutorialContent {
 
     private static bool On(OriginalMenuState page) => WindowOpen && UICore.CurrentMenuState == (int)page;
 
-    private static RectTransform PanelPart(string path) => UICore.Panel != null ? UICore.Panel.Find(path) as RectTransform : null;
+    private static RectTransform PanelPart(string path) => UICore.Panel != null ? O5Kit.Behaviour.UnityUtils.AsRectTransform(UICore.Panel.Find(path)) : null;
 
     private static RectTransform PagePart(OriginalMenuState page, string path)
-        => UICore.Pages.TryGetValue((int)page, out var p) && p != null ? (path == null ? p : p.Find(path) as RectTransform) : null;
+        => UICore.Pages.TryGetValue((int)page, out var p) && p != null ? (path == null ? p : O5Kit.Behaviour.UnityUtils.AsRectTransform(p.Find(path))) : null;
 
     // A page's menu item; the menu button while the menu is closed.
     private static RectTransform MenuTarget(OriginalMenuState page) => MenuOpen ? MenuFactory.ItemOf((int)page) : PanelPart("TopBar/Logo");
@@ -43,10 +43,10 @@ internal static class TutorialContent {
         var label = settings.GetComponentsInChildren<TextLocalization>(false).FirstOrDefault(t => t.Key == key);
         for (var t = label != null ? label.transform : null; t != null; t = t.parent) {
             if (t.name == "Row") {
-                return (RectTransform)t;
+                return O5Kit.Behaviour.UnityUtils.AsRectTransform(t);
             }
         }
-        return label != null ? (RectTransform)label.transform : null;
+        return label != null ? O5Kit.Behaviour.UnityUtils.AsRectTransform(label.transform) : null;
     }
 
     private static IEnumerable<OvObject> AllObjects() {
@@ -311,7 +311,7 @@ internal static class TutorialContent {
                 "Turns Overlayer completely on or off. When off, all HUD elements hide and stop updating.")
                 .Looks(Face.Talk)
                 .OnEnter(() => { if (WindowOpen && !MenuOpen) UICore.OpenMenu(); })
-                .At(() => UICore.Menu != null ? UICore.Menu.Find("Power") as RectTransform : null)
+                .At(() => UICore.Menu != null ? O5Kit.Behaviour.UnityUtils.AsRectTransform(UICore.Menu.Find("Power")) : null)
                 .NeedMenu(),
             // ---- the practice room (a hidden page only the tutorial opens) ----
             new TutorialStep("PRACTICE_ROOM", "Practice room",
@@ -840,7 +840,7 @@ internal static class TutorialContent {
                 .Looks(new(Eye.Normal, Brow.NormalHigh, Mouth.Normal))
                 .At(() => {
                     var grid = PagePart(OriginalMenuState.Overlayer, "ScrollView/Viewport/Content/Grid");
-                    return grid != null && grid.childCount > 0 ? grid.GetChild(grid.childCount - 1) as RectTransform : grid;
+                    return grid != null && grid.childCount > 0 ? O5Kit.Behaviour.UnityUtils.AsRectTransform(grid.GetChild(grid.childCount - 1)) : grid;
                 })
                 .NeedPage(OriginalMenuState.Overlayer, needEnabled: true, closeSubpages: true),
             new TutorialStep("CANVAS_SHARE", "Sharing",

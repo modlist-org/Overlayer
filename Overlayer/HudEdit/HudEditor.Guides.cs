@@ -312,7 +312,7 @@ internal static partial class HudEditor {
         float span = vertical ? root.rect.height : root.rect.width;
         rect.anchoredPosition = vertical ? new Vector2(local.x, 0f) : new Vector2(0f, local.y);
         rect.sizeDelta = vertical ? new Vector2(GuideHitPx, span) : new Vector2(span, GuideHitPx);
-        var line = rect.GetChild(0) as RectTransform;
+        var line = O5Kit.Behaviour.UnityUtils.AsRectTransform(rect.GetChild(0));
         line.anchorMin = vertical ? new Vector2(0.5f, 0f) : new Vector2(0f, 0.5f);
         line.anchorMax = vertical ? new Vector2(0.5f, 1f) : new Vector2(1f, 0.5f);
         float pxWidth = 1f / UiScale;

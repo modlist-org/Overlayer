@@ -125,7 +125,7 @@ public static class MainCore {
             Runtime?.Tick();
         } catch (Exception e) {
             try {
-                Runtime?.Logger?.Err($"[MainCore] Tick failed: {e.GetType().Name}: {e.Message}");
+                Runtime?.Logger?.Err($"[MainCore] Tick failed: {e}");
             } catch {
             }
         }

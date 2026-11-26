@@ -170,8 +170,8 @@ internal static partial class HudEditor {
 
     // Reference box in screen pixels: parent rect if valid, otherwise the full screen.
     private static Rect GetAutoAnchorReferenceRect(HudElement el) {
-        if (el?.Rect?.parent is RectTransform parentRect) {
-            parentRect.GetWorldCorners(autoAnchorRefCorners);
+        if (O5Kit.Behaviour.UnityUtils.AsRectTransform(el?.Rect?.parent) is RectTransform parentRect) {
+            O5Kit.Behaviour.UnityUtils.GetWorldCornersSafe(parentRect, autoAnchorRefCorners);
             Bounds(autoAnchorRefCorners, out float minX, out float maxX, out float minY, out float maxY);
             if (maxX - minX >= 1f && maxY - minY >= 1f) {
                 return Rect.MinMaxRect(minX, minY, maxX, maxY);
@@ -219,7 +219,7 @@ internal static partial class HudEditor {
             fitX ? cfg.SizeDelta.StaticValue.x : size.x,
             fitY ? cfg.SizeDelta.StaticValue.y : size.y);
 
-        if (el.Rect.parent is RectTransform parentRect) {
+        if (O5Kit.Behaviour.UnityUtils.AsRectTransform(el.Rect.parent) is RectTransform parentRect) {
             Vector2 newAnchoredPosition;
             if (cfg.RotationXY.StaticValue.sqrMagnitude < 1e-6f) {
                 Pt result = HudHandleMath.ComputeReanchoredPosition(
@@ -249,7 +249,7 @@ internal static partial class HudEditor {
             cfg.AnchoredPosition.StaticValue = newAnchoredPosition;
             cfg.ToUnity(el.Object.GameObject);
         } else {
-            el.Rect.GetWorldCorners(autoAnchorCorners);
+            O5Kit.Behaviour.UnityUtils.GetWorldCornersSafe(el.Rect, autoAnchorCorners);
             Vector2 cornerBefore = autoAnchorCorners[0];
             cfg.AnchorMin.StaticValue = target;
             cfg.AnchorMax.StaticValue = target;
@@ -259,7 +259,7 @@ internal static partial class HudEditor {
             }
             cfg.ToUnity(el.Object.GameObject);
             el.SyncFittedLayout();
-            el.Rect.GetWorldCorners(autoAnchorCorners);
+            O5Kit.Behaviour.UnityUtils.GetWorldCornersSafe(el.Rect, autoAnchorCorners);
             cfg.AnchoredPosition.StaticValue += el.ScreenToParentDelta(cornerBefore - (Vector2)autoAnchorCorners[0]);
             cfg.ToUnity(el.Object.GameObject);
         }

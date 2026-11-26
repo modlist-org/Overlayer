@@ -145,16 +145,28 @@ public sealed class OvObject : ISettingsFile {
         Config.BoxCollider2DConfig?.ToUnity(GameObject);
         Config.Rigidbody2DConfig?.ToUnity(GameObject);
 #endif
-        Config.MeshFilterConfig?.ToUnity(GameObject);
-        Config.MeshRendererConfig?.ToUnity(GameObject);
-        Config.BoxColliderConfig?.ToUnity(GameObject);
-        Config.SphereColliderConfig?.ToUnity(GameObject);
-        Config.CapsuleColliderConfig?.ToUnity(GameObject);
-        Config.MeshColliderConfig?.ToUnity(GameObject);
-        Config.RigidbodyConfig?.ToUnity(GameObject);
-        Config.LightConfig?.ToUnity(GameObject);
+        ApplyIfAvailable<MeshFilter>(Config.MeshFilterConfig);
+        ApplyIfAvailable<MeshRenderer>(Config.MeshRendererConfig);
+        ApplyIfAvailable<BoxCollider>(Config.BoxColliderConfig);
+        ApplyIfAvailable<SphereCollider>(Config.SphereColliderConfig);
+        ApplyIfAvailable<CapsuleCollider>(Config.CapsuleColliderConfig);
+        ApplyIfAvailable<MeshCollider>(Config.MeshColliderConfig);
+        ApplyIfAvailable<Rigidbody>(Config.RigidbodyConfig);
+        ApplyIfAvailable<Light>(Config.LightConfig);
         _lastHasRectMask2D = Config.HasRectMask2D.Value;
         _lastRectMask2DEnabled = Config.RectMask2DEnabled.Value;
+    }
+
+    private void ApplyIfAvailable<T>(IO.UnityComponent.UnityComponentSettingsBase cfg) where T : Component {
+        if (cfg != null && O5Kit.Behaviour.UnityUtils.IsComponentTypeAvailable<T>()) {
+            cfg.ToUnity(GameObject);
+        }
+    }
+
+    private void RefreshIfAvailable<T>(IO.UnityComponent.UnityComponentSettingsBase cfg) where T : Component {
+        if (cfg != null && O5Kit.Behaviour.UnityUtils.IsComponentTypeAvailable<T>()) {
+            cfg.RefreshFx(GameObject);
+        }
     }
 
     public void RefreshFx() {
@@ -192,14 +204,14 @@ public sealed class OvObject : ISettingsFile {
             Config.BoxCollider2DConfig?.RefreshFx(GameObject);
             Config.Rigidbody2DConfig?.RefreshFx(GameObject);
 #endif
-            Config.MeshFilterConfig?.RefreshFx(GameObject);
-            Config.MeshRendererConfig?.RefreshFx(GameObject);
-            Config.BoxColliderConfig?.RefreshFx(GameObject);
-            Config.SphereColliderConfig?.RefreshFx(GameObject);
-            Config.CapsuleColliderConfig?.RefreshFx(GameObject);
-            Config.MeshColliderConfig?.RefreshFx(GameObject);
-            Config.RigidbodyConfig?.RefreshFx(GameObject);
-            Config.LightConfig?.RefreshFx(GameObject);
+            RefreshIfAvailable<MeshFilter>(Config.MeshFilterConfig);
+            RefreshIfAvailable<MeshRenderer>(Config.MeshRendererConfig);
+            RefreshIfAvailable<BoxCollider>(Config.BoxColliderConfig);
+            RefreshIfAvailable<SphereCollider>(Config.SphereColliderConfig);
+            RefreshIfAvailable<CapsuleCollider>(Config.CapsuleColliderConfig);
+            RefreshIfAvailable<MeshCollider>(Config.MeshColliderConfig);
+            RefreshIfAvailable<Rigidbody>(Config.RigidbodyConfig);
+            RefreshIfAvailable<Light>(Config.LightConfig);
             bool rectMaskChanged = FxUtil.ApplyIfChanged(ref _lastHasRectMask2D, Config.HasRectMask2D.Value, _ => { });
             if (rectMaskChanged) {
                 ApplyComponent();
@@ -264,12 +276,16 @@ public sealed class OvObject : ISettingsFile {
         }
         var movingMan = EnsureComponent<MovingManComponent>(Config.MovingManConfig != null);
         var colorRange = EnsureComponent<ColorRangeComponent>(tc && Config.ColorRangeConfig != null);
-        EnsureComponent<Canvas>(Config.CanvasConfig != null);
+        var nestedCanvas = EnsureComponent<Canvas>(Config.CanvasConfig != null);
+        if (nestedCanvas != null) {
+            O5Kit.Core.O5ColorSpace.Track(nestedCanvas, fallbackBgLuma: 0.30f);
+        }
         EnsureComponent<HorizontalLayoutGroup>(Config.HorizontalLayoutGroupConfig != null);
         EnsureComponent<VerticalLayoutGroup>(Config.VerticalLayoutGroupConfig != null);
         EnsureComponent<GridLayoutGroup>(Config.GridLayoutGroupConfig != null);
 #if !IL2CPP
-        EnsureComponent<OvGraphComponent>(Config.GraphConfig != null);
+        var graphComp = EnsureComponent<OvGraphComponent>(Config.GraphConfig != null);
+        O5Kit.Behaviour.UnityUtils.InitInjectedMaskableGraphic(graphComp);
 #endif
         EnsureComponent<OvRainComponent>(Config.RainConfig != null);
         var text = GameObject.GetComponent<TextMeshProUGUI>();
@@ -309,20 +325,26 @@ public sealed class OvObject : ISettingsFile {
         }
 
 #if ML && IL2CPP
-        // Mod-defined components are never in Il2CppAssemblies: inject the
-        // type before the first generic Get/AddComponent call touches it,
-        // otherwise the generic method store faults (NRE) on the missing
-        // native class pointer.
-        lock (_injectedComponents) {
-            if (_injectedComponents.Add(typeof(T))) {
-                try {
-                    Il2CppInterop.Runtime.Injection.ClassInjector.RegisterTypeInIl2Cpp<T>();
-                } catch (Exception e) {
-                    try {
-                        Overlayer.Core.MainCore.Log.Err($"[OvObject] RegisterTypeInIl2Cpp<{typeof(T).Name}> failed: {e.GetType().Name}: {e.Message}");
-                    } catch {
+        // Only inject mod-defined components; stripped native Unity components have
+        // NativeClassPtr == IntPtr.Zero and calling GetComponent/AddComponent<T>() on
+        // them passes 0x20 to Class_FromIl2CppType_Hook and SIGABRTs.
+        if (Il2CppInterop.Runtime.Il2CppClassPointerStore<T>.NativeClassPtr == IntPtr.Zero) {
+            if (typeof(T).Assembly == typeof(OvObject).Assembly) {
+                lock (_injectedComponents) {
+                    if (_injectedComponents.Add(typeof(T))) {
+                        try {
+                            Il2CppInterop.Runtime.Injection.ClassInjector.RegisterTypeInIl2Cpp<T>();
+                        } catch (Exception e) {
+                            try {
+                                Overlayer.Core.MainCore.Log.Err($"[OvObject] RegisterTypeInIl2Cpp<{typeof(T).Name}> failed: {e.GetType().Name}: {e.Message}");
+                            } catch {
+                            }
+                        }
                     }
                 }
+            }
+            if (Il2CppInterop.Runtime.Il2CppClassPointerStore<T>.NativeClassPtr == IntPtr.Zero) {
+                return null;
             }
         }
 #endif
@@ -339,10 +361,6 @@ public sealed class OvObject : ISettingsFile {
 
         if (comp == null) {
 #if ML && IL2CPP
-            try {
-                Il2CppInterop.Runtime.Injection.ClassInjector.RegisterTypeInIl2Cpp<T>();
-            } catch {
-            }
             try {
                 comp = GameObject.AddComponent<T>();
             } catch (Exception e) {

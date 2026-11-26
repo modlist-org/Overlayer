@@ -497,7 +497,7 @@ internal static partial class HudEditor {
             Vector2 size = el.Rect.rect.size;
             bool fitX = el.IsFitterDriven(0);
             bool fitY = el.IsFitterDriven(1);
-            el.Rect.GetWorldCorners(corners);
+            O5Kit.Behaviour.UnityUtils.GetWorldCornersSafe(el.Rect, corners);
             Vector2 cornerBefore = corners[0];
             cfg.AnchorMin.StaticValue = cfg.AnchorMax.StaticValue = cfg.Pivot.StaticValue = anchor;
             if (!fitX || !fitY) {
@@ -507,7 +507,7 @@ internal static partial class HudEditor {
             }
             cfg.ToUnity(obj.GameObject);
             el.SyncFittedLayout();
-            el.Rect.GetWorldCorners(corners);
+            O5Kit.Behaviour.UnityUtils.GetWorldCornersSafe(el.Rect, corners);
             cfg.AnchoredPosition.StaticValue += el.ScreenToParentDelta(cornerBefore - (Vector2)corners[0]);
             cfg.ToUnity(obj.GameObject);
             el.SyncFittedLayout();

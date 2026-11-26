@@ -177,6 +177,7 @@ internal static partial class HudEditor {
         gizmoCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
         gizmoCanvas.sortingOrder = 32764;
         CanvasCompat.SetPixelPerfect(gizmoCanvas, true);
+        O5Kit.Core.O5ColorSpace.Track(gizmoCanvas);
         gizmoGroup = gizmoCanvasObj.AddComponent<CanvasGroup>();
         gizmoGroup.blocksRaycasts = false;
         gizmoGroup.interactable = false;
@@ -258,7 +259,7 @@ internal static partial class HudEditor {
                 return;
             }
             var c = new Vector3[4];
-            presetsButton.Rect.GetWorldCorners(c);
+            O5Kit.Behaviour.UnityUtils.GetWorldCornersSafe(presetsButton.Rect, c);
             OpenPresetMenu(new Vector2(c[0].x, c[0].y - 6f), null);
         }, Tr("HUD_PRESETS", "Presets"));
         placementButton = Button(Cell(toolbar, 170f), "placement", string.Empty, CyclePlacement);
@@ -297,7 +298,7 @@ internal static partial class HudEditor {
     private static void UpdatePlacementLabel() {
         if (placementButton != null) {
             var p = PlacementNames[(int)CurrentPlacement];
-            placementButton.Text = Tr(p.Key, p.Fallback) + "  ▸";
+            placementButton.Text = Tr(p.Key, p.Fallback) + "  >";
         }
     }
 
@@ -771,7 +772,11 @@ internal static partial class HudEditor {
     }
 
     // Anything of ours (or a popup opened from the inspector) under the pointer, other than the dim backdrop.
+#if ML && IL2CPP
+    private static readonly Il2CppSystem.Collections.Generic.List<RaycastResult> raycastHits = new();
+#else
     private static readonly List<RaycastResult> raycastHits = [];
+#endif
 
     private static bool PointerOverEditorUi(Vector2 mouse) {
         var events = EventSystem.current;

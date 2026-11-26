@@ -618,7 +618,7 @@ internal static partial class HudEditor {
             var s = dragStart[0].Start;
             scaleUseSize = el.CanResizeX && el.CanResizeY && s.Size.x > 1e-3f && s.Size.y > 1e-3f;
             if (scaleUseSize) {
-                el.Rect.GetWorldCorners(corners);
+                O5Kit.Behaviour.UnityUtils.GetWorldCornersSafe(el.Rect, corners);
             } else {
                 el.GetScreenCorners(corners);
             }
@@ -635,7 +635,7 @@ internal static partial class HudEditor {
             bool widthAxis = resizeEdge % 2 == 0;
             resizeUseSize = widthAxis ? el.CanResizeX && s.Size.x > 1e-3f : el.CanResizeY && s.Size.y > 1e-3f;
             if (resizeUseSize) {
-                el.Rect.GetWorldCorners(corners);
+                O5Kit.Behaviour.UnityUtils.GetWorldCornersSafe(el.Rect, corners);
             } else {
                 el.GetScreenCorners(corners);
             }
@@ -712,7 +712,7 @@ internal static partial class HudEditor {
                 }
                 el.Apply(state);
                 if (scaleUseSize) {
-                    el.Rect.GetWorldCorners(corners);
+                    O5Kit.Behaviour.UnityUtils.GetWorldCornersSafe(el.Rect, corners);
                 } else {
                     el.GetScreenCorners(corners);
                 }
@@ -751,7 +751,7 @@ internal static partial class HudEditor {
                 }
                 el.Apply(state);
                 if (resizeUseSize) {
-                    el.Rect.GetWorldCorners(corners);
+                    O5Kit.Behaviour.UnityUtils.GetWorldCornersSafe(el.Rect, corners);
                 } else {
                     el.GetScreenCorners(corners);
                 }
@@ -1037,7 +1037,7 @@ internal static partial class HudEditor {
         var parent = el.Object.Parent;
         if (parent?.RectTransform != null && HudElement.IsVisiblyRendered(parent)) {
             var c = new Vector3[4];
-            parent.RectTransform.GetWorldCorners(c);
+            O5Kit.Behaviour.UnityUtils.GetWorldCornersSafe(parent.RectTransform, c);
             Bounds(c, out minX, out maxX, out minY, out maxY);
             return;
         }

@@ -172,7 +172,7 @@ internal static partial class HudEditor {
             obj.ApplyComponent();
             obj.ApplyConfig();
             RebuildLayoutTree(obj);
-            obj.RectTransform.GetWorldCorners(corners);
+            O5Kit.Behaviour.UnityUtils.GetWorldCornersSafe(obj.RectTransform, corners);
             var cfg = obj.Config.RectTransformConfig;
             cfg.SizeDelta.StaticValue = obj.RectTransform.sizeDelta;
             cfg.AnchoredPosition.StaticValue += el.ScreenToParentDelta(topLeft - (Vector2)corners[1]);
@@ -201,9 +201,9 @@ internal static partial class HudEditor {
         float total = 0f;
         int count = 0;
         for (int i = 1; i < sorted.Count; i++) {
-            sorted[i - 1].RectTransform.GetWorldCorners(c);
+            O5Kit.Behaviour.UnityUtils.GetWorldCornersSafe(sorted[i - 1].RectTransform, c);
             float prevEnd = flow == Flow.Row ? c[2].x : c[0].y;
-            sorted[i].RectTransform.GetWorldCorners(c);
+            O5Kit.Behaviour.UnityUtils.GetWorldCornersSafe(sorted[i].RectTransform, c);
             float nextStart = flow == Flow.Row ? c[0].x : c[1].y;
             total += flow == Flow.Row ? nextStart - prevEnd : prevEnd - nextStart;
             count++;

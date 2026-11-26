@@ -786,6 +786,7 @@ internal static class Tutorial {
         var canvas = canvasObj.AddComponent<Canvas>();
         canvas.renderMode = RenderMode.ScreenSpaceOverlay;
         canvas.sortingOrder = 32766;
+        O5Kit.Core.O5ColorSpace.Track(canvas);
         var scaler = canvasObj.AddComponent<CanvasScaler>();
         scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
         scaler.referenceResolution = new Vector2(1920f, 1080f);
@@ -885,7 +886,7 @@ internal static class Tutorial {
         note.lineSpacing = 4f;
 
         linkText = Line(ctx, noteBox, 14f, LinkColor, 64f);
-        linkRow = linkText.rectTransform.parent as RectTransform;
+        linkRow = O5Kit.Behaviour.UnityUtils.AsRectTransform(linkText.rectTransform.parent);
         linkRow.gameObject.name = "Link";
         linkElement = linkRow.GetComponent<LayoutElement>();
         linkElement.minHeight = 20f;
@@ -1066,7 +1067,7 @@ internal static class Tutorial {
                 scrolledFor = target;
             }
             var corners = new Vector3[4];
-            target.GetWorldCorners(corners);
+            O5Kit.Behaviour.UnityUtils.GetWorldCornersSafe(target, corners);
             var cam = target.GetComponentInParent<Canvas>()?.rootCanvas is { renderMode: not RenderMode.ScreenSpaceOverlay } c ? c.worldCamera : null;
             Vector2 min = ToLocal(RectTransformUtility.WorldToScreenPoint(cam, corners[0]));
             Vector2 max = ToLocal(RectTransformUtility.WorldToScreenPoint(cam, corners[2]));

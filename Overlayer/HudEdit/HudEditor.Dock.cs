@@ -55,7 +55,7 @@ internal static partial class HudEditor {
     private static RectTransform DockSection(Transform parent, string id, string title, Func<bool> visible) {
         var section = VerticalGroup("Dock_" + id, parent);
         var label = UiStyle.Section(section, title);
-        var header = (RectTransform)label.transform.parent;
+        var header = O5Kit.Behaviour.UnityUtils.AsRectTransform(label.transform.parent);
         // Something the pointer can land on (the caption itself doesn't take clicks).
         header.gameObject.AddComponent<Image>().color = Color.clear;
         var body = VerticalGroup("Body", section);
@@ -74,7 +74,7 @@ internal static partial class HudEditor {
             grabbable.Remove(key);
         }
         for (int i = 0; i < content.childCount; i++) {
-            var card = (RectTransform)content.GetChild(i);
+            var card = O5Kit.Behaviour.UnityUtils.AsRectTransform(content.GetChild(i));
             var header = card.Find("Header");
             string title = header?.GetComponentsInChildren<TextMeshProUGUI>(true).Select(t => t.text).FirstOrDefault(t => !string.IsNullOrWhiteSpace(t));
             if (header == null || title == null) {
@@ -131,7 +131,7 @@ internal static partial class HudEditor {
         if (Input.GetMouseButtonDown(0)) {
             pressedHeader = GrabbableUnder(mouse);
             pressedObject = pressedHeader != null && raycastHits.Count > 0 ? raycastHits[0].gameObject : null;
-            pressedHeight = pressedHeader != null && pressedHeader.parent is RectTransform card ? card.rect.height : 0f;
+            pressedHeight = pressedHeader != null && O5Kit.Behaviour.UnityUtils.AsRectTransform(pressedHeader.parent) is RectTransform card ? card.rect.height : 0f;
             // A header inside a window that's already out: carry the window.
             var owner = pressedHeader == null ? null : docks.FirstOrDefault(d => d.Window != null && pressedHeader.IsChildOf(d.Window));
             if (owner != null) {

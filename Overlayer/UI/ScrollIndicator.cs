@@ -30,7 +30,11 @@ internal static class ScrollIndicator {
     private static UIScrollController lastHovered;
     private static float rescanAt, alpha;
     private static float targetFrac, targetSize = 1f, shownFrac, shownSize = 1f;
+#if ML && IL2CPP
+    private static readonly Il2CppSystem.Collections.Generic.List<RaycastResult> hits = new();
+#else
     private static readonly List<RaycastResult> hits = [];
+#endif
     private static PointerEventData pointer;
     private static EventSystem pointerEs;
 

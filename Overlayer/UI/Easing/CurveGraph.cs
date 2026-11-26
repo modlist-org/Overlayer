@@ -446,9 +446,9 @@ internal sealed class CurveGraph {
             return;
         }
         scroller = Rect.GetComponentInParent<UIScrollController>();
-        scrollContent = Rect.parent as RectTransform;
+        scrollContent = O5Kit.Behaviour.UnityUtils.AsRectTransform(Rect.parent);
         while (scrollContent != null && scrollContent.parent != null && scrollContent.parent.GetComponent<RectMask2D>() == null) {
-            scrollContent = scrollContent.parent as RectTransform;
+            scrollContent = O5Kit.Behaviour.UnityUtils.AsRectTransform(scrollContent.parent);
         }
     }
 

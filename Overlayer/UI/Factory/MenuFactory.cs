@@ -91,7 +91,7 @@ public static class MenuFactory {
         var docs = CreateItem(parent, "Docs", UIIcon.Book, 2);
         var tutorial = CreateItem(parent, "Tutorial", UIIcon.Triangle, (int)OriginalMenuState.Tutorial);
         // The triangle points down; a quarter turn makes it a play button.
-        var playIcon = (RectTransform)tutorial.obj.transform.Find("Icon");
+        var playIcon = O5Kit.Behaviour.UnityUtils.AsRectTransform(tutorial.obj.transform.Find("Icon"));
         playIcon.pivot = new Vector2(0.5f, 0.5f);
         playIcon.anchoredPosition = new Vector2(9f + 14f, 0f);
         playIcon.localEulerAngles = new Vector3(0f, 0f, 90f);

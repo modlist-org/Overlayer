@@ -845,7 +845,7 @@ public partial class OvCanvasSettingPage : IDisposable {
                 if (canvasTabs[i] == activeTab) {
                     var scroll = tabsContent.GetComponentInParent<ScrollRect>();
                     if (scroll != null) {
-                        var activeRect = tabsContent.GetChild(i) as RectTransform;
+                        var activeRect = O5Kit.Behaviour.UnityUtils.AsRectTransform(tabsContent.GetChild(i));
                         float viewportWidth = scroll.viewport.rect.width;
                         float contentWidth = tabsContent.rect.width;
                         float maxOffset = Mathf.Max(0f, contentWidth - viewportWidth);

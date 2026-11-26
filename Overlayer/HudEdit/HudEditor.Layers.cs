@@ -353,7 +353,8 @@ internal static partial class HudEditor {
     private static void ScrollToSelectedRow() {
         var row = layerRows.FirstOrDefault(IsRowSelected);
         var scroller = layersContent != null ? layersContent.GetComponentInParent<UIScrollController>() : null;
-        if (row == null || scroller == null || layersContent.parent is not RectTransform viewport) {
+        var viewport = layersContent != null ? O5Kit.Behaviour.UnityUtils.AsRectTransform(layersContent.parent) : null;
+        if (row == null || scroller == null || viewport == null) {
             return;
         }
         LayoutRebuilder.ForceRebuildLayoutImmediate(layersContent);

@@ -147,7 +147,7 @@ internal sealed class HudElement {
         if (obj.GameObject.GetComponent<OvRainComponent>() != null) {
             return true;
         }
-        var mesh = obj.GameObject.GetComponent<MeshRenderer>();
+        var mesh = O5Kit.Behaviour.UnityUtils.SafeGetComponent<MeshRenderer>(obj.GameObject);
         if (mesh != null && mesh.enabled) {
             return true;
         }
@@ -155,7 +155,7 @@ internal sealed class HudElement {
         if (graphic == null || !graphic.enabled || graphic.color.a <= 0.001f) {
             return false;
         }
-        if (graphic is TextMeshProUGUI tmp && string.IsNullOrWhiteSpace(tmp.text)) {
+        if (O5Kit.Behaviour.UnityUtils.TryCastComponent<TextMeshProUGUI>(graphic) is { } tmp && string.IsNullOrWhiteSpace(tmp.text)) {
             return false;
         }
         var mask = obj.GameObject.GetComponent<Mask>();
@@ -186,7 +186,7 @@ internal sealed class HudElement {
             corners[3] = new Vector3(max.x, min.y);
             return;
         }
-        Rect.GetWorldCorners(corners);
+        O5Kit.Behaviour.UnityUtils.GetWorldCornersSafe(Rect, corners);
     }
 
     private static bool TextCorners(RectTransform rect, TextMeshProUGUI tmp, Vector3[] corners) {
@@ -219,7 +219,7 @@ internal sealed class HudElement {
             bool drawn = IsVisiblyRendered(child);
             if (drawn) {
                 if (!TextCorners(child.RectTransform, child.GameObject.GetComponent<TextMeshProUGUI>(), scratch)) {
-                    child.RectTransform.GetWorldCorners(scratch);
+                    O5Kit.Behaviour.UnityUtils.GetWorldCornersSafe(child.RectTransform, scratch);
                 }
                 foreach (var p in scratch) {
                     min = Vector2.Min(min, p);

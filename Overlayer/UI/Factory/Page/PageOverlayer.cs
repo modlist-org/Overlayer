@@ -1282,6 +1282,7 @@ internal static class PageOverlayer {
         rect.offsetMin = Vector2.zero;
         rect.offsetMax = Vector2.zero;
         var graphic = go.AddComponent<DiagonalTileGraphic>();
+        O5Kit.Behaviour.UnityUtils.InitInjectedMaskableGraphic(graphic);
         graphic.RightHalf = right;
         graphic.RightSection = rightSection;
         graphic.color = UIColors.ObjectButton;

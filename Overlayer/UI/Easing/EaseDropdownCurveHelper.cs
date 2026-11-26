@@ -147,7 +147,7 @@ internal static class EaseDropdownCurveHelper {
         }
 
         // Attach to dropdown header (positioned left of the foldout triangle)
-        if (dropdown.Label != null && dropdown.Label.transform.parent is RectTransform headerRect) {
+        if (dropdown.Label != null && O5Kit.Behaviour.UnityUtils.AsRectTransform(dropdown.Label.transform.parent) is RectTransform headerRect) {
             headerWidget = CreateWidget("EaseCurve_Header", headerRect, boxW, boxH, rightOffset: -44f);
             string initKey = dropdown.Value != null ? getEaseKey(dropdown.Value) : null;
             headerWidget.SetCurve(initKey);
@@ -176,7 +176,7 @@ internal static class EaseDropdownCurveHelper {
 
             int count = Mathf.Min(dropdown.Values.Count, dropdown.ListRect.childCount);
             for (int i = 0; i < count; i++) {
-                var rowRect = dropdown.ListRect.GetChild(i) as RectTransform;
+                var rowRect = O5Kit.Behaviour.UnityUtils.AsRectTransform(dropdown.ListRect.GetChild(i));
                 if (rowRect == null) {
                     continue;
                 }
@@ -189,7 +189,7 @@ internal static class EaseDropdownCurveHelper {
                 widget.SetCurve(easeKey);
                 rowWidgets.Add(widget);
 
-                var textChild = rowRect.Find("Text") as RectTransform;
+                var textChild = O5Kit.Behaviour.UnityUtils.AsRectTransform(rowRect.Find("Text"));
                 if (textChild != null) {
                     textChild.offsetMax = new Vector2(-(boxW + 18f), 0f);
                 }
