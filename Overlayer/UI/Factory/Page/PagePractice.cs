@@ -167,7 +167,6 @@ internal static class PagePractice {
                 } else {
                     HeldDelete = true;
                 }
-                UISound.PlayConfirm();
                 rows.Remove(captured);
                 UnityEngine.Object.Destroy(captured);
             });

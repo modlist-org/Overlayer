@@ -8,6 +8,7 @@ using Overlayer.Core;
 using Overlayer.UI.Utility;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using Object = UnityEngine.Object;
 
@@ -34,6 +35,7 @@ internal static class UISound {
     private const float ReverbWetMix = 0.05f;
     private const float GlobalPitchScale = 1.4f;
     private const float ClipMasterGain = 3.6f;
+    private const float ListenerScanInterval = 0.5f;
 
     private enum ClipId {
         Click,
@@ -64,6 +66,10 @@ internal static class UISound {
     }
 
     private static GameObject host;
+    private static AudioListener fallbackListener;
+    private static AudioListener cachedExternalListener;
+    private static float nextListenerScanAt;
+    private static UnityEngine.Events.UnityAction<Scene, LoadSceneMode> sceneLoadedHandler;
     private static readonly AudioSource[] Sources = new AudioSource[4];
     private static readonly AudioClip[] Clips = new AudioClip[(int)ClipId.Count];
     private static int sourceCursor;
@@ -126,11 +132,18 @@ internal static class UISound {
         HoldToConfirm.Tick(Mathf.Min(Time.unscaledDeltaTime, 0.1f));
 
         if (MasterVolume <= 0.001f) {
+            if (fallbackListener != null && fallbackListener.enabled) {
+                fallbackListener.enabled = false;
+            }
             lastHover = null;
             lastHoveredSlider = null;
             ClearFocusedInputState();
             ClearActiveSlider();
             return;
+        }
+
+        if (fallbackListener != null && fallbackListener.enabled) {
+            SyncFallbackListener(allowCreate: false, forceScan: false);
         }
 
         bool uiVisible = (UICore.CanvasObj != null && UICore.CanvasObj.activeInHierarchy) || Tutorial.Tutorial.IsRunning;
@@ -284,6 +297,16 @@ internal static class UISound {
             }
             audioConfigHandler = null;
         }
+        if (sceneLoadedHandler != null) {
+            try {
+                SceneManager.sceneLoaded -= sceneLoadedHandler;
+            } catch {
+            }
+            sceneLoadedHandler = null;
+        }
+        fallbackListener = null;
+        cachedExternalListener = null;
+        nextListenerScanAt = 0f;
         audioConfigDirty = false;
         nextRetryAt = 0f;
         lastTransitionAt = -10f;
@@ -470,21 +493,21 @@ internal static class UISound {
         if (p == null) {
             return false;
         }
-        return (UICore.MenuContent != null && p == UICore.MenuContent)
+        return (UICore.MenuContent != null && go.transform.IsChildOf(UICore.MenuContent))
             || (go.name == "Bg" && (p.name == "Dropdown" || p.name == "MultiDropdown"))
             || (go.name == "Row" && p.name == "List");
     }
 
     private static bool IsSliderTarget(GameObject go) =>
         go != null && (go.GetComponent<Slider>() != null
-            || (go.transform.Find("FillClip/Fill") is RectTransform && go.transform.Find("ValueInput") != null));
+            || (O5Kit.Behaviour.UnityUtils.AsRectTransform(go.transform.Find("FillClip/Fill")) != null && go.transform.Find("ValueInput") != null));
 
     private static O5Slider GetHoveredSlider() =>
         HoveredSliderField?.GetValue(null) as O5Slider;
 
     private static bool TryPlaySliderReset(GameObject current) {
         if (HoveredSliderField == null) {
-            var fill = current.transform.Find("FillClip/Fill") as RectTransform;
+            var fill = O5Kit.Behaviour.UnityUtils.AsRectTransform(current.transform.Find("FillClip/Fill"));
             PlaySliderTick(fill != null ? Mathf.Clamp01(fill.anchorMax.x) : 0.5f);
             return false;
         }
@@ -606,7 +629,7 @@ internal static class UISound {
             lastUnitySliderVal = unitySlider.normalizedValue;
             return true;
         }
-        var fill = t.Find("FillClip/Fill") as RectTransform;
+        var fill = O5Kit.Behaviour.UnityUtils.AsRectTransform(t.Find("FillClip/Fill"));
         var valInput = t.Find("ValueInput");
         if (fill != null && valInput != null) {
             activeSlider = t;
@@ -705,12 +728,21 @@ internal static class UISound {
 
     private static void OnAudioConfigurationChanged(bool deviceWasChanged) => audioConfigDirty = true;
 
+    private static void OnSceneLoaded(Scene scene, LoadSceneMode mode) {
+        cachedExternalListener = null;
+        nextListenerScanAt = 0f;
+        SyncFallbackListener(allowCreate: false, forceScan: true);
+    }
+
     private static void PlayOneShot(ClipId id, float volumeScale, float pitch) {
         float master = MasterVolume;
         if (disposed || master <= 0.001f) {
             return;
         }
         EnsureReady();
+        bool hasAnyListener = (cachedExternalListener != null && cachedExternalListener.isActiveAndEnabled)
+            || (fallbackListener != null && fallbackListener.isActiveAndEnabled);
+        SyncFallbackListener(allowCreate: true, forceScan: !hasAnyListener);
         var clip = Clips[(int)id];
         if (clip == null) {
             return;
@@ -731,6 +763,18 @@ internal static class UISound {
     private static void EnsureReady() {
         if (disposed || MasterVolume <= 0.001f) {
             return;
+        }
+        if (sceneLoadedHandler == null) {
+            try {
+#if ML && IL2CPP
+                sceneLoadedHandler = (UnityEngine.Events.UnityAction<Scene, LoadSceneMode>)new Action<Scene, LoadSceneMode>(OnSceneLoaded);
+#else
+                sceneLoadedHandler = OnSceneLoaded;
+#endif
+                SceneManager.sceneLoaded += sceneLoadedHandler;
+            } catch {
+                sceneLoadedHandler = null;
+            }
         }
         bool configChanged = audioConfigDirty;
         if (configChanged) {
@@ -778,6 +822,7 @@ internal static class UISound {
             // A scene wipe, inactive root, or audio engine reset (AudioSettings.Reset at
             // startup / device change) invalidates Sources or wipes procedural clip PCM data.
             if (!hostAlive) {
+                fallbackListener = null;
                 if (host != null) {
                     Object.Destroy(host);
                     host = null;
@@ -846,6 +891,61 @@ internal static class UISound {
         s.loop = loop;
         s.volume = volume;
         return s;
+    }
+
+    private static void SyncFallbackListener(bool allowCreate, bool forceScan) {
+        if (cachedExternalListener != null && cachedExternalListener != fallbackListener && cachedExternalListener.isActiveAndEnabled) {
+            if (fallbackListener != null && fallbackListener.enabled) {
+                fallbackListener.enabled = false;
+            }
+            return;
+        }
+
+        cachedExternalListener = null;
+        float now = Time.unscaledTime;
+        if (!forceScan) {
+            if ((!allowCreate && (fallbackListener == null || !fallbackListener.enabled)) || now < nextListenerScanAt) {
+                return;
+            }
+        }
+
+        nextListenerScanAt = now + ListenerScanInterval;
+        AudioListener foundExternal = null;
+        try {
+            var listeners = Object.FindObjectsOfType<AudioListener>();
+            if (listeners != null) {
+                for (int i = 0; i < listeners.Length; i++) {
+                    var listener = listeners[i];
+                    if (listener != null && listener != fallbackListener && listener.isActiveAndEnabled) {
+                        foundExternal = listener;
+                        break;
+                    }
+                }
+            }
+        } catch {
+        }
+
+        if (foundExternal != null) {
+            cachedExternalListener = foundExternal;
+            if (fallbackListener != null && fallbackListener.enabled) {
+                fallbackListener.enabled = false;
+            }
+            return;
+        }
+
+        if (!allowCreate || host == null || !host.activeInHierarchy) {
+            if (fallbackListener != null && fallbackListener.enabled) {
+                fallbackListener.enabled = false;
+            }
+            return;
+        }
+
+        if (fallbackListener == null) {
+            fallbackListener = host.AddComponent<AudioListener>();
+        }
+        if (fallbackListener != null && !fallbackListener.enabled) {
+            fallbackListener.enabled = true;
+        }
     }
 
     private static GameObject FindInteractive(Transform leaf) {
