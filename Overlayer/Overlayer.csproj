@@ -1,7 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
 		<TargetFramework Condition="$(Configuration.Contains('IL2CPP'))">net6.0</TargetFramework>
-		<TargetFramework Condition="!$(Configuration.Contains('IL2CPP'))">netstandard2.1</TargetFramework>
+		<TargetFramework Condition="!$(Configuration.Contains('IL2CPP'))">netstandard2.0</TargetFramework>
+		<AssetTargetFallback Condition="!$(Configuration.Contains('IL2CPP'))">$(AssetTargetFallback);net471</AssetTargetFallback>
+		<NoWarn Condition="!$(Configuration.Contains('IL2CPP'))">$(NoWarn);NU1701</NoWarn>
 		<PlatformTarget>AnyCPU</PlatformTarget>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>disable</Nullable>
@@ -25,7 +27,7 @@
 		<O5KitConfiguration Condition="!$(Configuration.Contains('IL2CPP')) and $(Configuration.Contains('Debug'))">Debug_Mono</O5KitConfiguration>
 		<O5KitConfiguration Condition="!$(Configuration.Contains('IL2CPP')) and !$(Configuration.Contains('Debug'))">Release_Mono</O5KitConfiguration>
 		<O5KitTargetFramework Condition="$(Configuration.Contains('IL2CPP'))">net6.0</O5KitTargetFramework>
-		<O5KitTargetFramework Condition="!$(Configuration.Contains('IL2CPP'))">netstandard2.1</O5KitTargetFramework>
+		<O5KitTargetFramework Condition="!$(Configuration.Contains('IL2CPP'))">netstandard2.0</O5KitTargetFramework>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -45,6 +47,11 @@
 		<DefineConstants>$(DefineConstants);ML</DefineConstants>
 	</PropertyGroup>
 	
+	<PropertyGroup Condition="!$(Configuration.Contains('IL2CPP'))">
+		<_ManagedRefPath Condition="'$(ManagedRefPath)' != ''">$(ManagedRefPath)</_ManagedRefPath>
+		<_ManagedRefPath Condition="'$(_ManagedRefPath)' == ''">$(GamePath)/$(GameData)/Managed</_ManagedRefPath>
+	</PropertyGroup>
+
 	<PropertyGroup Condition="$(Configuration.Contains('IL2CPP'))">
 		<DefineConstants>$(DefineConstants);IL2CPP</DefineConstants>
 		<_Il2CppLoaderPath Condition="'$(Il2CppPath)' != ''">$(Il2CppPath)</_Il2CppLoaderPath>
@@ -63,77 +70,75 @@
 	</ItemGroup>
 
 	<ItemGroup>
-        <Reference Include="DemiLib" Condition="Exists('$(GamePath)/$(GameData)/Managed/DemiLib.dll')"><HintPath>$(GamePath)/$(GameData)/Managed/DemiLib.dll</HintPath></Reference>
-        <Reference Include="I18N" Condition="Exists('$(GamePath)/$(GameData)/Managed/I18N.dll')"><HintPath>$(GamePath)/$(GameData)/Managed/I18N.dll</HintPath></Reference>
-        <Reference Include="I18N.CJK" Condition="Exists('$(GamePath)/$(GameData)/Managed/I18N.CJK.dll')"><HintPath>$(GamePath)/$(GameData)/Managed/I18N.CJK.dll</HintPath></Reference>
-        <Reference Include="I18N.MidEast" Condition="Exists('$(GamePath)/$(GameData)/Managed/I18N.MidEast.dll')"><HintPath>$(GamePath)/$(GameData)/Managed/I18N.MidEast.dll</HintPath></Reference>
-        <Reference Include="I18N.Other" Condition="Exists('$(GamePath)/$(GameData)/Managed/I18N.Other.dll')"><HintPath>$(GamePath)/$(GameData)/Managed/I18N.Other.dll</HintPath></Reference>
-        <Reference Include="I18N.Rare" Condition="Exists('$(GamePath)/$(GameData)/Managed/I18N.Rare.dll')"><HintPath>$(GamePath)/$(GameData)/Managed/I18N.Rare.dll</HintPath></Reference>
-        <Reference Include="I18N.West" Condition="Exists('$(GamePath)/$(GameData)/Managed/I18N.West.dll')"><HintPath>$(GamePath)/$(GameData)/Managed/I18N.West.dll</HintPath></Reference>
+        <Reference Include="DemiLib" Condition="Exists('$(_ManagedRefPath)/DemiLib.dll')"><HintPath>$(_ManagedRefPath)/DemiLib.dll</HintPath></Reference>
+        <Reference Include="I18N" Condition="Exists('$(_ManagedRefPath)/I18N.dll')"><HintPath>$(_ManagedRefPath)/I18N.dll</HintPath></Reference>
+        <Reference Include="I18N.CJK" Condition="Exists('$(_ManagedRefPath)/I18N.CJK.dll')"><HintPath>$(_ManagedRefPath)/I18N.CJK.dll</HintPath></Reference>
+        <Reference Include="I18N.MidEast" Condition="Exists('$(_ManagedRefPath)/I18N.MidEast.dll')"><HintPath>$(_ManagedRefPath)/I18N.MidEast.dll</HintPath></Reference>
+        <Reference Include="I18N.Other" Condition="Exists('$(_ManagedRefPath)/I18N.Other.dll')"><HintPath>$(_ManagedRefPath)/I18N.Other.dll</HintPath></Reference>
+        <Reference Include="I18N.Rare" Condition="Exists('$(_ManagedRefPath)/I18N.Rare.dll')"><HintPath>$(_ManagedRefPath)/I18N.Rare.dll</HintPath></Reference>
+        <Reference Include="I18N.West" Condition="Exists('$(_ManagedRefPath)/I18N.West.dll')"><HintPath>$(_ManagedRefPath)/I18N.West.dll</HintPath></Reference>
         <Reference Include="Newtonsoft.Json">
             <HintPath Condition="$(Configuration.Contains('IL2CPP')) and Exists('$(_Il2CppLoaderPath)/MelonLoader/net6/Newtonsoft.Json.dll')">$(_Il2CppLoaderPath)/MelonLoader/net6/Newtonsoft.Json.dll</HintPath>
-            <HintPath Condition="!$(Configuration.Contains('IL2CPP')) and Exists('$(GamePath)/$(GameData)/Managed/Newtonsoft.Json.dll')">$(GamePath)/$(GameData)/Managed/Newtonsoft.Json.dll</HintPath>
-            <HintPath Condition="!$(Configuration.Contains('IL2CPP')) and !Exists('$(GamePath)/$(GameData)/Managed/Newtonsoft.Json.dll') and Exists('$(GamePath)/MelonLoader/net35/Newtonsoft.Json.dll')">$(GamePath)/MelonLoader/net35/Newtonsoft.Json.dll</HintPath>
+            <HintPath Condition="!$(Configuration.Contains('IL2CPP')) and Exists('$(_ManagedRefPath)/Newtonsoft.Json.dll')">$(_ManagedRefPath)/Newtonsoft.Json.dll</HintPath>
+            <HintPath Condition="!$(Configuration.Contains('IL2CPP')) and !Exists('$(_ManagedRefPath)/Newtonsoft.Json.dll') and Exists('$(GamePath)/MelonLoader/net35/Newtonsoft.Json.dll')">$(GamePath)/MelonLoader/net35/Newtonsoft.Json.dll</HintPath>
         </Reference>
-        <Reference Include="Rewired_Core" Condition="Exists('$(GamePath)/$(GameData)/Managed/Rewired_Core.dll')"><HintPath>$(GamePath)/$(GameData)/Managed/Rewired_Core.dll</HintPath></Reference>
+        <Reference Include="Rewired_Core" Condition="Exists('$(_ManagedRefPath)/Rewired_Core.dll')"><HintPath>$(_ManagedRefPath)/Rewired_Core.dll</HintPath></Reference>
     </ItemGroup>
 
     <ItemGroup Condition="!$(Configuration.Contains('IL2CPP'))">
-        <Reference Include="Unity.Addressables" Condition="Exists('$(GamePath)/$(GameData)/Managed/Unity.Addressables.dll')"><HintPath>$(GamePath)/$(GameData)/Managed/Unity.Addressables.dll</HintPath></Reference>
-        <Reference Include="Unity.Burst" Condition="Exists('$(GamePath)/$(GameData)/Managed/Unity.Burst.dll')"><HintPath>$(GamePath)/$(GameData)/Managed/Unity.Burst.dll</HintPath></Reference>
-        <Reference Include="Unity.Burst.Unsafe" Condition="Exists('$(GamePath)/$(GameData)/Managed/Unity.Burst.Unsafe.dll')"><HintPath>$(GamePath)/$(GameData)/Managed/Unity.Burst.Unsafe.dll</HintPath></Reference>
-        <Reference Include="Unity.Collections" Condition="Exists('$(GamePath)/$(GameData)/Managed/Unity.Collections.dll')"><HintPath>$(GamePath)/$(GameData)/Managed/Unity.Collections.dll</HintPath></Reference>
-        <Reference Include="Unity.Collections.LowLevel.ILSupport" Condition="Exists('$(GamePath)/$(GameData)/Managed/Unity.Collections.LowLevel.ILSupport.dll')"><HintPath>$(GamePath)/$(GameData)/Managed/Unity.Collections.LowLevel.ILSupport.dll</HintPath></Reference>
-        <Reference Include="Unity.Mathematics" Condition="Exists('$(GamePath)/$(GameData)/Managed/Unity.Mathematics.dll')"><HintPath>$(GamePath)/$(GameData)/Managed/Unity.Mathematics.dll</HintPath></Reference>
-        <Reference Include="Unity.MemoryProfiler" Condition="Exists('$(GamePath)/$(GameData)/Managed/Unity.MemoryProfiler.dll')"><HintPath>$(GamePath)/$(GameData)/Managed/Unity.MemoryProfiler.dll</HintPath></Reference>
-        <Reference Include="Unity.ResourceManager" Condition="Exists('$(GamePath)/$(GameData)/Managed/Unity.ResourceManager.dll')"><HintPath>$(GamePath)/$(GameData)/Managed/Unity.ResourceManager.dll</HintPath></Reference>
-        <Reference Include="Unity.TextMeshPro"><HintPath>$(GamePath)/$(GameData)/Managed/Unity.TextMeshPro.dll</HintPath></Reference>
-        <Reference Include="UnityEngine"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.AccessibilityModule"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.AccessibilityModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.AIModule"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.AIModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.AndroidJNIModule"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.AndroidJNIModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.AnimationModule"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.AnimationModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.AssetBundleModule"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.AssetBundleModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.AudioModule"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.AudioModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.ClothModule"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.ClothModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.ContentLoadModule" Condition="Exists('$(GamePath)/$(GameData)/Managed/UnityEngine.ContentLoadModule.dll')"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.ContentLoadModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.CoreModule"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.CoreModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.CrashReportingModule"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.CrashReportingModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.DirectorModule"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.DirectorModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.DSPGraphModule"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.DSPGraphModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.GameCenterModule"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.GameCenterModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.GIModule"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.GIModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.GridModule"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.GridModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.HotReloadModule"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.HotReloadModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.ImageConversionModule"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.ImageConversionModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.IMGUIModule"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.IMGUIModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.InputLegacyModule"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.InputLegacyModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.InputModule"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.InputModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.JSONSerializeModule"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.JSONSerializeModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.LocalizationModule"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.LocalizationModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.ParticleSystemModule"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.ParticleSystemModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.PerformanceReportingModule"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.PerformanceReportingModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.Physics2DModule"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.Physics2DModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.PhysicsModule"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.PhysicsModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.PropertiesModule" Condition="Exists('$(GamePath)/$(GameData)/Managed/UnityEngine.PropertiesModule.dll')"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.PropertiesModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.RuntimeInitializeOnLoadManagerInitializerModule"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.RuntimeInitializeOnLoadManagerInitializerModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.ScreenCaptureModule"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.ScreenCaptureModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.SharedInternalsModule"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.SharedInternalsModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.SpriteMaskModule"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.SpriteMaskModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.SpriteShapeModule"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.SpriteShapeModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.StreamingModule"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.StreamingModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.SubstanceModule"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.SubstanceModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.SubsystemsModule"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.SubsystemsModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.TerrainModule"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.TerrainModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.TerrainPhysicsModule"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.TerrainPhysicsModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.TextCoreFontEngineModule" Condition="Exists('$(GamePath)/$(GameData)/Managed/UnityEngine.TextCoreFontEngineModule.dll')"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.TextCoreFontEngineModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.TextCoreTextEngineModule" Condition="Exists('$(GamePath)/$(GameData)/Managed/UnityEngine.TextCoreTextEngineModule.dll')"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.TextCoreTextEngineModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.TextRenderingModule"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.TextRenderingModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.TilemapModule"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.TilemapModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.TLSModule"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.TLSModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.UI"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.UI.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.UIElementsModule"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.UIElementsModule.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.UIModule"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.UIModule.dll</HintPath></Reference>
+        <Reference Include="Unity.Addressables" Condition="Exists('$(_ManagedRefPath)/Unity.Addressables.dll')"><HintPath>$(_ManagedRefPath)/Unity.Addressables.dll</HintPath></Reference>
+        <Reference Include="Unity.Burst" Condition="Exists('$(_ManagedRefPath)/Unity.Burst.dll')"><HintPath>$(_ManagedRefPath)/Unity.Burst.dll</HintPath></Reference>
+        <Reference Include="Unity.Burst.Unsafe" Condition="Exists('$(_ManagedRefPath)/Unity.Burst.Unsafe.dll')"><HintPath>$(_ManagedRefPath)/Unity.Burst.Unsafe.dll</HintPath></Reference>
+        <Reference Include="Unity.Collections" Condition="Exists('$(_ManagedRefPath)/Unity.Collections.dll')"><HintPath>$(_ManagedRefPath)/Unity.Collections.dll</HintPath></Reference>
+        <Reference Include="Unity.Collections.LowLevel.ILSupport" Condition="Exists('$(_ManagedRefPath)/Unity.Collections.LowLevel.ILSupport.dll')"><HintPath>$(_ManagedRefPath)/Unity.Collections.LowLevel.ILSupport.dll</HintPath></Reference>
+        <Reference Include="Unity.Mathematics" Condition="Exists('$(_ManagedRefPath)/Unity.Mathematics.dll')"><HintPath>$(_ManagedRefPath)/Unity.Mathematics.dll</HintPath></Reference>
+        <Reference Include="Unity.MemoryProfiler" Condition="Exists('$(_ManagedRefPath)/Unity.MemoryProfiler.dll')"><HintPath>$(_ManagedRefPath)/Unity.MemoryProfiler.dll</HintPath></Reference>
+        <Reference Include="Unity.ResourceManager" Condition="Exists('$(_ManagedRefPath)/Unity.ResourceManager.dll')"><HintPath>$(_ManagedRefPath)/Unity.ResourceManager.dll</HintPath></Reference>
+        <Reference Include="Unity.TextMeshPro"><HintPath>$(_ManagedRefPath)/Unity.TextMeshPro.dll</HintPath></Reference>
+        <Reference Include="UnityEngine"><HintPath>$(_ManagedRefPath)/UnityEngine.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.AccessibilityModule"><HintPath>$(_ManagedRefPath)/UnityEngine.AccessibilityModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.AIModule"><HintPath>$(_ManagedRefPath)/UnityEngine.AIModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.AndroidJNIModule"><HintPath>$(_ManagedRefPath)/UnityEngine.AndroidJNIModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.AnimationModule"><HintPath>$(_ManagedRefPath)/UnityEngine.AnimationModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.AssetBundleModule"><HintPath>$(_ManagedRefPath)/UnityEngine.AssetBundleModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.AudioModule"><HintPath>$(_ManagedRefPath)/UnityEngine.AudioModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.ClothModule"><HintPath>$(_ManagedRefPath)/UnityEngine.ClothModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.ContentLoadModule" Condition="Exists('$(_ManagedRefPath)/UnityEngine.ContentLoadModule.dll')"><HintPath>$(_ManagedRefPath)/UnityEngine.ContentLoadModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.CoreModule"><HintPath>$(_ManagedRefPath)/UnityEngine.CoreModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.CrashReportingModule"><HintPath>$(_ManagedRefPath)/UnityEngine.CrashReportingModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.DirectorModule"><HintPath>$(_ManagedRefPath)/UnityEngine.DirectorModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.DSPGraphModule"><HintPath>$(_ManagedRefPath)/UnityEngine.DSPGraphModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.GameCenterModule"><HintPath>$(_ManagedRefPath)/UnityEngine.GameCenterModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.GIModule"><HintPath>$(_ManagedRefPath)/UnityEngine.GIModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.GridModule"><HintPath>$(_ManagedRefPath)/UnityEngine.GridModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.HotReloadModule"><HintPath>$(_ManagedRefPath)/UnityEngine.HotReloadModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.ImageConversionModule"><HintPath>$(_ManagedRefPath)/UnityEngine.ImageConversionModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.IMGUIModule"><HintPath>$(_ManagedRefPath)/UnityEngine.IMGUIModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.InputLegacyModule"><HintPath>$(_ManagedRefPath)/UnityEngine.InputLegacyModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.InputModule"><HintPath>$(_ManagedRefPath)/UnityEngine.InputModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.JSONSerializeModule"><HintPath>$(_ManagedRefPath)/UnityEngine.JSONSerializeModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.LocalizationModule"><HintPath>$(_ManagedRefPath)/UnityEngine.LocalizationModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.ParticleSystemModule"><HintPath>$(_ManagedRefPath)/UnityEngine.ParticleSystemModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.PerformanceReportingModule"><HintPath>$(_ManagedRefPath)/UnityEngine.PerformanceReportingModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.Physics2DModule"><HintPath>$(_ManagedRefPath)/UnityEngine.Physics2DModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.PhysicsModule"><HintPath>$(_ManagedRefPath)/UnityEngine.PhysicsModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.PropertiesModule" Condition="Exists('$(_ManagedRefPath)/UnityEngine.PropertiesModule.dll')"><HintPath>$(_ManagedRefPath)/UnityEngine.PropertiesModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.RuntimeInitializeOnLoadManagerInitializerModule"><HintPath>$(_ManagedRefPath)/UnityEngine.RuntimeInitializeOnLoadManagerInitializerModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.ScreenCaptureModule"><HintPath>$(_ManagedRefPath)/UnityEngine.ScreenCaptureModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.SharedInternalsModule"><HintPath>$(_ManagedRefPath)/UnityEngine.SharedInternalsModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.SpriteMaskModule"><HintPath>$(_ManagedRefPath)/UnityEngine.SpriteMaskModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.SpriteShapeModule"><HintPath>$(_ManagedRefPath)/UnityEngine.SpriteShapeModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.StreamingModule"><HintPath>$(_ManagedRefPath)/UnityEngine.StreamingModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.SubstanceModule"><HintPath>$(_ManagedRefPath)/UnityEngine.SubstanceModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.SubsystemsModule"><HintPath>$(_ManagedRefPath)/UnityEngine.SubsystemsModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.TerrainModule"><HintPath>$(_ManagedRefPath)/UnityEngine.TerrainModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.TerrainPhysicsModule"><HintPath>$(_ManagedRefPath)/UnityEngine.TerrainPhysicsModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.TextRenderingModule"><HintPath>$(_ManagedRefPath)/UnityEngine.TextRenderingModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.TilemapModule"><HintPath>$(_ManagedRefPath)/UnityEngine.TilemapModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.TLSModule"><HintPath>$(_ManagedRefPath)/UnityEngine.TLSModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.UI"><HintPath>$(_ManagedRefPath)/UnityEngine.UI.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.UIElementsModule"><HintPath>$(_ManagedRefPath)/UnityEngine.UIElementsModule.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.UIModule"><HintPath>$(_ManagedRefPath)/UnityEngine.UIModule.dll</HintPath></Reference>
     </ItemGroup>
 	
 	<ItemGroup Condition="$(Configuration.Contains('IL2CPP'))">
@@ -383,24 +388,14 @@
 		<Copy SourceFiles="@(O5NativeLib)" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" Condition="'@(O5NativeLib)' != ''" />
 		<Copy SourceFiles="@(OvNativeLib)" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" Condition="'@(OvNativeLib)' != ''" />
 		<Copy SourceFiles="@(NativeAlias)" DestinationFiles="@(NativeAlias->'$(BuildOutputDir)/UserLibs/%(Alias)')" SkipUnchangedFiles="true" />
-		<Copy SourceFiles="$(GamePath)/$(GameData)/Managed/netstandard.dll" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" Condition="!$(Configuration.Contains('IL2CPP')) And Exists('$(GamePath)/$(GameData)/Managed/netstandard.dll')" />
-		<Copy SourceFiles="$(MSBuildProjectDirectory)/../tool/lib/netstandard.dll" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" Condition="!$(Configuration.Contains('IL2CPP')) And !Exists('$(GamePath)/$(GameData)/Managed/netstandard.dll') And Exists('$(MSBuildProjectDirectory)/../tool/lib/netstandard.dll')" />
-		<Copy SourceFiles="$(GamePath)/$(GameData)/Managed/System.Runtime.Serialization.dll" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" Condition="!$(Configuration.Contains('IL2CPP')) And Exists('$(GamePath)/$(GameData)/Managed/System.Runtime.Serialization.dll')" />
-		<Copy SourceFiles="$(GamePath)/MelonLoader/Dependencies/MonoBleedingEdgePatches/System.Runtime.Serialization.dll" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" Condition="!$(Configuration.Contains('IL2CPP')) And !Exists('$(GamePath)/$(GameData)/Managed/System.Runtime.Serialization.dll') And Exists('$(GamePath)/MelonLoader/Dependencies/MonoBleedingEdgePatches/System.Runtime.Serialization.dll')" />
-		<Copy SourceFiles="$(MSBuildProjectDirectory)/../tool/lib/System.Runtime.Serialization.dll" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" Condition="!$(Configuration.Contains('IL2CPP')) And !Exists('$(GamePath)/$(GameData)/Managed/System.Runtime.Serialization.dll') And !Exists('$(GamePath)/MelonLoader/Dependencies/MonoBleedingEdgePatches/System.Runtime.Serialization.dll') And Exists('$(MSBuildProjectDirectory)/../tool/lib/System.Runtime.Serialization.dll')" />
-		<Copy SourceFiles="$(GamePath)/$(GameData)/Managed/System.IO.Compression.dll" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" Condition="!$(Configuration.Contains('IL2CPP')) And Exists('$(GamePath)/$(GameData)/Managed/System.IO.Compression.dll')" />
-		<Copy SourceFiles="$(GamePath)/MelonLoader/Dependencies/MonoBleedingEdgePatches/System.IO.Compression.dll" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" Condition="!$(Configuration.Contains('IL2CPP')) And !Exists('$(GamePath)/$(GameData)/Managed/System.IO.Compression.dll') And Exists('$(GamePath)/MelonLoader/Dependencies/MonoBleedingEdgePatches/System.IO.Compression.dll')" />
-		<Copy SourceFiles="$(MSBuildProjectDirectory)/../tool/lib/System.IO.Compression.dll" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" Condition="!$(Configuration.Contains('IL2CPP')) And !Exists('$(GamePath)/$(GameData)/Managed/System.IO.Compression.dll') And !Exists('$(GamePath)/MelonLoader/Dependencies/MonoBleedingEdgePatches/System.IO.Compression.dll') And Exists('$(MSBuildProjectDirectory)/../tool/lib/System.IO.Compression.dll')" />
-		<Copy SourceFiles="$(GamePath)/$(GameData)/Managed/System.IO.Compression.FileSystem.dll" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" Condition="!$(Configuration.Contains('IL2CPP')) And Exists('$(GamePath)/$(GameData)/Managed/System.IO.Compression.FileSystem.dll')" />
-		<Copy SourceFiles="$(GamePath)/MelonLoader/Dependencies/MonoBleedingEdgePatches/System.IO.Compression.FileSystem.dll" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" Condition="!$(Configuration.Contains('IL2CPP')) And !Exists('$(GamePath)/$(GameData)/Managed/System.IO.Compression.FileSystem.dll') And Exists('$(GamePath)/MelonLoader/Dependencies/MonoBleedingEdgePatches/System.IO.Compression.FileSystem.dll')" />
-		<Copy SourceFiles="$(MSBuildProjectDirectory)/../tool/lib/System.IO.Compression.FileSystem.dll" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" Condition="!$(Configuration.Contains('IL2CPP')) And !Exists('$(GamePath)/$(GameData)/Managed/System.IO.Compression.FileSystem.dll') And !Exists('$(GamePath)/MelonLoader/Dependencies/MonoBleedingEdgePatches/System.IO.Compression.FileSystem.dll') And Exists('$(MSBuildProjectDirectory)/../tool/lib/System.IO.Compression.FileSystem.dll')" />
-		<Copy SourceFiles="$(GamePath)/$(GameData)/Managed/System.Numerics.dll" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" Condition="!$(Configuration.Contains('IL2CPP')) And Exists('$(GamePath)/$(GameData)/Managed/System.Numerics.dll')" />
-		<Copy SourceFiles="$(GamePath)/MelonLoader/Dependencies/MonoBleedingEdgePatches/System.Numerics.dll" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" Condition="!$(Configuration.Contains('IL2CPP')) And !Exists('$(GamePath)/$(GameData)/Managed/System.Numerics.dll') And Exists('$(GamePath)/MelonLoader/Dependencies/MonoBleedingEdgePatches/System.Numerics.dll')" />
-		<Copy SourceFiles="$(MSBuildProjectDirectory)/../tool/lib/System.Numerics.dll" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" Condition="!$(Configuration.Contains('IL2CPP')) And !Exists('$(GamePath)/$(GameData)/Managed/System.Numerics.dll') And !Exists('$(GamePath)/MelonLoader/Dependencies/MonoBleedingEdgePatches/System.Numerics.dll') And Exists('$(MSBuildProjectDirectory)/../tool/lib/System.Numerics.dll')" />
-		<Copy SourceFiles="$(MSBuildProjectDirectory)/../tool/lib/System.ValueTuple.dll" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" Condition="!$(Configuration.Contains('IL2CPP')) And !Exists('$(GamePath)/$(GameData)/Managed/System.ValueTuple.dll') And !Exists('$(GamePath)/$(GameData)/Managed/UnityEngine.TextCoreTextEngineModule.dll') And Exists('$(MSBuildProjectDirectory)/../tool/lib/System.ValueTuple.dll')" />
-		<Copy SourceFiles="$(GamePath)/$(GameData)/Managed/System.Runtime.dll" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" Condition="!$(Configuration.Contains('IL2CPP')) And Exists('$(GamePath)/$(GameData)/Managed/System.Runtime.dll')" />
-		<Copy SourceFiles="$(GamePath)/MelonLoader/Dependencies/MonoBleedingEdgePatches/System.Runtime.dll" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" Condition="!$(Configuration.Contains('IL2CPP')) And !Exists('$(GamePath)/$(GameData)/Managed/System.Runtime.dll') And Exists('$(GamePath)/MelonLoader/Dependencies/MonoBleedingEdgePatches/System.Runtime.dll')" />
-		<Copy SourceFiles="$(MSBuildProjectDirectory)/../tool/lib/System.Runtime.dll" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" Condition="!$(Configuration.Contains('IL2CPP')) And !Exists('$(GamePath)/$(GameData)/Managed/System.Runtime.dll') And !Exists('$(GamePath)/MelonLoader/Dependencies/MonoBleedingEdgePatches/System.Runtime.dll') And Exists('$(MSBuildProjectDirectory)/../tool/lib/System.Runtime.dll')" />
+		<!-- Always stage universal netstandard 2.0 facades from tool/lib for portable builds (never Unity 6's netstandard 2.1 facade). -->
+		<Copy SourceFiles="$(MSBuildProjectDirectory)/../tool/lib/netstandard.dll" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" Condition="!$(Configuration.Contains('IL2CPP')) And Exists('$(MSBuildProjectDirectory)/../tool/lib/netstandard.dll')" />
+		<Copy SourceFiles="$(GamePath)/$(GameData)/Managed/netstandard.dll" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" Condition="!$(Configuration.Contains('IL2CPP')) And !Exists('$(MSBuildProjectDirectory)/../tool/lib/netstandard.dll') And Exists('$(GamePath)/$(GameData)/Managed/netstandard.dll')" />
+		<Copy SourceFiles="$(MSBuildProjectDirectory)/../tool/lib/System.Runtime.Serialization.dll" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" Condition="!$(Configuration.Contains('IL2CPP')) And Exists('$(MSBuildProjectDirectory)/../tool/lib/System.Runtime.Serialization.dll')" />
+		<Copy SourceFiles="$(MSBuildProjectDirectory)/../tool/lib/System.IO.Compression.dll" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" Condition="!$(Configuration.Contains('IL2CPP')) And Exists('$(MSBuildProjectDirectory)/../tool/lib/System.IO.Compression.dll')" />
+		<Copy SourceFiles="$(MSBuildProjectDirectory)/../tool/lib/System.IO.Compression.FileSystem.dll" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" Condition="!$(Configuration.Contains('IL2CPP')) And Exists('$(MSBuildProjectDirectory)/../tool/lib/System.IO.Compression.FileSystem.dll')" />
+		<Copy SourceFiles="$(MSBuildProjectDirectory)/../tool/lib/System.Numerics.dll" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" Condition="!$(Configuration.Contains('IL2CPP')) And Exists('$(MSBuildProjectDirectory)/../tool/lib/System.Numerics.dll')" />
+		<Copy SourceFiles="$(MSBuildProjectDirectory)/../tool/lib/System.Runtime.dll" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" Condition="!$(Configuration.Contains('IL2CPP')) And Exists('$(MSBuildProjectDirectory)/../tool/lib/System.Runtime.dll')" />
 		<MakeDir Directories="$(BuildOutputDir)\UserData\Overlayer" />
 		<Copy SourceFiles="@(ExportFiles)" DestinationFiles="@(ExportFiles->'$(BuildOutputDir)\UserData\Overlayer\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
 	</Target>

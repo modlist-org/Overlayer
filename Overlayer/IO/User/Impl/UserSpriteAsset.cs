@@ -163,7 +163,7 @@ internal static class UserSpriteAsset {
             hideFlags = HideFlags.DontSave
         };
         mat.mainTexture = atlas;
-        asset.material = mat;
+        SetAssetMaterial(asset, mat);
         if (!FillTables(asset, chars, glyphs)) {
             Object.Destroy(mat);
             Object.Destroy(atlas);
@@ -240,6 +240,28 @@ internal static class UserSpriteAsset {
         } catch {
         }
         return ch;
+    }
+
+    // TMP_Asset.material is a public field in Unity 2020.3 TMP 3.0.x and a property in Unity 6.
+    private static PropertyInfo _assetMaterialProp;
+    private static FieldInfo _assetMaterialField;
+    private static bool _assetMaterialResolved;
+
+    private static void SetAssetMaterial(TMP_SpriteAsset asset, Material mat) {
+        if (!_assetMaterialResolved) {
+            _assetMaterialResolved = true;
+            var t = typeof(TMP_Asset);
+            _assetMaterialProp = t.GetProperty("material", BindingFlags.Public | BindingFlags.Instance);
+            if (_assetMaterialProp == null || !_assetMaterialProp.CanWrite) {
+                _assetMaterialProp = null;
+                _assetMaterialField = t.GetField("material", BindingFlags.Public | BindingFlags.Instance);
+            }
+        }
+        if (_assetMaterialProp != null) {
+            _assetMaterialProp.SetValue(asset, mat);
+        } else {
+            _assetMaterialField?.SetValue(asset, mat);
+        }
     }
 
     private static void SetPointSize(TMP_SpriteAsset asset, float pointSize) {

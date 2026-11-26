@@ -6,7 +6,6 @@ using Overlayer.Core;
 using System.Reflection;
 using System.Security.Cryptography;
 using UnityEngine;
-using UnityEngine.TextCore.LowLevel;
 
 #if ML && IL2CPP
 using Il2CppTMPro;

@@ -117,7 +117,8 @@ public static class Effects {
         }
 
         // Same hex pair + progress + maxLength always yields the same string; reuse it.
-        int progressBits = BitConverter.SingleToInt32Bits(progress);
+        int progressBits;
+        unsafe { progressBits = *(int*)&progress; }
         var memoKey = (minimumHex, maximumHex);
         lock (colorCacheLock) {
             if (colorRangeMemos.TryGetValue(memoKey, out ColorRangeMemo memo)

@@ -7,7 +7,7 @@ internal readonly struct Pt(float x, float y) {
     public readonly float Y = y;
 
     public float SqrMagnitude => X * X + Y * Y;
-    public float Magnitude => MathF.Sqrt(SqrMagnitude);
+    public float Magnitude => (float)Math.Sqrt(SqrMagnitude);
 
     public Pt Normalized {
         get {
@@ -69,8 +69,8 @@ internal static class HudHandleMath {
                 Pt d = mouse - c[i];
                 float ox = Pt.Dot(d, outX[i]);
                 float oy = Pt.Dot(d, outY[i]);
-                float minInX = -MathF.Min(CornerHitHalfPx, spanX[i] * 0.25f);
-                float minInY = -MathF.Min(CornerHitHalfPx, spanY[i] * 0.25f);
+                float minInX = -Math.Min(CornerHitHalfPx, spanX[i] * 0.25f);
+                float minInY = -Math.Min(CornerHitHalfPx, spanY[i] * 0.25f);
                 if (ox >= minInX && ox <= CornerHitHalfPx && oy >= minInY && oy <= CornerHitHalfPx) {
                     float dist2 = d.SqrMagnitude;
                     if (dist2 < bestDist2) {
@@ -94,7 +94,7 @@ internal static class HudHandleMath {
                     continue;
                 }
                 float perpSpan = widthAxis ? (c3 - c0).Magnitude : (c1 - c0).Magnitude;
-                float threshold = inside ? MathF.Min(EdgeHitPx, perpSpan * 0.25f) : EdgeHitPx;
+                float threshold = inside ? Math.Min(EdgeHitPx, perpSpan * 0.25f) : EdgeHitPx;
                 float d = DistanceToSegment(mouse, c[i], c[(i + 1) & 3]);
                 if (d <= threshold && d < bestDist) {
                     bestDist = d;
@@ -126,8 +126,8 @@ internal static class HudHandleMath {
                 if (ox < 0f && oy < 0f) {
                     continue;
                 }
-                float shoulderX = MathF.Min(RotateShoulderPx, spanX[i] * 0.25f);
-                float shoulderY = MathF.Min(RotateShoulderPx, spanY[i] * 0.25f);
+                float shoulderX = Math.Min(RotateShoulderPx, spanX[i] * 0.25f);
+                float shoulderY = Math.Min(RotateShoulderPx, spanY[i] * 0.25f);
                 if (ox >= -shoulderX && ox <= RotateOuterPx && oy >= -shoulderY && oy <= RotateOuterPx) {
                     if (dist2 < bestDist2) {
                         bestDist2 = dist2;
@@ -154,16 +154,16 @@ internal static class HudHandleMath {
         Pt curVec = mouse - fixedPt;
         if (lockAspect) {
             float k = startVec.SqrMagnitude > 1e-3f ? Pt.Dot(curVec, startVec) / startVec.SqrMagnitude : 1f;
-            k = MathF.Max(k, minRatio);
+            k = Math.Max(k, minRatio);
             return (k, k);
         }
         float startDx = Pt.Dot(startVec, axisX);
         float startDy = Pt.Dot(startVec, axisY);
         float curDx = Pt.Dot(curVec, axisX);
         float curDy = Pt.Dot(curVec, axisY);
-        float rx = MathF.Abs(startDx) > 1e-3f ? curDx / startDx : 1f;
-        float ry = MathF.Abs(startDy) > 1e-3f ? curDy / startDy : 1f;
-        return (MathF.Max(rx, minRatio), MathF.Max(ry, minRatio));
+        float rx = Math.Abs(startDx) > 1e-3f ? curDx / startDx : 1f;
+        float ry = Math.Abs(startDy) > 1e-3f ? curDy / startDy : 1f;
+        return (Math.Max(rx, minRatio), Math.Max(ry, minRatio));
     }
 
     public static (float Rx, float Ry) ComputeEdgeRatios(
@@ -171,7 +171,7 @@ internal static class HudHandleMath {
         Pt outward = startEdgeMid - fixedPt;
         float startLen = outward.Magnitude;
         float r = startLen > 1e-3f ? Pt.Dot(mouse - fixedPt, outward * (1f / startLen)) / startLen : 1f;
-        r = MathF.Max(r, minRatio);
+        r = Math.Max(r, minRatio);
         if (lockAspect) {
             return (r, r);
         }
@@ -187,9 +187,9 @@ internal static class HudHandleMath {
         Pt parentRectMin, Pt parentRectSize, Pt targetAnchor) {
         float lx = (targetAnchor.X - oldPivot.X) * size.X * localScale.X;
         float ly = (targetAnchor.Y - oldPivot.Y) * size.Y * localScale.Y;
-        float rad = rotationDeg * (MathF.PI / 180f);
-        float cos = MathF.Cos(rad);
-        float sin = MathF.Sin(rad);
+        double rad = rotationDeg * (Math.PI / 180.0);
+        float cos = (float)Math.Cos(rad);
+        float sin = (float)Math.Sin(rad);
         float px = oldLocalPos.X + (lx * cos - ly * sin);
         float py = oldLocalPos.Y + (lx * sin + ly * cos);
         float anchorX = parentRectMin.X + targetAnchor.X * parentRectSize.X;
@@ -202,7 +202,7 @@ internal static class HudHandleMath {
         if (a < 0f) {
             a += 180f;
         }
-        return ((int)MathF.Floor((a + 22.5f) / 45f) % 4) * 45;
+        return ((int)Math.Floor((a + 22.5f) / 45f) % 4) * 45;
     }
 
     public static int QuantizeRotateAngle(float angleDeg) {
@@ -210,12 +210,12 @@ internal static class HudHandleMath {
         if (a < 0f) {
             a += 360f;
         }
-        return ((int)MathF.Floor((a + 22.5f) / 45f) % 8) * 45;
+        return ((int)Math.Floor((a + 22.5f) / 45f) % 8) * 45;
     }
 
     public static bool InResizeArrow(float u, float v) {
-        float au = MathF.Abs(u);
-        float av = MathF.Abs(v);
+        float au = Math.Abs(u);
+        float av = Math.Abs(v);
         if (au <= 6.5f && av <= 1.6f) {
             return true;
         }
@@ -225,18 +225,18 @@ internal static class HudHandleMath {
     public static bool InRotateArc(float u, float v) {
         const float cx = -4.5f;
         const float r = 8.5f;
-        const float spanRad = 50f * MathF.PI / 180f;
-        float cosS = MathF.Cos(spanRad);
-        float sinS = MathF.Sin(spanRad);
+        const double spanRad = 50.0 * Math.PI / 180.0;
+        float cosS = (float)Math.Cos(spanRad);
+        float sinS = (float)Math.Sin(spanRad);
 
         float dx = u - cx;
-        float dist = MathF.Sqrt(dx * dx + v * v);
-        float phi = MathF.Atan2(v, dx);
-        if (MathF.Abs(phi) <= spanRad && MathF.Abs(dist - r) <= 1.55f) {
+        float dist = (float)Math.Sqrt(dx * dx + v * v);
+        float phi = (float)Math.Atan2(v, dx);
+        if (Math.Abs(phi) <= (float)spanRad && Math.Abs(dist - r) <= 1.55f) {
             return true;
         }
 
-        float av = MathF.Abs(v);
+        float av = Math.Abs(v);
         float bx = cx + r * cosS;
         float by = r * sinS;
         float tx = -sinS;
@@ -245,14 +245,14 @@ internal static class HudHandleMath {
         float ny = sinS;
         float pu = (u - bx) * tx + (av - by) * ty;
         float pv = (u - bx) * nx + (av - by) * ny;
-        return pu >= -0.6f && pu <= 4.8f && MathF.Abs(pv) <= (4.8f - pu) * 0.85f;
+        return pu >= -0.6f && pu <= 4.8f && Math.Abs(pv) <= (4.8f - pu) * 0.85f;
     }
 
     public static bool InMoveCross(float u, float v) => InHalfMoveArrow(u, v) || InHalfMoveArrow(v, u);
 
     private static bool InHalfMoveArrow(float u, float v) {
-        float au = MathF.Abs(u);
-        float av = MathF.Abs(v);
+        float au = Math.Abs(u);
+        float av = Math.Abs(v);
         if (au <= 5.5f && av <= 1.4f) {
             return true;
         }
@@ -265,7 +265,7 @@ internal static class HudHandleMath {
         for (int i = 0; i < 4; i++) {
             Pt a = q[i], b = q[(i + 1) & 3];
             float cross = (b.X - a.X) * (p.Y - a.Y) - (b.Y - a.Y) * (p.X - a.X);
-            if (MathF.Abs(cross) < 1e-4f) {
+            if (Math.Abs(cross) < 1e-4f) {
                 continue;
             }
             bool s = cross > 0f;
@@ -281,9 +281,9 @@ internal static class HudHandleMath {
     private static float DistanceToSegment(Pt p, Pt a, Pt b) {
         Pt ab = b - a;
         float len2 = ab.SqrMagnitude;
-        float t = len2 < 1e-6f ? 0f : Math.Clamp(Pt.Dot(p - a, ab) / len2, 0f, 1f);
+        float t = len2 < 1e-6f ? 0f : Math.Max(0f, Math.Min(1f, Pt.Dot(p - a, ab) / len2));
         return (p - (a + ab * t)).Magnitude;
     }
 
-    private static float AngleDeg(Pt dir) => MathF.Atan2(dir.Y, dir.X) * (180f / MathF.PI);
+    private static float AngleDeg(Pt dir) => (float)(Math.Atan2(dir.Y, dir.X) * (180.0 / Math.PI));
 }

@@ -63,9 +63,9 @@ internal static class HudCursor {
         };
 
         bool[] shape = new bool[Size * Size];
-        float rad = angleDeg * (MathF.PI / 180f);
-        float cos = MathF.Cos(rad);
-        float sin = MathF.Sin(rad);
+        float rad = angleDeg * (Mathf.PI / 180f);
+        float cos = Mathf.Cos(rad);
+        float sin = Mathf.Sin(rad);
         float half = Size * 0.5f;
 
         for (int y = 0; y < Size; y++) {

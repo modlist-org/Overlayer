@@ -48,8 +48,8 @@ WANT="$OUT/.want.txt"
 
     # Mono Unity / Managed compile refs (<HintPath> only; never PostBuild Copy facade DLLs)
     for dll in $(grep -h '<HintPath' "${CSPROJS[@]}" \
-        | grep -oE '\$\(GamePath\)/\$\(GameData\)/Managed/[A-Za-z0-9._-]+\.dll' \
-        | sed 's|.*/Managed/||' | sort -u); do
+        | grep -oE '(\$\(GamePath\)/\$\(GameData\)/Managed|\$\(_ManagedRefPath\))/[A-Za-z0-9._-]+\.dll' \
+        | sed 's|.*/||' | sort -u); do
         if [[ -f "$MONO/O5Dev_Data/Managed/$dll" ]]; then
             echo "mono/O5Dev_Data/Managed/$dll"
         fi

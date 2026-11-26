@@ -69,13 +69,47 @@ internal static class GenRefs {
     private static int Main(string[] args) {
         if(args.Length == 3 && args[0] == "retarget") {
             var asm = Mono.Cecil.AssemblyDefinition.ReadAssembly(args[1]);
-            foreach(var r in asm.MainModule.AssemblyReferences) {
-                if(r.Name == "netstandard") {
-                    r.Version = new Version(2, 0, 0, 0);
-                }
-            }
+            RetargetNetstandard20(asm);
             asm.Write(args[2]);
             Console.WriteLine($"Wrote retargeted assembly to {args[2]}");
+            return 0;
+        }
+        if(args.Length == 3 && args[0] == "retarget-dir") {
+            string srcDir = args[1];
+            string dstDir = args[2];
+            if(!Directory.Exists(srcDir)) {
+                Console.Error.WriteLine("missing source dir: " + srcDir);
+                return 2;
+            }
+            Directory.CreateDirectory(dstDir);
+            int rewritten = 0;
+            int copied = 0;
+            foreach(string src in Directory.GetFiles(srcDir, "*.dll")) {
+                string name = Path.GetFileName(src);
+                string dst = Path.Combine(dstDir, name);
+                string simple = Path.GetFileNameWithoutExtension(src);
+                if(simple == "mscorlib" || simple == "netstandard" || simple == "System" || simple.StartsWith("System.", StringComparison.Ordinal)) {
+                    File.Copy(src, dst, true);
+                    copied++;
+                    continue;
+                }
+                try {
+                    var resolver = new GameDirResolver(srcDir);
+                    using var asm = Mono.Cecil.AssemblyDefinition.ReadAssembly(src,
+                        new Mono.Cecil.ReaderParameters { ReadSymbols = false, AssemblyResolver = resolver });
+                    if(RetargetNetstandard20(asm)) {
+                        asm.Write(dst);
+                        rewritten++;
+                    } else {
+                        File.Copy(src, dst, true);
+                        copied++;
+                    }
+                } catch {
+                    File.Copy(src, dst, true);
+                    copied++;
+                }
+            }
+            Console.WriteLine($"retarget-dir: {rewritten} retargeted, {copied} copied -> {dstDir}");
             return 0;
         }
         if(args.Length >= 2 && args[0] == "check") {
@@ -364,6 +398,9 @@ internal static class GenRefs {
         if(r.Pkt != null && r.Pkt.Length > 0) {
             asm.Name.PublicKeyToken = r.Pkt;
         }
+        if(r.File.StartsWith("mono/", StringComparison.Ordinal)) {
+            RetargetNetstandard20(asm);
+        }
         foreach(var module in asm.Modules) {
             foreach(var type in module.Types.ToArray()) {
                 StripType(type);
@@ -378,6 +415,36 @@ internal static class GenRefs {
         if(simple == "mscorlib" || simple == "netstandard" || simple == "System") {
             throw new InvalidOperationException("refusing to emit framework assembly: " + simple);
         }
+    }
+
+    private static bool RetargetNetstandard20(Mono.Cecil.AssemblyDefinition asm) {
+        bool changed = false;
+        foreach(var module in asm.Modules) {
+            Mono.Cecil.AssemblyNameReference nsRef = null;
+            foreach(var ar in module.AssemblyReferences) {
+                if(ar.Name == "netstandard" && (ar.Version.Major > 2 || (ar.Version.Major == 2 && ar.Version.Minor > 0))) {
+                    ar.Version = new Version(2, 0, 0, 0);
+                    nsRef = ar;
+                    changed = true;
+                }
+            }
+            if(nsRef != null) {
+                Mono.Cecil.AssemblyNameReference memRef = null;
+                foreach(var tr in module.GetTypeReferences()) {
+                    if(tr.Scope == nsRef && (tr.FullName == "System.ReadOnlySpan`1" || tr.FullName == "System.Span`1"
+                        || tr.FullName == "System.ReadOnlyMemory`1" || tr.FullName == "System.Memory`1")) {
+                        if(memRef == null) {
+                            memRef = new Mono.Cecil.AssemblyNameReference("System.Memory", new Version(4, 0, 1, 2)) {
+                                PublicKeyToken = new byte[] { 0xcc, 0x7b, 0x13, 0xff, 0xcd, 0x2d, 0xdd, 0x51 }
+                            };
+                            module.AssemblyReferences.Add(memRef);
+                        }
+                        tr.Scope = memRef;
+                    }
+                }
+            }
+        }
+        return changed;
     }
 
     private static void StripType(Mono.Cecil.TypeDefinition type) {

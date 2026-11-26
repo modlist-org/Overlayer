@@ -131,14 +131,39 @@ internal static class PageSettings {
 
     private static int Signature() {
         var c = MainCore.Conf;
-        int h = HashCode.Combine(MainCore.Tr.Language, c.UIScale.Value, c.ShowOnStartup.Value, c.Tooltip.Value,
-            c.MiddleClickToDefault.Value, c.Enable3DFeatures.Value, c.UseRawInput.Value, c.WheelAdjustSlider.Value);
-        h = HashCode.Combine(h, c.SliderSensitivity.Value, c.ScrollSensitivity.Value, c.AnimationSpeed.Value,
-            c.WindowOpacity.Value, c.HudWindowOpacity.Value, c.TooltipOpacity.Value, c.UISoundVolume.Value);
-        h = HashCode.Combine(h, c.HudSnap.Value, c.HudSnapDistance.Value, c.HudGridSize.Value, c.ShowInternalImages.Value,
-            c.ShowInternalFonts.Value, c.HideTutorial.Value, c.TabLabelMode.Value);
-        return HashCode.Combine(h, c.PanelFadeMode.Value, c.ScrollEasing.Value, c.UIBaseColor.Value,
-            c.WindowKey.Value, c.HudEditorKey.Value, c.LinuxTextInputFix.Value);
+        unchecked {
+            int h = 17;
+            static int Mix(int acc, object v) => acc * 31 + (v?.GetHashCode() ?? 0);
+            h = Mix(h, MainCore.Tr.Language);
+            h = Mix(h, c.UIScale.Value);
+            h = Mix(h, c.ShowOnStartup.Value);
+            h = Mix(h, c.Tooltip.Value);
+            h = Mix(h, c.MiddleClickToDefault.Value);
+            h = Mix(h, c.Enable3DFeatures.Value);
+            h = Mix(h, c.UseRawInput.Value);
+            h = Mix(h, c.WheelAdjustSlider.Value);
+            h = Mix(h, c.SliderSensitivity.Value);
+            h = Mix(h, c.ScrollSensitivity.Value);
+            h = Mix(h, c.AnimationSpeed.Value);
+            h = Mix(h, c.WindowOpacity.Value);
+            h = Mix(h, c.HudWindowOpacity.Value);
+            h = Mix(h, c.TooltipOpacity.Value);
+            h = Mix(h, c.UISoundVolume.Value);
+            h = Mix(h, c.HudSnap.Value);
+            h = Mix(h, c.HudSnapDistance.Value);
+            h = Mix(h, c.HudGridSize.Value);
+            h = Mix(h, c.ShowInternalImages.Value);
+            h = Mix(h, c.ShowInternalFonts.Value);
+            h = Mix(h, c.HideTutorial.Value);
+            h = Mix(h, c.TabLabelMode.Value);
+            h = Mix(h, c.PanelFadeMode.Value);
+            h = Mix(h, c.ScrollEasing.Value);
+            h = Mix(h, c.UIBaseColor.Value);
+            h = Mix(h, c.WindowKey.Value);
+            h = Mix(h, c.HudEditorKey.Value);
+            h = Mix(h, c.LinuxTextInputFix.Value);
+            return h;
+        }
     }
 
     /// <summary>Per frame: picks up settings changed outside this page.</summary>

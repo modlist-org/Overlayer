@@ -28,9 +28,9 @@ public static unsafe class O5Fmt {
     }
 
     public static string FormatString(double val, string format) {
-        Span<char> buf = stackalloc char[1024];
-        int written = Format(val, format.AsSpan(), buf);
-        return new string(buf[..written]);
+        char* buf = stackalloc char[1024];
+        int written = Format(val, format.AsSpan(), new Span<char>(buf, 1024));
+        return new string(buf, 0, written);
     }
 
     private static int FallbackFormat(double val, ReadOnlySpan<char> format, Span<char> destination) {

@@ -97,7 +97,7 @@ internal static unsafe class OvVertexBuilder {
             float sqLen = segDx * segDx + segDy * segDy;
             if (sqLen < 0.000001f) continue;
 
-            float invLen = 1.0f / MathF.Sqrt(sqLen);
+            float invLen = 1.0f / (float)Math.Sqrt(sqLen);
             float nx = -segDy * invLen * halfThickness;
             float ny = segDx * invLen * halfThickness;
 

@@ -2,7 +2,6 @@ using Overlayer.Core;
 using Overlayer.IO.User.Impl;
 using System.Reflection;
 using UnityEngine;
-using UnityEngine.TextCore.LowLevel;
 using Object = UnityEngine.Object;
 using O5Kit.Compat;
 
@@ -221,7 +220,7 @@ public sealed class ResourceManager(Assembly assembly, string resourcePath) : ID
     // keeps a full UI (and a normal HUD) on one Alpha8 texture. Multi-atlas stays on
     // for unusually long user text.
     internal static TMP_FontAsset CreateRuntimeFontAsset(Font font) =>
-        TMP_FontAsset.CreateFontAsset(font, 48, 8, GlyphRenderMode.SDFAA, 2048, 2048, AtlasPopulationMode.Dynamic, true);
+        O5Kit.Resource.O5Resources.CreateFontAsset(font, 48, 8, 2048, 2048, true);
 
     public TMP_FontAsset LoadFont(string path, string tempPath) {        if (cache.TryGetValue(path, out object cached)) {
             return cached as TMP_FontAsset;

@@ -4005,7 +4005,7 @@ internal sealed class OvInspectorBuilder(
 
     private void LiveColor(O5ColorPicker picker, Func<Color> get) {
         Live(get, value => {
-            if (!picker.IsDisposed && !((Color32)picker.Value).Equals((Color32)value)) {
+            if (!picker.IsDisposed && !SameColor(picker.Value, value)) {
                 picker.Set(value, false);
             }
         });

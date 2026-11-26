@@ -2,7 +2,7 @@ using Newtonsoft.Json.Linq;
 using Overlayer.IO.Fx;
 using Overlayer.IO.Interface;
 using System.Collections.Generic;
-using System.Runtime.InteropServices;
+using System.IO;
 
 namespace Overlayer.IO;
 
@@ -22,7 +22,9 @@ public enum PanelFadeMode {
 
 public sealed class CoreSettings : ISettingsFile {
     public static string DefaultWindowKey =>
-        RuntimeInformation.IsOSPlatform(OSPlatform.Linux) ? "Ctrl+BackQuote" : "Alt+BackQuote";
+        Path.DirectorySeparatorChar == '/' && !File.Exists("/System/Library/CoreServices/SystemVersion.plist")
+            ? "Ctrl+BackQuote"
+            : "Alt+BackQuote";
 
     public FxValue<bool> Active = new(true);
     public FxValue<string> Language = FxValue<string>.FromValue("en-US");

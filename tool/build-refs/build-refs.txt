@@ -100,8 +100,6 @@ mono/O5Dev_Data/Managed/UnityEngine.SubstanceModule.dll|UnityEngine.SubstanceMod
 mono/O5Dev_Data/Managed/UnityEngine.SubsystemsModule.dll|UnityEngine.SubsystemsModule, Version=0.0.0.0
 mono/O5Dev_Data/Managed/UnityEngine.TerrainModule.dll|UnityEngine.TerrainModule, Version=0.0.0.0
 mono/O5Dev_Data/Managed/UnityEngine.TerrainPhysicsModule.dll|UnityEngine.TerrainPhysicsModule, Version=0.0.0.0
-mono/O5Dev_Data/Managed/UnityEngine.TextCoreFontEngineModule.dll|UnityEngine.TextCoreFontEngineModule, Version=0.0.0.0
-mono/O5Dev_Data/Managed/UnityEngine.TextCoreTextEngineModule.dll|UnityEngine.TextCoreTextEngineModule, Version=0.0.0.0
 mono/O5Dev_Data/Managed/UnityEngine.TextRenderingModule.dll|UnityEngine.TextRenderingModule, Version=0.0.0.0
 mono/O5Dev_Data/Managed/UnityEngine.TilemapModule.dll|UnityEngine.TilemapModule, Version=0.0.0.0
 mono/O5Dev_Data/Managed/UnityEngine.TLSModule.dll|UnityEngine.TLSModule, Version=0.0.0.0
