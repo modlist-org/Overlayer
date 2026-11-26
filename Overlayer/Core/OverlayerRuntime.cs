@@ -110,6 +110,8 @@ public sealed class OverlayerRuntime {
 
         services.Initialize();
 
+        Patch.LinuxTextInputFix.Register();
+
         SetModEnabled(Config.Data.Active, false);
 
         Logger.Msg("Hello");
@@ -178,6 +180,7 @@ public sealed class OverlayerRuntime {
         Compat.O5KitAdapters.Teardown();
         SetModEnabledLate(false, true);
         SetModEnabled(false, true);
+        Patch.LinuxTextInputFix.Dispose();
 
         Config.Save();
 
@@ -215,6 +218,7 @@ public sealed class OverlayerRuntime {
             Compat.O5KitAdapters.SetUserFontsEnabled(true);
 
             SafePatchController.ResumeAll();
+            Patch.LinuxTextInputFix.ApplyFromConfig();
 
             OverlayCore.Initialize(RootObject);
 

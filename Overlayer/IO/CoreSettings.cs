@@ -77,6 +77,7 @@ public sealed class CoreSettings : ISettingsFile {
     public FxValue<TabLabelMode> TabLabelMode = new(IO.TabLabelMode.Hover);
     public FxValue<PanelFadeMode> PanelFadeMode = new(IO.PanelFadeMode.FlyIn);
     public FxValue<bool> SetupPending = new(false);
+    public FxValue<bool> LinuxTextInputFix = new(true);
 
     public JToken Serialize() {
         return new JObject {
@@ -132,7 +133,8 @@ public sealed class CoreSettings : ISettingsFile {
             [nameof(HideTutorial)] = IOUtils.WriteFx(HideTutorial),
             [nameof(TabLabelMode)] = IOUtils.WriteFx(TabLabelMode),
             [nameof(PanelFadeMode)] = IOUtils.WriteFx(PanelFadeMode),
-            [nameof(SetupPending)] = IOUtils.WriteFx(SetupPending)
+            [nameof(SetupPending)] = IOUtils.WriteFx(SetupPending),
+            [nameof(LinuxTextInputFix)] = IOUtils.WriteFx(LinuxTextInputFix)
         };
     }
 
@@ -196,5 +198,6 @@ public sealed class CoreSettings : ISettingsFile {
         TabLabelMode = IOUtils.ReadFx(token, nameof(TabLabelMode), TabLabelMode);
         PanelFadeMode = IOUtils.ReadFx(token, nameof(PanelFadeMode), PanelFadeMode);
         SetupPending = IOUtils.ReadFx(token, nameof(SetupPending), SetupPending);
+        LinuxTextInputFix = IOUtils.ReadFx(token, nameof(LinuxTextInputFix), LinuxTextInputFix);
     }
 }

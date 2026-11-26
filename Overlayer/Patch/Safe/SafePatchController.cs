@@ -8,7 +8,7 @@ public static class SafePatchController {
 
     public static void Add(SafeConditionalPatch patch) {
         lock (syncLock) {
-            if (!patches.Contains(patch)) {
+            if (!patches.Contains(patch) && !patches.Any(p => p.Id == patch.Id)) {
                 patches.Add(patch);
                 MainCore.Log.Msg($"[{nameof(SafePatchController)}] {patch.GetType().Name}");
             } else {

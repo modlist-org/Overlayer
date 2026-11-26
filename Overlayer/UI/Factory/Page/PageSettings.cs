@@ -58,6 +58,7 @@ internal static class PageSettings {
     private static O5Toggle showInternalImagesToggle;
     private static O5Toggle showInternalFontsToggle;
     private static O5Toggle hideTutorialToggle;
+    private static O5Toggle linuxTextInputToggle;
     private static O5Dropdown<TabLabelMode> tabLabelModeDropdown;
     private static O5Dropdown<PanelFadeMode> fadeModeDropdown;
     private static O5Toggle scrollEasingToggle;
@@ -105,6 +106,7 @@ internal static class PageSettings {
         SyncToggle(showInternalImagesToggle, MainCore.Conf.ShowInternalImages.Value);
         SyncToggle(showInternalFontsToggle, MainCore.Conf.ShowInternalFonts.Value);
         SyncToggle(hideTutorialToggle, MainCore.Conf.HideTutorial.Value);
+        SyncToggle(linuxTextInputToggle, MainCore.Conf.LinuxTextInputFix.Value);
         tabLabelModeDropdown?.Set(MainCore.Conf.TabLabelMode.Value, false);
         fadeModeDropdown?.Set(MainCore.Conf.PanelFadeMode.Value, false);
         SyncToggle(scrollEasingToggle, MainCore.Conf.ScrollEasing.Value);
@@ -136,7 +138,7 @@ internal static class PageSettings {
         h = HashCode.Combine(h, c.HudSnap.Value, c.HudSnapDistance.Value, c.HudGridSize.Value, c.ShowInternalImages.Value,
             c.ShowInternalFonts.Value, c.HideTutorial.Value, c.TabLabelMode.Value);
         return HashCode.Combine(h, c.PanelFadeMode.Value, c.ScrollEasing.Value, c.UIBaseColor.Value,
-            c.WindowKey.Value, c.HudEditorKey.Value);
+            c.WindowKey.Value, c.HudEditorKey.Value, c.LinuxTextInputFix.Value);
     }
 
     /// <summary>Per frame: picks up settings changed outside this page.</summary>
@@ -585,6 +587,8 @@ internal static class PageSettings {
 
         BuildHudEditor(content, defSet);
 
+        BuildLinuxSettings(content, defSet);
+
         BuildResetAll(content);
     }
 
@@ -751,6 +755,34 @@ internal static class PageSettings {
         objects[hudOpacitySlider.Label.gameObject.AddComponent<TextLocalization>().Init("HUD_WINDOW_OPACITY", "HUD Window Opacity")] = (headerRow.gameObject, hudOpacityRow.gameObject);
     }
 
+    private static void BuildLinuxSettings(GameObject content, CoreSettings defSet) {
+        if (Application.platform != RuntimePlatform.LinuxPlayer) {
+            return;
+        }
+        var ctx = O5KitAdapters.Ctx;
+        var headerRow = O5Factory.Row(ctx, content.transform);
+        var header = O5Factory.ControlTextH1(ctx, headerRow);
+        header.gameObject.AddComponent<TextLocalization>().Init("LINUX", "Linux");
+
+        var toggleRow = O5Factory.Row(ctx, content.transform);
+        linuxTextInputToggle = O5Factory.Toggle(ctx, toggleRow, "linux_text_input_fix", new O5ToggleOptions {
+            DefaultValue = defSet.LinuxTextInputFix,
+            Value = MainCore.Conf.LinuxTextInputFix,
+            Text = "Linux Text Input Fix",
+            OnChanged = toggle => {
+                MainCore.Conf.LinuxTextInputFix = toggle;
+                MainCore.ConfMgr.RequestSave();
+                Patch.LinuxTextInputFix.ApplyFromConfig();
+            },
+        });
+        linuxTextInputToggle.Rect.AddToolTip(ctx, () => MainCore.Tr.Get(
+            "DESC_LINUX_TEXT_INPUT_FIX",
+            "Fixes duplicate characters and Shift-modified text input on Linux"
+        ));
+        var toggleTr = linuxTextInputToggle.Label.gameObject.AddComponent<TextLocalization>().Init("LINUX_TEXT_INPUT_FIX", "Linux Text Input Fix");
+        objects[toggleTr] = (headerRow.gameObject, toggleRow.gameObject);
+    }
+
     private static void BuildResetAll(GameObject content) {
         var ctx = O5KitAdapters.Ctx;
         var headerRow = O5Factory.Row(ctx, content.transform);
@@ -787,6 +819,7 @@ internal static class PageSettings {
         } else {
             OvRawInput.Stop();
         }
+        Patch.LinuxTextInputFix.ApplyFromConfig();
         UICore.AnimateUiScale(MainCore.Conf.UIScale.Value);
         TextLocalization.RefreshAll();
         SyncValues();
