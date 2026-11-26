@@ -79,7 +79,7 @@ internal sealed class HumanMouse {
 
         float warpAmp = ((float)rng.NextDouble() * 2f - 1f) * Warp;
         int warpFreq = 1 + rng.Next(2);
-        float warpPhase = (float)rng.NextDouble() * Mathf.PI * 2f;
+        float warpPhase = (float)rng.NextDouble() * (float)Math.PI * 2f;
 
         const int steps = Bins;
         const float dt = 1f / steps;
@@ -96,7 +96,7 @@ internal sealed class HumanMouse {
             float u = (float)i / steps;
 
             float settle = u > 0.62f ? Mathf.Min(1f, (u - 0.62f) / 0.28f) : 0f;
-            float sinPiU = Mathf.Sin(u * Mathf.PI);
+            float sinPiU = Mathf.Sin(u * (float)Math.PI);
             float goalP = sinPiU * arcTarget * (1f - settle);
 
             float remA = 1f - a;
@@ -148,8 +148,8 @@ internal sealed class HumanMouse {
         float endGapA = 1f - rawA[steps];
         float endP = rawP[steps];
         var points = new Vector2[steps + 1];
-        float phase1 = (float)rng.NextDouble() * Mathf.PI * 2f;
-        float phase2 = (float)rng.NextDouble() * Mathf.PI * 2f;
+        float phase1 = (float)rng.NextDouble() * (float)Math.PI * 2f;
+        float phase2 = (float)rng.NextDouble() * (float)Math.PI * 2f;
 
         for (int i = 0; i <= steps; i++) {
             if (i == 0) {
@@ -162,8 +162,8 @@ internal sealed class HumanMouse {
             }
 
             float t = (float)i / steps;
-            float env = Mathf.Sin(t * Mathf.PI);
-            float warped = Mathf.Clamp01(t + warpAmp * env * Mathf.Sin(t * warpFreq * Mathf.PI + warpPhase));
+            float env = Mathf.Sin(t * (float)Math.PI);
+            float warped = Mathf.Clamp01(t + warpAmp * env * Mathf.Sin(t * warpFreq * (float)Math.PI + warpPhase));
             float idxF = warped * steps;
             int i0 = (int)idxF;
             int i1 = Mathf.Min(steps, i0 + 1);

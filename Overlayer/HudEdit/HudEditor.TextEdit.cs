@@ -233,6 +233,7 @@ internal static partial class HudEditor {
 
         inlineTagPopup = new TagCompletionPopup(codeInput, textComp);
         inlineJsPopup = new JsCompletionPopup(codeInput, textComp, true);
+        codeInput.IsCompletionActive = () => (inlineTagPopup?.IsActive ?? false) || (inlineJsPopup?.IsActive ?? false);
         codeInput.HandleKey = key => {
             if (inlineTagPopup != null && inlineTagPopup.HandleKey(key)) {
                 return true;

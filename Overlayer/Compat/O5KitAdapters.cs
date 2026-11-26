@@ -293,7 +293,8 @@ public static class O5KitAdapters {
         O5Kit.Control.O5UiEvents.OnDropdownPicked = UI.UISound.PlayDropdownPick;
         O5Kit.Control.O5UiEvents.OnToggleChanged = UI.UISound.PlayToggle;
         O5Kit.Behaviour.UIScrollController.ShouldConsumeParentScroll = () =>
-            UICodeInputField.ShouldConsumeParentScroll || (WheelAdjust && O5Kit.Control.O5Slider.AnyHovered)
+            UICodeInputField.ShouldConsumeParentScroll || UI.Objects.Impl.CompletionPopupController.AnyHovered
+            || (WheelAdjust && O5Kit.Control.O5Slider.AnyHovered)
             || O5Kit.Control.O5Dropdown.AnyWheelTarget;
         if (!_wired) {
             _wired = true;

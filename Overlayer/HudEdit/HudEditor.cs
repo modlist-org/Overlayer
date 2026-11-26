@@ -586,20 +586,20 @@ internal static partial class HudEditor {
                 if (el != null && el.IsAlive) {
                     el.GetScreenCorners(corners);
                     Vector2 dir = corners[scaleCorner] - corners[(scaleCorner + 2) % 4];
-                    HudCursor.SetResize(Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg);
+                    HudCursor.SetResize(Mathf.Atan2(dir.y, dir.x) * 57.29578f);
                 }
                 break;
             case DragMode.Resize:
                 if (el != null && el.IsAlive) {
                     el.GetScreenCorners(corners);
                     Vector2 dir = EdgeMid(corners, resizeEdge) - EdgeMid(corners, (resizeEdge + 2) % 4);
-                    HudCursor.SetResize(Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg);
+                    HudCursor.SetResize(Mathf.Atan2(dir.y, dir.x) * 57.29578f);
                 }
                 break;
             case DragMode.Rotate:
                 if (el != null && el.IsAlive) {
                     Vector2 dir = mouse - el.ScreenPivot;
-                    HudCursor.SetRotate(Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg);
+                    HudCursor.SetRotate(Mathf.Atan2(dir.y, dir.x) * 57.29578f);
                 }
                 break;
         }
@@ -778,7 +778,7 @@ internal static partial class HudEditor {
                 Vector2 pivot = el.ScreenPivot;
                 float a0 = Mathf.Atan2(dragMouseStart.y - pivot.y, dragMouseStart.x - pivot.x);
                 float a1 = Mathf.Atan2(mouse.y - pivot.y, mouse.x - pivot.x);
-                float rot = start.Rotation + Mathf.DeltaAngle(a0 * Mathf.Rad2Deg, a1 * Mathf.Rad2Deg);
+                float rot = start.Rotation + Mathf.DeltaAngle(a0 * 57.29578f, a1 * 57.29578f);
                 if (Shift) {
                     rot = Mathf.Round(rot / 15f) * 15f;
                 }

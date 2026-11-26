@@ -766,7 +766,7 @@ internal sealed class CurveGraph {
                 seg.anchoredPosition = (a + b) * 0.5f;
                 // Strips overlap a little at the joints so they don't show gaps.
                 seg.sizeDelta = new Vector2(dir.magnitude + (strip ? w : 0f), w);
-                seg.localEulerAngles = new Vector3(0f, 0f, Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg);
+                seg.localEulerAngles = new Vector3(0f, 0f, Mathf.Atan2(dir.y, dir.x) * 57.29578f);
                 seg.gameObject.SetActive(true);
             }
             for (int i = used; i < pool.Count; i++) {

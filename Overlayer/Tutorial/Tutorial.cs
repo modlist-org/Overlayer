@@ -1125,7 +1125,7 @@ internal static class Tutorial {
             glide = Vector2.zero;
             snap = false;
         } else {
-            bubble.anchoredPosition = Vector2.SmoothDamp(bubble.anchoredPosition, placed.Value, ref glide, 0.18f, Mathf.Infinity, Mathf.Max(Time.unscaledDeltaTime, 0.0001f));
+            bubble.anchoredPosition = Vector2.SmoothDamp(bubble.anchoredPosition, placed.Value, ref glide, 0.18f, float.PositiveInfinity, Mathf.Max(Time.unscaledDeltaTime, 0.0001f));
         }
         bubble.SetAsLastSibling();
     }

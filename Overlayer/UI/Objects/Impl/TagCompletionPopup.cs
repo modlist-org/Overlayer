@@ -1,4 +1,5 @@
 using Overlayer.Compat;
+using Overlayer.Core;
 using FuzzySharp;
 using O5Kit.Core;
 using O5Kit.Input;
@@ -12,7 +13,6 @@ using static UnityEngine.EventSystems.PointerEventData;
 using O5Kit.Behaviour;
 
 #if ML && IL2CPP
-using MelonLoader;
 using Il2CppTMPro;
 #else
 using TMPro;
@@ -31,7 +31,9 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
     private readonly RectTransform popupRect;
     private readonly CompletionRow[] rows;
     private readonly List<TagCore> matches = [];
-    private readonly CompletionInputHandler inputHandler;
+    private readonly CompletionPopupController controller;
+
+    public bool IsActive => visible && matches.Count > 0;
 
     private int selectedIndex;
     private int windowStart;
@@ -67,12 +69,11 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
         popupRect.anchorMin = new(0.5f, 0.5f);
         popupRect.anchorMax = new(0.5f, 0.5f);
         popupRect.pivot = new(0f, 1f);
-        popupRect.sizeDelta = new(PopupWidth, MaxItems * ItemHeight);
-
-        inputHandler = popup.AddComponent<CompletionInputHandler>();
-        inputHandler.Initialize(this);
+        popupRect.sizeDelta = new(PopupWidth, MaxItems * ItemHeight + CompletionPopupController.PopupPad * 2f);
 
         Image popupImage = popup.AddComponent<Image>();
+        popupImage.sprite = MainCore.Spr.Shapes.Get(new O5Shape(CompletionPopupController.PopupCorner));
+        popupImage.type = Image.Type.Sliced;
         popupImage.color = O5Kit.Core.O5Palette.WithAlpha(UIColors.SurfaceOpaque, 0.98f);
 
         rows = new CompletionRow[MaxItems];
@@ -80,6 +81,9 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
         for (int i = 0; i < MaxItems; i++) {
             rows[i] = CreateRow(popup.transform, i);
         }
+
+        controller = popup.AddComponent<CompletionPopupController>();
+        controller.Configure(popupRect, input, () => IsActive, MoveSelection, ScrollTo);
 
         popup.SetActive(false);
     }
@@ -134,7 +138,9 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
             return;
         }
 
-        bool focused = input.isFocused || EventSystem.current?.currentSelectedGameObject == input.gameObject;
+        bool focused = input.isFocused
+            || EventSystem.current?.currentSelectedGameObject == input.gameObject
+            || (controller != null && controller.IsDraggingScroll);
         if (!focused) {
             ClearSnippet();
             Hide();
@@ -170,6 +176,7 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
         if (visible && query == matchedQuery) {
             popupRect.SetSiblingIndex(popupRect.parent.childCount - 1);
             PositionPopup(caret);
+            controller?.UpdateScrollState(windowStart, visibleRowCount, matches.Count, false);
             return;
         }
 
@@ -184,7 +191,7 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
         popupRect.gameObject.SetActive(true);
         popupRect.SetSiblingIndex(popupRect.parent.childCount - 1);
         PositionPopup(caret);
-        UpdateRows();
+        UpdateRows(ensureSelectedVisible: true, snapScroll: true);
     }
 
     private CompletionRow CreateRow(Transform parent, int index) {
@@ -195,10 +202,13 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
         rect.anchorMin = new(0f, 1f);
         rect.anchorMax = new(1f, 1f);
         rect.pivot = new(0.5f, 1f);
-        rect.offsetMin = new(0f, -(index + 1) * ItemHeight);
-        rect.offsetMax = new(0f, -index * ItemHeight);
+        float pad = CompletionPopupController.PopupPad;
+        rect.offsetMin = new(pad, -(pad + (index + 1) * ItemHeight));
+        rect.offsetMax = new(-pad, -(pad + index * ItemHeight));
 
         Image image = row.AddComponent<Image>();
+        image.sprite = MainCore.Spr.Shapes.Get(new O5Shape(CompletionPopupController.RowCorner));
+        image.type = Image.Type.Sliced;
         image.color = Color.clear;
 
         TextMeshProUGUI name = O5Factory.ControlText(O5KitAdapters.Ctx, row.transform, 24f, true);
@@ -263,7 +273,7 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
         }
 
         hoveredIndex = matchIndex;
-        UpdateRows();
+        UpdateRows(ensureSelectedVisible: false);
     }
 
     private void ClearHoveredRow(int rowIndex) {
@@ -274,7 +284,7 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
         }
 
         hoveredIndex = -1;
-        UpdateRows();
+        UpdateRows(ensureSelectedVisible: false);
     }
 
     private void RebuildMatches(string query) {
@@ -321,17 +331,25 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
                 ? 1000 - name.Length
                 : Fuzz.WeightedRatio(query, name);
 
-    private void UpdateRows() {
+    private void UpdateRows(bool ensureSelectedVisible = true, bool snapScroll = false) {
         if (matches.Count == 0) {
             return;
         }
 
         int pageSize = Math.Max(1, visibleRowCount);
-        if (selectedIndex < windowStart) {
-            windowStart = selectedIndex;
-        } else if (selectedIndex >= windowStart + pageSize) {
-            windowStart = selectedIndex - pageSize + 1;
+        int maxStart = Math.Max(0, matches.Count - pageSize);
+        if (ensureSelectedVisible) {
+            if (selectedIndex < windowStart) {
+                windowStart = selectedIndex;
+            } else if (selectedIndex >= windowStart + pageSize) {
+                windowStart = selectedIndex - pageSize + 1;
+            }
         }
+        windowStart = MathCompat.Clamp(windowStart, 0, maxStart);
+
+        float pad = CompletionPopupController.PopupPad;
+        bool scrollable = matches.Count > visibleRowCount;
+        float rightInset = scrollable ? pad + CompletionPopupController.ScrollbarReserve : pad;
 
         for (int i = 0; i < rows.Length; i++) {
             int matchIndex = windowStart + i;
@@ -340,6 +358,9 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
             if (!active) {
                 continue;
             }
+
+            rows[i].Rect.offsetMin = new(pad, -(pad + (i + 1) * ItemHeight));
+            rows[i].Rect.offsetMax = new(-rightInset, -(pad + i * ItemHeight));
 
             TagCore tag = matches[matchIndex];
             if (matchIndex == selectedIndex) {
@@ -354,6 +375,18 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
             rows[i].Name.text = tag.Name;
             rows[i].Detail.text = FormatSignature(tag);
         }
+
+        controller?.UpdateScrollState(windowStart, visibleRowCount, matches.Count, snapScroll);
+    }
+
+    private void ScrollTo(int nextWindowStart) {
+        if (!visible || matches.Count == 0) {
+            return;
+        }
+
+        int maxStart = Math.Max(0, matches.Count - Math.Max(1, visibleRowCount));
+        windowStart = MathCompat.Clamp(nextWindowStart, 0, maxStart);
+        UpdateRows(ensureSelectedVisible: false);
     }
 
     private void Accept(int index) {
@@ -513,6 +546,7 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
         windowStart = 0;
         visibleRowCount = 0;
         hoveredIndex = -1;
+        controller?.Reset();
         if (popupRect != null) {
             popupRect.gameObject.SetActive(false);
         }
@@ -538,7 +572,7 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
     private void PositionPopup(int caret) {
         int maxRows = Math.Min(matches.Count, MaxItems);
         visibleRowCount = maxRows;
-        float height = visibleRowCount * ItemHeight;
+        float height = visibleRowCount * ItemHeight + CompletionPopupController.PopupPad * 2f;
 
         TMP_TextInfo textInfo = sourceText.textInfo;
         Vector3 localPosition = Vector3.zero;
@@ -642,71 +676,5 @@ internal sealed class TagCompletionPopup : ICodeCompletion {
         public readonly Image Image = image;
         public readonly TextMeshProUGUI Name = name;
         public readonly TextMeshProUGUI Detail = detail;
-    }
-
-#if ML && IL2CPP
-[RegisterTypeInIl2Cpp]
-#endif
-    private sealed class CompletionInputHandler
-#if ML && IL2CPP
-    (IntPtr ptr) : MonoBehaviour(ptr)
-#else
-        : MonoBehaviour
-#endif
-    {
-        private TagCompletionPopup popup;
-
-        private KeyCode repeatKey;
-        private float nextRepeatTime;
-        private bool repeating;
-
-        private const float InitialDelay = 0.35f;
-        private const float RepeatInterval = 0.05f;
-
-        public void Initialize(TagCompletionPopup popup) => this.popup = popup;
-
-        private void Update() {
-            if (popup == null || !popup.visible || popup.matches.Count == 0) {
-                repeating = false;
-                return;
-            }
-
-            KeyCode key = GetHeldNavigationKey();
-
-            if (key == KeyCode.None) {
-                repeating = false;
-                return;
-            }
-
-            if (!repeating || repeatKey != key) {
-                repeatKey = key;
-                repeating = true;
-                nextRepeatTime = Time.unscaledTime + InitialDelay;
-                return;
-            }
-
-            float now = Time.unscaledTime;
-            if (now < nextRepeatTime) {
-                return;
-            }
-
-            popup.MoveSelection(
-                key == KeyCode.DownArrow ? 1 : -1
-            );
-
-            nextRepeatTime = now + RepeatInterval;
-        }
-
-        private static KeyCode GetHeldNavigationKey() {
-            if (O5Input.GetKey(KeyCode.DownArrow)) {
-                return KeyCode.DownArrow;
-            }
-
-            if (O5Input.GetKey(KeyCode.UpArrow)) {
-                return KeyCode.UpArrow;
-            }
-
-            return KeyCode.None;
-        }
     }
 }

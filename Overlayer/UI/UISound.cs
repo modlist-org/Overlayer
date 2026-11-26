@@ -1093,7 +1093,7 @@ internal static class UISound {
         double ph = 0.0;
         for (int i = 0; i < n; i++) {
             float t = (float)i / SampleRate;
-            float f = 375f + 75f * Mathf.Sin(Mathf.PI * Mathf.Min(1f, t / 0.018f));
+            float f = 375f + 75f * Mathf.Sin((float)Math.PI * Mathf.Min(1f, t / 0.018f));
             ph += 2.0 * Math.PI * f / SampleRate;
             float env = (1f - Mathf.Exp(-t / 0.0035f)) * Mathf.Exp(-t / 0.011f);
             float s = (Mathf.Sin((float)ph) * 0.85f + Mathf.Sin((float)(ph * 2.0)) * 0.15f) * env * 0.24f;
@@ -1150,8 +1150,8 @@ internal static class UISound {
             float tB = t - 0.012f;
             float eA = (1f - Mathf.Exp(-t / 0.001f)) * Mathf.Exp(-t / 0.0055f);
             float eB = tB > 0f ? (1f - Mathf.Exp(-tB / 0.001f)) * Mathf.Exp(-tB / 0.0075f) : 0f;
-            float s = Mathf.Sin(2f * Mathf.PI * fA * t) * eA * 0.22f
-                + (tB > 0f ? Mathf.Sin(2f * Mathf.PI * fB * tB) * eB * 0.24f : 0f);
+            float s = Mathf.Sin(2f * (float)Math.PI * fA * t) * eA * 0.22f
+                + (tB > 0f ? Mathf.Sin(2f * (float)Math.PI * fB * tB) * eB * 0.24f : 0f);
             data[i] = FinishSample(s, i, n, 0.005f);
         }
         return CreateClip(opening ? "UI_DropdownOpen" : "UI_DropdownClose", data);
@@ -1206,8 +1206,8 @@ internal static class UISound {
             float tB = t - 0.014f;
             float eA = (1f - Mathf.Exp(-t / 0.002f)) * Mathf.Exp(-t / 0.016f);
             float eB = tB > 0f ? (1f - Mathf.Exp(-tB / 0.002f)) * Mathf.Exp(-tB / 0.020f) : 0f;
-            float sA = (Mathf.Sin(2f * Mathf.PI * fA * t) + 0.22f * Mathf.Sin(4f * Mathf.PI * fA * t)) * eA * 0.18f;
-            float sB = tB > 0f ? (Mathf.Sin(2f * Mathf.PI * fB * tB) + 0.20f * Mathf.Sin(4f * Mathf.PI * fB * tB)) * eB * 0.20f : 0f;
+            float sA = (Mathf.Sin(2f * (float)Math.PI * fA * t) + 0.22f * Mathf.Sin(4f * (float)Math.PI * fA * t)) * eA * 0.18f;
+            float sB = tB > 0f ? (Mathf.Sin(2f * (float)Math.PI * fB * tB) + 0.20f * Mathf.Sin(4f * (float)Math.PI * fB * tB)) * eB * 0.20f : 0f;
             data[i] = FinishSample(sA + sB, i, n, 0.008f);
         }
         return CreateClip(enabled ? "UI_FxOn" : "UI_FxOff", data);
@@ -1281,13 +1281,13 @@ internal static class UISound {
 
             // Smooth satin air sweep
             float cutoff = opening ? Mathf.Lerp(220f, 900f, u) : Mathf.Lerp(760f, 220f, u);
-            float alpha = Mathf.Clamp01((2f * Mathf.PI * cutoff) / (SampleRate + 2f * Mathf.PI * cutoff));
+            float alpha = Mathf.Clamp01((2f * (float)Math.PI * cutoff) / (SampleRate + 2f * (float)Math.PI * cutoff));
             float noise = NextNoise(ref rng);
             lp += alpha * (noise - lp);
             lp2 += alpha * (lp - lp2);
             hp = 0.96f * (hp + lp2 - prev);
             prev = lp2;
-            float airEnv = Mathf.Pow(Mathf.Sin(u * Mathf.PI), 1.45f);
+            float airEnv = Mathf.Pow(Mathf.Sin(u * (float)Math.PI), 1.45f);
             float air = hp * airEnv * (opening ? 0.26f : 0.22f);
 
             data[i] = FinishSample(air, i, n, 0.006f);
@@ -1300,7 +1300,7 @@ internal static class UISound {
         int rem = total - 1 - idx;
         if (rem < tailSamples && tailSamples > 0) {
             float k = (float)rem / tailSamples;
-            sample *= 0.5f - 0.5f * Mathf.Cos(Mathf.PI * k);
+            sample *= 0.5f - 0.5f * Mathf.Cos((float)Math.PI * k);
         }
         return Mathf.Clamp(sample, -0.95f, 0.95f);
     }

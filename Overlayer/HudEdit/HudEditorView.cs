@@ -863,7 +863,7 @@ internal static partial class HudEditor {
         if (showHandles) {
             sel.GetScreenCorners(corners);
             Vector2 boxDir = corners[3] - corners[0];
-            boxAngle = boxDir.sqrMagnitude > 1e-4f ? Mathf.Atan2(boxDir.y, boxDir.x) * Mathf.Rad2Deg : 0f;
+            boxAngle = boxDir.sqrMagnitude > 1e-4f ? Mathf.Atan2(boxDir.y, boxDir.x) * 57.29578f : 0f;
             axisAligned = Mathf.Abs(corners[1].y - corners[2].y) < 0.01f && Mathf.Abs(corners[1].x - corners[0].x) < 0.01f;
         }
         bool showDiagonal = showHandles && Shift && drag is DragMode.Scale or DragMode.Resize;
@@ -984,7 +984,7 @@ internal static partial class HudEditor {
             rect.anchoredPosition = (bl + tl + tr + br) * 0.25f;
             rect.sizeDelta = new Vector2((tr - tl).magnitude + expandPx * 2f, (tl - bl).magnitude + expandPx * 2f);
             Vector2 dir = tr - tl;
-            rect.localEulerAngles = new Vector3(0f, 0f, Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg);
+            rect.localEulerAngles = new Vector3(0f, 0f, Mathf.Atan2(dir.y, dir.x) * 57.29578f);
         }
         rect.gameObject.SetActive(true);
     }
@@ -1010,7 +1010,7 @@ internal static partial class HudEditor {
             Vector2 dir = b - a;
             rect.anchoredPosition = (a + b) * 0.5f;
             rect.sizeDelta = new Vector2(dir.magnitude, thickness);
-            rect.localEulerAngles = new Vector3(0f, 0f, Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg);
+            rect.localEulerAngles = new Vector3(0f, 0f, Mathf.Atan2(dir.y, dir.x) * 57.29578f);
         }
         rect.gameObject.SetActive(true);
     }

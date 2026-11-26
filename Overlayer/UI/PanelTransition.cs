@@ -77,7 +77,7 @@ internal static class PanelTransition {
                 BeginStencilClip(panel);
                 apply = v => {
                     float angle = (1f - v) * 90f; // counter-clockwise when hiding
-                    float rad = angle * Mathf.Deg2Rad;
+                    float rad = angle * 0.017453292f;
                     float c = Mathf.Cos(rad);
                     float s = Mathf.Sin(rad);
                     panel.anchoredPosition = pivot + new Vector2(arm.x * c - arm.y * s, arm.x * s + arm.y * c);

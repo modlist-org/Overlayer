@@ -79,7 +79,7 @@ internal static class EaseDropdownCurveHelper {
                 }
                 seg.anchoredPosition = (a + b) * 0.5f;
                 seg.sizeDelta = new Vector2(dir.magnitude + thickness * 0.7f, thickness);
-                seg.localEulerAngles = new Vector3(0f, 0f, Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg);
+                seg.localEulerAngles = new Vector3(0f, 0f, Mathf.Atan2(dir.y, dir.x) * 57.29578f);
                 seg.gameObject.SetActive(true);
             }
         }

@@ -1264,6 +1264,7 @@ internal sealed class OvInspectorBuilder(
             codeInput.HandleKey = jsPopup.HandleKey;
             completionPopup = jsPopup;
         }
+        codeInput.IsCompletionActive = () => completionPopup.IsActive;
 
         var diagnosticHoverRoot = new GameObject("DiagnosticHoverTargets");
         diagnosticHoverRoot.transform.SetParent(text.transform, false);

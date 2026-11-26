@@ -233,8 +233,8 @@ internal sealed class OllyView {
             }
         }
         float safeDt = Mathf.Max(dt, 0.0001f);
-        eyeLOffset = Vector2.SmoothDamp(eyeLOffset, eyeLTarget, ref eyeLVelocity, 0.12f, Mathf.Infinity, safeDt);
-        eyeROffset = Vector2.SmoothDamp(eyeROffset, eyeRTarget, ref eyeRVelocity, 0.12f, Mathf.Infinity, safeDt);
+        eyeLOffset = Vector2.SmoothDamp(eyeLOffset, eyeLTarget, ref eyeLVelocity, 0.12f, float.PositiveInfinity, safeDt);
+        eyeROffset = Vector2.SmoothDamp(eyeROffset, eyeRTarget, ref eyeRVelocity, 0.12f, float.PositiveInfinity, safeDt);
         headOffset = Vector2.Lerp(headOffset, headTarget, 1f - Mathf.Exp(-safeDt * (patting ? 10f : 8f)));
         // Breathing.
         float breath = Mathf.Sin(Time.unscaledTime * 1.7f);

@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
 using O5Kit.Input;
 
 #if ML && IL2CPP
@@ -27,6 +28,7 @@ public sealed class UICodeInputField
 {
     public Action<TMP_Text, bool> AfterLabelUpdate;
     public Func<KeyCode, bool> HandleKey;
+    public Func<bool> IsCompletionActive;
     public Action OnFieldDisabled;
     public Action OnFieldDestroyed;
     public Action OnDoubleClick;
@@ -43,6 +45,14 @@ public sealed class UICodeInputField
     private const int MaxHistory = 100;
     private static UICodeInputField hoveredField;
     private RectTransform caretTransform;
+    private bool completionLocked;
+    private string lockedText;
+    private int lockedAnchor;
+    private int lockedFocus;
+    private Vector2 lockedScrollPos;
+#if !(ML && IL2CPP)
+    private readonly Event drainEvent = new();
+#endif
 
     public static bool ShouldConsumeParentScroll
         => hoveredField != null && IsShiftHeld();
@@ -105,7 +115,11 @@ public sealed class UICodeInputField
         }
         bound = true;
         field.onFocusSelectAll = false;
-        deselectCallback = new Action<string>(_ => hasLastEdit = false);
+        field.navigation = new Navigation { mode = Navigation.Mode.None };
+        deselectCallback = new Action<string>(_ => {
+            hasLastEdit = false;
+            completionLocked = false;
+        });
         field.onDeselect.AddListener(deselectCallback);
         field.onValidateInput = (TMP_InputField.OnValidateInput)new Func<string, int, char, char>(OnValidateKeyChar);
 
@@ -165,6 +179,7 @@ public sealed class UICodeInputField
             hoveredField = null;
         }
         hasLastEdit = false;
+        completionLocked = false;
     }
 
     public void OnDestroy() {
@@ -178,6 +193,7 @@ public sealed class UICodeInputField
         if (Field == null) {
             return;
         }
+        RestoreLockedCaretIfNavigating();
         if (!suppressHistory && text == lastState.Text) {
             HistoryState current = CaptureState();
             if (current.Anchor != lastState.Anchor || current.Focus != lastState.Focus) {
@@ -190,6 +206,7 @@ public sealed class UICodeInputField
         if (textComponent != null) {
             AfterLabelUpdate?.Invoke(textComponent, isFocused && !string.IsNullOrEmpty(O5Input.CompositionString));
         }
+        UpdateCompletionLock();
     }
 
     private void Update() {
@@ -230,8 +247,10 @@ public sealed class UICodeInputField
     protected override void OnEnable() {
         base.OnEnable();
         onFocusSelectAll = false;
+        navigation = new Navigation { mode = Navigation.Mode.None };
         lastState = CaptureState();
         hasLastEdit = false;
+        completionLocked = false;
 #pragma warning disable IDE0074
         if (historyCallback == null) {
             historyCallback = OnHistoryValueChanged;
@@ -249,6 +268,7 @@ public sealed class UICodeInputField
             hoveredField = null;
         }
         hasLastEdit = false;
+        completionLocked = false;
         base.OnDisable();
     }
 
@@ -259,6 +279,7 @@ public sealed class UICodeInputField
 
     protected override void LateUpdate() {
         base.LateUpdate();
+        RestoreLockedCaretIfNavigating();
         if (!suppressHistory && text == lastState.Text) {
             HistoryState current = CaptureState();
             if (current.Anchor != lastState.Anchor || current.Focus != lastState.Focus) {
@@ -271,6 +292,7 @@ public sealed class UICodeInputField
         if (textComponent != null) {
             AfterLabelUpdate?.Invoke(textComponent, isFocused && !string.IsNullOrEmpty(O5Input.CompositionString));
         }
+        UpdateCompletionLock();
     }
 
     public override void OnUpdateSelected(BaseEventData eventData) {
@@ -283,7 +305,16 @@ public sealed class UICodeInputField
                 : O5Input.GetKeyDown(KeyCode.Escape) ? KeyCode.Escape
                 : KeyCode.None;
 
-            if (key != KeyCode.None && HandleKey?.Invoke(key) == true) {
+            bool consumed = key != KeyCode.None && HandleKey?.Invoke(key) == true;
+            if (!consumed && IsCompletionActive?.Invoke() == true
+                && (O5Input.GetKey(KeyCode.UpArrow) || O5Input.GetKey(KeyCode.DownArrow))) {
+                consumed = true;
+            }
+            if (consumed) {
+                // Drain queued key-repeat events and mark handled so StandaloneInputModule
+                // never fires Selectable.OnMove and base TMP_InputField never moves the caret.
+                while (Event.PopEvent(drainEvent)) { }
+                eventData?.Use();
                 return;
             }
         }
@@ -321,8 +352,56 @@ public sealed class UICodeInputField
     public override void OnDeselect(BaseEventData eventData) {
         base.OnDeselect(eventData);
         hasLastEdit = false;
+        completionLocked = false;
     }
 #endif
+
+    internal void RestoreFocusWithCaret(int anchor, int focus) {
+        ActivateInputField();
+        int len = (text ?? string.Empty).Length;
+        int a = O5Kit.Core.MathCompat.Clamp(anchor, 0, len);
+        int f = O5Kit.Core.MathCompat.Clamp(focus, 0, len);
+        stringPosition = f;
+        selectionAnchorPosition = a;
+        selectionFocusPosition = f;
+        ForceLabelUpdate();
+    }
+
+    private void RestoreLockedCaretIfNavigating() {
+        bool navKey = O5Input.GetKey(KeyCode.UpArrow) || O5Input.GetKey(KeyCode.DownArrow)
+            || O5Input.GetKeyDown(KeyCode.UpArrow) || O5Input.GetKeyDown(KeyCode.DownArrow)
+            || O5Input.GetKeyUp(KeyCode.UpArrow) || O5Input.GetKeyUp(KeyCode.DownArrow);
+        if (!completionLocked || !navKey || !isFocused || text != lockedText) {
+            return;
+        }
+
+        bool caretMoved = selectionAnchorPosition != lockedAnchor
+            || selectionFocusPosition != lockedFocus
+            || stringPosition != lockedFocus;
+        bool scrollMoved = textComponent != null
+            && (textComponent.rectTransform.anchoredPosition - lockedScrollPos).sqrMagnitude > 0.001f;
+        if (!caretMoved && !scrollMoved) {
+            return;
+        }
+
+        stringPosition = lockedFocus;
+        selectionAnchorPosition = lockedAnchor;
+        selectionFocusPosition = lockedFocus;
+        if (textComponent != null) {
+            textComponent.rectTransform.anchoredPosition = lockedScrollPos;
+        }
+        ForceLabelUpdate();
+    }
+
+    private void UpdateCompletionLock() {
+        completionLocked = isFocused && IsCompletionActive?.Invoke() == true;
+        if (completionLocked) {
+            lockedText = text ?? string.Empty;
+            lockedAnchor = selectionAnchorPosition;
+            lockedFocus = selectionFocusPosition;
+            lockedScrollPos = textComponent != null ? textComponent.rectTransform.anchoredPosition : Vector2.zero;
+        }
+    }
 
     private static bool IsShiftHeld()
         => O5Input.GetKey(KeyCode.LeftShift) || O5Input.GetKey(KeyCode.RightShift);

@@ -1,4 +1,5 @@
 using Overlayer.Compat;
+using Overlayer.Core;
 using FuzzySharp;
 using Overlayer.Tag.Core;
 using Overlayer.TextEngine.Highlight;
@@ -29,6 +30,9 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
     private readonly CompletionRow[] rows;
     private readonly List<JsItem> matches = [];
     private readonly bool textMode;
+    private readonly CompletionPopupController controller;
+
+    public bool IsActive => visible && matches.Count > 0;
 
     private int selectedIndex;
     private int windowStart;
@@ -100,9 +104,11 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
         popupRect.anchorMin = new(0.5f, 0.5f);
         popupRect.anchorMax = new(0.5f, 0.5f);
         popupRect.pivot = new(0f, 1f);
-        popupRect.sizeDelta = new(PopupWidth, MaxItems * ItemHeight);
+        popupRect.sizeDelta = new(PopupWidth, MaxItems * ItemHeight + CompletionPopupController.PopupPad * 2f);
 
         Image popupImage = popup.AddComponent<Image>();
+        popupImage.sprite = MainCore.Spr.Shapes.Get(new O5Shape(CompletionPopupController.PopupCorner));
+        popupImage.type = Image.Type.Sliced;
         popupImage.color = O5Kit.Core.O5Palette.WithAlpha(UIColors.SurfaceOpaque, 0.98f);
 
         rows = new CompletionRow[MaxItems];
@@ -110,6 +116,9 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
         for (int i = 0; i < MaxItems; i++) {
             rows[i] = CreateRow(popup.transform, i);
         }
+
+        controller = popup.AddComponent<CompletionPopupController>();
+        controller.Configure(popupRect, input, () => IsActive, MoveSelection, ScrollTo);
 
         popup.SetActive(false);
     }
@@ -148,7 +157,9 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
             return;
         }
 
-        bool focused = input.isFocused || EventSystem.current?.currentSelectedGameObject == input.gameObject;
+        bool focused = input.isFocused
+            || EventSystem.current?.currentSelectedGameObject == input.gameObject
+            || (controller != null && controller.IsDraggingScroll);
         if (!focused) {
             Hide();
             return;
@@ -186,6 +197,7 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
         if (visible && query == matchedQuery && qualifier == matchedQualifier && text == matchedText) {
             popupRect.SetSiblingIndex(popupRect.parent.childCount - 1);
             PositionPopup(caret);
+            controller?.UpdateScrollState(windowStart, visibleRowCount, matches.Count, false);
             return;
         }
 
@@ -202,7 +214,7 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
         popupRect.gameObject.SetActive(true);
         popupRect.SetSiblingIndex(popupRect.parent.childCount - 1);
         PositionPopup(caret);
-        UpdateRows();
+        UpdateRows(ensureSelectedVisible: true, snapScroll: true);
     }
 
     private CompletionRow CreateRow(Transform parent, int index) {
@@ -213,10 +225,13 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
         rect.anchorMin = new(0f, 1f);
         rect.anchorMax = new(1f, 1f);
         rect.pivot = new(0.5f, 1f);
-        rect.offsetMin = new(0f, -(index + 1) * ItemHeight);
-        rect.offsetMax = new(0f, -index * ItemHeight);
+        float pad = CompletionPopupController.PopupPad;
+        rect.offsetMin = new(pad, -(pad + (index + 1) * ItemHeight));
+        rect.offsetMax = new(-pad, -(pad + index * ItemHeight));
 
         Image image = row.AddComponent<Image>();
+        image.sprite = MainCore.Spr.Shapes.Get(new O5Shape(CompletionPopupController.RowCorner));
+        image.type = Image.Type.Sliced;
         image.color = Color.clear;
 
         TextMeshProUGUI name = O5Factory.ControlText(O5KitAdapters.Ctx, row.transform, 24f, true);
@@ -281,7 +296,7 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
         }
 
         hoveredIndex = matchIndex;
-        UpdateRows();
+        UpdateRows(ensureSelectedVisible: false);
     }
 
     private void ClearHoveredRow(int rowIndex) {
@@ -292,7 +307,7 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
         }
 
         hoveredIndex = -1;
-        UpdateRows();
+        UpdateRows(ensureSelectedVisible: false);
     }
 
     private void RebuildMatches(string query, string qualifier) {
@@ -424,17 +439,25 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
                 ? 1000 - name.Length
                 : Fuzz.WeightedRatio(query, name);
 
-    private void UpdateRows() {
+    private void UpdateRows(bool ensureSelectedVisible = true, bool snapScroll = false) {
         if (matches.Count == 0) {
             return;
         }
 
         int pageSize = Math.Max(1, visibleRowCount);
-        if (selectedIndex < windowStart) {
-            windowStart = selectedIndex;
-        } else if (selectedIndex >= windowStart + pageSize) {
-            windowStart = selectedIndex - pageSize + 1;
+        int maxStart = Math.Max(0, matches.Count - pageSize);
+        if (ensureSelectedVisible) {
+            if (selectedIndex < windowStart) {
+                windowStart = selectedIndex;
+            } else if (selectedIndex >= windowStart + pageSize) {
+                windowStart = selectedIndex - pageSize + 1;
+            }
         }
+        windowStart = MathCompat.Clamp(windowStart, 0, maxStart);
+
+        float pad = CompletionPopupController.PopupPad;
+        bool scrollable = matches.Count > visibleRowCount;
+        float rightInset = scrollable ? pad + CompletionPopupController.ScrollbarReserve : pad;
 
         for (int i = 0; i < rows.Length; i++) {
             int matchIndex = windowStart + i;
@@ -443,6 +466,9 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
             if (!active) {
                 continue;
             }
+
+            rows[i].Rect.offsetMin = new(pad, -(pad + (i + 1) * ItemHeight));
+            rows[i].Rect.offsetMax = new(-rightInset, -(pad + i * ItemHeight));
 
             JsItem item = matches[matchIndex];
             if (matchIndex == selectedIndex) {
@@ -457,6 +483,18 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
             rows[i].Name.text = item.Callable ? item.Name + "()" : item.Name;
             rows[i].Detail.text = item.Detail;
         }
+
+        controller?.UpdateScrollState(windowStart, visibleRowCount, matches.Count, snapScroll);
+    }
+
+    private void ScrollTo(int nextWindowStart) {
+        if (!visible || matches.Count == 0) {
+            return;
+        }
+
+        int maxStart = Math.Max(0, matches.Count - Math.Max(1, visibleRowCount));
+        windowStart = MathCompat.Clamp(nextWindowStart, 0, maxStart);
+        UpdateRows(ensureSelectedVisible: false);
     }
 
     private void Accept(int index) {
@@ -505,6 +543,7 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
         windowStart = 0;
         visibleRowCount = 0;
         hoveredIndex = -1;
+        controller?.Reset();
         if (popupRect != null) {
             popupRect.gameObject.SetActive(false);
         }
@@ -528,7 +567,7 @@ internal sealed class JsCompletionPopup : ICodeCompletion {
     private void PositionPopup(int caret) {
         int maxRows = Math.Min(matches.Count, MaxItems);
         visibleRowCount = maxRows;
-        float height = visibleRowCount * ItemHeight;
+        float height = visibleRowCount * ItemHeight + CompletionPopupController.PopupPad * 2f;
 
         TMP_TextInfo textInfo = sourceText.textInfo;
         Vector3 localPosition = Vector3.zero;

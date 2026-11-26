@@ -270,9 +270,9 @@ internal static class KkitutRoom {
                 float dist = Mathf.Abs(Mathf.Sqrt(dx * dx + dy * dy) - radius);
                 float a = Mathf.Clamp01(stroke * 0.5f - dist + 0.5f);
                 if (a > 0f) {
-                    float ang = (Mathf.Atan2(dy, dx) * Mathf.Rad2Deg + 360f) % segment;
+                    float ang = (Mathf.Atan2(dy, dx) * 57.29578f + 360f) % segment;
                     float edge = Mathf.Min(ang, segment - gapDeg - ang);
-                    a *= Mathf.Clamp01(edge * radius * Mathf.Deg2Rad + 0.5f);
+                    a *= Mathf.Clamp01(edge * radius * 0.017453292f + 0.5f);
                 }
                 px[y * n + x] = new Color32(255, 255, 255, (byte)Mathf.RoundToInt(a * 255f));
             }
