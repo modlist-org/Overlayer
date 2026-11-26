@@ -27,6 +27,7 @@ internal static class HoldToConfirm {
         public float Duration;
         public float Progress;
         public bool Holding;
+        public bool KeyboardHolding;
         public bool Hovered;
     }
 
@@ -41,6 +42,33 @@ internal static class HoldToConfirm {
             return e.CanConfirm == null || e.CanConfirm();
         }
         return go.transform.Find("HoldFillClip") != null;
+    }
+
+    public static bool SetKeyboardHold(GameObject go, bool holding, bool instantConfirm) {
+        if (go == null || !ById.TryGetValue(go.GetInstanceID(), out var entry)) {
+            return false;
+        }
+        if (holding) {
+            if (entry.CanConfirm != null && !entry.CanConfirm()) {
+                entry.OnBlockedClick?.Invoke();
+                return false;
+            }
+            if (instantConfirm) {
+                ConfirmNow(entry);
+                return false;
+            }
+            entry.Holding = true;
+            entry.KeyboardHolding = true;
+            if (!Active.Contains(entry)) {
+                Active.Add(entry);
+            }
+            return true;
+        }
+        entry.KeyboardHolding = false;
+        if (!O5Input.GetMouseButton(0)) {
+            entry.Holding = false;
+        }
+        return false;
     }
 
     public static void Attach(
@@ -140,10 +168,11 @@ internal static class HoldToConfirm {
                 continue;
             }
 
-            if (e.Holding && mouseDown) {
+            if (e.Holding && (mouseDown || e.KeyboardHolding)) {
                 e.Progress = IsShiftHeld() ? 1f : Mathf.Min(1f, e.Progress + dt / e.Duration);
             } else {
                 e.Holding = false;
+                e.KeyboardHolding = false;
                 e.Progress = Mathf.Max(0f, e.Progress - dt / 0.18f);
             }
 
@@ -175,6 +204,7 @@ internal static class HoldToConfirm {
 
     private static void ConfirmNow(Entry e) {
         e.Holding = false;
+        e.KeyboardHolding = false;
         e.Progress = 0f;
         if (e.FillRect != null) {
             e.FillRect.anchorMax = new Vector2(0f, 1f);

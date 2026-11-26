@@ -81,7 +81,7 @@ internal static partial class HudEditor {
     }
 
     public static void Open() {
-        if (IsOpen || !Core.MainCore.IsModEnabled || UICore.CanvasObj == null || Setup.SetupWizard.IsOpen) {
+        if (IsOpen || !Core.MainCore.IsModEnabled || UICore.CanvasObj == null || Setup.SetupWizard.IsOpen || Setup.SetupIntro.IsBlocking) {
             return;
         }
         uiWasOpen = isClosing ? closingRestorePanel : UICore.IsOpen;

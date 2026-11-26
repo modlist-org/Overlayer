@@ -170,11 +170,13 @@ public sealed class OverlayerRuntime {
         Tutorial.Tutorial.Tick();
         Setup.SetupWizard.Tick();
         Setup.SetupIntro.Tick();
+        UI.UIKeyboardNav.Tick();
         UI.UISound.Tick();
     }
 
     public void Dispose() {
         _disposed = true;
+        UI.UIKeyboardNav.Dispose();
         UI.UISound.Dispose();
         Native.OvRawInput.Stop();
         Compat.O5KitAdapters.Teardown();

@@ -128,7 +128,7 @@ public static class UICore {
             MainCore.ConfMgr.Save();
         }
 
-        if (MainCore.Conf.ShowOnStartup) {
+        if (MainCore.Conf.ShowOnStartup && !Setup.SetupIntro.IsBlocking) {
             Open(true);
         }
     }
@@ -680,7 +680,7 @@ public static class UICore {
         // Controls only live under the UI canvas; skip ticking them while it is hidden.
         // One trailing tick after hiding lets input fields release their input block.
         bool active = CanvasObj.activeSelf;
-        if (active) {
+        if (active && !Setup.SetupIntro.IsPlaying) {
             UpdateMenuHover();
         }
         if (active || wasCanvasActive) {
@@ -688,7 +688,9 @@ public static class UICore {
         }
         TickPowerHold(Time.unscaledDeltaTime);
         wasCanvasActive = active;
-        O5KitAdapters.Ctx.Tooltip.Tick();
+        if (!Setup.SetupIntro.IsPlaying) {
+            O5KitAdapters.Ctx.Tooltip.Tick();
+        }
     }
 
     private static bool wasCanvasActive;
@@ -920,7 +922,7 @@ public static class UICore {
     }
 
     public static void Open(bool noAnimate = false) {
-        if (isOpen) {
+        if (isOpen || (Setup.SetupIntro.IsBlocking && !Setup.SetupIntro.IsOpeningForIntro)) {
             return;
         }
 
@@ -980,7 +982,7 @@ public static class UICore {
     public static float LastCloseTime = float.NegativeInfinity;
 
     public static void Close(bool noAnimate = false) {
-        if (!isOpen) {
+        if (!isOpen || Setup.SetupIntro.IsPlaying) {
             return;
         }
         LastCloseTime = Time.unscaledTime;
@@ -1108,6 +1110,9 @@ public static class UICore {
     private static int lastToggleFrame = -1;
 
     public static void Toggle(bool noAnimate = false) {
+        if (Setup.SetupIntro.IsBlocking) {
+            return;
+        }
         // Guard against multiple registered key variants (e.g. BackQuote + Tilde) firing in the same frame.
         if (lastToggleFrame == Time.frameCount) {
             return;
@@ -1213,6 +1218,9 @@ public static class UICore {
     }
 
     public static void OpenMenu() {
+        if (Setup.SetupIntro.IsBlocking) {
+            return;
+        }
         menuSequence?.Kill();
         menuHoverSequence?.Kill();
 
@@ -1271,8 +1279,8 @@ public static class UICore {
     }
 
     public static void ToggleMenu() {
-        // The setup wizard takes over the window's content.
-        if (Setup.SetupWizard.IsOpen) {
+        // The setup wizard and first-run intro take over the window's content.
+        if (Setup.SetupWizard.IsOpen || Setup.SetupIntro.IsBlocking) {
             return;
         }
         if (isMenuOpen) {
@@ -1283,6 +1291,7 @@ public static class UICore {
     }
 
     public static void Dispose() {
+        Setup.SetupIntro.Abort();
         UnregisterToggleShortcut();
         HudEdit.HudEditor.Close();
         HudEdit.HudEditor.UnregisterShortcut();

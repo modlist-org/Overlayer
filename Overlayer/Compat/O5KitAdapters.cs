@@ -281,7 +281,10 @@ public static class O5KitAdapters {
             shapes: MainCore.Spr.Shapes);
         SyncConfig();
 
-        O5ShortcutManager.IsSuspended = () => O5Kit.Control.O5InputBlocker.IsEditing || UI.Utility.KeyCapture.SuppressShortcuts;
+        O5ShortcutManager.IsSuspended = () =>
+            O5Kit.Control.O5InputBlocker.IsEditing
+            || UI.Utility.KeyCapture.SuppressShortcuts
+            || Overlayer.Setup.SetupIntro.IsBlocking;
         O5Kit.Control.O5Slider.EnableWheelAdjust = () => WheelAdjust;
         O5Kit.Control.O5Slider.OnAnyWheelChanged = s => UI.UISound.PlaySliderTick((float)s.Normalize());
         O5Kit.Control.O5Dropdown.EnableWheelAdjust = () => WheelAdjust;

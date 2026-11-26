@@ -3,7 +3,9 @@ using Overlayer.Core;
 using Overlayer.HudEdit;
 using Overlayer.UI;
 using Overlayer.UI.Factory.Page;
+using Overlayer.UI.Utility;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 #if ML && IL2CPP
@@ -42,12 +44,14 @@ internal static class SetupIntro {
     private const float WelcomeSize = 52f;
 
     private static RectTransform overlay, logoRoot, welcomeRect, welcomeClip, traceMask;
+    private static GameObject inputBlocker;
     private static CanvasGroup logoGroup;
     private static Image backdrop, outline, traceArc, wave, logo, flash;
     private static TextMeshProUGUI welcome;
     private static Sprite logoSprite, outlineSprite, silhouetteSprite, whiteSprite;
     private static float time;
     private static bool handedOff;
+    private static bool openingForIntro;
     private static Vector3 flyFrom, logoFrom;
     private static Vector2 welcomeSize, swipedSize;
     // Visible share of the padded intro art's width (512 of 576 px); the top-bar icon fills its rect.
@@ -58,12 +62,32 @@ internal static class SetupIntro {
 
     public static bool IsPlaying => overlay != null;
 
+    /// <summary>True on a fresh install while waiting for the first-run intro to begin.</summary>
+    public static bool IsPendingFirstRun
+        => MainCore.Conf != null && MainCore.Conf.SetupPending.Value && !IsPlaying && !SetupWizard.IsOpen;
+
+    /// <summary>True before the first-run intro starts or while the intro is actively playing.</summary>
+    public static bool IsBlocking => IsPlaying || IsPendingFirstRun;
+
+    internal static bool IsOpeningForIntro => openingForIntro;
+
     public static void Play() {
         if (IsPlaying || UICore.CanvasObj == null || UICore.Panel == null || HudEditor.IsOpen || SetupWizard.IsOpen) {
             return;
         }
+        KeyCapture.Cancel();
+        UIKeyboardNav.ClearFocus();
+        O5KitAdapters.Ctx?.Tooltip?.Hide();
+        if (EventSystem.current != null) {
+            EventSystem.current.SetSelectedGameObject(null);
+        }
         if (!UICore.IsOpen) {
-            UICore.Open();
+            try {
+                openingForIntro = true;
+                UICore.Open();
+            } finally {
+                openingForIntro = false;
+            }
         }
         if (UICore.IsMenuOpen) {
             UICore.CloseMenu();
@@ -88,7 +112,10 @@ internal static class SetupIntro {
         if (overlay.GetSiblingIndex() != overlay.parent.childCount - 1) {
             overlay.SetAsLastSibling();
         }
-        if (backdrop.raycastTarget && overlay.rect.size != swipedSize) {
+        if (inputBlocker != null && inputBlocker.transform.GetSiblingIndex() != inputBlocker.transform.parent.childCount - 1) {
+            inputBlocker.transform.SetAsLastSibling();
+        }
+        if (!handedOff && overlay.rect.size != swipedSize) {
             Swipe(0f); // before the reveal: keeps the backdrop fitted if the window resizes
         }
         // A loading hitch counts as one frame so it doesn't skip the show; ordinary low frame
@@ -160,10 +187,10 @@ internal static class SetupIntro {
             float h = Step01(t, HandoffAt, FlySeconds);
             float e = E("OutExpo", h);
             // Everything has landed: reveal the wizard and the window under the backdrop.
+            // Keep input blocked until the wipe animation completely finishes.
             float revealAt = HandoffAt + FlySeconds;
             if (t >= revealAt && SetupWizard.HoldReveal) {
                 SetupWizard.RevealNow();
-                backdrop.raycastTarget = false;
             }
             Swipe(E("InOutSine", Step01(t, revealAt, RevealSeconds)));
             FlyLogo(e);
@@ -239,6 +266,22 @@ internal static class SetupIntro {
         var introCanvas = overlay.gameObject.AddComponent<Canvas>();
         O5Kit.Core.O5ColorSpace.Track(introCanvas);
         overlay.gameObject.AddComponent<GraphicRaycaster>();
+
+        // Full-screen raycast shield above panel + resize handles until Finish() ends the intro.
+        inputBlocker = new GameObject("OverlayerIntroInputBlocker");
+        inputBlocker.transform.SetParent(UICore.CanvasObj.transform, false);
+        var blockerRect = inputBlocker.AddComponent<RectTransform>();
+        blockerRect.anchorMin = Vector2.zero;
+        blockerRect.anchorMax = Vector2.one;
+        blockerRect.offsetMin = blockerRect.offsetMax = Vector2.zero;
+        var blockerCanvas = inputBlocker.AddComponent<Canvas>();
+        blockerCanvas.overrideSorting = true;
+        blockerCanvas.sortingOrder = 32766;
+        O5Kit.Core.O5ColorSpace.Track(blockerCanvas);
+        inputBlocker.AddComponent<GraphicRaycaster>();
+        var blockerImg = inputBlocker.AddComponent<Image>();
+        blockerImg.color = Color.clear;
+        blockerImg.raycastTarget = true;
         welcomeSize = Vector2.zero;
         // Backdrop sits under a 45-degree stencil mask that swipes it away at the end.
         wipe = NewRect("Wipe", overlay);
@@ -324,21 +367,32 @@ internal static class SetupIntro {
         if (SetupWizard.TryGetTitleRest(out TextMeshProUGUI title, out _)) {
             title.alpha = 1f;
         }
-        UnityEngine.Object.Destroy(overlay.gameObject);
-        overlay = null;
+        DestroyOverlay();
     }
 
-    // Window closed mid-show: drop it. A pending first run will retry later.
-    private static void Abort() {
+    // Window closed/disposed mid-show: drop it. A pending first run will retry later.
+    internal static void Abort() {
         SetupWizard.HoldReveal = false;
         SetTopBarLogoVisible(true);
         if (handedOff && SetupWizard.TryGetTitleRest(out TextMeshProUGUI title, out _)) {
             title.alpha = 1f;
         }
+        DestroyOverlay();
+    }
+
+    private static void DestroyOverlay() {
         if (overlay != null) {
+            overlay.gameObject.SetActive(false);
+            overlay.SetParent(null, false);
             UnityEngine.Object.Destroy(overlay.gameObject);
+            overlay = null;
         }
-        overlay = null;
+        if (inputBlocker != null) {
+            inputBlocker.SetActive(false);
+            inputBlocker.transform.SetParent(null, false);
+            UnityEngine.Object.Destroy(inputBlocker);
+            inputBlocker = null;
+        }
     }
 
     private static RectTransform NewRect(string name, Transform parent) {
