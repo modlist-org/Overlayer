@@ -1158,8 +1158,8 @@ internal sealed class OvInspectorBuilder(
         if (placeholder == combinedPlaceholder) {
             placeholder = $"{InspectorLabel(label)} / {InspectorLabel(language.LabelSuffix)}";
         }
-        var input = O5Factory.Input(O5KitAdapters.Ctx, row, id, new O5InputOptions { Value = value, OnChanged = OnTextChanged, Placeholder = placeholder, OnEndEdit = _ => save(), Multiline = true, Monospace = true, FieldFactory = static go => go.AddComponent<UICodeInputField>() });
-        var codeInput = (UICodeInputField)input.InputField;
+        var input = O5Factory.Input(O5KitAdapters.Ctx, row, id, new O5InputOptions { Value = value, OnChanged = OnTextChanged, Placeholder = placeholder, OnEndEdit = _ => save(), Multiline = true, Monospace = true, FieldFactory = UICodeInputField.Attach });
+        var codeInput = UICodeInputField.From(input.InputField);
 
         const float gutterWidth = 44f;
         var text = input.InputField.textComponent;
@@ -3254,7 +3254,7 @@ internal sealed class OvInspectorBuilder(
     }
 
     private static void ApplyAnchorModes(RectTransformSettings cfg, RectTransform targetTransform, AnchorMode horizontal, AnchorMode vertical, bool setPivot, bool setPosition) {
-        Vector2 parentSize = (targetTransform.parent as RectTransform)?.rect.size ?? new Vector2(1920f, 1080f);
+        Vector2 parentSize = O5Kit.Behaviour.UnityUtils.AsRectTransform(targetTransform.parent)?.rect.size ?? new Vector2(1920f, 1080f);
         Vector2 visibleSize = targetTransform.rect.size;
         ApplyAnchorModeForAxis(cfg, 0, horizontal, parentSize.x, visibleSize.x, setPivot, setPosition);
         ApplyAnchorModeForAxis(cfg, 1, vertical, parentSize.y, visibleSize.y, setPivot, setPosition);
@@ -3570,7 +3570,7 @@ internal sealed class OvInspectorBuilder(
 
     private static void ApplyAnchorModes(OvObject obj, AnchorMode horizontal, AnchorMode vertical, bool setPivot, bool setPosition) {
         RectTransformSettings cfg = obj.Config.RectTransformConfig;
-        Vector2 parentSize = (obj.RectTransform.parent as RectTransform)?.rect.size ?? new Vector2(1920f, 1080f);
+        Vector2 parentSize = O5Kit.Behaviour.UnityUtils.AsRectTransform(obj.RectTransform.parent)?.rect.size ?? new Vector2(1920f, 1080f);
         Vector2 visibleSize = obj.RectTransform.rect.size;
         ApplyAnchorModeForAxis(cfg, 0, horizontal, parentSize.x, visibleSize.x, setPivot, setPosition);
         ApplyAnchorModeForAxis(cfg, 1, vertical, parentSize.y, visibleSize.y, setPivot, setPosition);

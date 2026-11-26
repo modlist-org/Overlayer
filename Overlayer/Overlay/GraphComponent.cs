@@ -91,16 +91,13 @@ public sealed class OvGraphComponent : MaskableGraphic {
     private Native.OvPoint2D[] _pointBuffer = new Native.OvPoint2D[256];
     private Native.OvQuad2D[] _quadBuffer = new Native.OvQuad2D[256];
 
-    #if ML && IL2CPP
-    public
-#else
-    protected
-#endif
-    override void OnEnable() {
+#if !IL2CPP
+    protected override void OnEnable() {
         base.OnEnable();
         history.Clear();
         lastPushTime = float.NegativeInfinity;
     }
+#endif
 
     private void Update() {
         float now = Time.realtimeSinceStartup;

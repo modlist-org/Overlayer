@@ -17,7 +17,10 @@ namespace Overlayer.UI.Objects.Impl;
 #endif
 public sealed class UICodeInputField
 #if ML && IL2CPP
-    (IntPtr ptr) : TMP_InputField(ptr)
+    // On IL2CPP Unity 6, ClassInjector leaves has_references=0/gc_desc=0 on subclasses of TMP_InputField,
+    // causing Boehm GC to sweep inherited Selectable/TMP_InputField fields (m_CanvasGroupCache, m_OnValueChanged).
+    // Keep a plain MonoBehaviour companion on a real native TMP_InputField instead.
+    (IntPtr ptr) : MonoBehaviour(ptr)
 #else
     : TMP_InputField
 #endif
@@ -44,35 +47,189 @@ public sealed class UICodeInputField
     public static bool ShouldConsumeParentScroll
         => hoveredField != null && IsShiftHeld();
 
+    public static TMP_InputField Attach(GameObject go) {
 #if ML && IL2CPP
-    public
+        var field = go.AddComponent<TMP_InputField>();
+        var code = go.AddComponent<UICodeInputField>();
+        code.Bind(field);
+        return field;
 #else
-    protected
+        return go.AddComponent<UICodeInputField>();
 #endif
-    override void OnEnable() {
+    }
+
+    public static UICodeInputField From(TMP_InputField field) {
+#if ML && IL2CPP
+        if (field == null) {
+            return null;
+        }
+        var code = field.GetComponent<UICodeInputField>();
+        if (code != null && code.Field == null) {
+            code.Bind(field);
+        }
+        return code;
+#else
+        return (UICodeInputField)field;
+#endif
+    }
+
+#if ML && IL2CPP
+    public TMP_InputField Field { get; private set; }
+    private UnityEngine.Events.UnityAction<string> deselectCallback;
+    private bool bound;
+    private int swallowValidateFrame = -1;
+    private char swallowValidateChar;
+
+    public string text { get => Field != null ? Field.text : string.Empty; set { if (Field != null) Field.text = value; } }
+    public bool isFocused => Field != null && Field.isFocused;
+    public int selectionAnchorPosition { get => Field != null ? Field.selectionAnchorPosition : 0; set { if (Field != null) Field.selectionAnchorPosition = value; } }
+    public int selectionFocusPosition { get => Field != null ? Field.selectionFocusPosition : 0; set { if (Field != null) Field.selectionFocusPosition = value; } }
+    public int stringPosition { get => Field != null ? Field.stringPosition : 0; set { if (Field != null) Field.stringPosition = value; } }
+    public bool richText { get => Field != null && Field.richText; set { if (Field != null) Field.richText = value; } }
+    public bool readOnly { get => Field != null && Field.readOnly; set { if (Field != null) Field.readOnly = value; } }
+    public int caretWidth { get => Field != null ? Field.caretWidth : 1; set { if (Field != null) Field.caretWidth = value; } }
+    public bool customCaretColor { get => Field != null && Field.customCaretColor; set { if (Field != null) Field.customCaretColor = value; } }
+    public Color caretColor { get => Field != null ? Field.caretColor : Color.white; set { if (Field != null) Field.caretColor = value; } }
+    public Color selectionColor { get => Field != null ? Field.selectionColor : Color.clear; set { if (Field != null) Field.selectionColor = value; } }
+    public TMP_Text textComponent => Field != null ? Field.textComponent : null;
+    public RectTransform textViewport => Field != null ? Field.textViewport : null;
+    public bool onFocusSelectAll { get => Field != null && Field.onFocusSelectAll; set { if (Field != null) Field.onFocusSelectAll = value; } }
+    public TMP_InputField.OnChangeEvent onValueChanged => Field != null ? Field.onValueChanged : null;
+    public void ActivateInputField() => Field?.ActivateInputField();
+    public void ForceLabelUpdate() => Field?.ForceLabelUpdate();
+
+    private void Bind(TMP_InputField field) {
+        Field = field;
+        if (bound || field == null) {
+            return;
+        }
+        bound = true;
+        field.onFocusSelectAll = false;
+        deselectCallback = new Action<string>(_ => hasLastEdit = false);
+        field.onDeselect.AddListener(deselectCallback);
+        field.onValidateInput = (TMP_InputField.OnValidateInput)new Func<string, int, char, char>(OnValidateKeyChar);
+
+        var trigger = gameObject.GetComponent<EventTrigger>() ?? gameObject.AddComponent<EventTrigger>();
+        O5Kit.Behaviour.UnityUtils.AddEvent(trigger, EventTriggerType.PointerDown, e => {
+            var ped = O5Kit.Behaviour.UnityUtils.AsPointerEventData(e);
+            if (ped != null && ped.clickCount == 2) {
+                OnDoubleClick?.Invoke();
+            }
+        });
+        SubscribeHistory();
+    }
+
+    private char OnValidateKeyChar(string current, int charIndex, char addedChar) {
+        if (swallowValidateFrame == Time.frameCount && (addedChar == swallowValidateChar || (swallowValidateChar == '\n' && addedChar == '\r'))) {
+            return '\0';
+        }
+        return addedChar;
+    }
+
+    private void SubscribeHistory() {
+        if (Field == null) {
+            return;
+        }
+        Field.onFocusSelectAll = false;
+        lastState = CaptureState();
+        hasLastEdit = false;
+        historyCallback ??= new Action<string>(OnHistoryValueChanged);
+        Field.onValueChanged.RemoveListener(historyCallback);
+        Field.onValueChanged.AddListener(historyCallback);
+    }
+
+    public void OnEnable() {
+        Field ??= GetComponent<TMP_InputField>();
+        if (Field != null) {
+            Bind(Field);
+            SubscribeHistory();
+        }
+    }
+
+    public void OnDisable() {
+        OnFieldDisabled?.Invoke();
+        if (Field != null && historyCallback != null) {
+            Field.onValueChanged.RemoveListener(historyCallback);
+        }
+        if (hoveredField == this) {
+            hoveredField = null;
+        }
+        hasLastEdit = false;
+    }
+
+    public void OnDestroy() {
+        if (Field != null && deselectCallback != null) {
+            Field.onDeselect.RemoveListener(deselectCallback);
+        }
+        OnFieldDestroyed?.Invoke();
+    }
+
+    public void LateUpdate() {
+        if (Field == null) {
+            return;
+        }
+        if (!suppressHistory && text == lastState.Text) {
+            HistoryState current = CaptureState();
+            if (current.Anchor != lastState.Anchor || current.Focus != lastState.Focus) {
+                lastState = current;
+                hasLastEdit = false;
+            }
+        }
+        SyncCaretTransform();
+        HandleShortcuts();
+        if (textComponent != null) {
+            AfterLabelUpdate?.Invoke(textComponent, isFocused && !string.IsNullOrEmpty(O5Input.CompositionString));
+        }
+    }
+
+    private void Update() {
+        if (Field != null && isFocused && string.IsNullOrEmpty(O5Input.CompositionString)) {
+            KeyCode key = O5Input.GetKeyDown(KeyCode.Tab) ? KeyCode.Tab
+                : O5Input.GetKeyDown(KeyCode.Return) ? KeyCode.Return
+                : O5Input.GetKeyDown(KeyCode.KeypadEnter) ? KeyCode.KeypadEnter
+                : O5Input.GetKeyDown(KeyCode.UpArrow) ? KeyCode.UpArrow
+                : O5Input.GetKeyDown(KeyCode.DownArrow) ? KeyCode.DownArrow
+                : O5Input.GetKeyDown(KeyCode.Escape) ? KeyCode.Escape
+                : KeyCode.None;
+            if (key != KeyCode.None && HandleKey?.Invoke(key) == true) {
+                swallowValidateFrame = Time.frameCount;
+                swallowValidateChar = key == KeyCode.Tab ? '\t' : (key is KeyCode.Return or KeyCode.KeypadEnter ? '\n' : '\0');
+            }
+        }
+
+        if (hoveredField == null && textViewport != null && RectTransformUtility.RectangleContainsScreenPoint(
+            textViewport,
+            O5Input.MousePosition,
+            null
+        )) {
+            hoveredField = this;
+        }
+
+        if (hoveredField != this || !IsShiftHeld()) {
+            return;
+        }
+
+        Vector2 delta = O5Input.MouseScrollDelta;
+        float wheel = Mathf.Abs(delta.y) > 0.01f ? delta.y : delta.x;
+        if (Mathf.Abs(wheel) > 0.0001f) {
+            ScrollHorizontal(wheel * 32f);
+        }
+    }
+#else
+    protected override void OnEnable() {
         base.OnEnable();
         onFocusSelectAll = false;
         lastState = CaptureState();
         hasLastEdit = false;
 #pragma warning disable IDE0074
         if (historyCallback == null) {
-            historyCallback =
-#if ML && IL2CPP
-                new Action<string>(OnHistoryValueChanged);
-#else
-                OnHistoryValueChanged;
-#endif
+            historyCallback = OnHistoryValueChanged;
         }
 #pragma warning restore IDE0074
         onValueChanged.AddListener(historyCallback);
     }
 
-#if ML && IL2CPP
-    public
-#else
-    protected
-#endif
-    override void OnDisable() {
+    protected override void OnDisable() {
         OnFieldDisabled?.Invoke();
         if (historyCallback != null) {
             onValueChanged.RemoveListener(historyCallback);
@@ -84,22 +241,12 @@ public sealed class UICodeInputField
         base.OnDisable();
     }
 
-#if ML && IL2CPP
-    public
-#else
-    protected
-#endif
-    override void OnDestroy() {
+    protected override void OnDestroy() {
         OnFieldDestroyed?.Invoke();
         base.OnDestroy();
     }
 
-#if ML && IL2CPP
-    public
-#else
-    protected
-#endif
-    override void LateUpdate() {
+    protected override void LateUpdate() {
         base.LateUpdate();
         if (!suppressHistory && text == lastState.Text) {
             HistoryState current = CaptureState();
@@ -164,6 +311,7 @@ public sealed class UICodeInputField
         base.OnDeselect(eventData);
         hasLastEdit = false;
     }
+#endif
 
     private static bool IsShiftHeld()
         => O5Input.GetKey(KeyCode.LeftShift) || O5Input.GetKey(KeyCode.RightShift);
@@ -422,7 +570,7 @@ public sealed class UICodeInputField
             return;
         }
 
-        caretTransform ??= textViewport.Find("Caret") as RectTransform;
+        caretTransform ??= O5Kit.Behaviour.UnityUtils.AsRectTransform(textViewport.Find("Caret"));
         if (caretTransform == null) {
             return;
         }

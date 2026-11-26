@@ -53,6 +53,7 @@ public sealed class OvRainComponent
         go.transform.SetParent(transform, false);
         go.transform.SetAsFirstSibling();
         graphic = go.AddComponent<OvRainGraphic>();
+        O5Kit.Behaviour.UnityUtils.InitInjectedMaskableGraphic(graphic);
         graphic.raycastTarget = false;
         graphic.Owner = this;
         lastLayoutSize = new Vector2(float.NaN, float.NaN);
@@ -128,7 +129,11 @@ public sealed class OvRainComponent
     // Rain area sits on the object's top edge: Length tall, Width wide (0 = object width).
     private void Layout() {
         var rt = graphic.rectTransform;
-        Vector2 size = ((RectTransform)transform).rect.size;
+        var selfRt = O5Kit.Behaviour.UnityUtils.AsRectTransform(transform);
+        if (selfRt == null) {
+            return;
+        }
+        Vector2 size = selfRt.rect.size;
         float length = Mathf.Max(0f, Length);
         float width = Width > 0f ? Width : size.x;
         var layoutParams = new Vector4(length, width, Offset.x, Offset.y);

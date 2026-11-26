@@ -767,10 +767,10 @@ internal static class PageDocs {
             Multiline = true,
             Monospace = true,
             OnChanged = OnTextChanged,
-            FieldFactory = static go => go.AddComponent<UICodeInputField>(),
+            FieldFactory = UICodeInputField.Attach,
         }));
 
-        var codeInput = (UICodeInputField)sandboxInput.InputField;
+        var codeInput = UICodeInputField.From(sandboxInput.InputField);
         codeInput.richText = false;
         var text = codeInput.textComponent;
         text.richText = false;
@@ -1183,7 +1183,7 @@ internal static class PageDocs {
         float viewTop = 0f;
         float viewBottom = 800f;
         if (bodyScroller != null && bodyScroller.viewport != null) {
-            bodyScroller.viewport.GetWorldCorners(viewportCorners);
+            O5Kit.Behaviour.UnityUtils.GetWorldCornersSafe(bodyScroller.viewport, viewportCorners);
             float localTopY = -explorerVirtualHost.InverseTransformPoint(viewportCorners[1]).y;
             float localBottomY = -explorerVirtualHost.InverseTransformPoint(viewportCorners[0]).y;
             if (localBottomY > localTopY + 1f) {
@@ -1722,7 +1722,7 @@ internal static class PageDocs {
             Placeholder = string.Empty,
             Multiline = true,
             Monospace = true,
-            FieldFactory = static go => go.AddComponent<UICodeInputField>(),
+            FieldFactory = UICodeInputField.Attach,
         }));
 
         // Strip inner O5 input border/background so it blends seamlessly inside the code block
@@ -1735,7 +1735,7 @@ internal static class PageDocs {
             }
         }
 
-        var codeField = (UICodeInputField)roInput.InputField;
+        var codeField = UICodeInputField.From(roInput.InputField);
         codeField.readOnly = true;
         codeField.richText = false;
         codeField.caretWidth = 0;
@@ -2272,7 +2272,7 @@ internal static class PageDocs {
                 return;
             }
             var corners = new Vector3[4];
-            anchor.GetWorldCorners(corners);
+            O5Kit.Behaviour.UnityUtils.GetWorldCornersSafe(anchor, corners);
             Vector3 topCenterWorld = (corners[1] + corners[2]) * 0.5f;
             Vector3 botCenterWorld = (corners[0] + corners[3]) * 0.5f;
 
