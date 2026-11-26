@@ -139,22 +139,51 @@ public static class UIColors {
 
     public static O5Theme BuildCurrentTheme() => IsStatic ? BuildStaticTheme() : BuildTheme(BaseColor);
 
+    private static readonly Dictionary<int, PaletteSnapshot> pendingPageSnapshots = [];
+    private static int trackedCanvasId;
+    private static bool pageSwitchHooked;
+
+    private static void EnsurePageSwitchHook() {
+        if (pageSwitchHooked) {
+            return;
+        }
+        pageSwitchHooked = true;
+        Factory.MenuFactory.OnStateChanged += OnPageSwitched;
+    }
+
+    private static void OnPageSwitched(int state) {
+        if (!pendingPageSnapshots.TryGetValue(state, out var oldSnap)) {
+            return;
+        }
+        pendingPageSnapshots.Remove(state);
+        if (MaxDiffRgba(oldSnap.ObjectActive, current.ObjectActive) < 0.0005f
+            && MaxDiffRgba(oldSnap.PanelBG, current.PanelBG) < 0.0005f) {
+            return;
+        }
+        if (UICore.Pages != null && UICore.Pages.TryGetValue(state, out var page) && page != null) {
+            RemapSubtree(page.gameObject, oldSnap, current);
+        }
+    }
+
     public static void ApplyBaseColor(Color baseColor, bool refreshLiveUI = true) {
         Color opaque = new(Mathf.Clamp01(baseColor.r), Mathf.Clamp01(baseColor.g), Mathf.Clamp01(baseColor.b), 1f);
+        if (!IsStatic && MaxDiffRgb(BaseColor, opaque) < 0.0005f) {
+            return;
+        }
         PaletteSnapshot prev = current;
+        O5Theme theme = BuildTheme(opaque);
         IsStatic = false;
         BaseColor = opaque;
         BaseHex = ToHexRgb(opaque);
-        current = PaletteSnapshot.From(opaque);
+        current = PaletteSnapshot.From(opaque, theme);
 
         if (refreshLiveUI) {
-            // Remap existing Unity graphics while they still hold exact `prev` colors,
-            // then notify O5Kit controls and Overlayer listeners so every element snaps cleanly.
+            // Remap active UI immediately and defer hidden pages until opened.
             RemapLiveTree(UICore.CanvasObj, prev, current);
         }
 
         if (O5KitAdapters.Ctx != null) {
-            O5KitAdapters.Ctx.SetTheme(BuildTheme(opaque));
+            O5KitAdapters.Ctx.SetTheme(theme);
         }
 
         if (refreshLiveUI) {
@@ -163,7 +192,11 @@ public static class UIColors {
     }
 
     public static void ApplyStatic(bool refreshLiveUI = true) {
+        if (IsStatic) {
+            return;
+        }
         PaletteSnapshot prev = current;
+        O5Theme theme = BuildStaticTheme();
         IsStatic = true;
         BaseColor = StaticDisplayColor;
         BaseHex = StaticConfigToken;
@@ -174,7 +207,7 @@ public static class UIColors {
         }
 
         if (O5KitAdapters.Ctx != null) {
-            O5KitAdapters.Ctx.SetTheme(BuildStaticTheme());
+            O5KitAdapters.Ctx.SetTheme(theme);
         }
 
         if (refreshLiveUI) {
@@ -200,47 +233,119 @@ public static class UIColors {
             return;
         }
 
+        // If this is the main UI canvas, only remap active pages now and defer inactive pages until opened.
+        if (UICore.CanvasObj != null && root == UICore.CanvasObj && UICore.Pages != null && UICore.Pages.Count > 0) {
+            EnsurePageSwitchHook();
+            int cid = root.GetInstanceID();
+            if (cid != trackedCanvasId) {
+                trackedCanvasId = cid;
+                pendingPageSnapshots.Clear();
+            }
+
+            foreach (var kv in UICore.Pages) {
+                var page = kv.Value;
+                if (page == null) {
+                    continue;
+                }
+                if (page.gameObject.activeSelf) {
+                    pendingPageSnapshots.Remove(kv.Key);
+                } else if (!pendingPageSnapshots.ContainsKey(kv.Key)) {
+                    pendingPageSnapshots[kv.Key] = prev;
+                }
+            }
+
+            (Color Old, Color New)[] pairs = prev.MapTo(next);
+            var skipCache = new Dictionary<int, bool>(64);
+            RemapCanvasBranch(root.transform, Factory.PageFactory.PagesContaner, pairs, skipCache);
+            return;
+        }
+
+        RemapSubtree(root, prev, next);
+    }
+
+    private static void RemapCanvasBranch(Transform node, Transform pagesContainer, (Color Old, Color New)[] pairs, Dictionary<int, bool> skipCache) {
+        if (node == null || !node.gameObject.activeSelf) {
+            return;
+        }
+        if (pagesContainer != null && node == pagesContainer) {
+            for (int i = 0; i < node.childCount; i++) {
+                var pageTr = node.GetChild(i);
+                if (pageTr != null && pageTr.gameObject.activeSelf) {
+                    RemapSubtree(pageTr.gameObject, pairs, skipCache);
+                }
+            }
+            return;
+        }
+        if (pagesContainer != null && pagesContainer.IsChildOf(node)) {
+            RemapSingleGraphic(node.GetComponent<Graphic>(), pairs, skipCache);
+            for (int i = 0; i < node.childCount; i++) {
+                RemapCanvasBranch(node.GetChild(i), pagesContainer, pairs, skipCache);
+            }
+            return;
+        }
+        RemapSubtree(node.gameObject, pairs, skipCache);
+    }
+
+    private static void RemapSubtree(GameObject root, PaletteSnapshot prev, PaletteSnapshot next) {
+        if (root == null) {
+            return;
+        }
+        RemapSubtree(root, prev.MapTo(next), new Dictionary<int, bool>(64));
+    }
+
+    private static void RemapSubtree(GameObject root, (Color Old, Color New)[] pairs, Dictionary<int, bool> skipCache) {
+        var graphics = root.GetComponentsInChildren<Graphic>(true);
+        for (int idx = 0; idx < graphics.Length; idx++) {
+            RemapSingleGraphic(graphics[idx], pairs, skipCache);
+        }
+    }
+
+    private static void RemapSingleGraphic(Graphic g, (Color Old, Color New)[] pairs, Dictionary<int, bool> skipCache) {
+        if (g == null || g is RawImage) {
+            return;
+        }
+
         const float epsilon = 0.0045f;
-        (Color Old, Color New)[] pairs = prev.MapTo(next);
-        foreach (Graphic g in root.GetComponentsInChildren<Graphic>(true)) {
-            if (g == null || ShouldSkipGraphic(g)) {
-                continue;
-            }
-
-            Color c = g.color;
-            int bestExact = -1;
-            float bestExactDist = epsilon;
-            for (int i = 0; i < pairs.Length; i++) {
-                float d = MaxDiffRgba(c, pairs[i].Old);
-                if (d < bestExactDist) {
-                    bestExactDist = d;
-                    bestExact = i;
-                }
-            }
-            if (bestExact >= 0) {
-                g.color = pairs[bestExact].New;
-                continue;
-            }
-
-            // RGB-only match (preserves alpha for translucent overlays derived from a palette role)
-            if (c.a > 0.001f) {
-                int bestRgb = -1;
-                float bestRgbDist = epsilon;
-                for (int i = 0; i < pairs.Length; i++) {
-                    if (pairs[i].Old.a < 0.99f) {
-                        continue;
-                    }
-                    float d = MaxDiffRgb(c, pairs[i].Old);
-                    if (d < bestRgbDist) {
-                        bestRgbDist = d;
-                        bestRgb = i;
-                    }
-                }
-                if (bestRgb >= 0) {
-                    g.color = O5Palette.WithAlpha(pairs[bestRgb].New, c.a);
-                }
+        Color c = g.color;
+        int bestExact = -1;
+        float bestExactDist = epsilon;
+        for (int i = 0; i < pairs.Length; i++) {
+            float d = MaxDiffRgba(c, pairs[i].Old);
+            if (d < bestExactDist) {
+                bestExactDist = d;
+                bestExact = i;
             }
         }
+
+        Color targetColor;
+        if (bestExact >= 0) {
+            targetColor = pairs[bestExact].New;
+        } else if (c.a > 0.001f) {
+            // RGB-only match (preserves alpha for translucent overlays derived from a palette role)
+            int bestRgb = -1;
+            float bestRgbDist = epsilon;
+            for (int i = 0; i < pairs.Length; i++) {
+                if (pairs[i].Old.a < 0.99f) {
+                    continue;
+                }
+                float d = MaxDiffRgb(c, pairs[i].Old);
+                if (d < bestRgbDist) {
+                    bestRgbDist = d;
+                    bestRgb = i;
+                }
+            }
+            if (bestRgb < 0) {
+                return;
+            }
+            targetColor = O5Palette.WithAlpha(pairs[bestRgb].New, c.a);
+        } else {
+            return;
+        }
+
+        if (MaxDiffRgba(c, targetColor) < 0.0005f || ShouldSkipGraphic(g, skipCache)) {
+            return;
+        }
+        g.color = targetColor;
     }
 
     private static float MaxDiffRgba(Color a, Color b) {
@@ -258,24 +363,28 @@ public static class UIColors {
         return Mathf.Max(dr, Mathf.Max(dg, db));
     }
 
-    private static bool ShouldSkipGraphic(Graphic g) {
-        if (g is RawImage) {
-            return true;
-        }
+    private static bool ShouldSkipGraphic(Graphic g, Dictionary<int, bool> skipCache) {
         string name = g.gameObject.name;
         if (name == "Preview" || name == "Wheel" || name == "Thumbnail" || name == "PreviewImage"
             || name == "Logo" || name == "LogoIcon") {
             return true;
         }
-        Transform p = g.transform.parent;
-        while (p != null) {
-            string pn = p.name;
-            if (pn == "PortraitMask" || pn == "PreviewImage" || pn == "Wheel") {
-                return true;
-            }
-            p = p.parent;
+        return HasSkippedAncestor(g.transform.parent, skipCache);
+    }
+
+    private static bool HasSkippedAncestor(Transform p, Dictionary<int, bool> skipCache) {
+        if (p == null) {
+            return false;
         }
-        return false;
+        int id = p.GetInstanceID();
+        if (skipCache.TryGetValue(id, out bool cached)) {
+            return cached;
+        }
+        string pn = p.name;
+        bool skip = pn == "PortraitMask" || pn == "PreviewImage" || pn == "Wheel"
+            || HasSkippedAncestor(p.parent, skipCache);
+        skipCache[id] = skip;
+        return skip;
     }
 
     internal readonly struct PaletteSnapshot {
@@ -317,8 +426,7 @@ public static class UIColors {
         public readonly Color AnchorCellHeader;
         public readonly Color AnchorCell;
 
-        private PaletteSnapshot(Color baseColor) {
-            O5Theme theme = O5Palette.FromMonochrome(baseColor);
+        private PaletteSnapshot(Color baseColor, O5Theme theme) {
             PanelBG = theme.PanelBG;
             TopBar = theme.TopBar;
             WindowOutline = theme.Outline;
@@ -441,7 +549,8 @@ public static class UIColors {
             AnchorCell = anchorCell;
         }
 
-        public static PaletteSnapshot From(Color baseColor) => new(baseColor);
+        public static PaletteSnapshot From(Color baseColor) => new(baseColor, O5Palette.FromMonochrome(baseColor));
+        public static PaletteSnapshot From(Color baseColor, O5Theme theme) => new(baseColor, theme);
 
         public static PaletteSnapshot Static() {
             PaletteSnapshot fb = From(DefaultBaseColor);
