@@ -1,53 +1,83 @@
 #!/usr/bin/env bash
 #
-# Regenerates the CI reference assemblies (tool/build-refs/).
+# Regenerates the CI reference assemblies (tool/build-refs/) from sibling O5Dev
+# for BOTH Mono (Release_ML) and IL2CPP (Release_ML_IL2CPP).
 #
-# Checked in (plaintext, safe — no game code or game data):
+# Checked in:
 #   build-refs.txt    - assembly identities (name, version, public key token)
-#   build-refs.sha256 - SHA-256 of the real game DLL each line was taken from
-#   game/...          - stripped reference assemblies: real API surface with
-#                       every method body replaced by `ret` / `throw null` and
-#                       all managed resources dropped (see tool/GenRefs).
+#   build-refs.sha256 - SHA-256 of the O5Dev DLL each line was taken from
+#   mono/...          - stripped Mono reference assemblies (O5Dev/Builds/Mono)
+#   il2cpp/...        - stripped IL2CPP reference assemblies (O5Dev/Builds/IL2CPP)
 #
-# CI (release.yml) copies tool/build-refs/game over the csproj HintPaths and
-# builds against it; compilation behaves identically to building against the
-# real game install. Re-run this script whenever a game reference DLL is
-# added to the csproj, and commit the result.
-#
-# Usage: ./tool/pack_refs.sh   (needs the game installed at ADOFAI_DIR or
-#   ~/.local/share/Steam/steamapps/common/A Dance of Fire and Ice)
+# Usage: ./tool/pack_refs.sh   (uses O5DEV_DIR or sibling ../O5Dev)
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-GAMEPATH="${ADOFAI_DIR:-$HOME/.local/share/Steam/steamapps/common/A Dance of Fire and Ice}"
-MANAGED="$GAMEPATH/ADanceOfFireAndIce_Data/Managed"
+O5DEV_DIR="${O5DEV_DIR:-$ROOT/../O5Dev}"
+BUILDS="$O5DEV_DIR/Builds"
+MONO="$BUILDS/Mono"
+IL2CPP="$BUILDS/IL2CPP"
+
+if [[ ! -d "$MONO/O5Dev_Data/Managed" ]]; then
+    echo "missing Mono O5Dev build: $MONO/O5Dev_Data/Managed (run ./o5dev setup in O5Dev)" >&2
+    exit 1
+fi
+if [[ ! -d "$IL2CPP/MelonLoader/Il2CppAssemblies" ]]; then
+    echo "missing IL2CPP O5Dev interop assemblies: $IL2CPP/MelonLoader/Il2CppAssemblies (run ./o5dev run il2cpp --headless --quit-after 180)" >&2
+    exit 1
+fi
 
 OUT="$ROOT/tool/build-refs"
 mkdir -p "$OUT"
 
+CSPROJS=("$ROOT/Overlayer/Overlayer.csproj")
+if [[ -f "$ROOT/../O5Kit/src/O5Kit/O5Kit.csproj" ]]; then
+    CSPROJS+=("$ROOT/../O5Kit/src/O5Kit/O5Kit.csproj")
+fi
+
 WANT="$OUT/.want.txt"
 {
-    # MelonLoader/0Harmony for the ML build (keep the subdir: GenRefs
-    # resolves them against the game root, not Managed).
-    echo "MelonLoader/net35/0Harmony.dll"
-    echo "MelonLoader/net35/MelonLoader.dll"
-    # Every game-relative HintPath in the csprojs (minus facades the framework provides).
-    grep -rhoE '\$\(GamePath\)/\$\(GameData\)/Managed/[A-Za-z0-9._-]+\.dll' "$ROOT/Overlayer/Overlayer.csproj" \
-        | sed 's|.*/Managed/||' | sort -u
-    # O5Kit's own game refs (usually a subset, but stay exact if it grows).
-    if [[ -f "$ROOT/../O5Kit/src/O5Kit/O5Kit.csproj" ]]; then
-        grep -rhoE '\$\(GamePath\)/\$\(GameData\)/Managed/[A-Za-z0-9._-]+\.dll' "$ROOT/../O5Kit/src/O5Kit/O5Kit.csproj" \
-            | sed 's|.*/Managed/||' | sort -u
+    # Mono MelonLoader refs
+    echo "mono/MelonLoader/net35/0Harmony.dll"
+    echo "mono/MelonLoader/net35/MelonLoader.dll"
+    if [[ -f "$MONO/O5Dev_Data/Managed/Newtonsoft.Json.dll" ]]; then
+        echo "mono/O5Dev_Data/Managed/Newtonsoft.Json.dll"
+    else
+        echo "mono/MelonLoader/net35/Newtonsoft.Json.dll"
     fi
+
+    # Mono Unity / Managed compile refs (<HintPath> only; never PostBuild Copy facade DLLs)
+    for dll in $(grep -h '<HintPath' "${CSPROJS[@]}" \
+        | grep -oE '\$\(GamePath\)/\$\(GameData\)/Managed/[A-Za-z0-9._-]+\.dll' \
+        | sed 's|.*/Managed/||' | sort -u); do
+        if [[ -f "$MONO/O5Dev_Data/Managed/$dll" ]]; then
+            echo "mono/O5Dev_Data/Managed/$dll"
+        fi
+    done
+
+    # IL2CPP MelonLoader net6 refs
+    echo "il2cpp/MelonLoader/net6/0Harmony.dll"
+    echo "il2cpp/MelonLoader/net6/Il2CppInterop.Runtime.dll"
+    echo "il2cpp/MelonLoader/net6/MelonLoader.dll"
+    echo "il2cpp/MelonLoader/net6/Newtonsoft.Json.dll"
+
+    # IL2CPP interop compile refs (<HintPath> only)
+    for dll in $(grep -h '<HintPath' "${CSPROJS[@]}" \
+        | grep -oE '\$\(Il2CppData\)/[A-Za-z0-9._-]+\.dll' \
+        | sed 's|.*/||' | sort -u); do
+        if [[ -f "$IL2CPP/MelonLoader/Il2CppAssemblies/$dll" ]]; then
+            echo "il2cpp/MelonLoader/Il2CppAssemblies/$dll"
+        fi
+    done
 } > "$WANT"
 sort -u -o "$WANT" "$WANT"
 
 {
-    echo "# Game reference identities for CI (see release.yml)."
+    echo "# O5Dev Mono + IL2CPP reference identities for CI (see release.yml)."
     echo "# file|AssemblyName, Version=x[, pkt=HEX]"
 } > "$OUT/build-refs.txt"
 {
-    echo "# SHA-256 of the real game DLL each line above was taken from."
+    echo "# SHA-256 of the O5Dev DLL each line above was taken from."
 } > "$OUT/build-refs.sha256"
 
 dotnet build "$ROOT/tool/GenRefs/GenRefs.csproj" -c Release --nologo -v q
@@ -55,8 +85,9 @@ dotnet build "$ROOT/tool/GenRefs/GenRefs.csproj" -c Release --nologo -v q
 count=0
 while IFS= read -r rel; do
     case "$rel" in
-        MelonLoader/*) src="$GAMEPATH/$rel" ;;
-        *) src="$MANAGED/$(basename "$rel")" ;;
+        mono/*) src="$MONO/${rel#mono/}" ;;
+        il2cpp/*) src="$IL2CPP/${rel#il2cpp/}" ;;
+        *) echo "unexpected rel path: $rel" >&2; exit 1 ;;
     esac
     if [[ ! -f "$src" ]]; then
         echo "missing: $src" >&2
@@ -70,9 +101,9 @@ while IFS= read -r rel; do
 done < "$WANT"
 rm -f "$WANT"
 
-# Stripped reference assemblies straight into $OUT/game/... (checked in).
-rm -rf "$OUT/game"
-GAME_MANAGED_DIR="$MANAGED" dotnet run --project "$ROOT/tool/GenRefs/GenRefs.csproj" --no-build -c Release -- \
+# Stripped reference assemblies straight into $OUT/{mono,il2cpp}/... (checked in).
+rm -rf "$OUT/game" "$OUT/mono" "$OUT/il2cpp"
+O5DEV_BUILDS_DIR="$BUILDS" dotnet run --project "$ROOT/tool/GenRefs/GenRefs.csproj" --no-build -c Release -- \
     "$OUT/build-refs.txt" "$OUT/build-refs.sha256" "$OUT"
 
-echo "wrote $count entries + stripped refs to $OUT"
+echo "wrote $count O5Dev entries + stripped refs (Mono + IL2CPP) to $OUT"

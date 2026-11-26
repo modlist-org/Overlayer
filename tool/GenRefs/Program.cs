@@ -1,25 +1,22 @@
-// Produces the CI reference assemblies checked in at tool/build-refs/game/.
+// Produces the CI reference assemblies checked in at tool/build-refs/{mono,il2cpp}/.
 //
-// We cannot ship the game's copyrighted DLLs in the repo. Instead this tool
-// harvests ONLY their API surface (type/member signatures) with Mono.Cecil,
-// replaces every method body with `ret` / `throw null`, and drops all managed
-// resources (I18N tables, etc.). No game logic or game data survives — just
-// enough metadata for the C# compiler to resolve the csproj HintPaths.
-// Custom attributes, const values and signatures are kept byte-identical so
-// overload resolution, `params`, optional args and extension methods behave
-// exactly like they do against the real game.
+// Harvests ONLY the API surface (type/member signatures) from the sibling O5Dev
+// Unity host with Mono.Cecil, replaces every method body with `ret` / `throw null`,
+// and drops all managed resources. Signatures, attributes, constants and pinned
+// identities are kept so compilation behaves identically to building against O5Dev.
 //
 // Modes:
 //   GenRefs describe <dll>                 prints "Name, Version=x[, pkt=HEX]"
-//   GenRefs <txt> <sha256> <outdir>        verify hashes vs local game install,
-//                                          then emit stripped refs under
-//                                          <outdir>/game/... (needs the game)
-//   GenRefs verify <txt> <stubroot>        check checked-in stubs at
-//                                          <stubroot>/game/... match <txt>
-//                                          (no game needed; used by CI)
+//   GenRefs <txt> <sha256> <outdir>        verify hashes vs O5Dev/Builds/{Mono,IL2CPP},
+//                                          then emit stripped refs under <outdir>/<relpath>
+//   GenRefs verify <txt> <stubroot>        check checked-in stubs at <stubroot>/<relpath>
+//                                          match <txt> (no O5Dev needed; used by CI)
 //
-// Layout under <outdir>/<stubroot> mirrors the game: game/GameData/Managed/
-// *.dll + game/MelonLoader/net35/{0Harmony,MelonLoader}.dll
+// Layout under <outdir>/<stubroot>:
+//   mono/MelonLoader/net35/{0Harmony,MelonLoader,Newtonsoft.Json}.dll
+//   mono/O5Dev_Data/Managed/*.dll
+//   il2cpp/MelonLoader/net6/{0Harmony,MelonLoader,Il2CppInterop.Runtime,Newtonsoft.Json}.dll
+//   il2cpp/MelonLoader/Il2CppAssemblies/*.dll
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -209,9 +206,7 @@ internal static class GenRefs {
                 return 2;
             }
             foreach(var r in refs) {
-                string stub = r.File.StartsWith("MelonLoader/", StringComparison.Ordinal)
-                    ? Path.Combine(args[2], "game/MelonLoader/net35", Path.GetFileName(r.File))
-                    : Path.Combine(args[2], "game/GameData/Managed", Path.GetFileName(r.File));
+                string stub = ResolveStubPath(args[2], r.File);
                 if(!File.Exists(stub)) {
                     Console.Error.WriteLine("stub missing: " + stub);
                     return 2;
@@ -263,53 +258,86 @@ internal static class GenRefs {
             hashes[t.Substring(sp + 1).Trim()] = t.Substring(0, sp).ToLowerInvariant();
         }
 
+        string buildsDir = Environment.GetEnvironmentVariable("O5DEV_BUILDS_DIR");
         string managed = Environment.GetEnvironmentVariable("GAME_MANAGED_DIR");
-        if(string.IsNullOrEmpty(managed)) {
-            managed = FindManagedDir();
+        if(string.IsNullOrEmpty(buildsDir) && string.IsNullOrEmpty(managed)) {
+            buildsDir = FindO5DevBuildsDir();
         }
-        if(managed == null) {
-            Console.Error.WriteLine("no local game install: set GAME_MANAGED_DIR or install the game.");
+        if(string.IsNullOrEmpty(buildsDir) && string.IsNullOrEmpty(managed)) {
+            Console.Error.WriteLine("no local O5Dev builds: set O5DEV_BUILDS_DIR or build O5Dev.");
             return 2;
         }
-        Console.WriteLine("verifying against local game install: " + managed);
+        Console.WriteLine("verifying against local source: " + (buildsDir ?? managed));
         using(var sha = SHA256.Create()) {
             foreach(var r in emitRefs) {
-                string gameFile = FindGameFile(r.File, managed);
-                if(string.IsNullOrEmpty(gameFile) || !File.Exists(gameFile)) {
-                    Console.Error.WriteLine("game file missing: " + (gameFile ?? r.File));
+                string srcFile = FindSourceFile(r.File, buildsDir, managed);
+                if(string.IsNullOrEmpty(srcFile) || !File.Exists(srcFile)) {
+                    Console.Error.WriteLine("source file missing: " + (srcFile ?? r.File));
                     return 2;
                 }
-                string hex = Convert.ToHexString(sha.ComputeHash(File.ReadAllBytes(gameFile))).ToLowerInvariant();
+                string hex = Convert.ToHexString(sha.ComputeHash(File.ReadAllBytes(srcFile))).ToLowerInvariant();
                 if(!hashes.TryGetValue(r.File, out string want) || want != hex) {
                     Console.Error.WriteLine($"hash mismatch for {r.File}: got {hex}, want {want ?? "<none>"}");
                     return 2;
                 }
             }
         }
-        Console.WriteLine($"verified {emitRefs.Count} hashes against local game install");
+        Console.WriteLine($"verified {emitRefs.Count} hashes against local source");
 
         foreach(var r in emitRefs) {
-            string dir = r.File.StartsWith("MelonLoader/", StringComparison.Ordinal)
-                ? Path.Combine(args[2], "game/MelonLoader/net35")
-                : Path.Combine(args[2], "game/GameData/Managed");
-            Directory.CreateDirectory(dir);
-            EmitReference(Path.Combine(dir, Path.GetFileName(r.File)), r, managed);
+            string dest = ResolveStubPath(args[2], r.File);
+            Directory.CreateDirectory(Path.GetDirectoryName(dest));
+            EmitReference(dest, r, buildsDir, managed);
         }
         Console.WriteLine($"wrote {emitRefs.Count} reference assemblies");
         return 0;
     }
 
-    private static string FindGameFile(string file, string managedDir) {
-        if(file.StartsWith("MelonLoader/", StringComparison.Ordinal)) {
-            foreach(string root in GameRoots(managedDir)) {
+    private static string ResolveStubPath(string root, string relFile) {
+        if(relFile.StartsWith("mono/", StringComparison.Ordinal) || relFile.StartsWith("il2cpp/", StringComparison.Ordinal)) {
+            return Path.Combine(root, relFile);
+        }
+        return relFile.StartsWith("MelonLoader/", StringComparison.Ordinal)
+            ? Path.Combine(root, "game/MelonLoader/net35", Path.GetFileName(relFile))
+            : Path.Combine(root, "game/GameData/Managed", Path.GetFileName(relFile));
+    }
+
+    private static string FindO5DevBuildsDir() {
+        string dir = Directory.GetCurrentDirectory();
+        for(int i = 0; i < 6 && !string.IsNullOrEmpty(dir); i++) {
+            string cand = Path.Combine(dir, "O5Dev", "Builds");
+            if(Directory.Exists(cand)) {
+                return cand;
+            }
+            dir = Path.GetDirectoryName(dir);
+        }
+        return null;
+    }
+
+    private static string FindSourceFile(string file, string buildsDir, string managedDir) {
+        if(!string.IsNullOrEmpty(buildsDir)) {
+            if(file.StartsWith("mono/", StringComparison.Ordinal)) {
+                string cand = Path.Combine(buildsDir, "Mono", file.Substring("mono/".Length));
+                if(File.Exists(cand)) {
+                    return cand;
+                }
+            } else if(file.StartsWith("il2cpp/", StringComparison.Ordinal)) {
+                string cand = Path.Combine(buildsDir, "IL2CPP", file.Substring("il2cpp/".Length));
+                if(File.Exists(cand)) {
+                    return cand;
+                }
+            }
+        }
+        if(file.StartsWith("MelonLoader/", StringComparison.Ordinal) && !string.IsNullOrEmpty(managedDir)) {
+            string root = Path.GetDirectoryName(Path.GetDirectoryName(managedDir));
+            if(!string.IsNullOrEmpty(root)) {
                 string cand = Path.Combine(root, file);
                 if(File.Exists(cand)) {
                     return cand;
                 }
             }
-            return null;
         }
-        if(managedDir != null) {
+        if(!string.IsNullOrEmpty(managedDir)) {
             string cand = Path.Combine(managedDir, Path.GetFileName(file));
             if(File.Exists(cand)) {
                 return cand;
@@ -318,62 +346,16 @@ internal static class GenRefs {
         return null;
     }
 
-    private static IEnumerable<string> GameRoots(string managedDir) {
-        // managedDir = <game>/ADanceOfFireAndIce_Data/Managed -> up 2 = <game>.
-        if(managedDir != null) {
-            string root = managedDir;
-            for(int i = 0; i < 2 && !string.IsNullOrEmpty(root); i++) {
-                root = Path.GetDirectoryName(root);
-            }
-            if(!string.IsNullOrEmpty(root)) {
-                yield return root;
-            }
-        }
-        string env = Environment.GetEnvironmentVariable("ADOFAI_DIR");
-        if(!string.IsNullOrEmpty(env)) {
-            yield return env;
-        }
-        yield return Path.Combine(HomeDir(), ".local/share/Steam/steamapps/common/A Dance of Fire and Ice");
-    }
-
-    private static string HomeDir() {
-        string home = Environment.GetEnvironmentVariable("HOME");
-        if(!string.IsNullOrEmpty(home)) {
-            return home;
-        }
-        return Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-    }
-
-    private static string FindManagedDir() {
-        string home = HomeDir();
-        var roots = new List<string>();
-        string env = Environment.GetEnvironmentVariable("ADOFAI_DIR");
-        if(!string.IsNullOrEmpty(env)) {
-            roots.Add(env);
-        }
-        roots.Add(Path.Combine(home, ".local/share/Steam/steamapps/common/A Dance of Fire and Ice"));
-        foreach(string root in roots) {
-            if(string.IsNullOrEmpty(root)) {
-                continue;
-            }
-            string m = Path.Combine(root, "ADanceOfFireAndIce_Data/Managed");
-            if(Directory.Exists(Path.Combine(m, "Assembly-CSharp.dll"))) {
-                return m;
-            }
-        }
-        return null;
-    }
-
-    private static void EmitReference(string path, Ref r, string managedDir) {
+    private static void EmitReference(string path, Ref r, string buildsDir, string managedDir) {
         // Harvest the real API surface, then strip everything executable:
         // every method body becomes `ret` (void) or `throw null` (works for
         // ANY return type, like real reference assemblies), and all managed
         // resources are dropped. Signatures, attributes, constants and the
         // pinned identity are kept, so compilation behaves identically.
-        string gameFile = FindGameFile(r.File, managedDir);
+        string gameFile = FindSourceFile(r.File, buildsDir, managedDir);
         if(gameFile == null || !File.Exists(gameFile)) {
             throw new InvalidOperationException(
-                "game file missing for " + r.File + " (set GAME_MANAGED_DIR or install the game)");
+                "source file missing for " + r.File + " (set O5DEV_BUILDS_DIR or build O5Dev)");
         }
         var resolver = new GameDirResolver(Path.GetDirectoryName(gameFile));
         var asm = Mono.Cecil.AssemblyDefinition.ReadAssembly(gameFile,

@@ -1,23 +1,24 @@
-# Tag-based release workflow.
+# Tag-based release workflow (Mono + IL2CPP via O5Dev reference assemblies).
 #
 # Usage: GitHub repo > Releases > Draft a new release
-#   1. Choose or create a tag (numeric X.Y.Z, e.g. 5.0.3; suffixes like 5.0.3-beta.1 allowed)
+#   1. Choose or create a tag (numeric X.Y.Z, e.g. 5.9.3; suffixes like 5.9.3-beta.1 allowed)
 #   2. Check "Set as a pre-release" for beta, leave unchecked for stable
 #   3. Write release notes from tool/release_template.md, then Publish -> this workflow builds and attaches the files automatically
 #
 # Steps:
 #   1. Validate the tag and check that the code version matches it
 #   2. Check out O5Kit (sibling ProjectReference, not a submodule) + stage
-#      the checked-in reference DLLs (tool/build-refs/game/)
-#   3. Build Release_ML
-#   4. Assemble Overlayer_ML_win.zip / Overlayer_ML_linux.zip / Overlayer_ML_mac.zip
-#   5. Upload the zips to the published release (prerelease flag from the release is preserved)
+#      the checked-in O5Dev reference DLLs (tool/build-refs/{mono,il2cpp}/)
+#   3. Build Release_ML (Mono) and Release_ML_IL2CPP (IL2CPP)
+#   4. Assemble Overlayer_ML_{win,linux,mac}.zip and Overlayer_ML_IL2CPP_{win,linux,mac}.zip
+#   5. Upload all 6 zips to the published release (prerelease flag from the release is preserved)
 #
 # Before tagging (locally):
-#   ./tool/set_version.sh 5.0.3   # inject version into Info.cs + csproj
+#   ./tool/set_version.sh 5.9.3   # inject version into Info.cs + csproj
+#   ../O5Dev/o5dev refs           # refresh tool/build-refs/ if csproj refs changed
 #   git add Overlayer/Core/Info.cs Overlayer/Overlayer.csproj
-#   git commit -m "5.0.3" && git push
-#   # then Draft a new release on GitHub with tag 5.0.3 and publish it
+#   git commit -m "5.9.3" && git push
+#   # then Draft a new release on GitHub with tag 5.9.3 and publish it
 #
 # NOTE: keep the code version numeric (X.Y.Z). A tag suffix like "-beta.1" is fine for
 #   naming, but only the numeric part is injected into the build: OverlayerRuntime parses
@@ -48,7 +49,7 @@ jobs:
       - name: Validate tag and code version
         run: |
           if ! [[ "$TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
-            echo "::error::tag must look like X.Y.Z with an optional suffix (e.g. 5.0.3 or 5.0.3-beta.1). Got: $TAG"
+            echo "::error::tag must look like X.Y.Z with an optional suffix (e.g. 5.9.3 or 5.9.3-beta.1). Got: $TAG"
             exit 1
           fi
           NUM="$(echo "$TAG" | grep -oE '^[0-9]+\.[0-9]+\.[0-9]+')"
@@ -82,41 +83,53 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Restore game reference DLLs
+      - name: Restore O5Dev reference DLLs (Mono + IL2CPP)
         run: |
-          # We cannot ship the game's copyrighted DLLs in the repo. Instead
-          # tool/build-refs/game/ holds stripped reference assemblies built
-          # by tool/pack_refs.sh: real API surface, every method body
-          # replaced by `ret` / `throw null`, resources dropped. No game
-          # logic or game data — just what the compiler resolves HintPaths
-          # against. tool/build-refs/build-refs.sha256 pins the real game
-          # DLLs they were harvested from.
+          # tool/build-refs/{mono,il2cpp}/ holds stripped reference assemblies
+          # harvested from O5Dev by tool/pack_refs.sh (or `o5dev refs`): real
+          # API surface with every method body replaced by `ret` / `throw null`
+          # and resources dropped. build-refs.sha256 pins the O5Dev DLLs they
+          # were generated from.
           dotnet run --project tool/GenRefs/GenRefs.csproj -- \
             verify tool/build-refs/build-refs.txt tool/build-refs
-          mkdir -p /tmp/gamerefs
-          cp -r tool/build-refs/game /tmp/gamerefs/game
-          ls -R /tmp/gamerefs/game | head -n 20
+          rm -rf /tmp/o5dev-refs
+          mkdir -p /tmp/o5dev-refs
+          cp -r tool/build-refs/mono /tmp/o5dev-refs/mono
+          cp -r tool/build-refs/il2cpp /tmp/o5dev-refs/il2cpp
+          ls -R /tmp/o5dev-refs | head -n 30
 
-      - name: Use CI game paths
+      - name: Use CI O5Dev reference paths
         run: |
           cat > Directory.Build.props <<'EOF'
           <Project>
               <PropertyGroup>
-                  <GamePath>/tmp/gamerefs/game</GamePath>
-                  <GameData>GameData</GameData>
+                  <GamePath>/tmp/o5dev-refs/mono</GamePath>
+                  <GameData>O5Dev_Data</GameData>
+                  <Il2CppPath>/tmp/o5dev-refs/il2cpp</Il2CppPath>
+                  <Il2CppData>/tmp/o5dev-refs/il2cpp/MelonLoader/Il2CppAssemblies</Il2CppData>
               </PropertyGroup>
           </Project>
           EOF
-          ls -R /tmp/gamerefs/game | head -n 30
 
-      - name: Build (Release_ML)
-        # GamePath/GameData as global properties so the O5Kit
-        # ProjectReference (outside this Directory.Build.props tree)
-        # resolves the same fake tree.
-        run: dotnet build Overlayer/Overlayer.csproj -c Release_ML --nologo -v minimal -p:GamePath=/tmp/gamerefs/game -p:GameData=GameData
+      - name: Build Mono (Release_ML)
+        # Global properties so sibling O5Kit resolves the same O5Dev ref tree.
+        run: >
+          dotnet build Overlayer/Overlayer.csproj -c Release_ML --nologo -v minimal
+          -p:GamePath=/tmp/o5dev-refs/mono
+          -p:GameData=O5Dev_Data
+          -p:Il2CppPath=/tmp/o5dev-refs/il2cpp
+          -p:Il2CppData=/tmp/o5dev-refs/il2cpp/MelonLoader/Il2CppAssemblies
 
-      - name: Package zips
-        run: ./tool/make_zips.sh
+      - name: Build IL2CPP (Release_ML_IL2CPP)
+        run: >
+          dotnet build Overlayer/Overlayer.csproj -c Release_ML_IL2CPP --nologo -v minimal
+          -p:GamePath=/tmp/o5dev-refs/mono
+          -p:GameData=O5Dev_Data
+          -p:Il2CppPath=/tmp/o5dev-refs/il2cpp
+          -p:Il2CppData=/tmp/o5dev-refs/il2cpp/MelonLoader/Il2CppAssemblies
+
+      - name: Package zips (Mono + IL2CPP)
+        run: ./tool/make_zips.sh --all
 
       - name: Attach files to release
         uses: softprops/action-gh-release@v2
@@ -127,3 +140,6 @@ jobs:
             dist/Overlayer_ML_win.zip
             dist/Overlayer_ML_linux.zip
             dist/Overlayer_ML_mac.zip
+            dist/Overlayer_ML_IL2CPP_win.zip
+            dist/Overlayer_ML_IL2CPP_linux.zip
+            dist/Overlayer_ML_IL2CPP_mac.zip
