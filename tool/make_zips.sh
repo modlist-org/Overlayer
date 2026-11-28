@@ -55,6 +55,13 @@ pack_variant() {
         fi
     done
 
+    # Exactly one versioned O5Kit (O5Kit.{major}.{minor}.dll) must ship; a stale copy would load side by side.
+    local o5kit=("$src"/UserLibs/O5Kit.*.dll)
+    if [[ ! -e "${o5kit[0]}" || ${#o5kit[@]} -ne 1 ]]; then
+        echo "error: expected exactly one UserLibs/O5Kit.*.dll in $src, found: ${o5kit[*]}" >&2
+        exit 1
+    fi
+
     rm -f "$DIST/${prefix}_win.zip" "$DIST/${prefix}_linux.zip" "$DIST/${prefix}_mac.zip"
 
     # --- win ---

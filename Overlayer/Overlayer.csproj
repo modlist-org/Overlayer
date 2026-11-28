@@ -49,6 +49,8 @@
 	
 	<PropertyGroup Condition="!$(Configuration.Contains('IL2CPP'))">
 		<_ManagedRefPath Condition="'$(ManagedRefPath)' != ''">$(ManagedRefPath)</_ManagedRefPath>
+		<!-- O5Dev's Unity 6 Managed/ references netstandard 2.1; CompatManaged/ (o5dev retarget) is the netstandard2.0-compatible copy. -->
+		<_ManagedRefPath Condition="'$(_ManagedRefPath)' == '' and Exists('$(GamePath)/CompatManaged/UnityEngine.CoreModule.dll')">$(GamePath)/CompatManaged</_ManagedRefPath>
 		<_ManagedRefPath Condition="'$(_ManagedRefPath)' == ''">$(GamePath)/$(GameData)/Managed</_ManagedRefPath>
 	</PropertyGroup>
 
@@ -328,7 +330,12 @@
 		<Copy SourceFiles="@(NuGetUserLibs)" DestinationFolder="$(TargetGamePath)/UserLibs" SkipUnchangedFiles="true" />
 
 		<MakeDir Directories="$(TargetGamePath)/UserLibs" />
-		<Copy SourceFiles="$(TargetDir)O5Kit.1.0.dll" DestinationFolder="$(TargetGamePath)/UserLibs" SkipUnchangedFiles="true" Condition="Exists('$(TargetDir)O5Kit.1.0.dll')" />
+		<!-- O5Kit's file name follows its version (O5Kit.{major}.{minor}.dll); take it from the project reference output. -->
+		<ItemGroup>
+			<O5KitDll Include="@(ReferenceCopyLocalPaths)" Condition="'%(ReferenceCopyLocalPaths.Extension)' == '.dll' And $([System.String]::Copy('%(ReferenceCopyLocalPaths.Filename)').StartsWith('O5Kit.'))" />
+		</ItemGroup>
+		<Error Condition="'@(O5KitDll)' == ''" Text="O5Kit DLL not found among project reference outputs" />
+		<Copy SourceFiles="@(O5KitDll)" DestinationFolder="$(TargetGamePath)/UserLibs" SkipUnchangedFiles="true" />
 		<ItemGroup>
 			<O5NativeLib Include="$(MSBuildProjectDirectory)/../../O5Kit/native/zig-out/lib/O5KitNative.*" />
 			<OvNativeLib Include="$(MSBuildProjectDirectory)/../native/zig-out/lib/OverlayerNative.*" />
@@ -384,7 +391,13 @@
 		<Copy Condition="'$(TargetPath)' != ''" SourceFiles="$(TargetPath)" DestinationFolder="$(BuildOutputDir)\Mods" SkipUnchangedFiles="true" />
 		<MakeDir Directories="$(BuildOutputDir)\UserLibs" Condition="'@(NuGetUserLibs)' != ''" />
 		<Copy SourceFiles="@(NuGetUserLibs)" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" />
-		<Copy SourceFiles="$(TargetDir)O5Kit.1.0.dll" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" Condition="Exists('$(TargetDir)O5Kit.1.0.dll')" />
+		<!-- Staging holds only this build's O5Kit; a stale older O5Kit.*.dll would otherwise ship in the zips. -->
+		<ItemGroup>
+			<StaleO5KitDll Include="$(BuildOutputDir)\UserLibs\O5Kit.*.dll" Exclude="@(O5KitDll->'$(BuildOutputDir)\UserLibs\%(Filename)%(Extension)')" />
+		</ItemGroup>
+		<Delete Files="@(StaleO5KitDll)" />
+		<MakeDir Directories="$(BuildOutputDir)\UserLibs" />
+		<Copy SourceFiles="@(O5KitDll)" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" />
 		<Copy SourceFiles="@(O5NativeLib)" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" Condition="'@(O5NativeLib)' != ''" />
 		<Copy SourceFiles="@(OvNativeLib)" DestinationFolder="$(BuildOutputDir)\UserLibs" SkipUnchangedFiles="true" Condition="'@(OvNativeLib)' != ''" />
 		<Copy SourceFiles="@(NativeAlias)" DestinationFiles="@(NativeAlias->'$(BuildOutputDir)/UserLibs/%(Alias)')" SkipUnchangedFiles="true" />
